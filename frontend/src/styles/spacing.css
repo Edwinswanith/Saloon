@@ -1,0 +1,39 @@
+/* Standardized Spacing System */
+
+/* Page Level */
+:root {
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 20px;
+  --spacing-2xl: 24px;
+  --spacing-3xl: 32px;
+  
+  /* Container */
+  --container-padding: 0 24px 24px;
+  --container-max-width: 1600px;
+  
+  /* Header */
+  --header-padding: 16px 24px;
+  --header-margin-bottom: 24px;
+  
+  /* Card */
+  --card-padding: 24px;
+  --card-border-radius: 8px;
+  --card-gap: 24px;
+  
+  /* Section */
+  --section-gap: 20px;
+  --section-margin-bottom: 20px;
+  
+  /* Element Gaps */
+  --gap-xs: 8px;
+  --gap-sm: 12px;
+  --gap-md: 16px;
+  --gap-lg: 24px;
+  
+  /* Title */
+  --title-margin-bottom: 20px;
+}
+
