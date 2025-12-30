@@ -1,15 +1,27 @@
 import React, { useState, useEffect } from 'react'
 import {
-  FaBars,
-  FaBell,
-  FaUser,
   FaCloudDownloadAlt,
   FaEdit,
   FaTrash,
   FaPlus,
 } from 'react-icons/fa'
+import Header from './Header'
 import './Expense.css'
-import { API_BASE_URL } from '../config'
+import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
+import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+} from 'recharts'
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
+import { PageTransition } from './shared/PageTransition'
+import { TableSkeleton, ChartSkeleton } from './shared/SkeletonLoaders'
+import { EmptyTable } from './shared/EmptyStates'
 
 const Expense = () => {
   const [dateFilter, setDateFilter] = useState('current-month')
@@ -19,7 +31,6 @@ const Expense = () => {
   const [categories, setCategories] = useState([])
   const [expenseSummary, setExpenseSummary] = useState([])
   const [loading, setLoading] = useState(true)
-  const [hoveredCategory, setHoveredCategory] = useState(null)
   const [showExpenseModal, setShowExpenseModal] = useState(false)
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [editingExpense, setEditingExpense] = useState(null)
@@ -46,7 +57,7 @@ const Expense = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/expenses/categories`)
+      const response = await apiGet('/api/expenses/categories')
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -99,7 +110,7 @@ const Expense = () => {
       if (dateRange.start_date) params.append('start_date', dateRange.start_date)
       if (dateRange.end_date) params.append('end_date', dateRange.end_date)
       
-      const response = await fetch(`${API_BASE_URL}/api/expenses?${params}`)
+      const response = await apiGet(`/api/expenses?${params}`)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -121,7 +132,7 @@ const Expense = () => {
       if (dateRange.start_date) params.append('start_date', dateRange.start_date)
       if (dateRange.end_date) params.append('end_date', dateRange.end_date)
       
-      const response = await fetch(`${API_BASE_URL}/api/expenses/summary?${params}`)
+      const response = await apiGet(`/api/expenses/summary?${params}`)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -161,38 +172,35 @@ const Expense = () => {
 
   const handleSaveExpense = async () => {
     if (!expenseFormData.name.trim()) {
-      alert('Expense name is required')
+      showError('Expense name is required')
       return
     }
     if (!expenseFormData.category_id) {
-      alert('Category is required')
+      showError('Category is required')
       return
     }
     if (!expenseFormData.amount || parseFloat(expenseFormData.amount) <= 0) {
-      alert('Valid amount is required')
+      showError('Valid amount is required')
       return
     }
 
     try {
       const url = editingExpense 
-        ? `${API_BASE_URL}/api/expenses/${editingExpense.id}`
-        : `${API_BASE_URL}/api/expenses`
-      const method = editingExpense ? 'PUT' : 'POST'
+        ? `/api/expenses/${editingExpense.id}`
+        : '/api/expenses'
+      
+      const requestData = {
+        name: expenseFormData.name.trim(),
+        category_id: expenseFormData.category_id,  // MongoDB ObjectId as string
+        amount: parseFloat(expenseFormData.amount),
+        payment_mode: expenseFormData.payment_mode,
+        expense_date: expenseFormData.expense_date,
+        description: expenseFormData.description.trim()
+      }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: expenseFormData.name.trim(),
-          category_id: expenseFormData.category_id,  // MongoDB ObjectId as string
-          amount: parseFloat(expenseFormData.amount),
-          payment_mode: expenseFormData.payment_mode,
-          expense_date: expenseFormData.expense_date,
-          description: expenseFormData.description.trim()
-        }),
-      })
+      const response = editingExpense 
+        ? await apiPut(url, requestData)
+        : await apiPost(url, requestData)
 
       if (response.ok) {
         const data = await response.json()
@@ -208,14 +216,14 @@ const Expense = () => {
           expense_date: new Date().toISOString().split('T')[0],
           description: ''
         })
-        alert(data.message || (editingExpense ? 'Expense updated successfully!' : 'Expense added successfully!'))
+        showError(data.message || (editingExpense ? 'Expense updated successfully!' : 'Expense added successfully!'))
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        alert(errorData.error || `Failed to save expense (Status: ${response.status})`)
+        showError(errorData.error || `Failed to save expense (Status: ${response.status})`)
       }
     } catch (error) {
       console.error('Error saving expense:', error)
-      alert(`Error saving expense: ${error.message}`)
+      showError(`Error saving expense: ${error.message}`)
     }
   }
 
@@ -240,26 +248,23 @@ const Expense = () => {
 
   const handleSaveCategory = async () => {
     if (!categoryFormData.name.trim()) {
-      alert('Category name is required')
+      showError('Category name is required')
       return
     }
 
     try {
       const url = editingCategory 
-        ? `${API_BASE_URL}/api/expenses/categories/${editingCategory.id}`
-        : `${API_BASE_URL}/api/expenses/categories`
-      const method = editingCategory ? 'PUT' : 'POST'
+        ? `/api/expenses/categories/${editingCategory.id}`
+        : '/api/expenses/categories'
+      
+      const requestData = {
+        name: categoryFormData.name.trim(),
+        description: categoryFormData.description.trim()
+      }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: categoryFormData.name.trim(),
-          description: categoryFormData.description.trim()
-        }),
-      })
+      const response = editingCategory 
+        ? await apiPut(url, requestData)
+        : await apiPost(url, requestData)
 
       if (response.ok) {
         const data = await response.json()
@@ -268,14 +273,14 @@ const Expense = () => {
         setCategoryFormData({ name: '', description: '' })
         setEditingCategory(null)
         setAddingCategory(false)
-        alert(data.message || (editingCategory ? 'Category updated successfully!' : 'Category added successfully!'))
+        showError(data.message || (editingCategory ? 'Category updated successfully!' : 'Category added successfully!'))
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        alert(errorData.error || `Failed to save category (Status: ${response.status})`)
+        showError(errorData.error || `Failed to save category (Status: ${response.status})`)
       }
     } catch (error) {
       console.error('Error saving category:', error)
-      alert(`Error saving category: ${error.message}`)
+      showError(`Error saving category: ${error.message}`)
     }
   }
 
@@ -284,20 +289,18 @@ const Expense = () => {
       return
     }
     try {
-      const response = await fetch(`${API_BASE_URL}/api/expenses/categories/${categoryId}`, {
-        method: 'DELETE',
-      })
+      const response = await apiDelete(`/api/expenses/categories/${categoryId}`)
       if (response.ok) {
         fetchCategories()
         fetchExpenseSummary()
-        alert('Category deleted successfully')
+        showSuccess('Category deleted successfully')
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        alert(errorData.error || 'Failed to delete category')
+        showError(errorData.error || 'Failed to delete category')
       }
     } catch (error) {
       console.error('Error deleting category:', error)
-      alert(`Error deleting category: ${error.message}`)
+      showError(`Error deleting category: ${error.message}`)
     }
   }
 
@@ -306,20 +309,18 @@ const Expense = () => {
       return
     }
     try {
-      const response = await fetch(`${API_BASE_URL}/api/expenses/${expenseId}`, {
-        method: 'DELETE',
-      })
+      const response = await apiDelete(`/api/expenses/${expenseId}`)
       if (response.ok) {
         fetchExpenses()
         fetchExpenseSummary()
-        alert('Expense deleted successfully')
+        showSuccess('Expense deleted successfully')
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        alert(errorData.error || 'Failed to delete expense')
+        showError(errorData.error || 'Failed to delete expense')
       }
     } catch (error) {
       console.error('Error deleting expense:', error)
-      alert(`Error deleting expense: ${error.message}`)
+      showError(`Error deleting expense: ${error.message}`)
     }
   }
 
@@ -357,139 +358,125 @@ const Expense = () => {
       window.URL.revokeObjectURL(url)
     } catch (error) {
       console.error('Error downloading report:', error)
-      alert('Error downloading report. Please try again.')
+      showError('Error downloading report. Please try again.')
     }
   }
 
   const totalExpense = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0)
   
-  // Color palette for categories
+  // Color palette for categories - matching Business Growth style
   const categoryColors = [
     '#d4a574', '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
     '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316'
   ]
 
+  // Format currency for display
+  const formatCurrency = (value) => {
+    return `Rs ${value.toLocaleString('en-IN')}`
+  }
+
+  // Custom tooltip for the chart
+  const CustomTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div style={{
+          backgroundColor: 'white',
+          border: '1px solid #e5e7eb',
+          borderRadius: '8px',
+          padding: '12px',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+        }}>
+          <p style={{ margin: 0, fontWeight: '600', color: '#1f2937' }}>
+            {payload[0].name}
+          </p>
+          <p style={{ margin: '4px 0 0 0', color: '#6b7280' }}>
+            {formatCurrency(payload[0].value)}
+          </p>
+          <p style={{ margin: '4px 0 0 0', color: '#6b7280', fontSize: '12px' }}>
+            {payload[0].payload.percentage}%
+          </p>
+        </div>
+      )
+    }
+    return null
+  }
+
   const renderDonutChart = () => {
     if (!expenseSummary || expenseSummary.length === 0) {
       return (
-        <>
-          <svg width="200" height="200" viewBox="0 0 200 200">
-            <circle
-              cx="100"
-              cy="100"
-              r="80"
-              fill="none"
-              stroke="#e5e7eb"
-              strokeWidth="40"
-            />
-          </svg>
-          <div className="chart-center">
-            <div className="chart-amount">₹0</div>
-            <div className="chart-label">No data</div>
-          </div>
-        </>
+        <div style={{ 
+          height: '300px', 
+          display: 'flex', 
+          flexDirection: 'column',
+          alignItems: 'center', 
+          justifyContent: 'center',
+          color: '#9ca3af'
+        }}>
+          <p style={{ fontSize: '16px', margin: 0 }}>No expense data</p>
+          <p style={{ fontSize: '14px', margin: '8px 0 0 0' }}>Add expenses to see breakdown</p>
+        </div>
       )
     }
 
     const total = expenseSummary.reduce((sum, item) => sum + (item.total_amount || 0), 0)
     if (total === 0) {
       return (
-        <>
-          <svg width="200" height="200" viewBox="0 0 200 200">
-            <circle
-              cx="100"
-              cy="100"
-              r="80"
-              fill="none"
-              stroke="#e5e7eb"
-              strokeWidth="40"
-            />
-          </svg>
-          <div className="chart-center">
-            <div className="chart-amount">₹0</div>
-            <div className="chart-label">No data</div>
-          </div>
-        </>
+        <div style={{ 
+          height: '300px', 
+          display: 'flex', 
+          flexDirection: 'column',
+          alignItems: 'center', 
+          justifyContent: 'center',
+          color: '#9ca3af'
+        }}>
+          <p style={{ fontSize: '16px', margin: 0 }}>Rs 0</p>
+          <p style={{ fontSize: '14px', margin: '8px 0 0 0' }}>No expenses recorded</p>
+        </div>
       )
     }
 
-    const circumference = 2 * Math.PI * 80
-    let accumulatedLength = 0
-    const hoveredItem = hoveredCategory 
-      ? expenseSummary.find(item => item.category_name === hoveredCategory)
-      : null
+    // Transform data for Recharts
+    const chartData = expenseSummary.map((item, index) => ({
+      name: item.category_name,
+      value: item.total_amount,
+      percentage: ((item.total_amount / total) * 100).toFixed(1),
+      color: categoryColors[index % categoryColors.length]
+    }))
 
     return (
-      <>
-        <svg width="200" height="200" viewBox="0 0 200 200">
-          {expenseSummary.map((item, index) => {
-            const percentage = item.total_amount / total
-            const dashLength = circumference * percentage
-            const isHovered = hoveredCategory === item.category_name
-            const color = categoryColors[index % categoryColors.length]
-            
-            const strokeDasharray = `${dashLength} ${circumference}`
-            const strokeDashoffset = -accumulatedLength
-            
-            accumulatedLength += dashLength
-            
-            return (
-              <circle
-                key={item.category_name}
-                cx="100"
-                cy="100"
-                r="80"
-                fill="none"
-                stroke={color}
-                strokeWidth={isHovered ? "45" : "40"}
-                strokeDasharray={strokeDasharray}
-                strokeDashoffset={strokeDashoffset}
-                transform="rotate(-90 100 100)"
-                style={{ 
-                  transition: 'all 0.3s ease',
-                  cursor: 'pointer',
-                  opacity: hoveredCategory && !isHovered ? 0.5 : 1
-                }}
-                onMouseEnter={() => setHoveredCategory(item.category_name)}
-                onMouseLeave={() => setHoveredCategory(null)}
-              />
-            )
-          })}
-        </svg>
-        <div className="chart-center">
-          <div className="chart-amount">
-            ₹{hoveredItem ? hoveredItem.total_amount.toFixed(0) : total.toFixed(0)}
-          </div>
-          <div className="chart-label">
-            {hoveredItem ? hoveredItem.category_name : 'Total'}
-          </div>
-        </div>
-      </>
+      <ResponsiveContainer width="100%" height={300}>
+        <PieChart>
+          <Pie
+            data={chartData}
+            cx="50%"
+            cy="50%"
+            innerRadius={60}
+            outerRadius={90}
+            fill="#8884d8"
+            paddingAngle={2}
+            dataKey="value"
+            label={({ name, percentage }) => `${name}: ${percentage}%`}
+            labelLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
+          >
+            {chartData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.color} />
+            ))}
+          </Pie>
+          <Tooltip content={<CustomTooltip />} />
+          <Legend 
+            wrapperStyle={{ paddingTop: '10px' }}
+            iconType="circle"
+          />
+        </PieChart>
+      </ResponsiveContainer>
     )
   }
 
   return (
-    <div className="expense-page">
-      {/* Header */}
-      <header className="expense-header">
-        <div className="header-left">
-          <button className="menu-icon">
-            <FaBars />
-          </button>
-          <h1 className="header-title">Expense</h1>
-        </div>
-        <div className="header-right">
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-          <button className="header-icon bell-icon">
-            <FaBell />
-          </button>
-          <button className="header-icon user-icon">
-            <FaUser />
-          </button>
-        </div>
-      </header>
+    <PageTransition>
+      <div className="expense-page">
+        {/* Header */}
+        <Header title="Expense" />
 
       <div className="expense-container">
         <div className="expense-layout">
@@ -560,47 +547,7 @@ const Expense = () => {
               </button>
             </div>
             <div className="chart-container">
-              <div className="donut-chart">
-                {renderDonutChart()}
-              </div>
-              <div className="chart-legend">
-                {expenseSummary.length === 0 ? (
-                  <div className="legend-item">
-                    <span className="legend-color" style={{ background: '#e5e7eb' }}></span>
-                    <span className="legend-label">No expenses</span>
-                  </div>
-                ) : (
-                  expenseSummary.map((item, index) => {
-                    const isHovered = hoveredCategory === item.category_name
-                    const total = expenseSummary.reduce((sum, i) => sum + (i.total_amount || 0), 0)
-                    return (
-                      <div 
-                        key={item.category_name} 
-                        className="legend-item"
-                        style={{ 
-                          opacity: hoveredCategory && !isHovered ? 0.5 : 1,
-                          cursor: 'pointer',
-                          transition: 'all 0.3s ease'
-                        }}
-                        onMouseEnter={() => setHoveredCategory(item.category_name)}
-                        onMouseLeave={() => setHoveredCategory(null)}
-                      >
-                        <span 
-                          className="legend-color" 
-                          style={{ 
-                            background: categoryColors[index % categoryColors.length],
-                            transform: isHovered ? 'scale(1.2)' : 'scale(1)',
-                            transition: 'transform 0.3s ease'
-                          }}
-                        ></span>
-                        <span className="legend-label">
-                          {item.category_name} ({((item.total_amount / total) * 100).toFixed(1)}%)
-                        </span>
-                      </div>
-                    )
-                  })
-                )}
-              </div>
+              {renderDonutChart()}
             </div>
           </div>
         </div>
@@ -719,10 +666,12 @@ const Expense = () => {
             </div>
             <div className="form-group">
               <label>Expense Date *</label>
-              <input
-                type="date"
-                value={expenseFormData.expense_date}
-                onChange={(e) => setExpenseFormData({ ...expenseFormData, expense_date: e.target.value })}
+              <DatePicker
+                selected={expenseFormData.expense_date}
+                onChange={(date) => setExpenseFormData({ ...expenseFormData, expense_date: date })}
+                dateFormat="dd/MM/yyyy"
+                maxDate={new Date()}
+                placeholderText="Select expense date"
                 required
               />
             </div>
@@ -832,6 +781,7 @@ const Expense = () => {
         </div>
       )}
     </div>
+    </PageTransition>
   )
 }
 

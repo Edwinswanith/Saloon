@@ -15,9 +15,11 @@ import {
   FaChevronDown,
   FaStar,
 } from 'react-icons/fa'
+import { useAuth } from '../contexts/AuthContext'
 import './Sidebar.css'
 
 const Sidebar = ({ activePage, setActivePage }) => {
+  const { hasAnyRole, canAccess } = useAuth()
   const [expandedItems, setExpandedItems] = useState({
     'salon-settings': true,
     billing: true,
@@ -44,8 +46,12 @@ const Sidebar = ({ activePage, setActivePage }) => {
       setActivePage('customer-list')
     } else if (itemId === 'lead-management') {
       setActivePage('lead-management')
+    } else if (itemId === 'missed-enquiries') {
+      setActivePage('missed-enquiries')
     } else if (itemId === 'feedback') {
       setActivePage('feedback')
+    } else if (itemId === 'service-recovery') {
+      setActivePage('service-recovery')
     } else if (itemId === 'inventory') {
       setActivePage('inventory')
     } else if (itemId === 'reports' || itemId === 'analytics') {
@@ -68,13 +74,41 @@ const Sidebar = ({ activePage, setActivePage }) => {
       setActivePage('asset-management')
     } else if (itemId === 'expense') {
       setActivePage('expense')
+    } else if (itemId === 'discount-approvals') {
+      setActivePage('discount-approvals')
+    } else if (itemId === 'approval-codes') {
+      setActivePage('approval-codes')
     }
   }
 
   const menuSections = [
     {
       section: 'ANALYTICS',
-      items: [{ id: 'reports', label: 'Reports & Analytics', icon: <FaChartBar /> }],
+      items: [
+        { 
+          id: 'reports', 
+          label: 'Reports & Analytics', 
+          icon: <FaChartBar />,
+          requiresRole: ['manager', 'owner'] // Only manager and owner can see reports
+        }
+      ],
+    },
+    {
+      section: 'BILLING',
+      items: [
+        { 
+          id: 'discount-approvals', 
+          label: 'Discount Approvals', 
+          icon: <FaDollarSign />,
+          requiresRole: ['manager', 'owner'] // Only manager and owner can approve discounts
+        },
+        { 
+          id: 'approval-codes', 
+          label: 'Approval Codes', 
+          icon: <FaDollarSign />,
+          requiresRole: ['owner'] // Only owner can manage approval codes
+        }
+      ],
     },
     {
       section: 'MASTER',
@@ -88,14 +122,38 @@ const Sidebar = ({ activePage, setActivePage }) => {
             { id: 'package', label: 'Package' },
             { id: 'product', label: 'Product' },
             { id: 'prepaid', label: 'Prepaid' },
-            { id: 'settings', label: 'Settings' },
+            { 
+              id: 'settings', 
+              label: 'Settings',
+              requiresRole: ['manager', 'owner'] // Only manager and owner can see settings
+            },
           ],
           expanded: expandedItems['salon-settings'],
         },
-        { id: 'staffs', label: 'Staffs', icon: <FaUser /> },
-        { id: 'staff-attendance', label: 'Staff Attendance', icon: <FaCheckCircle /> },
-        { id: 'asset-management', label: 'Asset Management', icon: <FaBriefcase /> },
-        { id: 'expense', label: 'Expense', icon: <FaDollarSign /> },
+        { 
+          id: 'staffs', 
+          label: 'Staffs', 
+          icon: <FaUser />,
+          requiresRole: ['manager', 'owner'] // Only manager and owner can manage staff
+        },
+        { 
+          id: 'staff-attendance', 
+          label: 'Staff Attendance', 
+          icon: <FaCheckCircle />,
+          requiresRole: ['manager', 'owner'] // Only manager and owner can see attendance
+        },
+        { 
+          id: 'asset-management', 
+          label: 'Asset Management', 
+          icon: <FaBriefcase />,
+          requiresRole: ['manager', 'owner'] // Only manager and owner can manage assets
+        },
+        { 
+          id: 'expense', 
+          label: 'Expense', 
+          icon: <FaDollarSign />,
+          requiresRole: ['manager', 'owner'] // Only manager and owner can manage expenses
+        },
       ],
     },
   ]
@@ -118,7 +176,9 @@ const Sidebar = ({ activePage, setActivePage }) => {
       subItems: [
         { id: 'customer-list', label: 'Customer List' },
         { id: 'lead-management', label: 'Lead Management' },
+        { id: 'missed-enquiries', label: 'Missed Enquiries' },
         { id: 'feedback', label: 'Feedback' },
+        { id: 'service-recovery', label: 'Service Recovery', requiresRole: ['manager', 'owner'] },
       ],
       expanded: expandedItems.customers,
     },
@@ -135,7 +195,15 @@ const Sidebar = ({ activePage, setActivePage }) => {
       </div>
       <nav className="sidebar-nav">
         {/* Top Menu Items */}
-        {topMenuItems.map((item) => (
+        {topMenuItems
+          .filter((item) => {
+            // Filter items based on role requirements
+            if (item.requiresRole) {
+              return hasAnyRole(...item.requiresRole)
+            }
+            return true
+          })
+          .map((item) => (
           <div key={item.id}>
             <div
               className={`nav-item ${
@@ -161,7 +229,15 @@ const Sidebar = ({ activePage, setActivePage }) => {
             </div>
             {item.subItems && expandedItems[item.id] && (
               <div className="submenu">
-                {item.subItems.map((subItem) => (
+                {item.subItems
+                  .filter((subItem) => {
+                    // Filter sub-items based on role requirements
+                    if (subItem.requiresRole) {
+                      return hasAnyRole(...subItem.requiresRole)
+                    }
+                    return true
+                  })
+                  .map((subItem) => (
                   <div
                     key={subItem.id}
                     className={`submenu-item ${
@@ -182,7 +258,15 @@ const Sidebar = ({ activePage, setActivePage }) => {
         {menuSections.map((section, sectionIndex) => (
           <div key={section.section} className="menu-section">
             <div className="section-header">{section.section}</div>
-            {section.items.map((item) => (
+            {section.items
+              .filter((item) => {
+                // Filter items based on role requirements
+                if (item.requiresRole) {
+                  return hasAnyRole(...item.requiresRole)
+                }
+                return true
+              })
+              .map((item) => (
               <div key={item.id}>
                 <div
                   className={`nav-item ${

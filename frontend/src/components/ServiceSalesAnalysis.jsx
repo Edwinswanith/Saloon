@@ -9,6 +9,7 @@ import {
 } from 'react-icons/fa'
 import './ServiceSalesAnalysis.css'
 import { API_BASE_URL } from '../config'
+import { apiGet } from '../utils/api'
 
 const ServiceSalesAnalysis = ({ setActivePage }) => {
   const [categoryFilter, setCategoryFilter] = useState('all')
@@ -92,7 +93,12 @@ const ServiceSalesAnalysis = ({ setActivePage }) => {
       const dateRange = getDateRange()
       const params = new URLSearchParams(dateRange)
       
-      const response = await fetch(`${API_BASE_URL}/api/reports/service-sales-analysis?${params}`)
+      const response = await apiGet(`/api/reports/service-sales-analysis?${params}`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
       const data = await response.json()
       
       let filteredData = data || []

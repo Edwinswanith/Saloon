@@ -1,9 +1,18 @@
 from flask import Blueprint, request, jsonify
-from models import Bill, Customer, Product, PrepaidPackage, LoyaltyProgramSettings, BillItemEmbedded
+from models import Bill, Customer, Product, PrepaidPackage, LoyaltyProgramSettings, BillItemEmbedded, DiscountApprovalRequest, Staff
 from datetime import datetime
 from bson import ObjectId
 from mongoengine import Q
+from utils.auth import get_current_user, require_auth
+from utils.branch_filter import get_selected_branch
 import uuid
+
+# Discount limits by role (Phase 5)
+DISCOUNT_LIMITS = {
+    'staff': 15,
+    'manager': 25,
+    'owner': 100  # Unlimited
+}
 
 bill_bp = Blueprint('bill', __name__)
 
@@ -14,7 +23,8 @@ def generate_bill_number():
     return f"BILL-{timestamp}-{random_suffix}"
 
 @bill_bp.route('/bills', methods=['GET'])
-def get_bills():
+@require_auth
+def get_bills(current_user=None):
     """Get all bills with optional filters"""
     try:
         # Query parameters
@@ -25,7 +35,11 @@ def get_bills():
         booking_status = request.args.get('booking_status')
         include_deleted = request.args.get('include_deleted', type=bool, default=False)
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
         query = Bill.objects
+        if branch:
+            query = query.filter(branch=branch)
 
         # Apply filters
         if not include_deleted:
@@ -308,9 +322,79 @@ def checkout_bill(id):
         # Get discount
         discount_amount = float(data.get('discount_amount', 0) or 0)
         discount_type = data.get('discount_type', 'fix')
-
+        
+        # Calculate discount percentage for approval check (Phase 5)
+        discount_percent = 0
         if discount_type == 'percentage':
+            discount_percent = float(discount_amount)
             discount_amount = float(subtotal) * (float(discount_amount) / 100.0)
+        elif discount_amount > 0 and subtotal > 0:
+            discount_percent = (discount_amount / subtotal) * 100
+        
+        # Phase 5: Check discount approval requirements
+        current_user = get_current_user()
+        user_role = current_user.get('role') if current_user else 'staff'
+        max_discount = DISCOUNT_LIMITS.get(user_role, 15)
+        
+        # Check if approval is needed
+        needs_approval = discount_percent > max_discount
+        
+        # Check if there's a pending approval request
+        existing_approval = None
+        if bill.discount_approval_request:
+            existing_approval = DiscountApprovalRequest.objects(id=bill.discount_approval_request.id).first()
+            if existing_approval and existing_approval.approval_status == 'pending':
+                response = jsonify({
+                    'error': 'Discount approval pending',
+                    'approval_id': str(existing_approval.id),
+                    'message': 'This discount requires approval before checkout'
+                })
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response, 400
+            elif existing_approval and existing_approval.approval_status == 'rejected':
+                response = jsonify({
+                    'error': 'Discount approval rejected',
+                    'message': 'This discount request was rejected. Please adjust the discount amount.'
+                })
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response, 400
+        
+        # If approval needed and not already approved, create approval request
+        if needs_approval:
+            # Check if already approved
+            if existing_approval and existing_approval.approval_status == 'approved':
+                # Already approved, proceed
+                pass
+            else:
+                # Create new approval request
+                requested_by = None
+                if current_user and current_user.get('user_type') == 'staff':
+                    requested_by = Staff.objects(id=current_user['id']).first()
+                
+                approval_request = DiscountApprovalRequest(
+                    bill=bill,
+                    requested_by=requested_by,
+                    requested_discount_percent=discount_percent,
+                    requested_discount_amount=discount_amount,
+                    reason=data.get('discount_reason', 'Discount exceeds role limit'),
+                    approval_status='pending'
+                )
+                approval_request.save()
+                
+                # Link to bill
+                bill.discount_requested_by = requested_by
+                bill.discount_approval_status = 'pending'
+                bill.discount_approval_request = approval_request
+                bill.save()
+                
+                response = jsonify({
+                    'error': 'Discount approval required',
+                    'approval_id': str(approval_request.id),
+                    'message': f'Discount of {discount_percent:.2f}% exceeds your limit of {max_discount}%. Approval required.',
+                    'requires_approval': True
+                })
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response, 400
 
         # Calculate tax
         tax_rate = float(data.get('tax_rate', 0) or 0)
@@ -329,6 +413,7 @@ def checkout_bill(id):
         bill.final_amount = final_amount
         bill.payment_mode = data['payment_mode']
         bill.booking_status = data.get('booking_status', 'service-completed')
+        bill.discount_approval_status = 'approved' if needs_approval else 'none'
         bill.updated_at = datetime.utcnow()
 
         # Process payment

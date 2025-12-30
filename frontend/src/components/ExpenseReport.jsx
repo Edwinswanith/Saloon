@@ -7,6 +7,7 @@ import {
   FaCloudDownloadAlt,
 } from 'react-icons/fa'
 import './ExpenseReport.css'
+import { apiGet } from '../utils/api'
 
 const ExpenseReport = ({ setActivePage }) => {
   const [dateFilter, setDateFilter] = useState('current-month')

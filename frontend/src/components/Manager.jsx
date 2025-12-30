@@ -21,7 +21,6 @@ const Manager = () => {
     email: '',
     mobile: '',
     salon: '',
-    password: '',
     status: 'active',
   })
 
@@ -50,7 +49,6 @@ const Manager = () => {
       email: '',
       mobile: '',
       salon: '',
-      password: '',
       status: 'active',
     })
     setShowAddModal(true)
@@ -64,7 +62,6 @@ const Manager = () => {
       email: manager.email,
       mobile: manager.mobile,
       salon: manager.salon || '',
-      password: '', // Don't show password when editing
       status: manager.status,
     })
     setShowAddModal(true)
@@ -109,11 +106,6 @@ const Manager = () => {
         mobile: formData.mobile,
         salon: formData.salon,
         status: formData.status,
-      }
-
-      // Only include password if it's provided (for new managers or when updating)
-      if (formData.password) {
-        payload.password = formData.password
       }
 
       const response = await fetch(url, {
@@ -310,33 +302,6 @@ const Manager = () => {
                   placeholder="Salon name or account"
                 />
               </div>
-              {!editingManager && (
-                <div className="form-group">
-                  <label>Password *</label>
-                  <input
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) =>
-                      setFormData({ ...formData, password: e.target.value })
-                    }
-                    required
-                    minLength="6"
-                  />
-                </div>
-              )}
-              {editingManager && (
-                <div className="form-group">
-                  <label>New Password (leave blank to keep current)</label>
-                  <input
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) =>
-                      setFormData({ ...formData, password: e.target.value })
-                    }
-                    minLength="6"
-                  />
-                </div>
-              )}
               <div className="form-group">
                 <label>Status</label>
                 <select

@@ -1,0 +1,273 @@
+/* App Header */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.menu-icon {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #374151;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 6px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.menu-icon:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.header-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.logo-box {
+  padding: 10px 18px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-logout-btn {
+  position: relative;
+}
+
+.logo-text {
+  color: white !important;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+.logout-icon {
+  color: white !important;
+  font-size: 16px;
+  opacity: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Logout Confirmation Modal */
+.logout-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.logout-modal {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s ease-out;
+  overflow: hidden;
+}
+
+.logout-modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.logout-modal-header h3 {
+  margin: 0;
+  color: white;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.logout-modal-body {
+  padding: 24px;
+}
+
+.logout-modal-body p {
+  margin: 0;
+  font-size: 16px;
+  color: #374151;
+  text-align: center;
+}
+
+.logout-modal-actions {
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  background: #f9fafb;
+}
+
+.logout-btn-cancel,
+.logout-btn-confirm {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logout-btn-cancel {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.logout-btn-cancel:hover {
+  background: #e5e7eb;
+}
+
+.logout-btn-confirm {
+  background: #dc2626;
+  color: white;
+}
+
+.logout-btn-confirm:hover {
+  background: #b91c1c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(220, 38, 38, 0.3);
+}
+
+.header-icon {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  border: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: white !important;
+  font-size: 18px;
+}
+
+.header-icon svg {
+  color: white !important;
+  fill: white !important;
+}
+
+.header-icon * {
+  color: white !important;
+}
+
+.bell-icon {
+  position: relative;
+}
+
+.bell-icon::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  background: #ef4444;
+  border-radius: 50%;
+  border: 2px solid white;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.bell-icon:hover::after {
+  opacity: 1;
+}
+
+.profile-icon-btn {
+  position: relative;
+}
+
+.user-avatar-small {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .app-header {
+    padding: 12px 16px;
+  }
+
+  .header-title {
+    font-size: 20px;
+  }
+
+  .logo-box {
+    padding: 8px 14px;
+    gap: 8px;
+  }
+
+  .logo-text {
+    font-size: 13px;
+  }
+
+  .logout-icon {
+    font-size: 14px;
+  }
+
+  .header-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+
+  .user-avatar-small {
+    font-size: 13px;
+  }
+}
+

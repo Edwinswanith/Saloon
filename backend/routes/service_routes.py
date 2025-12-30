@@ -3,6 +3,7 @@ from models import Service, ServiceGroup, to_dict
 from datetime import datetime
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
+from utils.auth import require_auth, require_role
 
 service_bp = Blueprint('services', __name__)
 
@@ -34,8 +35,9 @@ def get_service_groups():
     return response
 
 @service_bp.route('/groups', methods=['POST'])
-def create_service_group():
-    """Create new service group"""
+@require_role('manager', 'owner')
+def create_service_group(current_user=None):
+    """Create new service group (Manager and Owner only)"""
     data = request.json
     
     group = ServiceGroup(
@@ -49,8 +51,9 @@ def create_service_group():
     return response, 201
 
 @service_bp.route('/groups/<group_id>', methods=['PUT'])
-def update_service_group(group_id):
-    """Update service group"""
+@require_role('manager', 'owner')
+def update_service_group(group_id, current_user=None):
+    """Update service group (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(group_id):
             return jsonify({'error': 'Invalid group ID format'}), 400
@@ -69,8 +72,9 @@ def update_service_group(group_id):
     return response
 
 @service_bp.route('/groups/<group_id>', methods=['DELETE'])
-def delete_service_group(group_id):
-    """Delete service group"""
+@require_role('manager', 'owner')
+def delete_service_group(group_id, current_user=None):
+    """Delete service group (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(group_id):
             return jsonify({'error': 'Invalid group ID format'}), 400
@@ -143,8 +147,9 @@ def get_service(service_id):
     return response
 
 @service_bp.route('/', methods=['POST'])
-def create_service():
-    """Create new service"""
+@require_role('manager', 'owner')
+def create_service(current_user=None):
+    """Create new service (Manager and Owner only)"""
     data = request.json
     
     # Get group reference
@@ -174,8 +179,9 @@ def create_service():
     return response, 201
 
 @service_bp.route('/<service_id>', methods=['PUT'])
-def update_service(service_id):
-    """Update service"""
+@require_role('manager', 'owner')
+def update_service(service_id, current_user=None):
+    """Update service (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(service_id):
             return jsonify({'error': 'Invalid service ID format'}), 400
@@ -210,8 +216,9 @@ def update_service(service_id):
     return response
 
 @service_bp.route('/<service_id>', methods=['DELETE'])
-def delete_service(service_id):
-    """Delete service (soft delete)"""
+@require_role('manager', 'owner')
+def delete_service(service_id, current_user=None):
+    """Delete service (Manager and Owner only - soft delete)"""
     try:
         if not ObjectId.is_valid(service_id):
             return jsonify({'error': 'Invalid service ID format'}), 400

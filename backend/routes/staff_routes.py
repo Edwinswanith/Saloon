@@ -3,6 +3,8 @@ from models import Staff
 from datetime import datetime
 from mongoengine.errors import DoesNotExist, NotUniqueError, ValidationError
 from bson import ObjectId
+from utils.branch_filter import get_selected_branch
+from utils.auth import require_auth, require_role
 
 staff_bp = Blueprint('staffs', __name__)
 
@@ -17,10 +19,25 @@ def handle_preflight():
         return response
 
 @staff_bp.route('/', methods=['GET'])
-def get_staffs():
-    """Get all staff members"""
+@require_role('manager', 'owner')
+def get_staffs(current_user=None):
+    """Get all staff members (Manager and Owner only)"""
     try:
-        staffs = Staff.objects(status='active')
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
+        query = Staff.objects()
+        if branch:
+            query = query.filter(branch=branch)
+        # Filter by active status if specified, otherwise show all
+        status_filter = request.args.get('status')
+        if status_filter:
+            query = query.filter(status=status_filter)
+        else:
+            # Default: show active staff, but also include staff without status set
+            from mongoengine import Q
+            query = query.filter(Q(status='active') | Q(status__exists=False))
+        
+        staffs = query.order_by('first_name', 'last_name')
         
         response = jsonify({
             'staffs': [{
@@ -41,8 +58,9 @@ def get_staffs():
         return response, 500
 
 @staff_bp.route('/<staff_id>', methods=['GET'])
-def get_staff(staff_id):
-    """Get single staff member"""
+@require_role('manager', 'owner')
+def get_staff(staff_id, current_user=None):
+    """Get single staff member (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(staff_id):
             return jsonify({'error': 'Invalid staff ID format'}), 400
@@ -69,10 +87,18 @@ def get_staff(staff_id):
         return response, 500
 
 @staff_bp.route('/', methods=['POST'])
-def create_staff():
-    """Create new staff member"""
+@require_role('manager', 'owner')
+def create_staff(current_user=None):
+    """Create new staff member (Manager and Owner only)"""
     try:
         data = request.get_json()
+        
+        # Get branch for assignment
+        branch = get_selected_branch(request, current_user)
+        if not branch:
+            response = jsonify({'error': 'Branch is required'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
         
         if Staff.objects(mobile=data.get('mobile')).first():
             response = jsonify({'error': 'Staff with this mobile number already exists'})
@@ -86,7 +112,8 @@ def create_staff():
             email=data.get('email', ''),
             salary=data.get('salary'),
             commission_rate=data.get('commissionRate', 0.0),
-            status=data.get('status', 'active')
+            status=data.get('status', 'active'),
+            branch=branch
         )
         staff.save()
         
@@ -103,8 +130,9 @@ def create_staff():
         return response, 500
 
 @staff_bp.route('/<staff_id>', methods=['PUT'])
-def update_staff(staff_id):
-    """Update staff member"""
+@require_role('manager', 'owner')
+def update_staff(staff_id, current_user=None):
+    """Update staff member (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(staff_id):
             return jsonify({'error': 'Invalid staff ID format'}), 400
@@ -133,8 +161,9 @@ def update_staff(staff_id):
         return response, 500
 
 @staff_bp.route('/<staff_id>', methods=['DELETE'])
-def delete_staff(staff_id):
-    """Delete staff member (soft delete by setting status to inactive)"""
+@require_role('manager', 'owner')
+def delete_staff(staff_id, current_user=None):
+    """Delete staff member (Manager and Owner only - soft delete by setting status to inactive)"""
     try:
         if not ObjectId.is_valid(staff_id):
             return jsonify({'error': 'Invalid staff ID format'}), 400

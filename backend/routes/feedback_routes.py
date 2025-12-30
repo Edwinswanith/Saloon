@@ -1,9 +1,11 @@
 from flask import Blueprint, request, jsonify
-from models import Feedback, Customer, Bill
+from models import Feedback, Customer, Bill, ServiceRecoveryCase
 from datetime import datetime
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
 from mongoengine import Q
+from utils.branch_filter import get_selected_branch
+from utils.auth import require_auth
 
 feedback_bp = Blueprint('feedback', __name__)
 
@@ -18,7 +20,8 @@ def handle_preflight():
         return response
 
 @feedback_bp.route('/', methods=['GET'])
-def get_feedback():
+@require_auth
+def get_feedback(current_user=None):
     """Get all feedback with optional filters"""
     try:
         # Query parameters
@@ -29,7 +32,11 @@ def get_feedback():
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
         query = Feedback.objects
+        if branch:
+            query = query.filter(branch=branch)
 
         # Apply filters
         if customer_id:
@@ -60,6 +67,8 @@ def get_feedback():
             'customer_mobile': f.customer.mobile if f.customer else None,
             'bill_id': str(f.bill.id) if f.bill else None,
             'bill_number': f.bill.bill_number if f.bill else None,
+            'staff_id': str(f.staff.id) if f.staff else None,
+            'staff_name': f"{f.staff.first_name} {f.staff.last_name}" if f.staff else None,
             'rating': f.rating,
             'comment': f.comment,
             'created_at': f.created_at.isoformat() if f.created_at else None
@@ -72,7 +81,8 @@ def get_feedback():
         return response, 500
 
 @feedback_bp.route('/<id>', methods=['GET'])
-def get_single_feedback(id):
+@require_auth
+def get_single_feedback(id, current_user=None):
     """Get a single feedback by ID"""
     try:
         if not ObjectId.is_valid(id):
@@ -99,7 +109,8 @@ def get_single_feedback(id):
         return response, 500
 
 @feedback_bp.route('/', methods=['POST'])
-def create_feedback():
+@require_auth
+def create_feedback(current_user=None):
     """Create new feedback"""
     try:
         data = request.get_json()
@@ -108,6 +119,13 @@ def create_feedback():
         rating = data.get('rating')
         if rating and (rating < 1 or rating > 5):
             response = jsonify({'error': 'Rating must be between 1 and 5'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
+
+        # Get branch for assignment
+        branch = get_selected_branch(request, current_user)
+        if not branch:
+            response = jsonify({'error': 'Branch is required'})
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 400
 
@@ -133,22 +151,77 @@ def create_feedback():
             except DoesNotExist:
                 return jsonify({'error': 'Bill not found'}), 404
 
+        # Get staff reference
+        staff = None
+        staff_id = data.get('staff_id')
+        
+        # If staff_id not provided, try to get from bill
+        if not staff_id and bill:
+            # Get primary staff from bill items
+            for item in bill.items:
+                if item.staff:
+                    staff = item.staff
+                    break
+        elif staff_id:
+            if not ObjectId.is_valid(staff_id):
+                return jsonify({'error': 'Invalid staff ID format'}), 400
+            try:
+                from models import Staff
+                staff = Staff.objects.get(id=staff_id)
+            except DoesNotExist:
+                return jsonify({'error': 'Staff not found'}), 404
+
+        # Phase 3: Google Review Gating Logic
+        google_review_eligible = False
+        service_recovery_required = False
+        
+        if rating:
+            if rating >= 4:
+                google_review_eligible = True
+            elif rating <= 3:
+                service_recovery_required = True
+        
         feedback = Feedback(
             customer=customer,
             bill=bill,
+            staff=staff,
+            branch=branch,
             rating=rating,
-            comment=data.get('comment')
+            comment=data.get('comment'),
+            google_review_eligible=google_review_eligible,
+            service_recovery_required=service_recovery_required
         )
         feedback.save()
+        
+        # Phase 3: Create Service Recovery Case if rating <= 3
+        service_recovery_case = None
+        if service_recovery_required and customer and bill:
+            service_recovery_case = ServiceRecoveryCase(
+                feedback=feedback,
+                customer=customer,
+                branch=branch,
+                bill=bill,
+                issue_type='service_quality',
+                description=f"Low rating ({rating}/5): {data.get('comment', 'No comment provided')}",
+                status='open'
+            )
+            service_recovery_case.save()
 
-        response = jsonify({
+        response_data = {
             'id': str(feedback.id),
             'message': 'Feedback created successfully',
             'data': {
                 'id': str(feedback.id),
-                'rating': feedback.rating
+                'rating': feedback.rating,
+                'google_review_eligible': google_review_eligible,
+                'service_recovery_required': service_recovery_required
             }
-        })
+        }
+        
+        if service_recovery_case:
+            response_data['service_recovery_case_id'] = str(service_recovery_case.id)
+        
+        response = jsonify(response_data)
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 201
     except ValidationError as e:
@@ -215,14 +288,44 @@ def delete_feedback(id):
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 500
 
+@feedback_bp.route('/<id>/mark-review-clicked', methods=['PUT'])
+def mark_review_clicked(id):
+    """Mark Google review link as clicked (Phase 3)"""
+    try:
+        if not ObjectId.is_valid(id):
+            return jsonify({'error': 'Invalid feedback ID format'}), 400
+        
+        feedback = Feedback.objects.get(id=id)
+        feedback.google_review_link_clicked = True
+        feedback.google_review_link_clicked_at = datetime.utcnow()
+        feedback.save()
+        
+        response = jsonify({
+            'id': str(feedback.id),
+            'message': 'Review link click recorded'
+        })
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 200
+    except DoesNotExist:
+        return jsonify({'error': 'Feedback not found'}), 404
+    except Exception as e:
+        response = jsonify({'error': str(e)})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
+
 @feedback_bp.route('/stats', methods=['GET'])
-def get_feedback_stats():
+@require_auth
+def get_feedback_stats(current_user=None):
     """Get feedback statistics"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
         query = Feedback.objects
+        if branch:
+            query = query.filter(branch=branch)
 
         # Apply date filters
         if start_date:
@@ -271,12 +374,18 @@ def get_feedback_stats():
         return response, 500
 
 @feedback_bp.route('/recent', methods=['GET'])
-def get_recent_feedback():
+@require_auth
+def get_recent_feedback(current_user=None):
     """Get recent feedback (last 10)"""
     try:
         limit = request.args.get('limit', 10, type=int)
 
-        feedbacks = Feedback.objects.order_by('-created_at').limit(limit)
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
+        query = Feedback.objects
+        if branch:
+            query = query.filter(branch=branch)
+        feedbacks = query.order_by('-created_at').limit(limit)
 
         response = jsonify([{
             'id': str(f.id),

@@ -4,19 +4,26 @@ from datetime import datetime
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
 from mongoengine import Q
+from utils.auth import require_auth, require_role
+from utils.branch_filter import get_selected_branch
 
 inventory_bp = Blueprint('inventory', __name__)
 
 # Supplier Routes
 
 @inventory_bp.route('/suppliers', methods=['GET'])
-def get_suppliers():
+@require_auth
+def get_suppliers(current_user=None):
     """Get all suppliers with optional filters"""
     try:
         status = request.args.get('status')
         search = request.args.get('search')
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
         query = Supplier.objects
+        if branch:
+            query = query.filter(branch=branch)
 
         # Apply filters
         if status:
@@ -42,7 +49,8 @@ def get_suppliers():
         return jsonify({'error': str(e)}), 500
 
 @inventory_bp.route('/suppliers/<id>', methods=['GET'])
-def get_supplier(id):
+@require_auth
+def get_supplier(id, current_user=None):
     """Get a single supplier by ID"""
     try:
         if not ObjectId.is_valid(id):
@@ -65,8 +73,9 @@ def get_supplier(id):
         return jsonify({'error': str(e)}), 500
 
 @inventory_bp.route('/suppliers', methods=['POST'])
-def create_supplier():
-    """Create a new supplier"""
+@require_role('manager', 'owner')
+def create_supplier(current_user=None):
+    """Create a new supplier (Manager and Owner only)"""
     try:
         data = request.get_json()
 
@@ -93,8 +102,9 @@ def create_supplier():
         return jsonify({'error': str(e)}), 500
 
 @inventory_bp.route('/suppliers/<id>', methods=['PUT'])
-def update_supplier(id):
-    """Update a supplier"""
+@require_role('manager', 'owner')
+def update_supplier(id, current_user=None):
+    """Update a supplier (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid supplier ID format'}), 400
@@ -120,8 +130,9 @@ def update_supplier(id):
         return jsonify({'error': str(e)}), 500
 
 @inventory_bp.route('/suppliers/<id>', methods=['DELETE'])
-def delete_supplier(id):
-    """Delete a supplier"""
+@require_role('manager', 'owner')
+def delete_supplier(id, current_user=None):
+    """Delete a supplier (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid supplier ID format'}), 400
@@ -144,7 +155,8 @@ def delete_supplier(id):
 # Order Routes
 
 @inventory_bp.route('/orders', methods=['GET'])
-def get_orders():
+@require_auth
+def get_orders(current_user=None):
     """Get all orders with optional filters"""
     try:
         supplier_id = request.args.get('supplier_id')
@@ -152,7 +164,11 @@ def get_orders():
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
         query = Order.objects
+        if branch:
+            query = query.filter(branch=branch)
 
         # Apply filters
         if supplier_id:
@@ -216,8 +232,9 @@ def get_order(id):
         return jsonify({'error': str(e)}), 500
 
 @inventory_bp.route('/orders', methods=['POST'])
-def create_order():
-    """Create a new order with items"""
+@require_role('manager', 'owner')
+def create_order(current_user=None):
+    """Create a new order with items (Manager and Owner only)"""
     try:
         data = request.get_json()
 
@@ -280,8 +297,9 @@ def create_order():
         return jsonify({'error': str(e)}), 500
 
 @inventory_bp.route('/orders/<id>', methods=['PUT'])
-def update_order(id):
-    """Update an order"""
+@require_role('manager', 'owner')
+def update_order(id, current_user=None):
+    """Update an order (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid order ID format'}), 400
@@ -321,8 +339,9 @@ def update_order(id):
         return jsonify({'error': str(e)}), 500
 
 @inventory_bp.route('/orders/<id>/receive', methods=['POST'])
-def receive_order(id):
-    """Mark order as received and update product stock"""
+@require_role('manager', 'owner')
+def receive_order(id, current_user=None):
+    """Mark order as received and update product stock (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid order ID format'}), 400
@@ -354,8 +373,9 @@ def receive_order(id):
         return jsonify({'error': str(e)}), 500
 
 @inventory_bp.route('/orders/<id>', methods=['DELETE'])
-def delete_order(id):
-    """Delete an order"""
+@require_role('manager', 'owner')
+def delete_order(id, current_user=None):
+    """Delete an order (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid order ID format'}), 400

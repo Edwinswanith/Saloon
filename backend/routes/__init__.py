@@ -1,4 +1,5 @@
 from flask import Blueprint
+from .auth_routes import auth_bp
 from .customer_routes import customer_bp
 from .staff_routes import staff_bp
 from .service_routes import service_bp
@@ -22,9 +23,15 @@ from .loyalty_program_routes import loyalty_program_bp
 from .referral_program_routes import referral_program_bp
 from .tax_routes import tax_bp
 from .manager_routes import manager_bp
+from .missed_enquiry_routes import missed_enquiry_bp
+from .service_recovery_routes import service_recovery_bp
+from .customer_lifecycle_routes import customer_lifecycle_bp
+from .discount_approval_routes import discount_approval_bp
+from .branch_routes import branch_bp
 
 def register_routes(app):
     # Register blueprints with /api prefix
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(customer_bp, url_prefix='/api/customers')
     app.register_blueprint(staff_bp, url_prefix='/api/staffs')
     app.register_blueprint(service_bp, url_prefix='/api/services')
@@ -48,4 +55,9 @@ def register_routes(app):
     app.register_blueprint(referral_program_bp, url_prefix='/api/referral-program')
     app.register_blueprint(tax_bp, url_prefix='/api/tax')
     app.register_blueprint(manager_bp, url_prefix='/api/managers')
+    app.register_blueprint(missed_enquiry_bp, url_prefix='/api/missed-enquiries')
+    app.register_blueprint(service_recovery_bp, url_prefix='/api/service-recovery')
+    app.register_blueprint(customer_lifecycle_bp, url_prefix='/api/customer-lifecycle')
+    app.register_blueprint(discount_approval_bp, url_prefix='/api/discount-approvals')
+    app.register_blueprint(branch_bp, url_prefix='/api')
 

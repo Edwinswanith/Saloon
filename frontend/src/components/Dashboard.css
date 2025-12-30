@@ -687,6 +687,158 @@
   justify-content: center;
 }
 
+/* ========== STAFF PERFORMANCE GRID ========== */
+.performance-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 10px;
+}
+
+.performance-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.performance-item:hover {
+  background: #e9ecef;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.performance-rank {
+  font-size: 20px;
+  font-weight: bold;
+  color: #667eea;
+  margin-right: 15px;
+  min-width: 40px;
+  text-align: center;
+}
+
+.performance-details {
+  flex: 1;
+}
+
+.performance-details h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  color: #333;
+  font-weight: 600;
+}
+
+.performance-metrics {
+  display: flex;
+  gap: 20px;
+  font-size: 14px;
+  flex-wrap: wrap;
+}
+
+.metric {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.metric-label {
+  color: #666;
+  font-size: 13px;
+}
+
+.metric-value {
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+/* ========== TOP PERFORMER CARD ========== */
+.top-performer-card {
+  text-align: center;
+  padding: 20px;
+}
+
+.performer-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 15px;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  transition: transform 0.3s ease;
+}
+
+.performer-avatar:hover {
+  transform: scale(1.05);
+}
+
+.performer-name {
+  font-size: 20px;
+  margin: 0 0 10px;
+  color: #333;
+  font-weight: 600;
+}
+
+.performance-score {
+  font-size: 36px;
+  font-weight: bold;
+  color: #667eea;
+  margin: 15px 0;
+  line-height: 1;
+}
+
+.score-label {
+  font-size: 18px;
+  color: #999;
+  font-weight: normal;
+}
+
+.performer-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.stat-item:hover {
+  background: #e9ecef;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #666;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+}
+
 .no-data-message {
   text-align: center;
   color: var(--text-tertiary);

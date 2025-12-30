@@ -8,8 +8,12 @@ import {
   FaTrash,
 } from 'react-icons/fa'
 import './Staffs.css'
-import { API_BASE_URL } from '../config'
+import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
+import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
+import { useAuth } from '../contexts/AuthContext'
+
 const Staffs = () => {
+  const { getBranchId } = useAuth()
   const [currentPage, setCurrentPage] = useState(1)
   const [staffs, setStaffs] = useState([])
   const [loading, setLoading] = useState(true)
@@ -35,7 +39,7 @@ const Staffs = () => {
   const fetchStaffs = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE_URL}/api/staffs`)
+      const response = await apiGet('/api/staffs')
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -77,51 +81,44 @@ const Staffs = () => {
 
   const handleViewStaff = async (staffId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/staffs/${staffId}`)
+      const response = await apiGet(`/api/staffs/${staffId}`)
       if (response.ok) {
         const data = await response.json()
         setViewingStaff(data)
         setShowViewModal(true)
       } else {
-        alert('Failed to fetch staff details')
+        showError('Failed to fetch staff details')
       }
     } catch (error) {
       console.error('Error fetching staff details:', error)
-      alert('Error fetching staff details')
+      showError('Error fetching staff details')
     }
   }
 
   const handleSaveStaff = async () => {
     if (!staffFormData.mobile.trim()) {
-      alert('Mobile number is required')
+      showError('Mobile number is required')
       return
     }
     if (!staffFormData.firstName.trim()) {
-      alert('First name is required')
+      showError('First name is required')
       return
     }
 
     try {
-      const url = editingStaff 
-        ? `${API_BASE_URL}/api/staffs/${editingStaff.id}`
-        : `${API_BASE_URL}/api/staffs`
-      const method = editingStaff ? 'PUT' : 'POST'
+      const staffData = {
+        mobile: staffFormData.mobile.trim(),
+        firstName: staffFormData.firstName.trim(),
+        lastName: staffFormData.lastName.trim(),
+        email: staffFormData.email.trim(),
+        salary: parseFloat(staffFormData.salary) || 0,
+        commissionRate: parseFloat(staffFormData.commissionRate) || 0,
+        status: 'active'
+      }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          mobile: staffFormData.mobile.trim(),
-          firstName: staffFormData.firstName.trim(),
-          lastName: staffFormData.lastName.trim(),
-          email: staffFormData.email.trim(),
-          salary: parseFloat(staffFormData.salary) || 0,
-          commissionRate: parseFloat(staffFormData.commissionRate) || 0,
-          status: 'active'
-        }),
-      })
+      const response = editingStaff 
+        ? await apiPut(`/api/staffs/${editingStaff.id}`, staffData)
+        : await apiPost('/api/staffs', staffData)
 
       if (response.ok) {
         const data = await response.json()
@@ -136,14 +133,14 @@ const Staffs = () => {
           salary: '',
           commissionRate: ''
         })
-        alert(data.message || (editingStaff ? 'Staff updated successfully!' : 'Staff added successfully!'))
+        showError(data.message || (editingStaff ? 'Staff updated successfully!' : 'Staff added successfully!'))
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        alert(errorData.error || `Failed to save staff (Status: ${response.status})`)
+        showError(errorData.error || `Failed to save staff (Status: ${response.status})`)
       }
     } catch (error) {
       console.error('Error saving staff:', error)
-      alert(`Error saving staff: ${error.message}`)
+      showError(`Error saving staff: ${error.message}`)
     }
   }
 
@@ -152,19 +149,17 @@ const Staffs = () => {
       return
     }
     try {
-      const response = await fetch(`${API_BASE_URL}/api/staffs/${staffId}`, {
-        method: 'DELETE',
-      })
+      const response = await apiDelete(`/api/staffs/${staffId}`)
       if (response.ok) {
         fetchStaffs()
-        alert('Staff deleted successfully')
+        showSuccess('Staff deleted successfully')
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        alert(errorData.error || 'Failed to delete staff member')
+        showError(errorData.error || 'Failed to delete staff member')
       }
     } catch (error) {
       console.error('Error deleting staff:', error)
-      alert(`Error deleting staff member: ${error.message}`)
+      showError(`Error deleting staff member: ${error.message}`)
     }
   }
 

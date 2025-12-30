@@ -4,11 +4,14 @@ from datetime import datetime, date, time
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
 from mongoengine import Q
+from utils.branch_filter import get_selected_branch
+from utils.auth import require_auth
 
 attendance_bp = Blueprint('attendance', __name__)
 
 @attendance_bp.route('/', methods=['GET'])
-def get_attendance():
+@require_auth
+def get_attendance(current_user=None):
     """Get attendance records with optional filters"""
     try:
         # Query parameters
@@ -18,7 +21,11 @@ def get_attendance():
         end_date = request.args.get('end_date')
         status = request.args.get('status')
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
         query = StaffAttendance.objects
+        if branch:
+            query = query.filter(branch=branch)
 
         # Apply filters
         if staff_id:
@@ -111,8 +118,14 @@ def check_in():
         # Get current time as string (HH:MM:SS)
         current_time = datetime.now().time().strftime('%H:%M:%S')
 
+        # Get branch from staff or request
+        branch = staff.branch if staff.branch else get_selected_branch(request, current_user)
+        if not branch:
+            return jsonify({'error': 'Branch is required'}), 400
+
         attendance = StaffAttendance(
             staff=staff,
+            branch=branch,
             attendance_date=today,
             check_in_time=current_time,
             status='present',
@@ -232,9 +245,15 @@ def mark_attendance():
                 'status': existing.status
             })
         else:
+            # Get branch from staff or request
+            branch = staff.branch if staff.branch else get_selected_branch(request, current_user)
+            if not branch:
+                return jsonify({'error': 'Branch is required'}), 400
+            
             # Create new record
             attendance = StaffAttendance(
                 staff=staff,
+                branch=branch,
                 attendance_date=attendance_date,
                 status=status,
                 notes=data.get('notes')
@@ -304,8 +323,14 @@ def create_attendance():
         if existing:
             return jsonify({'error': 'Attendance record already exists for this date'}), 400
 
+        # Get branch from staff or request
+        branch = staff.branch if staff.branch else get_selected_branch(request, current_user)
+        if not branch:
+            return jsonify({'error': 'Branch is required'}), 400
+
         attendance = StaffAttendance(
             staff=staff,
+            branch=branch,
             attendance_date=attendance_date,
             check_in_time=check_in_time,
             check_out_time=check_out_time,
@@ -423,13 +448,18 @@ def get_staff_attendance(staff_id):
         return jsonify({'error': str(e)}), 500
 
 @attendance_bp.route('/summary', methods=['GET'])
-def get_attendance_summary():
+@require_auth
+def get_attendance_summary(current_user=None):
     """Get attendance summary for all staff"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
         query = StaffAttendance.objects
+        if branch:
+            query = query.filter(branch=branch)
 
         if start_date:
             start = datetime.strptime(start_date, '%Y-%m-%d').date()

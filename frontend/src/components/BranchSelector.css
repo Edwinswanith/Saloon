@@ -1,0 +1,171 @@
+.branch-selector {
+  position: relative;
+  margin-right: 15px;
+}
+
+.branch-selector-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.branch-selector-button:hover {
+  opacity: 0.9;
+}
+
+.branch-selector-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.branch-icon {
+  font-size: 16px;
+}
+
+.branch-name {
+  white-space: nowrap;
+}
+
+.branch-arrow {
+  font-size: 10px;
+  margin-left: 4px;
+}
+
+.branch-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 999;
+}
+
+.branch-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 250px;
+  max-width: 300px;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.branch-dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e0e0e0;
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+}
+
+.branch-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.branch-close:hover {
+  background: #f0f0f0;
+}
+
+.branch-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.branch-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  padding: 12px 16px;
+  background: white;
+  border: none;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s;
+}
+
+.branch-item:hover:not(:disabled) {
+  background: #f5f5f5;
+}
+
+.branch-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.branch-item.active {
+  background: #f0f0ff;
+}
+
+.branch-item-name {
+  font-weight: 500;
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.branch-item-city {
+  font-size: 12px;
+  color: #666;
+}
+
+.branch-check {
+  position: absolute;
+  right: 16px;
+  color: #667eea;
+  font-weight: bold;
+}
+
+.branch-loading {
+  padding: 20px;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+}
+
+/* Scrollbar styling */
+.branch-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.branch-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.branch-list::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+.branch-list::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+

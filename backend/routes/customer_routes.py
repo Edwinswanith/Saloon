@@ -2,6 +2,8 @@ from flask import Blueprint, request, jsonify
 from models import Customer
 from datetime import datetime
 from mongoengine import Q
+from utils.auth import require_auth
+from utils.branch_filter import get_selected_branch, filter_by_branch
 import random
 import string
 
@@ -24,13 +26,18 @@ def generate_referral_code(first_name):
     return f"{name_part}{random_part}"
 
 @customer_bp.route('/', methods=['GET'])
-def get_customers():
+@require_auth
+def get_customers(current_user=None):
     """Get all customers with optional search"""
     search = request.args.get('search', '')
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
     
+    # Get branch for filtering
+    branch = get_selected_branch(request, current_user)
     query = Customer.objects
+    if branch:
+        query = query.filter(branch=branch)
     
     if search:
         query = query.filter(
@@ -62,10 +69,20 @@ def get_customers():
     })
 
 @customer_bp.route('/<customer_id>', methods=['GET'])
-def get_customer(customer_id):
+@require_auth
+def get_customer(customer_id, current_user=None):
     """Get single customer by ID"""
     try:
-        customer = Customer.objects.get(id=customer_id)
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
+        query = Customer.objects(id=customer_id)
+        if branch:
+            query = query.filter(branch=branch)
+        customer = query.first()
+        if not customer:
+            response = jsonify({'error': 'Customer not found'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 404
         response = jsonify({
             'id': str(customer.id),
             'mobile': customer.mobile,
@@ -88,7 +105,8 @@ def get_customer(customer_id):
         return response, 404
 
 @customer_bp.route('/', methods=['POST'])
-def create_customer():
+@require_auth
+def create_customer(current_user=None):
     """Create new customer"""
     try:
         data = request.json
@@ -108,9 +126,17 @@ def create_customer():
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 400
         
-        # Check if mobile already exists
-        if Customer.objects(mobile=data.get('mobile')).first():
-            response = jsonify({'error': 'Customer with this mobile number already exists'})
+        # Get branch for assignment
+        branch = get_selected_branch(request, current_user)
+        if not branch:
+            response = jsonify({'error': 'Branch is required'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
+        
+        # Check if mobile already exists in this branch
+        existing = Customer.objects(mobile=data.get('mobile'), branch=branch).first()
+        if existing:
+            response = jsonify({'error': 'Customer with this mobile number already exists in this branch'})
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 400
         
@@ -135,7 +161,8 @@ def create_customer():
             dob_range=data.get('dobRange', ''),
             loyalty_points=data.get('loyaltyPoints', 0),
             wallet_balance=data.get('wallet', 0.0),
-            referral_code=generate_referral_code(data.get('firstName', ''))
+            referral_code=generate_referral_code(data.get('firstName', '')),
+            branch=branch
         )
         customer.save()
         
@@ -148,10 +175,20 @@ def create_customer():
         return response, 500
 
 @customer_bp.route('/<customer_id>', methods=['PUT'])
-def update_customer(customer_id):
+@require_auth
+def update_customer(customer_id, current_user=None):
     """Update customer"""
     try:
-        customer = Customer.objects.get(id=customer_id)
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
+        query = Customer.objects(id=customer_id)
+        if branch:
+            query = query.filter(branch=branch)
+        customer = query.first()
+        if not customer:
+            response = jsonify({'error': 'Customer not found'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 404
         data = request.json
         if not data:
             response = jsonify({'error': 'No data provided'})

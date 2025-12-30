@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { FaBars, FaUser, FaEdit, FaTrash } from 'react-icons/fa'
 import './Inventory.css'
-import { API_BASE_URL } from '../config'
+import { apiGet, apiPost, apiDelete } from '../utils/api'
 
 const Inventory = () => {
   const [activeTab, setActiveTab] = useState('supplier')
@@ -30,10 +30,7 @@ const Inventory = () => {
       const params = new URLSearchParams()
       if (searchQuery) params.append('search', searchQuery)
       
-      const response = await fetch(`${API_BASE_URL}/api/inventory/suppliers?${params}`)
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
+      const response = await apiGet(`/api/inventory/suppliers?${params}`)
       const data = await response.json()
       // Backend returns array directly
       setSuppliers(Array.isArray(data) ? data : (data.suppliers || []))
@@ -50,9 +47,7 @@ const Inventory = () => {
       return
     }
     try {
-      const response = await fetch(`${API_BASE_URL}/api/inventory/suppliers/${supplierId}`, {
-        method: 'DELETE',
-      })
+      const response = await apiDelete(`/api/inventory/suppliers/${supplierId}`)
       if (response.ok) {
         fetchSuppliers()
       } else {
@@ -91,15 +86,10 @@ const Inventory = () => {
   const handleSaveSupplier = async () => {
     try {
       const url = editingSupplier 
-        ? `${API_BASE_URL}/api/inventory/suppliers/${editingSupplier.id}`
-        : `${API_BASE_URL}/api/inventory/suppliers`
-      const method = editingSupplier ? 'PUT' : 'POST'
+        ? `/api/inventory/suppliers/${editingSupplier.id}`
+        : `/api/inventory/suppliers`
 
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(supplierFormData),
-      })
+      const response = await apiPost(url, supplierFormData, editingSupplier ? 'PUT' : 'POST')
 
       if (response.ok) {
         fetchSuppliers()

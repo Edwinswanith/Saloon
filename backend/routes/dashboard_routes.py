@@ -1,12 +1,15 @@
 from flask import Blueprint, request, jsonify
-from models import Bill, Customer, Staff, Expense, Product, Appointment, Lead
+from models import Bill, Customer, Staff, Expense, Product, Appointment, Lead, Feedback
 from datetime import datetime, timedelta, date
 from mongoengine import Q
+from utils.auth import require_auth
+from utils.branch_filter import get_selected_branch, filter_by_branch
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
 @dashboard_bp.route('/stats', methods=['GET'])
-def get_dashboard_stats():
+@require_auth
+def get_dashboard_stats(current_user=None):
     """Get overall dashboard statistics"""
     try:
         start_date = request.args.get('start_date')
@@ -21,22 +24,31 @@ def get_dashboard_stats():
         start = datetime.strptime(start_date, '%Y-%m-%d')
         end = datetime.strptime(end_date, '%Y-%m-%d')
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
+        
         # Total revenue from bills
-        bills = Bill.objects(
+        bills_query = Bill.objects(
             is_deleted=False,
             bill_date__gte=start,
             bill_date__lte=end
         )
+        if branch:
+            bills_query = bills_query.filter(branch=branch)
+        bills = bills_query
         total_revenue = sum([float(b.final_amount) for b in bills]) if bills else 0.0
 
         # Total transactions (bills)
         total_transactions = bills.count()
 
         # Total expenses
-        expenses = Expense.objects(
+        expenses_query = Expense.objects(
             expense_date__gte=start.date(),
             expense_date__lte=end.date()
         )
+        if branch:
+            expenses_query = expenses_query.filter(branch=branch)
+        expenses = expenses_query
         total_expenses = sum([float(e.amount) for e in expenses]) if expenses else 0.0
 
         # Net profit
@@ -46,16 +58,25 @@ def get_dashboard_stats():
         avg_bill_value = float(total_revenue) / int(total_transactions) if total_transactions > 0 else 0.0
 
         # Total customers
-        total_customers = Customer.objects.count()
+        customers_query = Customer.objects
+        if branch:
+            customers_query = customers_query.filter(branch=branch)
+        total_customers = customers_query.count()
 
         # New customers in period
-        new_customers = Customer.objects(
+        new_customers_query = Customer.objects(
             created_at__gte=start,
             created_at__lte=end
-        ).count()
+        )
+        if branch:
+            new_customers_query = new_customers_query.filter(branch=branch)
+        new_customers = new_customers_query.count()
 
         # Total staff
-        active_staff = Staff.objects(status='active').count()
+        staff_query = Staff.objects(status='active')
+        if branch:
+            staff_query = staff_query.filter(branch=branch)
+        active_staff = staff_query.count()
 
         # Appointments stats
         total_appointments = Appointment.objects(
@@ -105,8 +126,9 @@ def get_dashboard_stats():
         return jsonify({'error': str(e)}), 500
 
 @dashboard_bp.route('/staff-performance', methods=['GET'])
-def get_staff_performance():
-    """Get staff performance metrics"""
+@require_auth
+def get_staff_performance(current_user=None):
+    """Get staff performance metrics (filtered by selected branch)"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
@@ -119,17 +141,20 @@ def get_staff_performance():
         start = datetime.strptime(start_date, '%Y-%m-%d')
         end = datetime.strptime(end_date, '%Y-%m-%d')
 
-        # Get all active staff
-        staff_list = Staff.objects(status='active')
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
+        
+        # Get staff filtered by branch
+        staff_list = filter_by_branch(Staff.objects(status='active'), branch)
 
         performance = []
         for staff in staff_list:
-            # Get bills with items served by this staff
-            bills = Bill.objects(
+            # Get bills with items served by this staff (filtered by branch)
+            bills = filter_by_branch(Bill.objects(
                 is_deleted=False,
                 bill_date__gte=start,
                 bill_date__lte=end
-            )
+            ), branch)
             
             total_revenue = 0.0
             total_services = 0
@@ -490,5 +515,165 @@ def get_operational_alerts():
             })
 
         return jsonify(alerts)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@dashboard_bp.route('/top-performer', methods=['GET'])
+@require_auth
+def get_top_performer(current_user=None):
+    """Calculate top performer based on weighted scoring system (company-wide)"""
+    try:
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+
+        # Default to last 30 days if no date range provided
+        if not start_date:
+            start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        if not end_date:
+            end_date = datetime.now().strftime('%Y-%m-%d')
+
+        start = datetime.strptime(start_date, '%Y-%m-%d')
+        end = datetime.strptime(end_date, '%Y-%m-%d')
+        end = end.replace(hour=23, minute=59, second=59)
+
+        # Get branch for filtering (used only for feedback)
+        branch = get_selected_branch(request, current_user)
+        
+        # Get ALL active staff (company-wide, not filtered by branch)
+        staff_list = Staff.objects(status='active')
+        
+        # Get ALL bills in date range (company-wide, not filtered by branch)
+        bills = Bill.objects(
+            is_deleted=False,
+            bill_date__gte=start,
+            bill_date__lte=end
+        )
+        
+        # Calculate max values for normalization
+        max_revenue = 0
+        max_services = 0
+        max_appts = 0
+        
+        # First pass: calculate max values
+        for staff in staff_list:
+            staff_id = str(staff.id)
+            
+            # Calculate revenue
+            revenue = 0
+            service_count = 0
+            for bill in bills:
+                for item in (bill.items or []):
+                    if item.staff and str(item.staff.id) == staff_id:
+                        revenue += item.total or 0
+                        service_count += item.quantity if item.quantity else 1
+            
+            # Calculate appointments
+            appointments = Appointment.objects(
+                staff=staff,
+                appointment_date__gte=start.date(),
+                appointment_date__lte=end.date(),
+                status='completed'
+            ).count()
+            
+            max_revenue = max(max_revenue, revenue)
+            max_services = max(max_services, service_count)
+            max_appts = max(max_appts, appointments)
+        
+        # Avoid division by zero
+        max_revenue = max_revenue if max_revenue > 0 else 1
+        max_services = max_services if max_services > 0 else 1
+        max_appts = max_appts if max_appts > 0 else 1
+        
+        scores = []
+        
+        # Second pass: calculate scores
+        for staff in staff_list:
+            staff_id = str(staff.id)
+            
+            # 1. Revenue (40%)
+            revenue = 0
+            service_count = 0
+            for bill in bills:
+                for item in (bill.items or []):
+                    if item.staff and str(item.staff.id) == staff_id:
+                        revenue += item.total or 0
+                        service_count += item.quantity if item.quantity else 1
+            
+            revenue_score = (revenue / max_revenue) * 40
+            
+            # 2. Service Count (20%)
+            service_score = (service_count / max_services) * 20
+            
+            # 3. Appointments (15%)
+            appointments = Appointment.objects(
+                staff=staff,
+                appointment_date__gte=start.date(),
+                appointment_date__lte=end.date(),
+                status='completed'
+            ).count()
+            appt_score = (appointments / max_appts) * 15
+            
+            # 4. Feedback Rating (15%)
+            feedbacks = Feedback.objects(
+                staff=staff,
+                created_at__gte=start,
+                created_at__lte=end
+            )
+            
+            feedback_count = feedbacks.count()
+            if feedback_count > 0:
+                total_rating = sum(f.rating for f in feedbacks if f.rating)
+                avg_rating = total_rating / feedback_count
+                rating_score = (avg_rating / 5.0) * 15
+            else:
+                avg_rating = 0
+                rating_score = 0
+            
+            # 5. Customer Retention (10%)
+            # Count repeat customers who requested this staff
+            customer_visits = {}
+            for bill in bills:
+                if bill.customer:
+                    customer_id = str(bill.customer.id)
+                    # Check if this bill has items from this staff
+                    has_staff_item = False
+                    for item in (bill.items or []):
+                        if item.staff and str(item.staff.id) == staff_id:
+                            has_staff_item = True
+                            break
+                    
+                    if has_staff_item:
+                        if customer_id not in customer_visits:
+                            customer_visits[customer_id] = 0
+                        customer_visits[customer_id] += 1
+            
+            # Calculate retention rate (customers with 2+ visits)
+            total_customers = len(customer_visits)
+            repeat_customers = sum(1 for visits in customer_visits.values() if visits >= 2)
+            retention_rate = (repeat_customers / total_customers) if total_customers > 0 else 0
+            retention_score = retention_rate * 10
+            
+            # Calculate total performance score
+            total_score = revenue_score + service_score + appt_score + rating_score + retention_score
+            
+            scores.append({
+                'staff_id': staff_id,
+                'staff_name': f"{staff.first_name} {staff.last_name}",
+                'performance_score': round(total_score, 1),
+                'revenue': round(revenue, 2),
+                'service_count': service_count,
+                'completed_appointments': appointments,
+                'avg_rating': round(avg_rating, 2),
+                'feedback_count': feedback_count,
+                'retention_rate': round(retention_rate * 100, 1)
+            })
+        
+        # Sort by performance score
+        scores.sort(key=lambda x: x['performance_score'], reverse=True)
+        
+        return jsonify({
+            'top_performer': scores[0] if scores else None,
+            'leaderboard': scores
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500

@@ -8,7 +8,7 @@ import {
   FaCalendarAlt,
 } from 'react-icons/fa'
 import './StaffAttendance.css'
-import { API_BASE_URL } from '../config'
+import { apiGet, apiPost } from '../utils/api'
 
 const StaffAttendance = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
@@ -28,7 +28,7 @@ const StaffAttendance = () => {
 
   const fetchStaff = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/staffs`)
+      const response = await apiGet('/api/staffs')
       const data = await response.json()
       setStaffMembers(data.staffs || [])
     } catch (error) {
@@ -39,7 +39,7 @@ const StaffAttendance = () => {
   const fetchAttendance = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE_URL}/api/attendance?date=${selectedDate}`)
+      const response = await apiGet(`/api/attendance?date=${selectedDate}`)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -76,14 +76,10 @@ const StaffAttendance = () => {
       // Ensure staffId is a string (MongoDB ObjectId)
       const staffIdStr = String(staffId)
       
-      const response = await fetch(`${API_BASE_URL}/api/attendance/mark`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          staff_id: staffIdStr,
-          attendance_date: selectedDate,
-          status: status,
-        }),
+      const response = await apiPost('/api/attendance/mark', {
+        staff_id: staffIdStr,
+        attendance_date: selectedDate,
+        status: status,
       })
       
       const data = await response.json()

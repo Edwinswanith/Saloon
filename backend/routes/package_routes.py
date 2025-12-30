@@ -3,6 +3,7 @@ from models import Package
 from datetime import datetime
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
+from utils.auth import require_auth, require_role
 import json
 
 package_bp = Blueprint('package', __name__)
@@ -79,8 +80,9 @@ def get_package(id):
         return response, 500
 
 @package_bp.route('/', methods=['POST'])
-def create_package():
-    """Create a new package"""
+@require_role('manager', 'owner')
+def create_package(current_user=None):
+    """Create a new package (Manager and Owner only)"""
     try:
         data = request.get_json()
 
@@ -114,8 +116,9 @@ def create_package():
         return response, 500
 
 @package_bp.route('/<id>', methods=['PUT'])
-def update_package(id):
-    """Update a package"""
+@require_role('manager', 'owner')
+def update_package(id, current_user=None):
+    """Update a package (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid package ID format'}), 400
@@ -150,8 +153,9 @@ def update_package(id):
         return response, 500
 
 @package_bp.route('/<id>', methods=['DELETE'])
-def delete_package(id):
-    """Soft delete a package"""
+@require_role('manager', 'owner')
+def delete_package(id, current_user=None):
+    """Soft delete a package (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid package ID format'}), 400

@@ -1,0 +1,126 @@
+{
+  "instructions": "Copy and paste these MongoDB commands into MongoDB Compass or mongosh",
+  "database": "Saloon",
+  "collections": {
+    "staffs": [
+      {
+        "mobile": "9876543210",
+        "first_name": "Rajesh",
+        "last_name": "Kumar",
+        "email": "rajesh@salon.com",
+        "salary": 25000,
+        "commission_rate": 10.0,
+        "status": "active",
+        "role": "staff",
+        "password_hash": null,
+        "is_active": true,
+        "created_at": {"$date": "2025-12-19T00:00:00.000Z"},
+        "updated_at": {"$date": "2025-12-19T00:00:00.000Z"}
+      },
+      {
+        "mobile": "9876543211",
+        "first_name": "Priya",
+        "last_name": "Sharma",
+        "email": "priya@salon.com",
+        "salary": 28000,
+        "commission_rate": 12.0,
+        "status": "active",
+        "role": "staff",
+        "password_hash": null,
+        "is_active": true,
+        "created_at": {"$date": "2025-12-19T00:00:00.000Z"},
+        "updated_at": {"$date": "2025-12-19T00:00:00.000Z"}
+      },
+      {
+        "mobile": "9876543212",
+        "first_name": "Amit",
+        "last_name": "Patel",
+        "email": "amit@salon.com",
+        "salary": 30000,
+        "commission_rate": 15.0,
+        "status": "active",
+        "role": "manager",
+        "password_hash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5ND2hq9SJmGLO",
+        "is_active": true,
+        "created_at": {"$date": "2025-12-19T00:00:00.000Z"},
+        "updated_at": {"$date": "2025-12-19T00:00:00.000Z"},
+        "_comment": "Password: manager123"
+      },
+      {
+        "mobile": "9876543213",
+        "first_name": "Sneha",
+        "last_name": "Reddy",
+        "email": "sneha@salon.com",
+        "salary": 22000,
+        "commission_rate": 8.0,
+        "status": "active",
+        "role": "staff",
+        "password_hash": null,
+        "is_active": true,
+        "created_at": {"$date": "2025-12-19T00:00:00.000Z"},
+        "updated_at": {"$date": "2025-12-19T00:00:00.000Z"}
+      },
+      {
+        "mobile": "9876543214",
+        "first_name": "Vikram",
+        "last_name": "Singh",
+        "email": "vikram@salon.com",
+        "salary": 26000,
+        "commission_rate": 10.0,
+        "status": "active",
+        "role": "staff",
+        "password_hash": null,
+        "is_active": true,
+        "created_at": {"$date": "2025-12-19T00:00:00.000Z"},
+        "updated_at": {"$date": "2025-12-19T00:00:00.000Z"}
+      }
+    ],
+    "managers": [
+      {
+        "first_name": "Arun",
+        "last_name": "Mehta",
+        "email": "arun@salon.com",
+        "mobile": "9876543220",
+        "salon": "Glamour Salon - Main Branch",
+        "password_hash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5ND2hq9SJmGLO",
+        "role": "manager",
+        "permissions": [],
+        "is_active": true,
+        "status": "active",
+        "created_at": {"$date": "2025-12-19T00:00:00.000Z"},
+        "updated_at": {"$date": "2025-12-19T00:00:00.000Z"},
+        "_comment": "Password: manager123"
+      },
+      {
+        "first_name": "Kavita",
+        "last_name": "Desai",
+        "email": "kavita@salon.com",
+        "mobile": "9876543221",
+        "salon": "Glamour Salon - Main Branch",
+        "password_hash": "$2b$12$8Wqo3PDBkZF8qNXyZqU0/.ZhPCxPU7LqPzY0Bw3yPL6aPqR0fJmXy",
+        "role": "manager",
+        "permissions": [],
+        "is_active": true,
+        "status": "active",
+        "created_at": {"$date": "2025-12-19T00:00:00.000Z"},
+        "updated_at": {"$date": "2025-12-19T00:00:00.000Z"},
+        "_comment": "Password: manager456"
+      },
+      {
+        "first_name": "Rahul",
+        "last_name": "Chopra",
+        "email": "owner@salon.com",
+        "mobile": "9876543230",
+        "salon": "Glamour Salon - All Branches",
+        "password_hash": "$2b$12$vN7dPQ8yXqU2cTxZnP7Ohe.fMQwGp1YqL5Jz8vY3nK9sW4Rm6Xu1u",
+        "role": "owner",
+        "permissions": [],
+        "is_active": true,
+        "status": "active",
+        "created_at": {"$date": "2025-12-19T00:00:00.000Z"},
+        "updated_at": {"$date": "2025-12-19T00:00:00.000Z"},
+        "_comment": "Password: owner123"
+      }
+    ]
+  }
+}

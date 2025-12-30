@@ -13,6 +13,7 @@ import {
 import * as XLSX from 'xlsx'
 import './Product.css'
 import { API_BASE_URL } from '../config'
+import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
 
 const Product = () => {
   const [searchQuery, setSearchQuery] = useState('')
@@ -121,7 +122,7 @@ const Product = () => {
 
   const handleSaveCategory = async () => {
     if (!categoryFormData.name.trim()) {
-      alert('Category name is required')
+      showError('Category name is required')
       return
     }
 
@@ -148,14 +149,14 @@ const Product = () => {
         setShowCategoryModal(false)
         setEditingCategory(null)
         setCategoryFormData({ name: '' })
-        alert(data.message || (editingCategory ? 'Category updated successfully!' : 'Category added successfully!'))
+        showError(data.message || (editingCategory ? 'Category updated successfully!' : 'Category added successfully!'))
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        alert(errorData.error || `Failed to save category (Status: ${response.status})`)
+        showError(errorData.error || `Failed to save category (Status: ${response.status})`)
       }
     } catch (error) {
       console.error('Error saving category:', error)
-      alert(`Error saving category: ${error.message}`)
+      showError(`Error saving category: ${error.message}`)
     }
   }
 
@@ -169,14 +170,14 @@ const Product = () => {
       })
       if (response.ok) {
         fetchCategories()
-        alert('Category deleted successfully')
+        showSuccess('Category deleted successfully')
       } else {
         const error = await response.json().catch(() => ({ error: 'Unknown error' }))
-        alert(error.error || 'Failed to delete product category')
+        showError(error.error || 'Failed to delete product category')
       }
     } catch (error) {
       console.error('Error deleting product category:', error)
-      alert(`Error deleting product category: ${error.message}`)
+      showError(`Error deleting product category: ${error.message}`)
     }
   }
 
@@ -193,11 +194,11 @@ const Product = () => {
         fetchProductsForCategory(categoryId)
         fetchCategories() // To update count
       } else {
-        alert('Failed to delete product')
+        showError('Failed to delete product')
       }
     } catch (error) {
       console.error('Error deleting product:', error)
-      alert('Error deleting product')
+      showError('Error deleting product')
     }
   }
 
@@ -218,11 +219,11 @@ const Product = () => {
 
   const handleSaveProduct = async () => {
     if (!productFormData.name.trim()) {
-      alert('Product name is required')
+      showError('Product name is required')
       return
     }
     if (!productFormData.category_id) {
-      alert('Category is required')
+      showError('Category is required')
       return
     }
     
@@ -266,14 +267,14 @@ const Product = () => {
           description: '',
           category_id: ''
         })
-        alert(data.message || (editingProduct ? 'Product updated successfully!' : 'Product added successfully!'))
+        showError(data.message || (editingProduct ? 'Product updated successfully!' : 'Product added successfully!'))
       } else {
         const error = await response.json().catch(() => ({ error: 'Unknown error' }))
-        alert(error.error || 'Failed to save product')
+        showError(error.error || 'Failed to save product')
       }
     } catch (error) {
       console.error('Error saving product:', error)
-      alert(`Error saving product: ${error.message}`)
+      showError(`Error saving product: ${error.message}`)
     }
   }
 
@@ -338,7 +339,7 @@ const Product = () => {
     try {
       const rows = await parseFile(file)
       if (rows.length < 2) {
-        alert('File must contain at least a header row and one data row')
+        showError('File must contain at least a header row and one data row')
         return
       }
 
@@ -355,7 +356,7 @@ const Product = () => {
       const descriptionIdx = headers.findIndex(h => h.includes('description'))
 
       if (nameIdx === -1 || priceIdx === -1) {
-        alert('File must contain Name and Price columns')
+        showError('File must contain Name and Price columns')
         return
       }
 
@@ -429,12 +430,12 @@ const Product = () => {
         }
       }
       
-      alert(`Products imported: ${successCount} successful, ${errorCount} failed`)
+      showError(`Products imported: ${successCount} successful, ${errorCount} failed`)
       setShowImportModal(false)
       fetchCategories()
     } catch (error) {
       console.error('Error processing import file:', error)
-      alert(`Error processing import file: ${error.message}`)
+      showError(`Error processing import file: ${error.message}`)
     }
   }
 

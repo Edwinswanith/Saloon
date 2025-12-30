@@ -4,6 +4,8 @@ from datetime import datetime
 from mongoengine.errors import DoesNotExist, ValidationError, NotUniqueError
 from mongoengine import Q
 from bson import ObjectId
+from utils.branch_filter import get_selected_branch
+from utils.auth import require_auth
 
 lead_bp = Blueprint('lead', __name__)
 
@@ -18,7 +20,8 @@ def handle_preflight():
         return response
 
 @lead_bp.route('/', methods=['GET'])
-def get_leads():
+@require_auth
+def get_leads(current_user=None):
     """Get all leads with optional filters"""
     try:
         # Query parameters
@@ -27,7 +30,11 @@ def get_leads():
         search = request.args.get('search')
         converted = request.args.get('converted', type=bool)
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
         query = Lead.objects
+        if branch:
+            query = query.filter(branch=branch)
 
         # Apply filters
         if status:
@@ -98,10 +105,18 @@ def get_lead(id):
         return response, 500
 
 @lead_bp.route('/', methods=['POST'])
-def create_lead():
+@require_auth
+def create_lead(current_user=None):
     """Create a new lead"""
     try:
         data = request.get_json()
+
+        # Get branch for assignment
+        branch = get_selected_branch(request, current_user)
+        if not branch:
+            response = jsonify({'error': 'Branch is required'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
 
         # Parse follow-up date if provided
         follow_up_date = None
@@ -115,7 +130,8 @@ def create_lead():
             source=data.get('source'),
             status=data.get('status', 'new'),
             notes=data.get('notes'),
-            follow_up_date=follow_up_date
+            follow_up_date=follow_up_date,
+            branch=branch
         )
         lead.save()
 
@@ -238,7 +254,8 @@ def convert_lead_to_customer(id):
             first_name=first_name,
             last_name=last_name,
             email=lead.email,
-            source=lead.source
+            source=lead.source,
+            branch=lead.branch  # Assign same branch as lead
         )
         customer.save()
 
@@ -263,11 +280,17 @@ def convert_lead_to_customer(id):
         return response, 500
 
 @lead_bp.route('/stats', methods=['GET'])
-def get_lead_stats():
+@require_auth
+def get_lead_stats(current_user=None):
     """Get lead statistics"""
     try:
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
+        query = Lead.objects
+        if branch:
+            query = query.filter(branch=branch)
         # Get all leads
-        all_leads = list(Lead.objects)
+        all_leads = list(query)
         
         # Count leads by status
         status_counts = {}

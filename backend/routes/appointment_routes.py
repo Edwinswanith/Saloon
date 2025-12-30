@@ -3,11 +3,14 @@ from models import Appointment, Customer, Staff, Service
 from datetime import datetime, date, time, timedelta
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
+from utils.branch_filter import get_selected_branch
+from utils.auth import require_auth
 
 appointment_bp = Blueprint('appointment', __name__)
 
 @appointment_bp.route('/appointments', methods=['GET'])
-def get_appointments():
+@require_auth
+def get_appointments(current_user=None):
     """Get all appointments with optional filters"""
     try:
         # Query parameters
@@ -17,7 +20,11 @@ def get_appointments():
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
         query = Appointment.objects
+        if branch:
+            query = query.filter(branch=branch)
 
         # Apply filters
         if customer_id:
@@ -78,7 +85,8 @@ def get_appointments():
         return jsonify({'error': str(e)}), 500
 
 @appointment_bp.route('/appointments/<id>', methods=['GET'])
-def get_appointment(id):
+@require_auth
+def get_appointment(id, current_user=None):
     """Get a single appointment by ID"""
     try:
         # Validate ObjectId format
@@ -114,10 +122,16 @@ def get_appointment(id):
         return jsonify({'error': str(e)}), 500
 
 @appointment_bp.route('/appointments', methods=['POST'])
-def create_appointment():
+@require_auth
+def create_appointment(current_user=None):
     """Create a new appointment"""
     try:
         data = request.get_json()
+        
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
+        if not branch:
+            return jsonify({'error': 'Branch is required'}), 400
         
         # Validate required fields
         if not data.get('customer_id') or not data.get('staff_id') or not data.get('appointment_date') or not data.get('start_time'):
@@ -198,6 +212,7 @@ def create_appointment():
             customer=customer,
             staff=staff,
             service=service,
+            branch=branch,
             appointment_date=appointment_date,
             start_time=start_time,  # Store as string
             end_time=end_time,  # Store as string
@@ -230,7 +245,8 @@ def create_appointment():
         return jsonify({'error': str(e)}), 500
 
 @appointment_bp.route('/appointments/<id>', methods=['PUT'])
-def update_appointment(id):
+@require_auth
+def update_appointment(id, current_user=None):
     """Update an appointment"""
     try:
         # Validate ObjectId format
@@ -312,7 +328,8 @@ def update_appointment(id):
         return jsonify({'error': str(e)}), 500
 
 @appointment_bp.route('/appointments/<id>', methods=['DELETE'])
-def cancel_appointment(id):
+@require_auth
+def cancel_appointment(id, current_user=None):
     """Cancel an appointment"""
     try:
         # Validate ObjectId format
@@ -330,7 +347,8 @@ def cancel_appointment(id):
         return jsonify({'error': str(e)}), 500
 
 @appointment_bp.route('/appointments/calendar', methods=['GET'])
-def get_calendar_view():
+@require_auth
+def get_calendar_view(current_user=None):
     """Get appointments for calendar view"""
     try:
         # Query parameters
@@ -357,10 +375,14 @@ def get_calendar_view():
             next_month = target.replace(day=28) + timedelta(days=4)
             end_date = next_month - timedelta(days=next_month.day)
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
         query = Appointment.objects(
             appointment_date__gte=start_date,
             appointment_date__lte=end_date
         )
+        if branch:
+            query = query.filter(branch=branch)
 
         if staff_id:
             try:
@@ -483,13 +505,18 @@ def get_available_slots():
         return jsonify({'error': str(e)}), 500
 
 @appointment_bp.route('/appointments/stats', methods=['GET'])
-def get_appointment_stats():
+@require_auth
+def get_appointment_stats(current_user=None):
     """Get appointment statistics"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
         query = Appointment.objects
+        if branch:
+            query = query.filter(branch=branch)
 
         if start_date:
             start = datetime.strptime(start_date, '%Y-%m-%d').date()

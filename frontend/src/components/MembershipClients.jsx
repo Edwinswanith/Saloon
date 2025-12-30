@@ -8,6 +8,7 @@ import {
 } from 'react-icons/fa'
 import './MembershipClients.css'
 import { API_BASE_URL } from '../config'
+import { apiGet } from '../utils/api'
 
 const MembershipClients = ({ setActivePage }) => {
   const [searchQuery, setSearchQuery] = useState('')
@@ -35,7 +36,12 @@ const MembershipClients = ({ setActivePage }) => {
   const fetchMembershipClients = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE_URL}/api/reports/membership-clients?status=active`)
+      const response = await apiGet(`/api/reports/membership-clients?status=active`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
       const data = await response.json()
       
       if (Array.isArray(data)) {

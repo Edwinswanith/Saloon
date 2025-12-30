@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { FaBars, FaCloudUploadAlt, FaPlus, FaDownload, FaEdit, FaTrash, FaChevronDown } from 'react-icons/fa'
+import { Modal, Input, Select, DatePicker, Button, Form } from 'antd'
+import dayjs from 'dayjs'
 import './LeadManagement.css'
-import { API_BASE_URL } from '../config'
+import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
+import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
+
+const { TextArea } = Input
 
 const LeadManagement = () => {
   const [searchQuery, setSearchQuery] = useState('')
@@ -33,7 +38,8 @@ const LeadManagement = () => {
       if (statusFilter !== 'all') params.append('status', statusFilter)
       if (searchQuery) params.append('search', searchQuery)
       
-      const response = await fetch(`${API_BASE_URL}/api/leads?${params}`)
+      const endpoint = `/api/leads${params.toString() ? `?${params.toString()}` : ''}`
+      const response = await apiGet(endpoint)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -78,16 +84,11 @@ const LeadManagement = () => {
 
   const handleSaveLead = async () => {
     if (!leadFormData.name || !leadFormData.mobile) {
-      alert('Name and Mobile are required')
+      showWarning('Name and Mobile are required')
       return
     }
 
     try {
-      const url = editingLead 
-        ? `${API_BASE_URL}/api/leads/${editingLead.id}`
-        : `${API_BASE_URL}/api/leads`
-      const method = editingLead ? 'PUT' : 'POST'
-
       const requestBody = {
         name: leadFormData.name.trim(),
         mobile: leadFormData.mobile.trim(),
@@ -101,13 +102,9 @@ const LeadManagement = () => {
         requestBody.follow_up_date = leadFormData.follow_up_date
       }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      })
+      const response = editingLead 
+        ? await apiPut(`/api/leads/${editingLead.id}`, requestBody)
+        : await apiPost('/api/leads', requestBody)
 
       if (response.ok) {
         const data = await response.json()
@@ -123,14 +120,14 @@ const LeadManagement = () => {
           notes: '',
           follow_up_date: ''
         })
-        alert(data.message || (editingLead ? 'Lead updated successfully!' : 'Lead added successfully!'))
+        showSuccess(data.message || (editingLead ? 'Lead updated successfully!' : 'Lead added successfully!'))
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        alert(errorData.error || `Failed to save lead (Status: ${response.status})`)
+        showError(errorData.error || `Failed to save lead (Status: ${response.status})`)
       }
     } catch (error) {
       console.error('Error saving lead:', error)
-      alert(`Error saving lead: ${error.message}\n\nPlease check if the backend server is running at ${API_BASE_URL}`)
+      showError(`Error saving lead: ${error.message}. Please check if the backend server is running.`)
     }
   }
 
@@ -139,19 +136,17 @@ const LeadManagement = () => {
       return
     }
     try {
-      const response = await fetch(`${API_BASE_URL}/api/leads/${leadId}`, {
-        method: 'DELETE',
-      })
+      const response = await apiDelete(`/api/leads/${leadId}`)
       if (response.ok) {
         fetchLeads()
-        alert('Lead deleted successfully')
+        showSuccess('Lead deleted successfully')
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        alert(errorData.error || 'Failed to delete lead')
+        showError(errorData.error || 'Failed to delete lead')
       }
     } catch (error) {
       console.error('Error deleting lead:', error)
-      alert(`Error deleting lead: ${error.message}`)
+      showError(`Error deleting lead: ${error.message}`)
     }
   }
 
@@ -179,7 +174,7 @@ const LeadManagement = () => {
         const notesIdx = headers.findIndex(h => h.includes('notes'))
 
         if (nameIdx === -1 || mobileIdx === -1) {
-          alert('CSV must contain Name and Mobile columns')
+          showError('CSV must contain Name and Mobile columns')
           return
         }
 
@@ -202,11 +197,7 @@ const LeadManagement = () => {
 
           if (leadData.name && leadData.mobile) {
             try {
-              const response = await fetch(`${API_BASE_URL}/api/leads`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(leadData),
-              })
+              const response = await apiPost('/api/leads', leadData)
               if (response.ok) {
                 successCount++
               } else {
@@ -219,12 +210,12 @@ const LeadManagement = () => {
           }
         }
         
-        alert(`Leads imported: ${successCount} successful, ${errorCount} failed`)
+        showSuccess(`Leads imported: ${successCount} successful, ${errorCount} failed`)
         setShowUploadModal(false)
         fetchLeads()
       } catch (error) {
         console.error('Error processing import file:', error)
-        alert('Error processing import file')
+        showError('Error processing import file. Please check the format and try again.')
       }
     }
     reader.readAsText(file)
@@ -423,91 +414,106 @@ const LeadManagement = () => {
         </div>
       </div>
 
-      {/* Add/Edit Lead Modal */}
-      {showLeadModal && (
-        <div className="modal-overlay" onClick={() => setShowLeadModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>{editingLead ? 'Edit Lead' : 'Add New Lead'}</h2>
-            <div className="form-group">
-              <label>Name *</label>
-              <input
-                type="text"
-                value={leadFormData.name}
-                onChange={(e) => setLeadFormData({ ...leadFormData, name: e.target.value })}
-                placeholder="Enter full name"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Mobile *</label>
-              <input
-                type="text"
-                value={leadFormData.mobile}
-                onChange={(e) => setLeadFormData({ ...leadFormData, mobile: e.target.value })}
-                placeholder="9876543210"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Email</label>
-              <input
-                type="email"
-                value={leadFormData.email}
-                onChange={(e) => setLeadFormData({ ...leadFormData, email: e.target.value })}
-                placeholder="email@example.com"
-              />
-            </div>
-            <div className="form-group">
-              <label>Source</label>
-              <select
-                value={leadFormData.source}
-                onChange={(e) => setLeadFormData({ ...leadFormData, source: e.target.value })}
-              >
-                <option value="Walk-in">Walk-in</option>
-                <option value="Facebook">Facebook</option>
-                <option value="Instagram">Instagram</option>
-                <option value="Referral">Referral</option>
-                <option value="Google">Google</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Status</label>
-              <select
-                value={leadFormData.status}
-                onChange={(e) => setLeadFormData({ ...leadFormData, status: e.target.value })}
-              >
-                <option value="new">New</option>
-                <option value="contacted">Contacted</option>
-                <option value="follow-up">Follow-up</option>
-                <option value="completed">Completed</option>
-                <option value="lost">Lost</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Follow-up Date</label>
-              <input
-                type="date"
-                value={leadFormData.follow_up_date}
-                onChange={(e) => setLeadFormData({ ...leadFormData, follow_up_date: e.target.value })}
-              />
-            </div>
-            <div className="form-group">
-              <label>Notes</label>
-              <textarea
-                value={leadFormData.notes}
-                onChange={(e) => setLeadFormData({ ...leadFormData, notes: e.target.value })}
-                placeholder="Additional notes..."
-                rows="3"
-              />
-            </div>
-            <div className="modal-actions">
-              <button className="btn-cancel" onClick={() => setShowLeadModal(false)}>Cancel</button>
-              <button className="btn-save" onClick={handleSaveLead}>Save</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Add/Edit Lead Modal - Ant Design */}
+      <Modal
+        title={editingLead ? 'Edit Lead' : 'Add New Lead'}
+        open={showLeadModal}
+        onCancel={() => setShowLeadModal(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setShowLeadModal(false)}>
+            Cancel
+          </Button>,
+          <Button key="submit" type="primary" onClick={handleSaveLead}>
+            Save
+          </Button>,
+        ]}
+        width={600}
+      >
+        <Form layout="vertical" style={{ marginTop: 24 }}>
+          <Form.Item
+            label="Name"
+            required
+            tooltip="Full name of the lead"
+          >
+            <Input
+              placeholder="Enter full name"
+              value={leadFormData.name}
+              onChange={(e) => setLeadFormData({ ...leadFormData, name: e.target.value })}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Mobile"
+            required
+            tooltip="10-digit mobile number"
+          >
+            <Input
+              placeholder="9876543210"
+              value={leadFormData.mobile}
+              onChange={(e) => setLeadFormData({ ...leadFormData, mobile: e.target.value })}
+            />
+          </Form.Item>
+
+          <Form.Item label="Email">
+            <Input
+              type="email"
+              placeholder="email@example.com"
+              value={leadFormData.email}
+              onChange={(e) => setLeadFormData({ ...leadFormData, email: e.target.value })}
+            />
+          </Form.Item>
+
+          <Form.Item label="Source">
+            <Select
+              value={leadFormData.source}
+              onChange={(value) => setLeadFormData({ ...leadFormData, source: value })}
+            >
+              <Select.Option value="Walk-in">Walk-in</Select.Option>
+              <Select.Option value="Facebook">Facebook</Select.Option>
+              <Select.Option value="Instagram">Instagram</Select.Option>
+              <Select.Option value="Referral">Referral</Select.Option>
+              <Select.Option value="Google">Google</Select.Option>
+              <Select.Option value="Other">Other</Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item label="Status">
+            <Select
+              value={leadFormData.status}
+              onChange={(value) => setLeadFormData({ ...leadFormData, status: value })}
+            >
+              <Select.Option value="new">New</Select.Option>
+              <Select.Option value="contacted">Contacted</Select.Option>
+              <Select.Option value="follow-up">Follow-up</Select.Option>
+              <Select.Option value="completed">Completed</Select.Option>
+              <Select.Option value="lost">Lost</Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item label="Follow-up Date">
+            <DatePicker
+              style={{ width: '100%' }}
+              format="DD/MM/YYYY"
+              value={leadFormData.follow_up_date ? dayjs(leadFormData.follow_up_date) : null}
+              onChange={(date, dateString) => {
+                setLeadFormData({ 
+                  ...leadFormData, 
+                  follow_up_date: date ? date.format('YYYY-MM-DD') : '' 
+                })
+              }}
+            />
+          </Form.Item>
+
+          <Form.Item label="Notes">
+            <TextArea
+              rows={3}
+              placeholder="Additional notes..."
+              value={leadFormData.notes}
+              onChange={(e) => setLeadFormData({ ...leadFormData, notes: e.target.value })}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
 
       {/* Upload Leads Modal */}
       {showUploadModal && (

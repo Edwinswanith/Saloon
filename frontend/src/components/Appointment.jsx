@@ -2,8 +2,12 @@ import React, { useState, useEffect } from 'react'
 import { FaBars, FaCalendarAlt, FaPlus, FaTimes } from 'react-icons/fa'
 import './Appointment.css'
 import { API_BASE_URL } from '../config'
+import { useAuth } from '../contexts/AuthContext'
+import { apiGet, apiPost, apiDelete } from '../utils/api'
+import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
 
 const Appointment = () => {
+  const { currentBranch } = useAuth()
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [viewMode, setViewMode] = useState('day')
   const [selectedStaff, setSelectedStaff] = useState('all')
@@ -108,11 +112,24 @@ const Appointment = () => {
 
   useEffect(() => {
     fetchAppointments()
-  }, [selectedDate, selectedStaff, viewMode])
+  }, [selectedDate, selectedStaff, viewMode, currentBranch])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      fetchStaff()
+      fetchCustomers()
+      fetchServices()
+      fetchAppointments()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [])
 
   const fetchStaff = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/staffs`)
+      const response = await apiGet('/api/staffs')
       const data = await response.json()
       setStaffMembers(data.staffs || [])
     } catch (error) {
@@ -122,7 +139,7 @@ const Appointment = () => {
 
   const fetchCustomers = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/customers?per_page=100`)
+      const response = await apiGet('/api/customers?per_page=100')
       const data = await response.json()
       setCustomers(data.customers || [])
     } catch (error) {
@@ -132,7 +149,7 @@ const Appointment = () => {
 
   const fetchServices = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/services`)
+      const response = await apiGet('/api/services')
       const data = await response.json()
       setServices(data.services || [])
     } catch (error) {
@@ -150,7 +167,7 @@ const Appointment = () => {
       if (selectedStaff !== 'all') {
         params.append('staff_id', selectedStaff)
       }
-      const response = await fetch(`${API_BASE_URL}/api/appointments?${params}`)
+      const response = await apiGet(`/api/appointments?${params}`)
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -192,7 +209,7 @@ const Appointment = () => {
     
     // Validate required fields
     if (!bookingForm.customer_id || !bookingForm.staff_id || !bookingForm.appointment_date || !bookingForm.start_time) {
-      alert('Please fill in all required fields')
+      showError('Please fill in all required fields')
       return
     }
     
@@ -203,24 +220,20 @@ const Appointment = () => {
         formattedTime = formattedTime + ':00'
       }
       
-      const response = await fetch(`${API_BASE_URL}/api/appointments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customer_id: bookingForm.customer_id,  // Send as string (MongoDB ObjectId)
-          staff_id: bookingForm.staff_id,  // Send as string (MongoDB ObjectId)
-          service_id: bookingForm.service_id || null,  // Send as string (MongoDB ObjectId) or null
-          appointment_date: bookingForm.appointment_date,
-          start_time: formattedTime,
-          status: 'confirmed',
-          notes: bookingForm.notes || '',
-        }),
+      const response = await apiPost('/api/appointments', {
+        customer_id: bookingForm.customer_id,  // Send as string (MongoDB ObjectId)
+        staff_id: bookingForm.staff_id,  // Send as string (MongoDB ObjectId)
+        service_id: bookingForm.service_id || null,  // Send as string (MongoDB ObjectId) or null
+        appointment_date: bookingForm.appointment_date,
+        start_time: formattedTime,
+        status: 'confirmed',
+        notes: bookingForm.notes || '',
       })
       
       const responseData = await response.json()
       
       if (response.ok) {
-        alert('Appointment booked successfully!')
+        showSuccess('Appointment booked successfully!')
         setShowBookingModal(false)
         setBookingForm({
           customer_id: '',
@@ -233,31 +246,29 @@ const Appointment = () => {
         // Refresh appointments immediately
         await fetchAppointments()
       } else {
-        alert(responseData.error || 'Failed to book appointment')
+        showError(responseData.error || 'Failed to book appointment')
       }
     } catch (error) {
       console.error('Error booking appointment:', error)
-      alert('Error booking appointment: ' + error.message)
+      showError('Error booking appointment: ' + error.message)
     }
   }
 
   const handleCancelAppointment = async () => {
     if (!selectedAppointment) return
     try {
-      const response = await fetch(`${API_BASE_URL}/api/appointments/${selectedAppointment.id}`, {
-        method: 'DELETE',
-      })
+      const response = await apiDelete(`/api/appointments/${selectedAppointment.id}`)
       if (response.ok) {
-        alert('Appointment cancelled successfully!')
+        showSuccess('Appointment cancelled successfully!')
         setShowCancelModal(false)
         setSelectedAppointment(null)
         fetchAppointments()
       } else {
-        alert('Failed to cancel appointment')
+        showError('Failed to cancel appointment')
       }
     } catch (error) {
       console.error('Error canceling appointment:', error)
-      alert('Error canceling appointment')
+      showError('Error canceling appointment')
     }
   }
 
@@ -393,7 +404,7 @@ const Appointment = () => {
         <div 
           className="schedule-grid"
           style={{
-            gridTemplateColumns: `100px repeat(${staffMembers.length}, 1fr)`
+            gridTemplateColumns: `100px repeat(${staffMembers.length}, minmax(120px, 180px))`
           }}
         >
           {/* Time Column Header */}
@@ -401,8 +412,8 @@ const Appointment = () => {
 
           {/* Staff Headers */}
           {staffMembers.map((staff) => (
-            <div key={staff.id} className="staff-header">
-              {staff.firstName} {staff.lastName}
+            <div key={staff.id} className="staff-header" title={`${staff.firstName} ${staff.lastName || ''}`.trim()}>
+              {`${staff.firstName} ${staff.lastName || ''}`.trim()}
             </div>
           ))}
 

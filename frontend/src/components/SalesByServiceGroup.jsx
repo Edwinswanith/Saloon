@@ -8,6 +8,7 @@ import {
 } from 'react-icons/fa'
 import './SalesByServiceGroup.css'
 import { API_BASE_URL } from '../config'
+import { apiGet } from '../utils/api'
 
 const SalesByServiceGroup = ({ setActivePage }) => {
   const [dateFilter, setDateFilter] = useState('today')
@@ -73,7 +74,12 @@ const SalesByServiceGroup = ({ setActivePage }) => {
       const dateRange = getDateRange()
       const params = new URLSearchParams(dateRange)
       
-      const response = await fetch(`${API_BASE_URL}/api/reports/sales-by-service-group?${params}`)
+      const response = await apiGet(`/api/reports/sales-by-service-group?${params}`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
       const data = await response.json()
       
       // Map backend response to frontend format

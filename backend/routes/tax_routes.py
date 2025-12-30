@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from models import db, TaxSettings, TaxSlab
 from datetime import datetime
+from utils.auth import require_role
 
 tax_bp = Blueprint('tax', __name__)
 
@@ -20,8 +21,9 @@ def get_tax_settings():
         return jsonify({'error': str(e)}), 500
 
 @tax_bp.route('/settings', methods=['PUT'])
-def update_tax_settings():
-    """Update tax settings"""
+@require_role('owner')
+def update_tax_settings(current_user=None):
+    """Update tax settings (Owner only)"""
     try:
         settings = TaxSettings.get_settings()
         data = request.json
@@ -104,8 +106,9 @@ def get_tax_slab(slab_id):
         return jsonify({'error': str(e)}), 500
 
 @tax_bp.route('/slabs', methods=['POST'])
-def create_tax_slab():
-    """Create new tax slab"""
+@require_role('owner')
+def create_tax_slab(current_user=None):
+    """Create new tax slab (Owner only)"""
     try:
         data = request.json
         
@@ -142,8 +145,9 @@ def create_tax_slab():
         return jsonify({'error': str(e)}), 500
 
 @tax_bp.route('/slabs/<int:slab_id>', methods=['PUT'])
-def update_tax_slab(slab_id):
-    """Update tax slab"""
+@require_role('owner')
+def update_tax_slab(slab_id, current_user=None):
+    """Update tax slab (Owner only)"""
     try:
         slab = TaxSlab.query.get_or_404(slab_id)
         data = request.json
@@ -175,8 +179,9 @@ def update_tax_slab(slab_id):
         return jsonify({'error': str(e)}), 500
 
 @tax_bp.route('/slabs/<int:slab_id>', methods=['DELETE'])
-def delete_tax_slab(slab_id):
-    """Delete tax slab (soft delete)"""
+@require_role('owner')
+def delete_tax_slab(slab_id, current_user=None):
+    """Delete tax slab (Owner only - soft delete)"""
     try:
         slab = TaxSlab.query.get_or_404(slab_id)
         slab.status = 'inactive'

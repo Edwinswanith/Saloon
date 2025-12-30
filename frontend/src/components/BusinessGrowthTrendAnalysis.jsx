@@ -11,6 +11,19 @@ import {
 } from 'react-icons/fa'
 import './BusinessGrowthTrendAnalysis.css'
 import { API_BASE_URL } from '../config'
+import { apiGet } from '../utils/api'
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts'
 const BusinessGrowthTrendAnalysis = ({ setActivePage }) => {
   const [dateRange, setDateRange] = useState('last-3-years')
   const [viewBy, setViewBy] = useState('monthly')
@@ -26,9 +39,6 @@ const BusinessGrowthTrendAnalysis = ({ setActivePage }) => {
     { month: 'Feb', newClients: 50, returningVisits: 450 },
     { month: 'Mar', newClients: 50, returningVisits: 450 },
   ])
-  const [hoveredFinancialPoint, setHoveredFinancialPoint] = useState(null)
-  const [hoveredClientPoint, setHoveredClientPoint] = useState(null)
-  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 })
 
   
 
@@ -79,7 +89,7 @@ const BusinessGrowthTrendAnalysis = ({ setActivePage }) => {
         end_date: dateRangeParams.end_date
       })
 
-      const response = await fetch(`${API_BASE_URL}/api/reports/business-growth?${params}`)
+      const response = await apiGet(`/api/reports/business-growth?${params}`)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -145,15 +155,6 @@ const BusinessGrowthTrendAnalysis = ({ setActivePage }) => {
   ]
 
 
-  const maxFinancialValue = Math.max(
-    ...financialTrendsData.flatMap((d) => [d.grossRevenue, d.totalServiceValue]),
-    600000
-  )
-
-  const maxClientValue = Math.max(
-    ...clientGrowthData.flatMap((d) => [d.newClients + d.returningVisits]),
-    600
-  )
 
   const formatCurrency = (value) => {
     if (value >= 100000) {
@@ -257,168 +258,75 @@ const BusinessGrowthTrendAnalysis = ({ setActivePage }) => {
               Comparing the value of services rendered vs. actual revenue
               collected.
             </p>
-            <div className="chart-container">
-              <div className="chart-y-axis">
-                <div className="y-axis-label">{formatCurrency(maxFinancialValue)}</div>
-                <div className="y-axis-label">{formatCurrency(maxFinancialValue * 0.75)}</div>
-                <div className="y-axis-label">{formatCurrency(maxFinancialValue * 0.5)}</div>
-                <div className="y-axis-label">{formatCurrency(maxFinancialValue * 0.25)}</div>
-                <div className="y-axis-label">₹0</div>
-              </div>
-              <div 
-                className="chart-area-container"
-                onMouseLeave={() => setHoveredFinancialPoint(null)}
-              >
-                <svg
-                  className="area-chart"
-                  viewBox="0 0 400 200"
-                  preserveAspectRatio="none"
-                >
-                  {/* Grid lines */}
-                  {[0, 1, 2, 3, 4].map((i) => (
-                    <line
-                      key={i}
-                      x1="0"
-                      y1={i * 50}
-                      x2="400"
-                      y2={i * 50}
-                      stroke="#e5e7eb"
-                      strokeWidth="1"
-                    />
-                  ))}
-
-                  {/* Total Service Value Area */}
-                  {financialTrendsData.length > 0 && (
-                    <path
-                      d={`M 0,200 ${financialTrendsData.map((item, index) => {
-                        const x = (index / Math.max(financialTrendsData.length - 1, 1)) * 400
-                        const y = 200 - (item.totalServiceValue / maxFinancialValue) * 200
-                        return `L ${x},${y}`
-                      }).join(' ')} L 400,200 Z`}
-                      fill="#1e40af"
-                      opacity="0.8"
-                    />
-                  )}
-
-                  {/* Gross Revenue Area */}
-                  {financialTrendsData.length > 0 && (
-                    <path
-                      d={`M 0,200 ${financialTrendsData.map((item, index) => {
-                        const x = (index / Math.max(financialTrendsData.length - 1, 1)) * 400
-                        const y = 200 - (item.grossRevenue / maxFinancialValue) * 200
-                        return `L ${x},${y}`
-                      }).join(' ')} L 400,200 Z`}
-                      fill="#14b8a6"
-                      opacity="0.8"
-                    />
-                  )}
-
-                  {/* Interactive hover points */}
-                  {financialTrendsData.map((item, index) => {
-                    const x = (index / Math.max(financialTrendsData.length - 1, 1)) * 400
-                    const grossRevenueY = 200 - (item.grossRevenue / maxFinancialValue) * 200
-                    const serviceValueY = 200 - (item.totalServiceValue / maxFinancialValue) * 200
-                    
-                    return (
-                      <g key={index}>
-                        {/* Invisible hover area */}
-                        <rect
-                          x={x - 30}
-                          y="0"
-                          width="60"
-                          height="200"
-                          fill="transparent"
-                          style={{ cursor: 'pointer' }}
-                          onMouseEnter={(e) => {
-                            const rect = e.currentTarget.closest('.chart-area-container')?.getBoundingClientRect()
-                            if (rect) {
-                              const svgRect = e.currentTarget.getBoundingClientRect()
-                              setTooltipPosition({
-                                x: svgRect.left + svgRect.width / 2,
-                                y: svgRect.top
-                              })
-                            }
-                            setHoveredFinancialPoint({
-                              month: item.month,
-                              grossRevenue: item.grossRevenue,
-                              totalServiceValue: item.totalServiceValue,
-                              index
-                            })
-                          }}
-                        />
-                        {/* Visible point indicators when hovered */}
-                        {hoveredFinancialPoint && hoveredFinancialPoint.index === index && (
-                          <>
-                            <circle
-                              cx={x}
-                              cy={grossRevenueY}
-                              r="4"
-                              fill="#14b8a6"
-                              stroke="white"
-                              strokeWidth="2"
-                            />
-                            <circle
-                              cx={x}
-                              cy={serviceValueY}
-                              r="4"
-                              fill="#1e40af"
-                              stroke="white"
-                              strokeWidth="2"
-                            />
-                            <line
-                              x1={x}
-                              y1="0"
-                              x2={x}
-                              y2="200"
-                              stroke="#94a3b8"
-                              strokeWidth="1"
-                              strokeDasharray="4,4"
-                            />
-                          </>
-                        )}
-                      </g>
-                    )
-                  })}
-                </svg>
-                {/* Tooltip */}
-                {hoveredFinancialPoint && (
-                  <div
-                    className="chart-tooltip"
-                    style={{
-                      left: `${tooltipPosition.x}px`,
-                      top: `${tooltipPosition.y - 10}px`,
-                      transform: 'translate(-50%, -100%)'
-                    }}
-                  >
-                    <div className="tooltip-title">{hoveredFinancialPoint.month}</div>
-                    <div className="tooltip-item">
-                      <span className="tooltip-label">Gross Revenue:</span>
-                      <span className="tooltip-value">{formatCurrency(hoveredFinancialPoint.grossRevenue)}</span>
-                    </div>
-                    <div className="tooltip-item">
-                      <span className="tooltip-label">Service Value:</span>
-                      <span className="tooltip-value">{formatCurrency(hoveredFinancialPoint.totalServiceValue)}</span>
-                    </div>
-                  </div>
-                )}
-                <div className="chart-x-axis">
-                  {financialTrendsData.map((item, index) => (
-                    <div key={index} className="x-axis-label">
-                      {item.month}
-                    </div>
-                  ))}
+            <div className="chart-area-container">
+              {loading ? (
+                <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  Loading...
                 </div>
-              </div>
-            </div>
-            <div className="chart-legend">
-              <div className="legend-item">
-                <span className="legend-color gross-revenue"></span>
-                <span>→ Gross Revenue (Collected)</span>
-              </div>
-              <div className="legend-item">
-                <span className="legend-color total-service"></span>
-                <span>→ Total Service Value</span>
-              </div>
+              ) : financialTrendsData.length === 0 ? (
+                <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  No data available
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={financialTrendsData}>
+                    <defs>
+                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#14b8a6" stopOpacity={0.1}/>
+                      </linearGradient>
+                      <linearGradient id="colorService" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#1e40af" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#1e40af" stopOpacity={0.1}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis 
+                      dataKey="month" 
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      stroke="#9ca3af"
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      stroke="#9ca3af"
+                      tickFormatter={(value) => formatCurrency(value)}
+                    />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        padding: '12px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+                      }}
+                      formatter={(value) => [formatCurrency(value), '']}
+                      labelStyle={{ fontWeight: 600, marginBottom: '8px' }}
+                    />
+                    <Legend 
+                      wrapperStyle={{ paddingTop: '20px' }}
+                      iconType="line"
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="totalServiceValue" 
+                      stroke="#1e40af" 
+                      strokeWidth={2}
+                      fillOpacity={1} 
+                      fill="url(#colorService)" 
+                      name="Total Service Value"
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="grossRevenue" 
+                      stroke="#14b8a6" 
+                      strokeWidth={2}
+                      fillOpacity={1} 
+                      fill="url(#colorRevenue)" 
+                      name="Gross Revenue (Collected)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
 
@@ -428,96 +336,59 @@ const BusinessGrowthTrendAnalysis = ({ setActivePage }) => {
             <p className="chart-subtitle">
               Analyzing new client acquisition vs. returning client loyalty.
             </p>
-            <div className="chart-container">
-              <div className="chart-y-axis">
-                <div className="y-axis-label">600</div>
-                <div className="y-axis-label">450</div>
-                <div className="y-axis-label">300</div>
-                <div className="y-axis-label">150</div>
-                <div className="y-axis-label">0</div>
-              </div>
-              <div className="chart-bars-container">
-                {clientGrowthData.map((item, index) => {
-                  const total = item.newClients + item.returningVisits
-                  const newClientsHeight =
-                    (item.newClients / maxClientValue) * 100
-                  const returningHeight =
-                    (item.returningVisits / maxClientValue) * 100
-
-                  return (
-                    <div 
-                      key={index} 
-                      className="chart-category"
-                      onMouseEnter={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect()
-                        setTooltipPosition({
-                          x: rect.left + rect.width / 2,
-                          y: rect.top
-                        })
-                        setHoveredClientPoint({
-                          month: item.month,
-                          newClients: item.newClients,
-                          returningVisits: item.returningVisits,
-                          total: total,
-                          index
-                        })
-                      }}
-                      onMouseLeave={() => setHoveredClientPoint(null)}
-                    >
-                      <div className="bars-wrapper">
-                        <div
-                          className="bar returning-clients-bar"
-                          style={{ height: `${returningHeight}%` }}
-                        >
-                          <span className="bar-value">{item.returningVisits}</span>
-                        </div>
-                        <div
-                          className="bar new-clients-bar"
-                          style={{ height: `${newClientsHeight}%` }}
-                        >
-                          <span className="bar-value">{item.newClients}</span>
-                        </div>
-                      </div>
-                      <div className="category-label">{item.month}</div>
-                    </div>
-                  )
-                })}
-              </div>
-              {/* Tooltip for Client Growth Chart */}
-              {hoveredClientPoint && (
-                <div
-                  className="chart-tooltip"
-                  style={{
-                    left: `${tooltipPosition.x}px`,
-                    top: `${tooltipPosition.y - 10}px`,
-                    transform: 'translate(-50%, -100%)'
-                  }}
-                >
-                  <div className="tooltip-title">{hoveredClientPoint.month}</div>
-                  <div className="tooltip-item">
-                    <span className="tooltip-label">New Clients:</span>
-                    <span className="tooltip-value">{hoveredClientPoint.newClients}</span>
-                  </div>
-                  <div className="tooltip-item">
-                    <span className="tooltip-label">Returning Visits:</span>
-                    <span className="tooltip-value">{hoveredClientPoint.returningVisits}</span>
-                  </div>
-                  <div className="tooltip-item">
-                    <span className="tooltip-label">Total:</span>
-                    <span className="tooltip-value">{hoveredClientPoint.total}</span>
-                  </div>
+            <div className="chart-bars-container">
+              {loading ? (
+                <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  Loading...
                 </div>
+              ) : clientGrowthData.length === 0 ? (
+                <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  No data available
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={clientGrowthData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis 
+                      dataKey="month" 
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      stroke="#9ca3af"
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      stroke="#9ca3af"
+                    />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        padding: '12px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+                      }}
+                      cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
+                    />
+                    <Legend 
+                      wrapperStyle={{ paddingTop: '20px' }}
+                      iconType="square"
+                    />
+                    <Bar 
+                      dataKey="returningVisits" 
+                      stackId="a" 
+                      fill="#16a34a" 
+                      name="Returning Client Visits"
+                      radius={[0, 0, 0, 0]}
+                    />
+                    <Bar 
+                      dataKey="newClients" 
+                      stackId="a" 
+                      fill="#86efac" 
+                      name="New Clients Acquired"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
               )}
-            </div>
-            <div className="chart-legend">
-              <div className="legend-item">
-                <span className="legend-color new-clients"></span>
-                <span>■ New Clients Acquired</span>
-              </div>
-              <div className="legend-item">
-                <span className="legend-color returning-clients"></span>
-                <span>■ Returning Client Visits</span>
-              </div>
             </div>
           </div>
         </div>

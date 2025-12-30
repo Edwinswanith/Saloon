@@ -2,13 +2,25 @@ import React, { useState, useEffect } from 'react'
 import { FaBars, FaBell, FaUser, FaCalendar, FaHeart, FaTrash, FaChevronDown, FaClock } from 'react-icons/fa'
 import './QuickSale.css'
 import { API_BASE_URL } from '../config'
+import { useAuth } from '../contexts/AuthContext'
+import { apiGet } from '../utils/api'
+import { showSuccess, showError, showWarning, showInfo } from '../utils/toast.jsx'
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
+import { celebrateBig } from '../utils/confetti'
+import { PageTransition } from './shared/PageTransition'
+import { EmptyList } from './shared/EmptyStates'
 
 const QuickSale = () => {
+  const { user, getMaxDiscountPercent } = useAuth()
+  const [pendingApproval, setPendingApproval] = useState(null)
+  const [showApprovalForm, setShowApprovalForm] = useState(false)
+  const [approvalReason, setApprovalReason] = useState('')
 
   const [discountType, setDiscountType] = useState('fix')
   const [paymentMode, setPaymentMode] = useState('cash')
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [selectedDate, setSelectedDate] = useState(new Date())
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [bookingStatus, setBookingStatus] = useState('pending')
   const [bookingNote, setBookingNote] = useState('')
@@ -86,7 +98,7 @@ const QuickSale = () => {
 
   const fetchCustomers = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/customers?per_page=200`)
+      const response = await apiGet(`/api/customers?per_page=200`)
       const data = await response.json()
       // Map the response to match the expected format (handle both camelCase and snake_case)
       const customersList = (data.customers || []).map(customer => ({
@@ -101,13 +113,13 @@ const QuickSale = () => {
       setCustomers(customersList)
     } catch (error) {
       console.error('Error fetching customers:', error)
-      alert('Failed to load customers. Please refresh the page.')
+      showError('Failed to load customers. Please refresh the page.')
     }
   }
 
   const fetchStaff = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/staffs`)
+      const response = await apiGet(`/api/staffs`)
       const data = await response.json()
       setStaffMembers(data.staffs || [])
     } catch (error) {
@@ -198,7 +210,7 @@ const QuickSale = () => {
 
   const addPackage = () => {
     if (!selectedCustomer) {
-      alert('Please select a customer first')
+      showWarning('Please select a customer first')
       return
     }
     const packageId = prompt('Enter Package ID or select from available packages:\n' + 
@@ -215,14 +227,14 @@ const QuickSale = () => {
           total: selectedPackage.price,
         }])
       } else {
-        alert('Package not found')
+        showError('Package not found')
       }
     }
   }
 
   const addProduct = () => {
     if (!selectedCustomer) {
-      alert('Please select a customer first')
+      showWarning('Please select a customer first')
       return
     }
     const productId = prompt('Enter Product ID or select from available products:\n' + 
@@ -243,14 +255,14 @@ const QuickSale = () => {
           }])
         }
       } else {
-        alert('Product not found')
+        showError('Product not found')
       }
     }
   }
 
   const addPrepaid = () => {
     if (!selectedCustomer) {
-      alert('Please select a customer first')
+      showWarning('Please select a customer first')
       return
     }
     // Fetch customer's prepaid packages
@@ -259,7 +271,7 @@ const QuickSale = () => {
       .then(data => {
         const customerPrepaid = data.packages || []
         if (customerPrepaid.length === 0) {
-          alert('Customer has no active prepaid packages')
+          showWarning('Customer has no active prepaid packages')
           return
         }
         const prepaidList = customerPrepaid.map(p => 
@@ -280,13 +292,13 @@ const QuickSale = () => {
       })
       .catch(error => {
         console.error('Error fetching prepaid packages:', error)
-        alert('Error loading prepaid packages')
+        showError('Error loading prepaid packages')
       })
   }
 
   const addMembership = () => {
     if (!selectedCustomer) {
-      alert('Please select a customer first')
+      showWarning('Please select a customer first')
       return
     }
     const membershipId = prompt('Enter Membership Plan ID:\n' + 
@@ -301,7 +313,7 @@ const QuickSale = () => {
           price: selectedMembership.price,
         }])
       } else {
-        alert('Membership plan not found')
+        showError('Membership plan not found')
       }
     }
   }
@@ -443,19 +455,19 @@ const QuickSale = () => {
     try {
       // Validation
       if (!selectedCustomer) {
-        alert('Please select a customer. Click on the customer search field and select a customer from the dropdown.')
+        showWarning('Please select a customer. Click on the customer search field and select a customer from the dropdown.')
         return
       }
 
       // Validate services
       const validServices = services.filter(s => s.service_id && s.price > 0)
       if (validServices.length === 0) {
-        alert('Please add at least one service with a valid price')
+        showWarning('Please add at least one service with a valid price')
         return
       }
 
       if (!paymentMode) {
-        alert('Please select a payment mode')
+        showWarning('Please select a payment mode')
         return
       }
 
@@ -478,7 +490,7 @@ const QuickSale = () => {
         } catch (e) {
           errorMessage = `Server error: ${billResponse.status} ${billResponse.statusText}`
         }
-        alert(errorMessage)
+        showError(errorMessage)
         return
       }
 
@@ -611,13 +623,37 @@ const QuickSale = () => {
         prepaidPackageId = prepaidPackages[0].prepaid_id
       }
 
+      // Phase 5: Check if approval is needed
+      if (pendingApproval && pendingApproval.approval_status === 'pending') {
+        showInfo('Discount approval is pending. Please wait for approval before checkout.')
+        return
+      }
+
+      // Phase 5: Check discount limit
+      if (discountType === '%' && user) {
+        const maxDiscount = getMaxDiscountPercent()
+        const discountPercent = parseFloat(discountAmount) || 0
+        
+        if (discountPercent > maxDiscount) {
+          if (!approvalReason.trim()) {
+            setShowApprovalForm(true)
+            showWarning('Please provide a reason for the discount approval request')
+            return
+          }
+        }
+      }
+
       // Checkout
       const checkoutResponse = await fetch(`${API_BASE_URL}/api/bills/${billId}/checkout`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
         body: JSON.stringify({
           discount_amount: parseFloat(discountAmount) || 0,
           discount_type: discountType === 'fix' ? 'fix' : 'percentage',
+          discount_reason: approvalReason || undefined, // Phase 5: Include reason
           tax_rate: 18.0, // GST rate - ensure it's a float
           payment_mode: paymentMode,
           booking_status: bookingStatus,
@@ -627,24 +663,38 @@ const QuickSale = () => {
 
       if (checkoutResponse.ok) {
         const checkoutData = await checkoutResponse.json()
-        alert(`Bill created successfully!\nBill Number: ${checkoutData.bill_number}\nFinal Amount: ₹${checkoutData.final_amount.toFixed(2)}`)
+        showSuccess(`Bill created successfully! Bill Number: ${checkoutData.bill_number} | Final Amount: ₹${checkoutData.final_amount.toFixed(2)}`)
+        
+        // Celebrate with confetti!
+        celebrateBig()
+        
         handleReset()
+        setPendingApproval(null)
+        setShowApprovalForm(false)
+        setApprovalReason('')
       } else {
         let errorMessage = 'Failed to complete checkout. Please try again.'
         try {
           const error = await checkoutResponse.json()
           errorMessage = error.error || errorMessage
+          
+          // Phase 5: Handle approval required
+          if (error.requires_approval && error.approval_id) {
+            setPendingApproval({ id: error.approval_id, approval_status: 'pending' })
+            setShowApprovalForm(true)
+            errorMessage = error.message || 'Discount approval required before checkout'
+          }
         } catch (e) {
           errorMessage = `Server error: ${checkoutResponse.status} ${checkoutResponse.statusText}`
         }
-        alert(errorMessage)
+        showError(errorMessage)
       }
     } catch (error) {
       console.error('Error during checkout:', error)
       if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-        alert('Cannot connect to the server. Please make sure the backend server is running on http://localhost:5000')
+        showError('Cannot connect to the server. Please make sure the backend server is running.')
       } else {
-        alert(`Error during checkout: ${error.message || 'Unknown error'}`)
+        showError(`Error during checkout: ${error.message || 'Unknown error'}`)
       }
     }
   }
@@ -666,8 +716,9 @@ const QuickSale = () => {
   }
 
   return (
-    <div className="quick-sale-page">
-      {/* Top Header Bar */}
+    <PageTransition>
+      <div className="quick-sale-page">
+        {/* Top Header Bar */}
       <header className="quicksale-header">
         <div className="header-left">
           <button className="menu-icon"><FaBars /></button>
@@ -750,11 +801,12 @@ const QuickSale = () => {
             <div className="date-container">
               <label className="date-label">Date *</label>
               <div className="date-input-wrapper">
-                <input
-                  type="date"
+                <DatePicker
+                  selected={selectedDate}
+                  onChange={(date) => setSelectedDate(date)}
+                  dateFormat="dd/MM/yyyy"
                   className="date-picker"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
+                  placeholderText="Select date"
                 />
                 <span className="date-display">{formatDate(selectedDate)}</span>
                 <span className="calendar-icon"><FaCalendar /></span>
@@ -847,9 +899,9 @@ const QuickSale = () => {
                   onClick={() => {
                     const selectedService = availableServices.find(s => s.id === service.service_id)
                     if (selectedService) {
-                      alert(`Service Details:\nName: ${selectedService.name}\nPrice: ₹${selectedService.price}\nDuration: ${selectedService.duration || 'N/A'} minutes\nDescription: ${selectedService.description || 'N/A'}`)
+                      showInfo(`Service: ${selectedService.name} | Price: ₹${selectedService.price} | Duration: ${selectedService.duration || 'N/A'} mins`)
                     } else {
-                      alert('Please select a service first')
+                      showWarning('Please select a service first')
                     }
                   }}
                 >
@@ -977,8 +1029,36 @@ const QuickSale = () => {
             className="form-input discount-input"
             placeholder={discountType === 'fix' ? 'Discount Amount (₹)' : 'Discount Percentage (%)'}
             value={discountAmount}
-            onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}
+            onChange={(e) => {
+              const value = parseFloat(e.target.value) || 0
+              setDiscountAmount(value)
+              
+              // Phase 5: Check discount limit
+              if (discountType === '%' && user) {
+                const maxDiscount = getMaxDiscountPercent()
+                const subtotal = calculateSubtotal()
+                const discountPercent = value
+                
+                if (discountPercent > maxDiscount && subtotal > 0) {
+                  // Will need approval
+                  setShowApprovalForm(true)
+                } else {
+                  setShowApprovalForm(false)
+                  setPendingApproval(null)
+                }
+              }
+            }}
           />
+          {user && discountType === '%' && (
+            <small className="discount-limit-info">
+              Max discount for {user.role}: {getMaxDiscountPercent()}%
+            </small>
+          )}
+          {pendingApproval && (
+            <div className="approval-pending-notice">
+              ⚠️ Discount approval pending. Cannot checkout until approved.
+            </div>
+          )}
         </div>
 
           {/* Mode of Payment */}
@@ -1043,11 +1123,61 @@ const QuickSale = () => {
           {/* Bottom Buttons */}
           <div className="action-buttons">
             <button className="reset-button" onClick={handleReset}>Reset</button>
-            <button className="checkout-button" onClick={handleCheckout}>Checkout</button>
+            <button 
+              className="checkout-button" 
+              onClick={handleCheckout}
+              disabled={pendingApproval && pendingApproval.approval_status === 'pending'}
+            >
+              {pendingApproval && pendingApproval.approval_status === 'pending' 
+                ? 'Approval Pending...' 
+                : 'Checkout'}
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Approval Request Form Modal */}
+      {showApprovalForm && (
+        <div className="modal-overlay" onClick={() => setShowApprovalForm(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>Discount Approval Required</h2>
+            <p>Your discount exceeds your role limit. Please provide a reason for approval.</p>
+            <div className="form-group">
+              <label>Reason for Discount *</label>
+              <textarea
+                value={approvalReason}
+                onChange={(e) => setApprovalReason(e.target.value)}
+                rows="4"
+                placeholder="Explain why this discount is needed..."
+                required
+              />
+            </div>
+            <div className="modal-actions">
+              <button type="button" onClick={() => {
+                setShowApprovalForm(false)
+                setApprovalReason('')
+              }}>
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  if (approvalReason.trim()) {
+                    setShowApprovalForm(false)
+                    // Approval request will be created during checkout
+                  } else {
+                    showWarning('Please provide a reason')
+                  }
+                }}
+                className="btn-primary"
+              >
+                Submit for Approval
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+    </PageTransition>
   )
 }
 

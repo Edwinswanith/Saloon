@@ -9,6 +9,18 @@ import {
 } from 'react-icons/fa'
 import './ClientValueLoyaltyReport.css'
 import { API_BASE_URL } from '../config'
+import { apiGet } from '../utils/api'
+import {
+  ComposedChart,
+  Bar,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts'
 
 const ClientValueLoyaltyReport = ({ setActivePage }) => {
   const [dateRange, setDateRange] = useState('Last 12 Months')
@@ -34,9 +46,13 @@ const ClientValueLoyaltyReport = ({ setActivePage }) => {
       setLoading(true)
       const dateParams = getDateRangeParams(dateRange)
       
-      const response = await fetch(
-        `${API_BASE_URL}/api/analytics/client-revenue-pareto?start=${dateParams.start_date}&end=${dateParams.end_date}&top_n=10`
-      )
+      const params = new URLSearchParams({
+        start: dateParams.start_date,
+        end: dateParams.end_date,
+        top_n: '10'
+      })
+      
+      const response = await apiGet(`/api/analytics/client-revenue-pareto?${params}`)
       
       if (response.ok) {
         const data = await response.json()
@@ -271,105 +287,83 @@ const ClientValueLoyaltyReport = ({ setActivePage }) => {
             </p>
             
             <div className="chart-wrapper">
-              {/* Left Y-Axis (Revenue) */}
-              <div className="chart-y-axis left-axis">
-                {(() => {
-                  const maxRevenue = getMaxRevenue()
-                  const step = maxRevenue / 4
-                  return [4, 3, 2, 1, 0].map((multiplier, index) => {
-                    const value = step * multiplier
-                    const label = value >= 1000 ? `₹${Math.round(value / 1000)}k` : '₹0k'
-                    return <span key={index} className="y-axis-label">{label}</span>
-                  })
-                })()}
-              </div>
-
-              {/* Chart Area */}
-              <div className="chart-container">
-                {revenueDistributionData.length > 0 ? (
-                  <div className="chart-bars-area">
-                    {revenueDistributionData.map((item, index) => {
-                      const maxRevenue = getMaxRevenue()
-                      const height = ((item.revenue || 0) / maxRevenue) * 100
-                      
-                      return (
-                        <div key={index} className="chart-bar-item">
-                          <div
-                            className="chart-bar"
-                            style={{ height: `${Math.max(height, 5)}%` }}
-                            title={`${item.client_name || 'Unknown'}: ${formatCurrency(item.revenue || 0)} (Cumulative: ${item.cumulative_percentage || 0}%)`}
-                          />
-                          <span className="chart-bar-label">{item.client_name || 'Unknown'}</span>
-                        </div>
-                      )
-                    })}
-                    
-                    {/* Cumulative Line with Dots */}
-                    {revenueDistributionData.length > 1 && (
-                      <>
-                        <svg className="chart-line-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-                          <polyline
-                            points={revenueDistributionData.map((item, index) => {
-                              const x = ((index + 0.5) / revenueDistributionData.length) * 100
-                              const y = 100 - (item.cumulative_percentage || 0)
-                              return `${x},${y}`
-                            }).join(' ')}
-                            fill="none"
-                            stroke="#f97316"
-                            strokeWidth="0.5"
-                          />
-                        </svg>
-                        
-                        {/* Dots on the line */}
-                        {revenueDistributionData.map((item, index) => {
-                          const leftPosition = ((index + 0.5) / revenueDistributionData.length) * 100
-                          const topPosition = 100 - (item.cumulative_percentage || 0)
-                          
-                          return (
-                            <div
-                              key={`dot-${index}`}
-                              className="chart-dot"
-                              style={{
-                                left: `${leftPosition}%`,
-                                top: `${topPosition}%`,
-                              }}
-                              title={`${item.client_name}: Cumulative ${item.cumulative_percentage}%`}
-                            />
-                          )
-                        })}
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  <div className="no-data-message">
-                    <p>No client revenue data available for the selected period.</p>
-                  </div>
-                )}
-
-                {/* Legend */}
-                <div className="chart-legend">
-                  <div className="legend-item">
-                    <div className="legend-icon-line">
-                      <svg width="24" height="12" viewBox="0 0 24 12">
-                        <line x1="0" y1="6" x2="24" y2="6" stroke="#f97316" strokeWidth="2" />
-                        <circle cx="12" cy="6" r="3" fill="#f97316" />
-                      </svg>
-                    </div>
-                    <span className="legend-label">Cumulative %</span>
-                  </div>
-                  <div className="legend-item">
-                    <span className="legend-icon spend"></span>
-                    <span className="legend-label">Spend</span>
-                  </div>
+              {loading ? (
+                <div style={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  Loading...
                 </div>
-              </div>
-
-              {/* Right Y-Axis (Percentage) */}
-              <div className="chart-y-axis right-axis">
-                {[100, 75, 50, 25, 0].map((value, index) => (
-                  <span key={index} className="y-axis-label">{value}%</span>
-                ))}
-              </div>
+              ) : revenueDistributionData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={400}>
+                  <ComposedChart data={revenueDistributionData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis 
+                      dataKey="client_name" 
+                      tick={{ fontSize: 11, fill: '#6b7280' }}
+                      stroke="#9ca3af"
+                      angle={-45}
+                      textAnchor="end"
+                      height={100}
+                    />
+                    <YAxis 
+                      yAxisId="left"
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      stroke="#9ca3af"
+                      tickFormatter={(value) => value >= 1000 ? `₹${Math.round(value / 1000)}k` : `₹${value}`}
+                    />
+                    <YAxis 
+                      yAxisId="right"
+                      orientation="right"
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      stroke="#9ca3af"
+                      domain={[0, 100]}
+                      tickFormatter={(value) => `${value}%`}
+                    />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        padding: '12px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+                      }}
+                      formatter={(value, name) => {
+                        if (name === 'Cumulative %') return [`${value}%`, name]
+                        return [formatCurrency(value), name]
+                      }}
+                      labelStyle={{ fontWeight: 600, marginBottom: '8px' }}
+                    />
+                    <Legend 
+                      wrapperStyle={{ paddingTop: '20px' }}
+                    />
+                    <Bar 
+                      yAxisId="left"
+                      dataKey="revenue" 
+                      fill="#4f46e5" 
+                      name="Revenue"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Line 
+                      yAxisId="right"
+                      type="monotone" 
+                      dataKey="cumulative_percentage" 
+                      stroke="#f97316" 
+                      strokeWidth={2}
+                      dot={{ fill: '#f97316', r: 4 }}
+                      name="Cumulative %"
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              ) : (
+                <div style={{
+                  height: '400px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#6b7280',
+                  fontSize: '14px'
+                }}>
+                  No client revenue data available for the selected period.
+                </div>
+              )}
             </div>
           </div>
 

@@ -8,10 +8,14 @@ import {
   FaShare,
   FaDownload,
   FaUsers,
+  FaKey,
 } from 'react-icons/fa'
+import { useAuth } from '../contexts/AuthContext'
 import './Settings.css'
 
 const Settings = ({ setActivePage }) => {
+  const { user } = useAuth()
+  const isOwner = user && user.role === 'owner'
   const settingsOptions = [
     {
       id: 1,
@@ -44,6 +48,16 @@ const Settings = ({ setActivePage }) => {
       icon: <FaUsers />,
     },
   ]
+
+  // Add Owner Settings option if user is owner
+  if (isOwner) {
+    settingsOptions.push({
+      id: 6,
+      title: 'Owner Settings',
+      description: 'Update your email address and password',
+      icon: <FaKey />,
+    })
+  }
 
   return (
     <div className="settings-page">
@@ -94,10 +108,13 @@ const Settings = ({ setActivePage }) => {
                 } else if (option.id === 5 && setActivePage) {
                   // Manager card clicked
                   setActivePage('manager')
+                } else if (option.id === 6 && setActivePage) {
+                  // Owner Settings card clicked
+                  setActivePage('owner-settings')
                 }
                 // Add other navigation handlers here for other options
               }}
-              style={option.id === 1 || option.id === 2 || option.id === 3 || option.id === 4 || option.id === 5 ? { cursor: 'pointer' } : {}}
+              style={option.id === 1 || option.id === 2 || option.id === 3 || option.id === 4 || option.id === 5 || option.id === 6 ? { cursor: 'pointer' } : {}}
             >
               <div className="card-icon">{option.icon}</div>
               <h3 className="card-title">{option.title}</h3>

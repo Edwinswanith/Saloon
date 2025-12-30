@@ -3,6 +3,8 @@ from models import Bill, Service, ServiceGroup, Staff, Customer, Expense, Produc
 from datetime import datetime, timedelta
 from mongoengine.errors import DoesNotExist
 from bson import ObjectId
+from utils.auth import require_auth, require_role
+from utils.branch_filter import get_selected_branch
 
 report_bp = Blueprint('report', __name__)
 
@@ -17,13 +19,18 @@ def handle_preflight():
         return response
 
 @report_bp.route('/service-sales-analysis', methods=['GET'])
-def service_sales_analysis():
-    """Service performance analysis report"""
+@require_role('manager', 'owner')
+def service_sales_analysis(current_user=None):
+    """Service performance analysis report (Manager and Owner only)"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
         bills_query = Bill.objects(is_deleted=False)
+        if branch:
+            bills_query = bills_query.filter(branch=branch)
 
         if start_date:
             start = datetime.strptime(start_date, '%Y-%m-%d')
@@ -63,14 +70,19 @@ def service_sales_analysis():
         return response, 500
 
 @report_bp.route('/list-of-bills', methods=['GET'])
-def list_of_bills():
-    """Bills list report with date range"""
+@require_role('manager', 'owner')
+def list_of_bills(current_user=None):
+    """Bills list report with date range (Manager and Owner only)"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         customer_id = request.args.get('customer_id', type=str)
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
         query = Bill.objects(is_deleted=False)
+        if branch:
+            query = query.filter(branch=branch)
 
         if start_date:
             start = datetime.strptime(start_date, '%Y-%m-%d')
@@ -111,13 +123,18 @@ def list_of_bills():
         return response, 500
 
 @report_bp.route('/deleted-bills', methods=['GET'])
-def deleted_bills_report():
-    """Deleted bills report with reasons"""
+@require_role('manager', 'owner')
+def deleted_bills_report(current_user=None):
+    """Deleted bills report with reasons (Manager and Owner only)"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
         query = Bill.objects(is_deleted=True)
+        if branch:
+            query = query.filter(branch=branch)
 
         if start_date:
             start = datetime.strptime(start_date, '%Y-%m-%d')
@@ -146,13 +163,18 @@ def deleted_bills_report():
         return response, 500
 
 @report_bp.route('/sales-by-service-group', methods=['GET'])
-def sales_by_service_group():
-    """Sales grouped by service group"""
+@require_role('manager', 'owner')
+def sales_by_service_group(current_user=None):
+    """Sales grouped by service group (Manager and Owner only)"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
         bills_query = Bill.objects(is_deleted=False)
+        if branch:
+            bills_query = bills_query.filter(branch=branch)
 
         if start_date:
             start = datetime.strptime(start_date, '%Y-%m-%d')
@@ -198,12 +220,18 @@ def sales_by_service_group():
         return response, 500
 
 @report_bp.route('/prepaid-clients', methods=['GET'])
-def prepaid_clients_report():
-    """Active prepaid package clients"""
+@require_role('manager', 'owner')
+def prepaid_clients_report(current_user=None):
+    """Active prepaid package clients (Manager and Owner only)"""
     try:
         status = request.args.get('status', 'active')
 
-        packages = PrepaidPackage.objects(status=status).order_by('-purchase_date')
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
+        packages = PrepaidPackage.objects(status=status)
+        if branch:
+            packages = packages.filter(branch=branch)
+        packages = packages.order_by('-purchase_date')
 
         response = jsonify([{
             'customer_name': f"{p.customer.first_name} {p.customer.last_name}" if p.customer else None,
@@ -224,12 +252,18 @@ def prepaid_clients_report():
         return response, 500
 
 @report_bp.route('/membership-clients', methods=['GET'])
-def membership_clients_report():
-    """Active membership clients"""
+@require_role('manager', 'owner')
+def membership_clients_report(current_user=None):
+    """Active membership clients (Manager and Owner only)"""
     try:
         status = request.args.get('status', 'active')
 
-        memberships = Membership.objects(status=status).order_by('-purchase_date')
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
+        memberships = Membership.objects(status=status)
+        if branch:
+            memberships = memberships.filter(branch=branch)
+        memberships = memberships.order_by('-purchase_date')
 
         response = jsonify([{
             'customer_name': f"{m.customer.first_name} {m.customer.last_name}" if m.customer else None,
@@ -251,17 +285,24 @@ def membership_clients_report():
         return response, 500
 
 @report_bp.route('/staff-incentive', methods=['GET'])
-def staff_incentive_report():
-    """Staff commission/incentive report with breakdown by item type"""
+@require_role('manager', 'owner')
+def staff_incentive_report(current_user=None):
+    """Staff commission/incentive report with breakdown by item type (Manager and Owner only)"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
         staff_list = Staff.objects(status='active')
+        if branch:
+            staff_list = staff_list.filter(branch=branch)
 
         report = []
         for staff in staff_list:
             bills_query = Bill.objects(is_deleted=False)
+            if branch:
+                bills_query = bills_query.filter(branch=branch)
 
             if start_date:
                 start = datetime.strptime(start_date, '%Y-%m-%d')

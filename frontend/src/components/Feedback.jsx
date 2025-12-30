@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { FaBars, FaStar, FaPlus } from 'react-icons/fa'
 import './Feedback.css'
-import { API_BASE_URL } from '../config'
+import { apiGet, apiPost, apiPut } from '../utils/api'
+import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
 
 const Feedback = () => {
   const [searchQuery, setSearchQuery] = useState('')
@@ -9,27 +10,47 @@ const Feedback = () => {
   const [feedbacks, setFeedbacks] = useState([])
   const [loading, setLoading] = useState(true)
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [showGoogleReviewModal, setShowGoogleReviewModal] = useState(false)
+  const [showServiceRecoveryMessage, setShowServiceRecoveryMessage] = useState(false)
+  const [lastFeedback, setLastFeedback] = useState(null)
   const [customers, setCustomers] = useState([])
   const [bills, setBills] = useState([])
+  const [staffList, setStaffList] = useState([])
   const [feedbackFormData, setFeedbackFormData] = useState({
     customer_id: '',
     bill_id: '',
+    staff_id: '',
     rating: 5,
     comment: ''
   })
+  
+  // PLACEHOLDER: Google Business Profile Review Link
+  // TODO: Replace with actual Google Business Profile review link when provided
+  const GOOGLE_REVIEW_LINK = '#PLACEHOLDER_GOOGLE_REVIEW_LINK'
 
   useEffect(() => {
     fetchFeedbacks()
     fetchCustomers()
+    fetchStaff()
   }, [searchQuery])
 
   const fetchCustomers = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/customers?per_page=200`)
+      const response = await apiGet('/api/customers?per_page=200')
       const data = await response.json()
       setCustomers(data.customers || [])
     } catch (error) {
       console.error('Error fetching customers:', error)
+    }
+  }
+
+  const fetchStaff = async () => {
+    try {
+      const response = await apiGet('/api/staffs')
+      const data = await response.json()
+      setStaffList(data.staffs || [])
+    } catch (error) {
+      console.error('Error fetching staff:', error)
     }
   }
 
@@ -39,7 +60,7 @@ const Feedback = () => {
       return
     }
     try {
-      const response = await fetch(`${API_BASE_URL}/api/reports/list-of-bills`)
+      const response = await apiGet('/api/reports/list-of-bills')
       const data = await response.json()
       const customerBills = Array.isArray(data)
         ? data.filter(bill => bill.customer_id === customerId)
@@ -57,7 +78,8 @@ const Feedback = () => {
       const params = new URLSearchParams()
       if (searchQuery) params.append('search', searchQuery)
       
-      const response = await fetch(`${API_BASE_URL}/api/feedback?${params}`)
+      const endpoint = `/api/feedback${params.toString() ? `?${params.toString()}` : ''}`
+      const response = await apiGet(endpoint)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -75,6 +97,7 @@ const Feedback = () => {
     setFeedbackFormData({
       customer_id: '',
       bill_id: '',
+      staff_id: '',
       rating: 5,
       comment: ''
     })
@@ -84,38 +107,58 @@ const Feedback = () => {
 
   const handleCustomerChange = (e) => {
     const customerId = e.target.value
-    setFeedbackFormData({ ...feedbackFormData, customer_id: customerId, bill_id: '' })
+    setFeedbackFormData({ ...feedbackFormData, customer_id: customerId, bill_id: '', staff_id: '' })
     fetchBillsForCustomer(customerId)
+  }
+
+  const handleBillChange = (e) => {
+    const billId = e.target.value
+    setFeedbackFormData({ ...feedbackFormData, bill_id: billId })
+    
+    // Auto-detect staff from bill if available
+    if (billId) {
+      const selectedBill = bills.find(b => b.id === billId)
+      if (selectedBill && selectedBill.staff_id) {
+        setFeedbackFormData(prev => ({ ...prev, staff_id: selectedBill.staff_id }))
+      }
+    }
   }
 
   const handleSaveFeedback = async () => {
     if (!feedbackFormData.customer_id) {
-      alert('Please select a customer')
+      showError('Please select a customer')
       return
     }
 
     if (!feedbackFormData.rating || feedbackFormData.rating < 1 || feedbackFormData.rating > 5) {
-      alert('Please select a rating between 1 and 5')
+      showError('Please select a rating between 1 and 5')
       return
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/feedback`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const response = await apiPost('/api/feedback', {
           customer_id: feedbackFormData.customer_id,  // MongoDB ObjectId as string
           bill_id: feedbackFormData.bill_id || null,  // MongoDB ObjectId as string or null
+          staff_id: feedbackFormData.staff_id || null,  // MongoDB ObjectId as string or null
           rating: parseInt(feedbackFormData.rating),  // Rating is actually a number, keep parseInt
           comment: feedbackFormData.comment.trim()
-        }),
       })
 
       if (response.ok) {
         const data = await response.json()
-        alert(data.message || 'Feedback added successfully!')
+        const feedbackData = data.data || {}
+        const rating = feedbackData.rating || feedbackFormData.rating
+        
+        // Phase 3: Google Review Gating Logic
+        if (rating >= 4) {
+          // Rating >= 4: Show Google review modal
+          setLastFeedback({ id: feedbackData.id, rating })
+          setShowGoogleReviewModal(true)
+        } else if (rating <= 3) {
+          // Rating <= 3: Show service recovery message
+          setShowServiceRecoveryMessage(true)
+        }
+        
         setShowFeedbackModal(false)
         setFeedbackFormData({
           customer_id: '',
@@ -127,11 +170,11 @@ const Feedback = () => {
         fetchFeedbacks()
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        alert(errorData.error || `Failed to save feedback (Status: ${response.status})`)
+        showError(errorData.error || `Failed to save feedback (Status: ${response.status})`)
       }
     } catch (error) {
       console.error('Error saving feedback:', error)
-      alert(`Error saving feedback: ${error.message}\n\nPlease check if the backend server is running at ${API_BASE_URL}`)
+      showError(`Error saving feedback: ${error.message}`)
     }
   }
 
@@ -319,13 +362,27 @@ const Feedback = () => {
               <label>Bill (Optional)</label>
               <select
                 value={feedbackFormData.bill_id}
-                onChange={(e) => setFeedbackFormData({ ...feedbackFormData, bill_id: e.target.value })}
+                onChange={handleBillChange}
                 disabled={!feedbackFormData.customer_id}
               >
                 <option value="">No Bill Selected</option>
                 {bills.map(bill => (
                   <option key={bill.id} value={bill.id}>
                     {bill.bill_number} - ₹{bill.final_amount} ({new Date(bill.bill_date).toLocaleDateString()})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Staff Member (Optional)</label>
+              <select
+                value={feedbackFormData.staff_id}
+                onChange={(e) => setFeedbackFormData({ ...feedbackFormData, staff_id: e.target.value })}
+              >
+                <option value="">Select Staff (Auto-detected from bill)</option>
+                {staffList.map(staff => (
+                  <option key={staff.id} value={staff.id}>
+                    {staff.first_name} {staff.last_name}
                   </option>
                 ))}
               </select>
@@ -348,6 +405,64 @@ const Feedback = () => {
             <div className="modal-actions">
               <button className="btn-cancel" onClick={() => setShowFeedbackModal(false)}>Cancel</button>
               <button className="btn-save" onClick={handleSaveFeedback}>Save Feedback</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Google Review Modal (Phase 3 - Placeholder) */}
+      {showGoogleReviewModal && (
+        <div className="modal-overlay" onClick={() => setShowGoogleReviewModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>Thank You for Your Feedback! ⭐</h2>
+            <p>We're thrilled you had a great experience! Would you like to share your review on Google?</p>
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setShowGoogleReviewModal(false)}>
+                Maybe Later
+              </button>
+              <button
+                className="btn-save"
+                onClick={async () => {
+                  // Mark review link as clicked
+                  if (lastFeedback?.id) {
+                    try {
+                      await apiPut(`/api/feedback/${lastFeedback.id}/mark-review-clicked`, {});
+                    } catch (error) {
+                      console.error('Error marking review clicked:', error);
+                    }
+                  }
+                  
+                  // PLACEHOLDER: Open Google review link
+                  // TODO: Replace GOOGLE_REVIEW_LINK with actual link when provided
+                  if (GOOGLE_REVIEW_LINK !== '#PLACEHOLDER_GOOGLE_REVIEW_LINK') {
+                    window.open(GOOGLE_REVIEW_LINK, '_blank');
+                  } else {
+                    showError('Google Review Link not configured yet. Please contact administrator.');
+                  }
+                  setShowGoogleReviewModal(false);
+                }}
+              >
+                Post to Google
+              </button>
+            </div>
+            <p className="placeholder-note" style={{ fontSize: '12px', color: '#666', marginTop: '10px' }}>
+              ⚠️ Google Review integration is in placeholder mode. Link will be activated when provided.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Service Recovery Message (Phase 3) */}
+      {showServiceRecoveryMessage && (
+        <div className="modal-overlay" onClick={() => setShowServiceRecoveryMessage(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>We're Sorry 😔</h2>
+            <p>We're sorry to hear about your experience. A service recovery case has been created and our team will reach out to you shortly to make things right.</p>
+            <p>Thank you for helping us improve!</p>
+            <div className="modal-actions">
+              <button className="btn-save" onClick={() => setShowServiceRecoveryMessage(false)}>
+                OK
+              </button>
             </div>
           </div>
         </div>

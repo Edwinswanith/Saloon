@@ -12,6 +12,7 @@ import {
 } from 'react-icons/fa'
 import './Service.css'
 import { API_BASE_URL } from '../config'
+import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
 
 const Service = () => {
   const [searchQuery, setSearchQuery] = useState('')
@@ -91,20 +92,20 @@ const Service = () => {
       })
       if (response.ok) {
         fetchServiceGroups()
-        alert('Service group deleted successfully')
+        showSuccess('Service group deleted successfully')
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        alert(errorData.error || 'Failed to delete service group')
+        showError(errorData.error || 'Failed to delete service group')
       }
     } catch (error) {
       console.error('Error deleting service group:', error)
-      alert(`Error deleting service group: ${error.message}`)
+      showError(`Error deleting service group: ${error.message}`)
     }
   }
 
   const handleSaveGroup = async () => {
     if (!groupFormData.name.trim()) {
-      alert('Group name is required')
+      showError('Group name is required')
       return
     }
 
@@ -131,28 +132,28 @@ const Service = () => {
         setShowGroupModal(false)
         setEditingGroup(null)
         setGroupFormData({ name: '' })
-        alert(data.message || (editingGroup ? 'Service group updated successfully!' : 'Service group added successfully!'))
+        showError(data.message || (editingGroup ? 'Service group updated successfully!' : 'Service group added successfully!'))
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        alert(errorData.error || `Failed to save service group (Status: ${response.status})`)
+        showError(errorData.error || `Failed to save service group (Status: ${response.status})`)
       }
     } catch (error) {
       console.error('Error saving service group:', error)
-      alert(`Error saving service group: ${error.message}`)
+      showError(`Error saving service group: ${error.message}`)
     }
   }
 
   const handleSaveService = async () => {
     if (!serviceFormData.name.trim()) {
-      alert('Service name is required')
+      showError('Service name is required')
       return
     }
     if (!serviceFormData.groupId) {
-      alert('Service group is required')
+      showError('Service group is required')
       return
     }
     if (!serviceFormData.price || parseFloat(serviceFormData.price) <= 0) {
-      alert('Valid price is required')
+      showError('Valid price is required')
       return
     }
 
@@ -193,14 +194,14 @@ const Service = () => {
           description: '',
           groupId: ''
         })
-        alert(data.message || (editingService ? 'Service updated successfully!' : 'Service added successfully!'))
+        showError(data.message || (editingService ? 'Service updated successfully!' : 'Service added successfully!'))
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        alert(errorData.error || `Failed to save service (Status: ${response.status})`)
+        showError(errorData.error || `Failed to save service (Status: ${response.status})`)
       }
     } catch (error) {
       console.error('Error saving service:', error)
-      alert(`Error saving service: ${error.message}`)
+      showError(`Error saving service: ${error.message}`)
     }
   }
 
@@ -222,7 +223,7 @@ const Service = () => {
         const durationIdx = headers.findIndex(h => h.includes('duration'))
 
         if (nameIdx === -1 || priceIdx === -1) {
-          alert('CSV must contain Name and Price columns')
+          showError('CSV must contain Name and Price columns')
           return
         }
 
@@ -284,12 +285,12 @@ const Service = () => {
           }
         }
         
-        alert(`Services imported: ${successCount} successful, ${errorCount} failed`)
+        showError(`Services imported: ${successCount} successful, ${errorCount} failed`)
         setShowImportModal(false)
         fetchServiceGroups()
       } catch (error) {
         console.error('Error processing import file:', error)
-        alert('Error processing import file')
+        showError('Error processing import file')
       }
     }
     reader.readAsText(file)
@@ -451,11 +452,11 @@ const Service = () => {
                                     fetchServicesForGroup(group.id)
                                     fetchServiceGroups()
                                   } else {
-                                    alert('Failed to delete service')
+                                    showError('Failed to delete service')
                                   }
                                 } catch (error) {
                                   console.error('Error deleting service:', error)
-                                  alert('Error deleting service')
+                                  showError('Error deleting service')
                                 }
                               }}
                             >

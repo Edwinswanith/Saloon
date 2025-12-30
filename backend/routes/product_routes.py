@@ -3,6 +3,7 @@ from models import Product, ProductCategory
 from datetime import datetime
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
+from utils.auth import require_auth, require_role
 
 product_bp = Blueprint('product', __name__)
 
@@ -37,8 +38,9 @@ def get_product_categories():
         return response, 500
 
 @product_bp.route('/categories', methods=['POST'])
-def create_product_category():
-    """Create a new product category"""
+@require_role('manager', 'owner')
+def create_product_category(current_user=None):
+    """Create a new product category (Manager and Owner only)"""
     try:
         data = request.get_json()
 
@@ -65,8 +67,9 @@ def create_product_category():
         return response, 500
 
 @product_bp.route('/categories/<id>', methods=['PUT'])
-def update_product_category(id):
-    """Update a product category"""
+@require_role('manager', 'owner')
+def update_product_category(id, current_user=None):
+    """Update a product category (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid category ID format'}), 400
@@ -92,8 +95,9 @@ def update_product_category(id):
         return response, 500
 
 @product_bp.route('/categories/<id>', methods=['DELETE'])
-def delete_product_category(id):
-    """Delete a product category"""
+@require_role('manager', 'owner')
+def delete_product_category(id, current_user=None):
+    """Delete a product category (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid category ID format'}), 400
@@ -198,8 +202,9 @@ def get_product(id):
         return jsonify({'error': str(e)}), 500
 
 @product_bp.route('/', methods=['POST'])
-def create_product():
-    """Create a new product"""
+@require_role('manager', 'owner')
+def create_product(current_user=None):
+    """Create a new product (Manager and Owner only)"""
     try:
         data = request.get_json()
 
@@ -239,8 +244,9 @@ def create_product():
         return jsonify({'error': str(e)}), 500
 
 @product_bp.route('/<id>', methods=['PUT'])
-def update_product(id):
-    """Update a product"""
+@require_role('manager', 'owner')
+def update_product(id, current_user=None):
+    """Update a product (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid product ID format'}), 400
@@ -282,8 +288,9 @@ def update_product(id):
         return jsonify({'error': str(e)}), 500
 
 @product_bp.route('/<id>', methods=['DELETE'])
-def delete_product(id):
-    """Soft delete a product"""
+@require_role('manager', 'owner')
+def delete_product(id, current_user=None):
+    """Soft delete a product (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid product ID format'}), 400

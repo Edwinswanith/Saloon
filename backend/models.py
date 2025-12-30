@@ -25,6 +25,19 @@ def to_dict(doc):
             data[key] = str(value)
     return data
 
+# Branch Model
+class Branch(Document):
+    meta = {'collection': 'branches'}
+
+    name = StringField(required=True, max_length=100)  # e.g., "T. Nagar", "Anna Nagar"
+    address = StringField(max_length=200)
+    city = StringField(max_length=50, default='Chennai')
+    phone = StringField(max_length=15)
+    email = StringField(max_length=100)
+    is_active = BooleanField(default=True)
+    created_at = DateTimeField(default=datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.utcnow)
+
 # Customer Model
 class Customer(Document):
     meta = {'collection': 'customers'}
@@ -40,13 +53,18 @@ class Customer(Document):
     loyalty_points = IntField(default=0)
     referral_code = StringField(max_length=50, unique=True, sparse=True)
     wallet_balance = FloatField(default=0.0)
+    whatsapp_consent = BooleanField(default=False)  # Phase 4: WhatsApp consent
+    last_visit_date = DateField()  # Phase 4: Computed from bills
+    total_visits = IntField(default=0)  # Phase 4: Computed
+    total_spent = FloatField(default=0.0)  # Phase 4: Computed
+    branch = ReferenceField('Branch')  # Multi-branch: Customer's branch
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
 
 # Staff Model
 class Staff(Document):
     meta = {'collection': 'staffs'}
-    
+
     mobile = StringField(required=True, unique=True, max_length=15)
     first_name = StringField(required=True, max_length=100)
     last_name = StringField(max_length=100)
@@ -54,6 +72,10 @@ class Staff(Document):
     salary = FloatField()
     commission_rate = FloatField(default=0.0)  # Percentage
     status = StringField(max_length=20, default='active')  # active, inactive
+    role = StringField(max_length=20, default='staff')  # staff, manager, owner
+    password_hash = StringField(max_length=255)  # Optional for manager/owner roles
+    is_active = BooleanField(default=True)  # For login access control
+    branch = ReferenceField('Branch')  # Multi-branch: Staff's assigned branch
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
 
@@ -130,6 +152,7 @@ class PrepaidPackage(Document):
     group = ReferenceField('PrepaidGroup')
     price = FloatField(required=True)
     customer = ReferenceField('Customer')
+    branch = ReferenceField('Branch')  # Multi-branch: Prepaid package's branch
     remaining_balance = FloatField(default=0.0)
     purchase_date = DateTimeField()
     expiry_date = DateTimeField()
@@ -157,6 +180,7 @@ class Membership(Document):
     name = StringField(required=True, max_length=100)
     customer = ReferenceField('Customer', required=True)
     plan = ReferenceField('MembershipPlan')  # Reference to plan template
+    branch = ReferenceField('Branch')  # Multi-branch: Membership's branch
     price = FloatField(required=True)
     purchase_date = DateTimeField(required=True)
     expiry_date = DateTimeField(required=True)
@@ -187,6 +211,7 @@ class Bill(Document):
     
     bill_number = StringField(required=True, unique=True, max_length=50)
     customer = ReferenceField('Customer')
+    branch = ReferenceField('Branch')  # Multi-branch: Bill's branch
     bill_date = DateTimeField(required=True, default=datetime.utcnow)
     subtotal = FloatField(default=0.0)
     discount_amount = FloatField(default=0.0)
@@ -200,6 +225,9 @@ class Bill(Document):
     is_deleted = BooleanField(default=False)
     deleted_at = DateTimeField()
     deletion_reason = StringField()
+    discount_requested_by = ReferenceField('Staff')  # Phase 5: Who requested discount
+    discount_approval_status = StringField(max_length=20, choices=['none', 'pending', 'approved', 'rejected'], default='none')  # Phase 5
+    discount_approval_request = ReferenceField('DiscountApprovalRequest')  # Phase 5
     items = ListField(EmbeddedDocumentField(BillItemEmbedded), default=list)
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
@@ -210,6 +238,7 @@ class Appointment(Document):
     
     customer = ReferenceField('Customer', required=True)
     staff = ReferenceField('Staff', required=True)
+    branch = ReferenceField('Branch')  # Multi-branch: Appointment's branch
     service = ReferenceField('Service')
     appointment_date = DateField(required=True)
     start_time = StringField(required=True)  # Store as string in HH:MM:SS format
@@ -232,6 +261,7 @@ class Expense(Document):
     meta = {'collection': 'expenses'}
     
     category = ReferenceField('ExpenseCategory', required=True)
+    branch = ReferenceField('Branch')  # Multi-branch: Expense's branch
     name = StringField(required=True, max_length=100)
     amount = FloatField(required=True)
     payment_mode = StringField(max_length=20)  # cash, card, upi
@@ -249,6 +279,7 @@ class Supplier(Document):
     email = StringField(max_length=100)
     address = StringField()
     status = StringField(max_length=20, default='active')
+    branch = ReferenceField('Branch')  # Multi-branch: Supplier's assigned branch
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
 
@@ -264,6 +295,7 @@ class Order(Document):
     meta = {'collection': 'orders'}
     
     supplier = ReferenceField('Supplier', required=True)
+    branch = ReferenceField('Branch')  # Multi-branch: Order's branch
     order_date = DateField(required=True)
     total_amount = FloatField(required=True)
     status = StringField(max_length=20, default='pending')  # pending, received, cancelled
@@ -278,6 +310,7 @@ class Lead(Document):
     
     name = StringField(required=True, max_length=100)
     mobile = StringField(max_length=15)
+    branch = ReferenceField('Branch')  # Multi-branch: Lead's branch
     email = StringField(max_length=100)
     source = StringField(max_length=50)
     status = StringField(max_length=20, default='new')  # new, contacted, follow-up, completed, lost
@@ -294,8 +327,14 @@ class Feedback(Document):
     
     customer = ReferenceField('Customer')
     bill = ReferenceField('Bill')
+    staff = ReferenceField('Staff')  # Link feedback to staff member
+    branch = ReferenceField('Branch')  # Multi-branch: Feedback's branch
     rating = IntField()  # 1-5
     comment = StringField()
+    google_review_eligible = BooleanField(default=False)  # Phase 3: Rating >= 4
+    google_review_link_clicked = BooleanField(default=False)  # Phase 3
+    google_review_link_clicked_at = DateTimeField()  # Phase 3
+    service_recovery_required = BooleanField(default=False)  # Phase 3: Rating <= 3
     created_at = DateTimeField(default=datetime.utcnow)
 
 # Staff Attendance Model
@@ -303,6 +342,7 @@ class StaffAttendance(Document):
     meta = {'collection': 'staff_attendance'}
     
     staff = ReferenceField('Staff', required=True)
+    branch = ReferenceField('Branch')  # Multi-branch: Attendance's branch
     attendance_date = DateField(required=True)
     check_in_time = StringField()  # Store as string in HH:MM:SS format
     check_out_time = StringField()  # Store as string in HH:MM:SS format
@@ -317,6 +357,7 @@ class Asset(Document):
     
     name = StringField(required=True, max_length=100)
     category = StringField(max_length=50)
+    branch = ReferenceField('Branch')  # Multi-branch: Asset's branch
     purchase_date = DateField()
     purchase_price = FloatField()
     current_value = FloatField()
@@ -332,6 +373,7 @@ class CashTransaction(Document):
     meta = {'collection': 'cash_transactions'}
     
     transaction_type = StringField(required=True, max_length=20)  # in, out
+    branch = ReferenceField('Branch')  # Multi-branch: Transaction's branch
     amount = FloatField(required=True)
     reason = StringField(max_length=200)
     notes = StringField()
@@ -424,16 +466,145 @@ class TaxSlab(Document):
 # Manager Model
 class Manager(Document):
     meta = {'collection': 'managers'}
-    
+
     first_name = StringField(required=True, max_length=100)
     last_name = StringField(max_length=100)
     email = StringField(required=True, unique=True, max_length=100)
     mobile = StringField(required=True, unique=True, max_length=15)
     salon = StringField(max_length=200)  # Salon name or account
-    password = StringField(max_length=255)  # For login (can be hashed later)
+    password_hash = StringField(max_length=255)  # Hashed password using bcrypt
+    role = StringField(max_length=20, default='manager')  # manager only (owners are in separate collection)
+    permissions = ListField(StringField())  # Optional custom permissions
+    is_active = BooleanField(default=True)  # For login access control
     status = StringField(max_length=20, default='active')  # active, inactive
+    branch = ReferenceField('Branch')  # Multi-branch: Manager's assigned branch
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
+
+# Owner Model - Separate collection for owners
+class Owner(Document):
+    meta = {'collection': 'owners'}
+
+    first_name = StringField(required=True, max_length=100)
+    last_name = StringField(max_length=100)
+    email = StringField(required=True, unique=True, max_length=100)
+    mobile = StringField(required=True, unique=True, max_length=15)
+    salon = StringField(max_length=200)  # Salon name or account
+    password_hash = StringField(max_length=255)  # Hashed password using bcrypt
+    permissions = ListField(StringField())  # Optional custom permissions
+    is_active = BooleanField(default=True)  # For login access control
+    status = StringField(max_length=20, default='active')  # active, inactive
+    # Owner doesn't belong to a specific branch - has access to all branches
+    created_at = DateTimeField(default=datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.utcnow)
+
+# Login History Model - Track all login/signup events
+class LoginHistory(Document):
+    meta = {'collection': 'login_history'}
+    
+    user_id = StringField(required=True)  # Staff or Manager ID
+    user_type = StringField(required=True, max_length=20)  # staff, manager
+    role = StringField(required=True, max_length=20)  # staff, manager, owner
+    login_method = StringField(max_length=20, default='password')  # password, role_selection
+    ip_address = StringField(max_length=50)
+    user_agent = StringField(max_length=500)
+    login_status = StringField(max_length=20, default='success')  # success, failed
+    failure_reason = StringField()  # If login failed
+    created_at = DateTimeField(default=datetime.utcnow)
+
+# Missed Enquiry Model (Phase 2)
+class MissedEnquiry(Document):
+    meta = {'collection': 'missed_enquiries'}
+    
+    customer_name = StringField(required=True, max_length=100)
+    customer_phone = StringField(required=True, max_length=15)
+    branch = ReferenceField('Branch')  # Multi-branch: Missed enquiry's branch
+    enquiry_type = StringField(max_length=20, choices=['walk-in', 'call', 'whatsapp', 'other'], default='walk-in')
+    requested_service = StringField(max_length=200)
+    requested_product = StringField(max_length=200)
+    reason_not_delivered = StringField(max_length=500)
+    follow_up_date = DateField()
+    status = StringField(max_length=20, choices=['open', 'converted', 'lost'], default='open')
+    converted_to_appointment = ReferenceField('Appointment')
+    notes = StringField()
+    created_by = ReferenceField('Staff')  # Can be staff or manager
+    created_at = DateTimeField(default=datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.utcnow)
+
+# Service Recovery Case Model (Phase 3)
+class ServiceRecoveryCase(Document):
+    meta = {'collection': 'service_recovery_cases'}
+    
+    feedback = ReferenceField('Feedback', required=True)
+    customer = ReferenceField('Customer', required=True)
+    branch = ReferenceField('Branch')  # Multi-branch: Service recovery case's branch
+    bill = ReferenceField('Bill')
+    issue_type = StringField(max_length=50, choices=['service_quality', 'staff_behavior', 'pricing', 'other'], default='other')
+    description = StringField(max_length=1000)
+    assigned_manager = ReferenceField('Manager')
+    resolution_notes = StringField(max_length=1000)
+    status = StringField(max_length=20, choices=['open', 'in_progress', 'resolved', 'closed'], default='open')
+    created_at = DateTimeField(default=datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.utcnow)
+    resolved_at = DateTimeField()
+
+# WhatsApp Template Model (Phase 4)
+class WhatsAppTemplate(Document):
+    meta = {'collection': 'whatsapp_templates'}
+    
+    name = StringField(required=True, max_length=100)
+    message_text = StringField(required=True, max_length=1000)
+    category = StringField(max_length=50, choices=['promotional', 'transactional', 'service_reminder'], default='promotional')
+    status = StringField(max_length=20, choices=['active', 'inactive'], default='inactive')
+    approved_by = ReferenceField('Manager')
+    created_at = DateTimeField(default=datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.utcnow)
+
+# WhatsApp Message Model (Phase 4)
+class WhatsAppMessage(Document):
+    meta = {'collection': 'whatsapp_messages'}
+    
+    customer = ReferenceField('Customer', required=True)
+    template = ReferenceField('WhatsAppTemplate')
+    branch = ReferenceField('Branch')  # Multi-branch: WhatsApp message's branch
+    message_text = StringField(required=True, max_length=1000)
+    segment = StringField(max_length=50, choices=['new', 'regular', 'loyal', 'inactive', 'high_spending', 'custom'])
+    delivery_status = StringField(max_length=20, choices=['sent', 'delivered', 'failed', 'pending'], default='pending')
+    sent_by = ReferenceField('Staff')  # Can be staff or manager
+    sent_at = DateTimeField(default=datetime.utcnow)
+    delivery_timestamp = DateTimeField()
+
+# Discount Approval Request Model (Phase 5)
+class DiscountApprovalRequest(Document):
+    meta = {'collection': 'discount_approval_requests'}
+    
+    bill = ReferenceField('Bill', required=True)
+    requested_by = ReferenceField('Staff', required=True)
+    branch = ReferenceField('Branch')  # Multi-branch: Discount approval's branch
+    requested_discount_percent = FloatField(required=True)
+    requested_discount_amount = FloatField(required=True)
+    reason = StringField(required=True, max_length=500)
+    approval_status = StringField(max_length=20, choices=['pending', 'approved', 'rejected'], default='pending')
+    approved_by = ReferenceField('Manager')
+    approval_code_used = StringField(max_length=255)  # Hashed approval code
+    approval_method = StringField(max_length=20, choices=['in_app', 'code'], default='in_app')
+    approved_at = DateTimeField()
+    notes = StringField(max_length=500)
+    created_at = DateTimeField(default=datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.utcnow)
+
+# Approval Code Model (Phase 5)
+class ApprovalCode(Document):
+    meta = {'collection': 'approval_codes'}
+    
+    code_hash = StringField(required=True, max_length=255)  # Hashed approval code
+    role = StringField(required=True, max_length=20, choices=['manager', 'owner'])
+    created_by = ReferenceField('Manager', required=True)
+    is_active = BooleanField(default=True)
+    usage_count = IntField(default=0)
+    max_uses = IntField()  # Optional limit
+    expires_at = DateTimeField()  # Optional expiration
+    created_at = DateTimeField(default=datetime.utcnow)
 
 # Backward compatibility aliases for routes not yet converted
 # These allow old route imports to work but routes need conversion to use embedded documents

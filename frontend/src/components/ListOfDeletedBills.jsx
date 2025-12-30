@@ -8,6 +8,7 @@ import {
 } from 'react-icons/fa'
 import './ListOfDeletedBills.css'
 import { API_BASE_URL } from '../config'
+import { apiGet } from '../utils/api'
 
 const ListOfDeletedBills = ({ setActivePage }) => {
   const [dateFilter, setDateFilter] = useState('today')
@@ -73,9 +74,14 @@ const ListOfDeletedBills = ({ setActivePage }) => {
       const dateRange = getDateRange()
       const params = new URLSearchParams(dateRange)
       
-      const response = await fetch(`${API_BASE_URL}/api/reports/deleted-bills?${params}`)
+      const response = await apiGet(`/api/reports/deleted-bills?${params}`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
       const data = await response.json()
-      setDeletedBills(data || [])
+      setDeletedBills(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Error fetching deleted bills:', error)
       setDeletedBills([])

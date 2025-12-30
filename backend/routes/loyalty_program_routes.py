@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from models import db, LoyaltyProgramSettings
 from datetime import datetime
+from utils.auth import require_role
 
 loyalty_program_bp = Blueprint('loyalty_program', __name__)
 
@@ -18,8 +19,9 @@ def get_loyalty_program_settings():
         return jsonify({'error': str(e)}), 500
 
 @loyalty_program_bp.route('/settings', methods=['PUT'])
-def update_loyalty_program_settings():
-    """Update loyalty program settings"""
+@require_role('owner')
+def update_loyalty_program_settings(current_user=None):
+    """Update loyalty program settings (Owner only)"""
     try:
         settings = LoyaltyProgramSettings.get_settings()
         data = request.json

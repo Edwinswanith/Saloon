@@ -8,6 +8,7 @@ import {
 } from 'react-icons/fa'
 import './ListOfBills.css'
 import { API_BASE_URL } from '../config'
+import { apiGet } from '../utils/api'
 
 const ListOfBills = ({ setActivePage }) => {
   const [dateFilter, setDateFilter] = useState('month') // Default to month to show more bills
@@ -55,7 +56,7 @@ const ListOfBills = ({ setActivePage }) => {
       if (start) params.append('start_date', start)
       if (end) params.append('end_date', end)
 
-      const response = await fetch(`${API_BASE_URL}/api/reports/list-of-bills?${params}`)
+      const response = await apiGet(`/api/reports/list-of-bills?${params}`)
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)

@@ -14,6 +14,17 @@ import {
 import * as XLSX from 'xlsx'
 import './StaffPerformanceAnalysis.css'
 import { API_BASE_URL } from '../config'
+import { apiGet } from '../utils/api'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts'
 
 const StaffPerformanceAnalysis = ({ setActivePage }) => {
   const [dateRange, setDateRange] = useState('Last 30 Days')
@@ -107,7 +118,7 @@ const StaffPerformanceAnalysis = ({ setActivePage }) => {
       })
 
       // Fetch staff performance data
-      const response = await fetch(`${API_BASE_URL}/api/reports/staff-performance?${params}`)
+      const response = await apiGet(`/api/reports/staff-performance?${params}`)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -393,144 +404,62 @@ const StaffPerformanceAnalysis = ({ setActivePage }) => {
               </div>
             </div>
             <div className="chart-container">
-              <div className="chart-y-axis">
-                {(() => {
-                  const maxRevenue = getMaxRevenue() || 120000
-                  // Calculate rounded max value to nearest 30k
-                  const roundedMax = Math.ceil(maxRevenue / 30000) * 30000
-                  const step = roundedMax / 4 // Divide into 4 equal steps
-                  
-                  return [
-                    roundedMax,
-                    roundedMax * 0.75,
-                    roundedMax * 0.5,
-                    roundedMax * 0.25,
-                    0
-                  ].map((value, index) => {
-                    const label = value >= 1000 ? `₹${(value / 1000).toFixed(0)}k` : '₹0k'
-                    return (
-                      <div key={index} className="y-axis-item">
-                        <span className="y-axis-label">{label}</span>
-                        <span className="y-axis-grid-line"></span>
-                      </div>
-                    )
-                  })
-                })()}
-              </div>
-              <div className="chart-bars">
-                {revenueBreakdownData && revenueBreakdownData.length > 0 ? (
-                  revenueBreakdownData.map((staff, index) => {
-                    const maxRevenue = getMaxRevenue()
-                    const staffTotal = staff.total || 0
-                    const totalHeight = maxRevenue > 0 && staffTotal > 0 ? (staffTotal / maxRevenue) * 100 : 0
-
-                    // Calculate segment heights safely
-                    const getSegmentHeight = (value) => {
-                      if (staffTotal === 0 || value === 0) return 0
-                      return (value / staffTotal) * 100
-                    }
-
-                    return (
-                      <div key={index} className="bar-wrapper">
-                        <div className="bar-container">
-                          <div
-                            className="bar-stack"
-                            style={{ height: `${Math.max(totalHeight, 1)}%` }}
-                          >
-                            {/* Stack order from bottom to top: Service, Product, Package, Prepaid, Membership */}
-                            {staff.service > 0 && (
-                              <div
-                                className="bar-segment service-bar"
-                                style={{
-                                  height: `${getSegmentHeight(staff.service)}%`,
-                                  minHeight: '2px',
-                                }}
-                                title={`Service: ${formatCurrency(staff.service)}`}
-                              />
-                            )}
-                            {staff.product > 0 && (
-                              <div
-                                className="bar-segment product-bar"
-                                style={{
-                                  height: `${getSegmentHeight(staff.product)}%`,
-                                  minHeight: '2px',
-                                }}
-                                title={`Product: ${formatCurrency(staff.product)}`}
-                              />
-                            )}
-                            {staff.package > 0 && (
-                              <div
-                                className="bar-segment package-bar"
-                                style={{
-                                  height: `${getSegmentHeight(staff.package)}%`,
-                                  minHeight: '2px',
-                                }}
-                                title={`Package: ${formatCurrency(staff.package)}`}
-                              />
-                            )}
-                            {staff.prepaid > 0 && (
-                              <div
-                                className="bar-segment prepaid-bar"
-                                style={{
-                                  height: `${getSegmentHeight(staff.prepaid)}%`,
-                                  minHeight: '2px',
-                                }}
-                                title={`Prepaid: ${formatCurrency(staff.prepaid)}`}
-                              />
-                            )}
-                            {staff.membership > 0 && (
-                              <div
-                                className="bar-segment membership-bar"
-                                style={{
-                                  height: `${getSegmentHeight(staff.membership)}%`,
-                                  minHeight: '2px',
-                                }}
-                                title={`Membership: ${formatCurrency(staff.membership)}`}
-                              />
-                            )}
-                          </div>
-                        </div>
-                        <span className="bar-label">{staff.staff}</span>
-                      </div>
-                    )
-                  })
-                ) : (
-                  <div style={{ 
-                    flex: 1, 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    color: '#6b7280',
-                    fontSize: '14px'
-                  }}>
-                    No data available for the selected period
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Chart Legend - Order matches stack from top to bottom */}
-            <div className="chart-legend">
-              <div className="legend-item">
-                <span className="legend-color membership"></span>
-                <span className="legend-label">Membership</span>
-              </div>
-              <div className="legend-item">
-                <span className="legend-color package"></span>
-                <span className="legend-label">Package</span>
-              </div>
-              <div className="legend-item">
-                <span className="legend-color prepaid"></span>
-                <span className="legend-label">Prepaid</span>
-              </div>
-              <div className="legend-item">
-                <span className="legend-color product"></span>
-                <span className="legend-label">Product</span>
-              </div>
-              <div className="legend-item">
-                <span className="legend-color service"></span>
-                <span className="legend-label">Service</span>
-              </div>
+              {loading ? (
+                <div style={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  Loading...
+                </div>
+              ) : revenueBreakdownData && revenueBreakdownData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={400}>
+                  <BarChart data={revenueBreakdownData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis 
+                      dataKey="staff" 
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      stroke="#9ca3af"
+                      angle={-45}
+                      textAnchor="end"
+                      height={100}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      stroke="#9ca3af"
+                      tickFormatter={(value) => value >= 1000 ? `₹${(value / 1000).toFixed(0)}k` : `₹${value}`}
+                    />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        padding: '12px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+                      }}
+                      formatter={(value) => [formatCurrency(value), '']}
+                      labelStyle={{ fontWeight: 600, marginBottom: '8px' }}
+                      cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
+                    />
+                    <Legend 
+                      wrapperStyle={{ paddingTop: '20px' }}
+                      iconType="square"
+                    />
+                    <Bar dataKey="service" stackId="a" fill="#4f46e5" name="Service" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="product" stackId="a" fill="#06b6d4" name="Product" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="prepaid" stackId="a" fill="#f59e0b" name="Prepaid" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="package" stackId="a" fill="#10b981" name="Package" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="membership" stackId="a" fill="#8b5cf6" name="Membership" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div style={{ 
+                  height: '400px',
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  color: '#6b7280',
+                  fontSize: '14px'
+                }}>
+                  No data available for the selected period
+                </div>
+              )}
             </div>
           </div>
 

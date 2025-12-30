@@ -8,6 +8,14 @@ import {
   FaChartLine,
 } from 'react-icons/fa'
 import './PeriodPerformanceSummary.css'
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+} from 'recharts'
 
 const PeriodPerformanceSummary = ({ setActivePage }) => {
   const [dateRange, setDateRange] = useState('Last Month')
@@ -165,90 +173,41 @@ const PeriodPerformanceSummary = ({ setActivePage }) => {
             <div className="content-card">
               <h2 className="card-title">Revenue Sources</h2>
               <div className="revenue-chart">
-                <div className="donut-chart">
-                  <svg viewBox="0 0 200 200" className="donut-svg">
-                    <circle
-                      cx="100"
-                      cy="100"
-                      r="80"
-                      fill="none"
-                      stroke="#e5e7eb"
-                      strokeWidth="40"
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={revenueSourcesData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ category, percentage }) => `${category}: ${percentage}%`}
+                      outerRadius={100}
+                      innerRadius={60}
+                      fill="#8884d8"
+                      dataKey="value"
+                      paddingAngle={2}
+                    >
+                      {revenueSourcesData.map((entry, index) => {
+                        const colors = ['#1e40af', '#3b82f6', '#60a5fa', '#93c5fd']
+                        return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                      })}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        padding: '12px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+                      }}
+                      formatter={(value) => [formatCurrency(value), '']}
                     />
-                    <circle
-                      cx="100"
-                      cy="100"
-                      r="80"
-                      fill="none"
-                      stroke="#1e40af"
-                      strokeWidth="40"
-                      strokeDasharray="352"
-                      strokeDashoffset="88"
-                      transform="rotate(-90 100 100)"
+                    <Legend 
+                      wrapperStyle={{ paddingTop: '20px' }}
+                      iconType="circle"
                     />
-                    <circle
-                      cx="100"
-                      cy="100"
-                      r="80"
-                      fill="none"
-                      stroke="#3b82f6"
-                      strokeWidth="40"
-                      strokeDasharray="113 239"
-                      strokeDashoffset="88"
-                      transform="rotate(-90 100 100)"
-                    />
-                    <circle
-                      cx="100"
-                      cy="100"
-                      r="80"
-                      fill="none"
-                      stroke="#60a5fa"
-                      strokeWidth="40"
-                      strokeDasharray="50 302"
-                      strokeDashoffset="-25"
-                      transform="rotate(-90 100 100)"
-                    />
-                    <circle
-                      cx="100"
-                      cy="100"
-                      r="80"
-                      fill="none"
-                      stroke="#93c5fd"
-                      strokeWidth="40"
-                      strokeDasharray="25 327"
-                      strokeDashoffset="-75"
-                      transform="rotate(-90 100 100)"
-                    />
-                  </svg>
-                  <div className="donut-legend">
-                    <div className="legend-item">
-                      <span className="legend-dot memberships"></span>
-                      <span>Memberships</span>
-                    </div>
-                    <div className="legend-item">
-                      <span className="legend-dot packages"></span>
-                      <span>Packages</span>
-                    </div>
-                    <div className="legend-item">
-                      <span className="legend-dot products"></span>
-                      <span>Products</span>
-                    </div>
-                    <div className="legend-item">
-                      <span className="legend-dot services"></span>
-                      <span>Services</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="revenue-breakdown">
-                  {revenueSourcesData.map((item, index) => (
-                    <div key={index} className="breakdown-item">
-                      <span className="breakdown-label">{item.category}</span>
-                      <span className="breakdown-value">
-                        {formatCurrency(item.value)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
             </div>
 

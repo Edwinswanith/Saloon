@@ -160,8 +160,13 @@ const ReportsAnalytics = ({ setActivePage }) => {
 
     // Handle Customer Reports
     if (activeTab === 'customer') {
-      // TODO: Add customer report pages when created
-      return
+      if (reportId === 1) {
+        // Customer Lifecycle Report
+        if (setActivePage) {
+          setActivePage('customer-lifecycle')
+        }
+        return
+      }
     }
   }
 

@@ -3,6 +3,7 @@ from models import MembershipPlan, Membership
 from datetime import datetime
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
+from utils.auth import require_role
 
 membership_plan_bp = Blueprint('membership_plans', __name__)
 
@@ -56,8 +57,9 @@ def get_membership_plan(plan_id):
         return jsonify({'error': str(e)}), 500
 
 @membership_plan_bp.route('/', methods=['POST'])
-def create_membership_plan():
-    """Create new membership plan"""
+@require_role('owner')
+def create_membership_plan(current_user=None):
+    """Create new membership plan (Owner only)"""
     try:
         data = request.json
         
@@ -87,8 +89,9 @@ def create_membership_plan():
         return jsonify({'error': str(e)}), 500
 
 @membership_plan_bp.route('/<plan_id>', methods=['PUT'])
-def update_membership_plan(plan_id):
-    """Update membership plan"""
+@require_role('owner')
+def update_membership_plan(plan_id, current_user=None):
+    """Update membership plan (Owner only)"""
     try:
         if not ObjectId.is_valid(plan_id):
             return jsonify({'error': 'Invalid plan ID format'}), 400
@@ -119,8 +122,9 @@ def update_membership_plan(plan_id):
         return jsonify({'error': str(e)}), 500
 
 @membership_plan_bp.route('/<plan_id>', methods=['DELETE'])
-def delete_membership_plan(plan_id):
-    """Delete membership plan (soft delete by setting status to inactive)"""
+@require_role('owner')
+def delete_membership_plan(plan_id, current_user=None):
+    """Delete membership plan (Owner only - soft delete by setting status to inactive)"""
     try:
         if not ObjectId.is_valid(plan_id):
             return jsonify({'error': 'Invalid plan ID format'}), 400

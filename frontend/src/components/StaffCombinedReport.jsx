@@ -7,7 +7,8 @@ import {
   FaList,
 } from 'react-icons/fa'
 import './StaffCombinedReport.css'
-import { API_BASE_URL } from '../config'  
+import { API_BASE_URL } from '../config'
+import { apiGet } from '../utils/api'  
 const StaffCombinedReport = ({ setActivePage }) => {
   const [dateFilter, setDateFilter] = useState('last-7-days')
 

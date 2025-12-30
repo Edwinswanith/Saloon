@@ -2,8 +2,17 @@ import React, { useState, useEffect } from 'react'
 import { FaBars, FaClipboard, FaEdit, FaTrash } from 'react-icons/fa'
 import './CustomerList.css'
 import { API_BASE_URL } from '../config'
+import { useAuth } from '../contexts/AuthContext'
+import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
+import { showSuccess, showError, showWarning, showInfo } from '../utils/toast.jsx'
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
+import { PageTransition } from './shared/PageTransition'
+import { TableSkeleton } from './shared/SkeletonLoaders'
+import { EmptyCustomers, EmptySearch } from './shared/EmptyStates'
 
 const CustomerList = () => {
+  const { currentBranch } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [customers, setCustomers] = useState([])
@@ -28,7 +37,18 @@ const CustomerList = () => {
 
   useEffect(() => {
     fetchCustomers()
-  }, [currentPage, searchQuery])
+  }, [currentPage, searchQuery, currentBranch])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      setCurrentPage(1) // Reset to first page
+      fetchCustomers()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [])
 
   const fetchCustomers = async () => {
     try {
@@ -40,7 +60,7 @@ const CustomerList = () => {
       if (searchQuery) {
         params.append('search', searchQuery)
       }
-      const response = await fetch(`${API_BASE_URL}/api/customers?${params}`)
+      const response = await apiGet(`/api/customers?${params}`)
       const data = await response.json()
       // Map customer data to match expected format
       const mappedCustomers = (data.customers || []).map(customer => ({
@@ -74,7 +94,7 @@ const CustomerList = () => {
 
   const copyReferralCode = (code) => {
     navigator.clipboard.writeText(code)
-    alert('Referral code copied to clipboard!')
+    showSuccess('Referral code copied to clipboard!')
   }
 
   const handleDownloadClients = () => {
@@ -145,13 +165,13 @@ const CustomerList = () => {
 
   const handleViewCustomer = (customer) => {
     setViewingCustomer(customer)
-    // Show customer details in an alert or modal
-    alert(`Customer Details:\n\nMobile: +91 ${customer.mobile}\nName: ${customer.firstName || ''} ${customer.lastName || ''}\nEmail: ${customer.email || 'N/A'}\nSource: ${customer.source || 'Walk-in'}\nGender: ${customer.gender || 'N/A'}\nDOB Range: ${customer.dobRange || 'N/A'}\nLoyalty Points: ${customer.loyaltyPoints || 0}\nReferral Code: ${customer.referralCode || 'N/A'}\nWallet: ₹${customer.wallet || 0}`)
+    // Show customer details in a toast
+    showInfo(`${customer.firstName} ${customer.lastName} | Mobile: +91 ${customer.mobile} | Loyalty: ${customer.loyaltyPoints || 0} pts | Wallet: ₹${customer.wallet || 0}`)
   }
 
   const handleSaveCustomer = async () => {
     if (!customerFormData.mobile || !customerFormData.firstName) {
-      alert('Mobile and First Name are required')
+      showWarning('Mobile and First Name are required')
       return
     }
 
@@ -163,7 +183,7 @@ const CustomerList = () => {
       cleanMobile = cleanMobile.replace(/^91/, '') // Remove 91 prefix
       
       if (cleanMobile.length < 10) {
-        alert('Please enter a valid mobile number (at least 10 digits)')
+        showWarning('Please enter a valid mobile number (at least 10 digits)')
         return
       }
 
@@ -201,14 +221,9 @@ const CustomerList = () => {
       console.log('Request method:', method)
       console.log('Request body:', requestBody)
 
-      const response = await fetch(url, {
-        method,
-        headers: { 
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-        mode: 'cors', // Explicitly set CORS mode
-      })
+      const response = editingCustomer 
+        ? await apiPut(url.replace(API_BASE_URL, ''), requestBody)
+        : await apiPost(url.replace(API_BASE_URL, ''), requestBody)
 
       console.log('Response status:', response.status)
       console.log('Response ok:', response.ok)
@@ -229,7 +244,7 @@ const CustomerList = () => {
           dob: '',
           dobRange: '',
         })
-        alert(data.message || (isEdit ? 'Customer updated successfully!' : 'Customer added successfully!'))
+        showSuccess(data.message || (isEdit ? 'Customer updated successfully!' : 'Customer added successfully!'))
       } else {
         let errorData
         try {
@@ -238,7 +253,7 @@ const CustomerList = () => {
           errorData = { error: `HTTP ${response.status}: ${response.statusText}` }
         }
         console.error('Error response:', errorData)
-        alert(errorData.error || `Failed to save customer (Status: ${response.status})`)
+        showError(errorData.error || `Failed to save customer (Status: ${response.status})`)
       }
     } catch (error) {
       console.error('Error saving customer:', error)
@@ -247,7 +262,7 @@ const CustomerList = () => {
         message: error.message,
         stack: error.stack
       })
-      alert(`Error saving customer: ${error.message}\n\nPlease check:\n1. Backend server is running at ${API_BASE_URL}\n2. Check browser console for details`)
+      showError(`Error saving customer: ${error.message}. Please check if the backend server is running.`)
     }
   }
 
@@ -278,23 +293,19 @@ const CustomerList = () => {
 
           if (customerData.mobile && customerData.first_name) {
             try {
-              await fetch(`${API_BASE_URL}/api/customers`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(customerData),
-              })
+              await apiPost('/api/customers', customerData)
             } catch (err) {
               console.error(`Error importing customer ${i}:`, err)
             }
           }
         }
         
-        alert('Customers imported successfully!')
+        showSuccess('Customers imported successfully!')
         setShowImportModal(false)
         fetchCustomers()
       } catch (error) {
         console.error('Error processing import file:', error)
-        alert('Error processing import file')
+        showError('Error processing import file. Please check the format and try again.')
       }
     }
     reader.readAsText(file)
@@ -305,30 +316,26 @@ const CustomerList = () => {
       return
     }
     try {
-      const response = await fetch(`${API_BASE_URL}/api/customers/${customerId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
+      const response = await apiDelete(`/api/customers/${customerId}`)
       
       if (response.ok) {
         const data = await response.json()
-        alert(data.message || 'Customer deleted successfully')
+        showSuccess(data.message || 'Customer deleted successfully')
         fetchCustomers() // Refresh the list
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        alert(errorData.error || `Failed to delete customer (Status: ${response.status})`)
+        showError(errorData.error || `Failed to delete customer (Status: ${response.status})`)
       }
     } catch (error) {
       console.error('Error deleting customer:', error)
-      alert(`Error deleting customer: ${error.message}. Please check if the backend server is running.`)
+      showError(`Error deleting customer: ${error.message}. Please check if the backend server is running.`)
     }
   }
 
   return (
-    <div className="customer-list-page">
-      {/* Header */}
+    <PageTransition>
+      <div className="customer-list-page">
+        {/* Header */}
       <header className="customer-list-header">
         <div className="header-left">
           <button className="menu-icon"><FaBars /></button>
@@ -388,11 +395,19 @@ const CustomerList = () => {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="11" className="empty-row">Loading...</td>
+                    <td colSpan="11" style={{ padding: 0, border: 'none' }}>
+                      <TableSkeleton rows={10} columns={11} />
+                    </td>
                   </tr>
                 ) : customers.length === 0 ? (
                   <tr>
-                    <td colSpan="11" className="empty-row">No customers found</td>
+                    <td colSpan="11" style={{ padding: 0, border: 'none' }}>
+                      {searchQuery ? (
+                        <EmptySearch searchQuery={searchQuery} message="Try adjusting your search query." />
+                      ) : (
+                        <EmptyCustomers onAddCustomer={handleAddCustomer} />
+                      )}
+                    </td>
                   </tr>
                 ) : (
                   customers.map((customer, index) => (
@@ -570,10 +585,15 @@ const CustomerList = () => {
             </div>
             <div className="form-group">
               <label>Date of Birth</label>
-              <input
-                type="date"
-                value={customerFormData.dob}
-                onChange={(e) => setCustomerFormData({ ...customerFormData, dob: e.target.value })}
+              <DatePicker
+                selected={customerFormData.dob ? new Date(customerFormData.dob) : null}
+                onChange={(date) => setCustomerFormData({ ...customerFormData, dob: date ? date.toISOString().split('T')[0] : '' })}
+                dateFormat="dd/MM/yyyy"
+                placeholderText="Select date of birth"
+                showYearDropdown
+                scrollableYearDropdown
+                yearDropdownItemNumber={100}
+                maxDate={new Date()}
               />
             </div>
             <div className="modal-actions">
@@ -642,6 +662,7 @@ const CustomerList = () => {
         </div>
       )}
     </div>
+    </PageTransition>
   )
 }
 

@@ -8,6 +8,7 @@ import {
   FaClock,
 } from 'react-icons/fa'
 import './PrepaidPackageClients.css'
+import { apiGet } from '../utils/api'
 import { API_BASE_URL } from '../config'
 
 const PrepaidPackageClients = ({ setActivePage }) => {
@@ -37,7 +38,12 @@ const PrepaidPackageClients = ({ setActivePage }) => {
   const fetchPrepaidClients = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE_URL}/api/reports/prepaid-clients?status=active`)
+      const response = await apiGet(`/api/reports/prepaid-clients?status=active`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
       const data = await response.json()
       
       if (Array.isArray(data)) {

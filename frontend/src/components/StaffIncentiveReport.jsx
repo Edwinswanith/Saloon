@@ -9,6 +9,7 @@ import {
 } from 'react-icons/fa'
 import './StaffIncentiveReport.css'
 import { API_BASE_URL } from '../config'
+import { apiGet } from '../utils/api'
 
 const StaffIncentiveReport = ({ setActivePage }) => {
   const [dateFilter, setDateFilter] = useState('last-30-days')
@@ -77,7 +78,12 @@ const StaffIncentiveReport = ({ setActivePage }) => {
       const dateRange = getDateRange()
       const params = new URLSearchParams(dateRange)
       
-      const response = await fetch(`${API_BASE_URL}/api/reports/staff-incentive?${params}`)
+      const response = await apiGet(`/api/reports/staff-incentive?${params}`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
       const data = await response.json()
       
       // Map backend response to frontend format

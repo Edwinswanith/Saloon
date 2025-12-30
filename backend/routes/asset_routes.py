@@ -4,6 +4,8 @@ from datetime import datetime
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
 from mongoengine import Q
+from utils.auth import require_auth, require_role
+from utils.branch_filter import get_selected_branch
 
 asset_bp = Blueprint('asset', __name__)
 
@@ -18,8 +20,9 @@ def handle_preflight():
         return response
 
 @asset_bp.route('/', methods=['GET'])
-def get_assets():
-    """Get all assets with optional filters"""
+@require_role('manager', 'owner')
+def get_assets(current_user=None):
+    """Get all assets with optional filters (Manager and Owner only)"""
     try:
         # Query parameters
         category = request.args.get('category')
@@ -27,7 +30,11 @@ def get_assets():
         location = request.args.get('location')
         search = request.args.get('search')
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
         query = Asset.objects
+        if branch:
+            query = query.filter(branch=branch)
 
         # Apply filters
         if category:
@@ -62,8 +69,9 @@ def get_assets():
         return response, 500
 
 @asset_bp.route('/<id>', methods=['GET'])
-def get_asset(id):
-    """Get a single asset by ID"""
+@require_role('manager', 'owner')
+def get_asset(id, current_user=None):
+    """Get a single asset by ID (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid asset ID format'}), 400
@@ -93,8 +101,9 @@ def get_asset(id):
         return response, 500
 
 @asset_bp.route('/', methods=['POST'])
-def create_asset():
-    """Create a new asset"""
+@require_role('manager', 'owner')
+def create_asset(current_user=None):
+    """Create a new asset (Manager and Owner only)"""
     try:
         data = request.get_json()
 
@@ -136,8 +145,9 @@ def create_asset():
         return response, 500
 
 @asset_bp.route('/<id>', methods=['PUT'])
-def update_asset(id):
-    """Update an asset"""
+@require_role('manager', 'owner')
+def update_asset(id, current_user=None):
+    """Update an asset (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid asset ID format'}), 400
@@ -178,8 +188,9 @@ def update_asset(id):
         return response, 500
 
 @asset_bp.route('/<id>', methods=['DELETE'])
-def delete_asset(id):
-    """Delete an asset"""
+@require_role('manager', 'owner')
+def delete_asset(id, current_user=None):
+    """Delete an asset (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid asset ID format'}), 400

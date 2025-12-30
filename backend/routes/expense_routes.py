@@ -4,6 +4,8 @@ from datetime import datetime, date
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
 from mongoengine import Q
+from utils.branch_filter import get_selected_branch
+from utils.auth import require_auth, require_role
 
 expense_bp = Blueprint('expense', __name__)
 
@@ -38,8 +40,9 @@ def get_expense_categories():
         return response, 500
 
 @expense_bp.route('/categories', methods=['POST'])
-def create_expense_category():
-    """Create a new expense category"""
+@require_role('manager', 'owner')
+def create_expense_category(current_user=None):
+    """Create a new expense category (Manager and Owner only)"""
     try:
         data = request.get_json()
 
@@ -69,8 +72,9 @@ def create_expense_category():
         return response, 500
 
 @expense_bp.route('/categories/<id>', methods=['PUT'])
-def update_expense_category(id):
-    """Update an expense category"""
+@require_role('manager', 'owner')
+def update_expense_category(id, current_user=None):
+    """Update an expense category (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid category ID format'}), 400
@@ -96,8 +100,9 @@ def update_expense_category(id):
         return response, 500
 
 @expense_bp.route('/categories/<id>', methods=['DELETE'])
-def delete_expense_category(id):
-    """Delete an expense category"""
+@require_role('manager', 'owner')
+def delete_expense_category(id, current_user=None):
+    """Delete an expense category (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid category ID format'}), 400
@@ -126,8 +131,9 @@ def delete_expense_category(id):
 # Expense Routes
 
 @expense_bp.route('/', methods=['GET'])
-def get_expenses():
-    """Get all expenses with optional filters"""
+@require_role('manager', 'owner')
+def get_expenses(current_user=None):
+    """Get all expenses with optional filters (Manager and Owner only)"""
     try:
         # Query parameters
         category_id = request.args.get('category_id')
@@ -136,7 +142,11 @@ def get_expenses():
         end_date = request.args.get('end_date')
         search = request.args.get('search')
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
         query = Expense.objects
+        if branch:
+            query = query.filter(branch=branch)
 
         # Apply filters
         if category_id:
@@ -174,7 +184,8 @@ def get_expenses():
         return response, 500
 
 @expense_bp.route('/<id>', methods=['GET'])
-def get_expense(id):
+@require_auth
+def get_expense(id, current_user=None):
     """Get a single expense by ID"""
     try:
         if not ObjectId.is_valid(id):
@@ -203,8 +214,9 @@ def get_expense(id):
         return response, 500
 
 @expense_bp.route('/', methods=['POST'])
-def create_expense():
-    """Create a new expense"""
+@require_role('manager', 'owner')
+def create_expense(current_user=None):
+    """Create a new expense (Manager and Owner only)"""
     try:
         data = request.get_json()
 
@@ -224,6 +236,7 @@ def create_expense():
         expense = Expense(
             name=data['name'],
             category=category,
+            branch=branch,
             amount=data['amount'],
             payment_mode=data.get('payment_mode'),
             expense_date=expense_date,
@@ -252,8 +265,9 @@ def create_expense():
         return response, 500
 
 @expense_bp.route('/<id>', methods=['PUT'])
-def update_expense(id):
-    """Update an expense"""
+@require_role('manager', 'owner')
+def update_expense(id, current_user=None):
+    """Update an expense (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid expense ID format'}), 400
@@ -296,8 +310,9 @@ def update_expense(id):
         return response, 500
 
 @expense_bp.route('/<id>', methods=['DELETE'])
-def delete_expense(id):
-    """Delete an expense"""
+@require_role('manager', 'owner')
+def delete_expense(id, current_user=None):
+    """Delete an expense (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid expense ID format'}), 400
