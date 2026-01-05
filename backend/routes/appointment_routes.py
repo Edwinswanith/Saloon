@@ -48,9 +48,11 @@ def get_appointments(current_user=None):
             query = query.filter(appointment_date__gte=start)
         if end_date:
             end = datetime.strptime(end_date, '%Y-%m-%d').date()
+            # Note: appointment_date is a DateField, so we can't set time, but the filter will include the full day
             query = query.filter(appointment_date__lte=end)
 
-        appointments = query.order_by('-appointment_date', '-start_time')
+        # Force evaluation by converting to list
+        appointments = list(query.order_by('-appointment_date', '-start_time'))
 
         result = []
         for a in appointments:
@@ -94,12 +96,14 @@ def get_appointment(id, current_user=None):
             return jsonify({'error': 'Invalid appointment ID format'}), 400
         appointment = Appointment.objects.get(id=id)
         
-        # Get service name safely
+        # Get service name and price safely
         service_name = None
+        service_price = None
         if appointment.service:
             service_name = appointment.service.name
+            service_price = appointment.service.price if hasattr(appointment.service, 'price') else None
         
-        return jsonify({
+        response = jsonify({
             'id': str(appointment.id),
             'customer_id': str(appointment.customer.id) if appointment.customer else None,
             'customer_name': f"{appointment.customer.first_name} {appointment.customer.last_name}" if appointment.customer else None,
@@ -108,6 +112,7 @@ def get_appointment(id, current_user=None):
             'staff_name': f"{appointment.staff.first_name} {appointment.staff.last_name}" if appointment.staff else None,
             'service_id': str(appointment.service.id) if appointment.service else None,
             'service_name': service_name,
+            'service_price': service_price,
             'appointment_date': appointment.appointment_date.isoformat() if appointment.appointment_date else None,
             'start_time': appointment.start_time if appointment.start_time else None,  # Already a string
             'end_time': appointment.end_time if appointment.end_time else None,  # Already a string
@@ -116,6 +121,8 @@ def get_appointment(id, current_user=None):
             'created_at': appointment.created_at.isoformat() if appointment.created_at else None,
             'updated_at': appointment.updated_at.isoformat() if appointment.updated_at else None
         })
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
     except DoesNotExist:
         return jsonify({'error': 'Appointment not found'}), 404
     except Exception as e:
@@ -318,14 +325,20 @@ def update_appointment(id, current_user=None):
         appointment.updated_at = datetime.utcnow()
         appointment.save()
 
-        return jsonify({
+        response = jsonify({
             'id': str(appointment.id),
             'message': 'Appointment updated successfully'
         })
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
     except DoesNotExist:
-        return jsonify({'error': 'Appointment not found'}), 404
+        response = jsonify({'error': 'Appointment not found'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 404
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        response = jsonify({'error': str(e)})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
 
 @appointment_bp.route('/appointments/<id>', methods=['DELETE'])
 @require_auth
@@ -391,7 +404,8 @@ def get_calendar_view(current_user=None):
             except DoesNotExist:
                 pass
 
-        appointments = query.order_by('appointment_date', 'start_time')
+        # Force evaluation by converting to list
+        appointments = list(query.order_by('appointment_date', 'start_time'))
 
         result_appointments = []
         for a in appointments:
@@ -460,12 +474,12 @@ def get_available_slots():
         except ValidationError:
             return jsonify({'error': 'Invalid staff ID format'}), 400
 
-        # Get existing appointments for this staff on this date
-        existing_appointments = Appointment.objects(
+        # Get existing appointments for this staff on this date - force evaluation
+        existing_appointments = list(Appointment.objects(
             staff=staff,
             appointment_date=target,
             status__in=['confirmed', 'completed']
-        ).order_by('start_time')
+        ).order_by('start_time'))
 
         # Define working hours (9 AM to 9 PM)
         work_start = time(9, 0)
@@ -523,8 +537,10 @@ def get_appointment_stats(current_user=None):
             query = query.filter(appointment_date__gte=start)
         if end_date:
             end = datetime.strptime(end_date, '%Y-%m-%d').date()
+            # Note: appointment_date is a DateField, so we can't set time, but the filter will include the full day
             query = query.filter(appointment_date__lte=end)
 
+        # Force evaluation by converting to list
         appointments = list(query)
 
         total = len(appointments)

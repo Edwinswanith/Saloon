@@ -52,10 +52,11 @@
 .main-content {
   flex: 1;
   margin-left: 280px;
+  margin-top: 72px;
   overflow-y: auto;
   overflow-x: hidden;
   background: var(--bg-secondary);
-  height: 100vh;
+  height: calc(100vh - 72px);
   position: relative;
   transition: margin-left var(--transition-slow);
 }
@@ -258,7 +259,7 @@
 @media (max-width: 768px) {
   .main-content {
     margin-left: 0;
-    padding-top: 60px;
+    margin-top: 72px;
   }
   
   .main-content::before {

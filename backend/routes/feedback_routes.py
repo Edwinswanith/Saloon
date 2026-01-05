@@ -54,11 +54,12 @@ def get_feedback(current_user=None):
             query = query.filter(created_at__gte=start)
         if end_date:
             end = datetime.strptime(end_date, '%Y-%m-%d')
-            # Include the entire end date
-            end = end.replace(hour=23, minute=59, second=59)
+            # Set end to end of day to include all data from the end date
+            end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
             query = query.filter(created_at__lte=end)
 
-        feedbacks = query.order_by('-created_at')
+        # Force evaluation by converting to list
+        feedbacks = list(query.order_by('-created_at'))
 
         response = jsonify([{
             'id': str(f.id),
@@ -333,10 +334,11 @@ def get_feedback_stats(current_user=None):
             query = query.filter(created_at__gte=start)
         if end_date:
             end = datetime.strptime(end_date, '%Y-%m-%d')
-            end = end.replace(hour=23, minute=59, second=59)
+            # Set end to end of day to include all data from the end date
+            end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
             query = query.filter(created_at__lte=end)
 
-        # Get all feedbacks
+        # Force evaluation by converting to list
         feedbacks = list(query)
 
         # Calculate average rating
@@ -385,7 +387,8 @@ def get_recent_feedback(current_user=None):
         query = Feedback.objects
         if branch:
             query = query.filter(branch=branch)
-        feedbacks = query.order_by('-created_at').limit(limit)
+        # Force evaluation by converting to list
+        feedbacks = list(query.order_by('-created_at').limit(limit))
 
         response = jsonify([{
             'id': str(f.id),

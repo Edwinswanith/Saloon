@@ -9,8 +9,10 @@ import {
 import './MembershipClients.css'
 import { API_BASE_URL } from '../config'
 import { apiGet } from '../utils/api'
+import { useAuth } from '../contexts/AuthContext'
 
 const MembershipClients = ({ setActivePage }) => {
+  const { currentBranch } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [clients, setClients] = useState([])
@@ -19,7 +21,18 @@ const MembershipClients = ({ setActivePage }) => {
 
   useEffect(() => {
     fetchMembershipClients()
-  }, [])
+  }, [currentBranch])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[MembershipClients] Branch changed, refreshing data...')
+      fetchMembershipClients()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   useEffect(() => {
     if (searchQuery) {

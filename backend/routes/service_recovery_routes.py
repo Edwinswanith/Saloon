@@ -33,7 +33,8 @@ def list_cases(current_user=None):
         if assigned_manager_id:
             query &= Q(assigned_manager=assigned_manager_id)
         
-        cases = ServiceRecoveryCase.objects(query).order_by('-created_at')
+        # Force evaluation by converting to list
+        cases = list(ServiceRecoveryCase.objects(query).order_by('-created_at'))
         
         result = []
         for case in cases:

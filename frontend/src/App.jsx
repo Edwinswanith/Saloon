@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { ConfigProvider } from 'antd'
 import { antdTheme } from './config/antd-theme'
@@ -33,6 +33,7 @@ import Manager from './components/Manager'
 import OwnerSettings from './components/OwnerSettings'
 import Staffs from './components/Staffs'
 import StaffAttendance from './components/StaffAttendance'
+import StaffTempAssignment from './components/StaffTempAssignment'
 import AssetManagement from './components/AssetManagement'
 import Expense from './components/Expense'
 import ServiceSalesAnalysis from './components/ServiceSalesAnalysis'
@@ -49,12 +50,24 @@ import BusinessGrowthTrendAnalysis from './components/BusinessGrowthTrendAnalysi
 import StaffPerformanceAnalysis from './components/StaffPerformanceAnalysis'
 import PeriodPerformanceSummary from './components/PeriodPerformanceSummary'
 import ClientValueLoyaltyReport from './components/ClientValueLoyaltyReport'
+import GlobalHeader from './components/GlobalHeader'
 import './App.css'
 
 // Main application content (protected - requires authentication)
 function AppContent() {
   const [activePage, setActivePage] = useState('dashboard')
   const { isAuthenticated, loading, user } = useAuth()
+
+  // Listen for navigation events - must be called before any conditional returns
+  useEffect(() => {
+    const handleNavigate = (event) => {
+      if (event.detail && event.detail.page) {
+        setActivePage(event.detail.page)
+      }
+    }
+    window.addEventListener('navigateToPage', handleNavigate)
+    return () => window.removeEventListener('navigateToPage', handleNavigate)
+  }, [])
 
   // Show loading spinner while checking authentication
   if (loading) {
@@ -81,12 +94,13 @@ function AppContent() {
         setActivePage={setActivePage}
         user={user}
       />
+      <GlobalHeader />
       <main className="main-content">
         <AnimatePresence mode="wait">
           {activePage === 'dashboard' && <Dashboard key="dashboard" />}
           {activePage === 'quick-sale' && <QuickSale key="quick-sale" />}
         {activePage === 'cash-register' && <CashRegister />}
-        {activePage === 'appointment' && <Appointment />}
+        {activePage === 'appointment' && <Appointment setActivePage={setActivePage} />}
         {activePage === 'customer-list' && <CustomerList />}
         {activePage === 'lead-management' && <LeadManagement />}
         {activePage === 'missed-enquiries' && <MissedEnquiries />}
@@ -102,7 +116,7 @@ function AppContent() {
           </RequireRole>
         )}
         {activePage === 'discount-approvals' && (
-          <RequireRole roles={['manager', 'owner']}>
+          <RequireRole roles={['owner']}>
             <DiscountApprovals />
           </RequireRole>
         )}
@@ -244,6 +258,11 @@ function AppContent() {
         {activePage === 'staff-attendance' && (
           <RequireRole roles={['manager', 'owner']}>
             <StaffAttendance />
+          </RequireRole>
+        )}
+        {activePage === 'staff-temp-assignment' && (
+          <RequireRole roles={['manager', 'owner']}>
+            <StaffTempAssignment />
           </RequireRole>
         )}
         {activePage === 'asset-management' && (

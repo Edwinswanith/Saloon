@@ -11,13 +11,16 @@ import {
 import * as XLSX from 'xlsx'
 import './Package.css'
 import { API_BASE_URL } from '../config'
+import { useAuth } from '../contexts/AuthContext'
 
 const Package = () => {
+  const { currentBranch } = useAuth()
   const [packages, setPackages] = useState([])
   const [loading, setLoading] = useState(true)
   const [showPackageModal, setShowPackageModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
   const [editingPackage, setEditingPackage] = useState(null)
+  const [expandedPackages, setExpandedPackages] = useState({}) // Track which packages are expanded
   const [packageFormData, setPackageFormData] = useState({
     name: '',
     price: '',
@@ -26,10 +29,29 @@ const Package = () => {
   })
   const [availableServices, setAvailableServices] = useState([])
 
+  const togglePackageExpand = (packageId) => {
+    setExpandedPackages(prev => ({
+      ...prev,
+      [packageId]: !prev[packageId]
+    }))
+  }
+
   useEffect(() => {
     fetchPackages()
     fetchServices()
-  }, [])
+  }, [currentBranch])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[Package] Branch changed, refreshing packages...')
+      fetchPackages()
+      fetchServices()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   const fetchServices = async () => {
     try {
@@ -329,31 +351,68 @@ const Package = () => {
               <div className="empty-message">No packages found</div>
             ) : (
               packages.map((pkg) => (
-                <div key={pkg.id} className="package-row">
-                  <div className="package-info">
-                    <span className="package-name">
-                      {pkg.name} (₹{pkg.price.toFixed(2)})
-                    </span>
+                <div key={pkg.id} className="package-row-container">
+                  <div className="package-row">
+                    <div className="package-info">
+                      <span className="package-name">
+                        {pkg.name} (₹{pkg.price.toFixed(2)})
+                      </span>
+                      {pkg.service_details && pkg.service_details.length > 0 && (
+                        <span className="services-count">
+                          {pkg.service_details.length} service{pkg.service_details.length > 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                    <div className="package-actions">
+                      <button 
+                        className="icon-btn edit-btn" 
+                        title="Edit"
+                        onClick={() => handleEditPackage(pkg)}
+                      >
+                        <FaEdit />
+                      </button>
+                      <button
+                        className="icon-btn delete-btn"
+                        title="Delete"
+                        onClick={() => handleDelete(pkg.id)}
+                      >
+                        <FaTrash />
+                      </button>
+                      <button 
+                        className={`icon-btn dropdown-btn ${expandedPackages[pkg.id] ? 'expanded' : ''}`}
+                        title="Show services"
+                        onClick={() => togglePackageExpand(pkg.id)}
+                      >
+                        <FaChevronDown />
+                      </button>
+                    </div>
                   </div>
-                  <div className="package-actions">
-                    <button 
-                      className="icon-btn edit-btn" 
-                      title="Edit"
-                      onClick={() => handleEditPackage(pkg)}
-                    >
-                      <FaEdit />
-                    </button>
-                    <button
-                      className="icon-btn delete-btn"
-                      title="Delete"
-                      onClick={() => handleDelete(pkg.id)}
-                    >
-                      <FaTrash />
-                    </button>
-                    <button className="icon-btn dropdown-btn" title="More options">
-                      <FaChevronDown />
-                    </button>
-                  </div>
+                  
+                  {/* Expandable Services List */}
+                  {expandedPackages[pkg.id] && pkg.service_details && pkg.service_details.length > 0 && (
+                    <div className="package-services-expanded">
+                      <h4>Services in this package:</h4>
+                      <div className="services-grid">
+                        {pkg.service_details.map((service, idx) => (
+                          <div key={idx} className="service-card">
+                            <div className="service-card-header">
+                              <span className="service-card-name">{service.name}</span>
+                            </div>
+                            <div className="service-card-details">
+                              <span className="service-card-price">₹{service.price}</span>
+                              <span className="service-card-duration">{service.duration} min</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {expandedPackages[pkg.id] && (!pkg.service_details || pkg.service_details.length === 0) && (
+                    <div className="package-services-expanded">
+                      <p className="no-services-message">No services added to this package yet.</p>
+                    </div>
+                  )}
                 </div>
               ))
             )}

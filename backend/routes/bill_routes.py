@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from models import Bill, Customer, Product, PrepaidPackage, LoyaltyProgramSettings, BillItemEmbedded, DiscountApprovalRequest, Staff
+from models import Bill, Customer, Product, PrepaidPackage, LoyaltyProgramSettings, BillItemEmbedded, DiscountApprovalRequest, Staff, Membership, LoyaltyPointsTransaction
 from datetime import datetime
 from bson import ObjectId
 from mongoengine import Q
@@ -7,11 +7,11 @@ from utils.auth import get_current_user, require_auth
 from utils.branch_filter import get_selected_branch
 import uuid
 
-# Discount limits by role (Phase 5)
+# Discount limits by role - Only owner can apply discounts
 DISCOUNT_LIMITS = {
-    'staff': 15,
-    'manager': 25,
-    'owner': 100  # Unlimited
+    'staff': 0,      # No discount access
+    'manager': 0,   # No discount access
+    'owner': 100    # Unlimited (only owner)
 }
 
 bill_bp = Blueprint('bill', __name__)
@@ -55,13 +55,16 @@ def get_bills(current_user=None):
             query = query.filter(bill_date__gte=start)
         if end_date:
             end = datetime.strptime(end_date, '%Y-%m-%d')
+            # Set end to end of day to include all data from the end date
+            end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
             query = query.filter(bill_date__lte=end)
         if payment_mode:
             query = query.filter(payment_mode=payment_mode)
         if booking_status:
             query = query.filter(booking_status=booking_status)
 
-        bills = query.order_by('-bill_date')
+        # Force evaluation by converting to list
+        bills = list(query.order_by('-bill_date'))
 
         result = []
         for b in bills:
@@ -276,6 +279,17 @@ def add_bill_item(id):
             total=data['total']
         )
 
+        # Reduce product inventory if product is being added
+        if product and data.get('quantity'):
+            quantity_to_reduce = int(data.get('quantity', 1))
+            if product.stock_quantity is not None:
+                if product.stock_quantity < quantity_to_reduce:
+                    return jsonify({
+                        'error': f'Insufficient stock. Only {product.stock_quantity} units available'
+                    }), 400
+                product.stock_quantity -= quantity_to_reduce
+                product.save()
+
         if not bill.items:
             bill.items = []
         bill.items.append(item)
@@ -283,7 +297,8 @@ def add_bill_item(id):
 
         return jsonify({
             'id': len(bill.items) - 1,  # Return index
-            'message': 'Item added to bill successfully'
+            'message': 'Item added to bill successfully',
+            'product_stock_updated': product is not None
         }), 201
     except Bill.DoesNotExist:
         return jsonify({'error': 'Bill not found'}), 404
@@ -315,105 +330,125 @@ def checkout_bill(id):
         bill = Bill.objects.get(id=id)
         data = request.get_json()
 
+        # Get current user and check permissions
+        current_user = get_current_user()
+        user_role = current_user.get('role') if current_user else 'staff'
+        
         # Calculate subtotal from items
         subtotal = sum([float(item.total) if item.total else 0.0 for item in bill.items])
         subtotal = float(subtotal) if subtotal else 0.0
 
-        # Get discount
-        discount_amount = float(data.get('discount_amount', 0) or 0)
-        discount_type = data.get('discount_type', 'fix')
+        # Check for active membership discount first (automatic, cannot be overridden)
+        membership_discount_applied = False
+        discount_amount = 0.0
+        discount_type = 'fix'
         
-        # Calculate discount percentage for approval check (Phase 5)
-        discount_percent = 0
-        if discount_type == 'percentage':
-            discount_percent = float(discount_amount)
-            discount_amount = float(subtotal) * (float(discount_amount) / 100.0)
-        elif discount_amount > 0 and subtotal > 0:
-            discount_percent = (discount_amount / subtotal) * 100
+        if bill.customer:
+            # Get customer's active membership
+            active_membership = Membership.objects(
+                customer=bill.customer,
+                status='active',
+                expiry_date__gte=datetime.utcnow()
+            ).first()
+            
+            if active_membership and active_membership.plan and active_membership.plan.allocated_discount > 0:
+                # Apply membership discount automatically
+                membership_discount_percent = float(active_membership.plan.allocated_discount)
+                discount_amount = float(subtotal) * (membership_discount_percent / 100.0)
+                discount_type = 'membership'
+                membership_discount_applied = True
         
-        # Phase 5: Check discount approval requirements
-        current_user = get_current_user()
-        user_role = current_user.get('role') if current_user else 'staff'
-        max_discount = DISCOUNT_LIMITS.get(user_role, 15)
-        
-        # Check if approval is needed
-        needs_approval = discount_percent > max_discount
-        
-        # Check if there's a pending approval request
-        existing_approval = None
-        if bill.discount_approval_request:
-            existing_approval = DiscountApprovalRequest.objects(id=bill.discount_approval_request.id).first()
-            if existing_approval and existing_approval.approval_status == 'pending':
+        # If no membership discount, check for manual discount (owner only)
+        if not membership_discount_applied:
+            # Get discount from request
+            discount_amount = float(data.get('discount_amount', 0) or 0)
+            discount_type = data.get('discount_type', 'fix')
+            
+            # SECURITY: Only owners can apply manual discounts
+            if discount_amount > 0 and user_role != 'owner':
                 response = jsonify({
-                    'error': 'Discount approval pending',
-                    'approval_id': str(existing_approval.id),
-                    'message': 'This discount requires approval before checkout'
+                    'error': 'Insufficient permissions',
+                    'message': 'Only owners can apply discounts. Please contact the owner to apply a discount.'
                 })
                 response.headers.add('Access-Control-Allow-Origin', '*')
-                return response, 400
-            elif existing_approval and existing_approval.approval_status == 'rejected':
-                response = jsonify({
-                    'error': 'Discount approval rejected',
-                    'message': 'This discount request was rejected. Please adjust the discount amount.'
-                })
-                response.headers.add('Access-Control-Allow-Origin', '*')
-                return response, 400
+                return response, 403
+            
+            # Calculate discount percentage for manual discounts
+            if discount_type == 'percentage':
+                discount_percent = float(discount_amount)
+                discount_amount = float(subtotal) * (float(discount_amount) / 100.0)
+            elif discount_amount > 0 and subtotal > 0:
+                discount_percent = (discount_amount / subtotal) * 100
         
-        # If approval needed and not already approved, create approval request
-        if needs_approval:
-            # Check if already approved
-            if existing_approval and existing_approval.approval_status == 'approved':
-                # Already approved, proceed
-                pass
-            else:
-                # Create new approval request
-                requested_by = None
-                if current_user and current_user.get('user_type') == 'staff':
-                    requested_by = Staff.objects(id=current_user['id']).first()
-                
-                approval_request = DiscountApprovalRequest(
-                    bill=bill,
-                    requested_by=requested_by,
-                    requested_discount_percent=discount_percent,
-                    requested_discount_amount=discount_amount,
-                    reason=data.get('discount_reason', 'Discount exceeds role limit'),
-                    approval_status='pending'
-                )
-                approval_request.save()
-                
-                # Link to bill
-                bill.discount_requested_by = requested_by
-                bill.discount_approval_status = 'pending'
-                bill.discount_approval_request = approval_request
-                bill.save()
-                
-                response = jsonify({
-                    'error': 'Discount approval required',
-                    'approval_id': str(approval_request.id),
-                    'message': f'Discount of {discount_percent:.2f}% exceeds your limit of {max_discount}%. Approval required.',
-                    'requires_approval': True
-                })
-                response.headers.add('Access-Control-Allow-Origin', '*')
-                return response, 400
+        # Owners don't need approval - they have unlimited discount access
+        needs_approval = False
+        
+        # No approval needed for owners - they have full discount access
 
-        # Calculate tax
+        # Apply points redemption discount (after membership discount, before tax)
+        points_used = 0
+        points_discount = 0.0
+        amount_after_membership_discount = float(subtotal) - float(discount_amount)
+        
+        if bill.customer:
+            points_to_use = int(data.get('points_to_use', 0) or 0)
+            if points_to_use > 0:
+                bill.customer.reload()
+                loyalty_settings = LoyaltyProgramSettings.get_settings()
+                
+                if loyalty_settings.enabled:
+                    # Validate minimum points requirement
+                    if points_to_use < loyalty_settings.minimum_points_to_redeem:
+                        return jsonify({
+                            'error': f'Minimum {loyalty_settings.minimum_points_to_redeem} points required to redeem'
+                        }), 400
+                    
+                    # Validate customer has enough points
+                    if bill.customer.loyalty_points < points_to_use:
+                        return jsonify({
+                            'error': f'Insufficient points. Available: {bill.customer.loyalty_points}, Requested: {points_to_use}'
+                        }), 400
+                    
+                    # Calculate points discount
+                    redemption_rate = float(loyalty_settings.redemption_rate) if loyalty_settings.redemption_rate else 1.0
+                    points_discount = float(points_to_use) / float(redemption_rate)
+                    
+                    # Ensure points discount doesn't exceed amount after membership discount
+                    if points_discount > amount_after_membership_discount:
+                        points_discount = amount_after_membership_discount
+                        # Recalculate points needed for the actual discount
+                        points_used = int(points_discount * redemption_rate)
+                    else:
+                        points_used = points_to_use
+                    
+                    # Deduct points from customer
+                    bill.customer.loyalty_points -= points_used
+                    if bill.customer.loyalty_points < 0:
+                        bill.customer.loyalty_points = 0
+                    bill.customer.save()
+
+        # Calculate tax on amount after both discounts
         tax_rate = float(data.get('tax_rate', 0) or 0)
-        amount_after_discount = float(subtotal) - float(discount_amount)
-        tax_amount = float(amount_after_discount) * (float(tax_rate) / 100.0)
+        amount_after_all_discounts = amount_after_membership_discount - points_discount
+        if amount_after_all_discounts < 0:
+            amount_after_all_discounts = 0.0
+        tax_amount = float(amount_after_all_discounts) * (float(tax_rate) / 100.0)
 
         # Calculate final amount
-        final_amount = amount_after_discount + tax_amount
+        final_amount = amount_after_all_discounts + tax_amount
 
         # Update bill
         bill.subtotal = subtotal
         bill.discount_amount = discount_amount
         bill.discount_type = discount_type
+        bill.points_used = points_used
+        bill.points_discount = points_discount
         bill.tax_amount = tax_amount
         bill.tax_rate = tax_rate
         bill.final_amount = final_amount
         bill.payment_mode = data['payment_mode']
         bill.booking_status = data.get('booking_status', 'service-completed')
-        bill.discount_approval_status = 'approved' if needs_approval else 'none'
+        bill.discount_approval_status = 'none'  # Owners don't need approval
         bill.updated_at = datetime.utcnow()
 
         # Process payment
@@ -446,7 +481,8 @@ def checkout_bill(id):
                     return jsonify({'error': f'Insufficient stock for product: {item.product.name}'}), 400
                 item.product.save()
 
-        # Update customer loyalty points
+        # Update customer loyalty points (earned on final amount after all discounts)
+        points_earned = 0
         if bill.customer:
             bill.customer.reload()
             loyalty_settings = LoyaltyProgramSettings.get_settings()
@@ -456,13 +492,41 @@ def checkout_bill(id):
                     points_earned = int(float(final_amount) / float(earning_rate))
                     bill.customer.loyalty_points += points_earned
                     bill.customer.save()
-
+                    
+                    # Record earned transaction
+                    transaction = LoyaltyPointsTransaction(
+                        customer=bill.customer,
+                        bill=bill,
+                        transaction_type='earned',
+                        points=points_earned,
+                        balance_after=bill.customer.loyalty_points,
+                        description=f'Earned from Bill {bill.bill_number}'
+                    )
+                    transaction.save()
+            
+            # Record redeemed transaction if points were used
+            if points_used > 0:
+                bill.customer.reload()
+                transaction = LoyaltyPointsTransaction(
+                    customer=bill.customer,
+                    bill=bill,
+                    transaction_type='redeemed',
+                    points=-points_used,
+                    balance_after=bill.customer.loyalty_points,
+                    description=f'Redeemed {points_used} points on Bill {bill.bill_number}'
+                )
+                transaction.save()
+        
+        bill.points_earned = points_earned
         bill.save()
 
         return jsonify({
             'message': 'Checkout completed successfully',
             'bill_number': bill.bill_number,
-            'final_amount': bill.final_amount
+            'final_amount': bill.final_amount,
+            'points_earned': points_earned,
+            'points_used': points_used,
+            'points_discount': points_discount
         })
     except Bill.DoesNotExist:
         return jsonify({'error': 'Bill not found'}), 404
@@ -527,13 +591,44 @@ def delete_bill(id):
             bill.customer.wallet_balance += bill.final_amount
             bill.customer.save()
 
-        # Restore loyalty points
+        # Restore loyalty points - subtract points earned, restore points used
         if bill.customer:
             bill.customer.reload()
-            bill.customer.loyalty_points -= int(bill.final_amount)
-            if bill.customer.loyalty_points < 0:
-                bill.customer.loyalty_points = 0
-            bill.customer.save()
+            loyalty_settings = LoyaltyProgramSettings.get_settings()
+            if loyalty_settings.enabled:
+                # Restore points that were used (add them back)
+                if bill.points_used and bill.points_used > 0:
+                    bill.customer.loyalty_points += bill.points_used
+                    
+                    # Record reverse redemption transaction
+                    transaction = LoyaltyPointsTransaction(
+                        customer=bill.customer,
+                        bill=bill,
+                        transaction_type='earned',  # Reverse of redeemed
+                        points=bill.points_used,
+                        balance_after=bill.customer.loyalty_points,
+                        description=f'Points restored from deleted Bill {bill.bill_number}'
+                    )
+                    transaction.save()
+                
+                # Subtract points that were earned
+                if bill.points_earned and bill.points_earned > 0:
+                    bill.customer.loyalty_points -= bill.points_earned
+                    if bill.customer.loyalty_points < 0:
+                        bill.customer.loyalty_points = 0
+                    
+                    # Record reverse earned transaction
+                    transaction = LoyaltyPointsTransaction(
+                        customer=bill.customer,
+                        bill=bill,
+                        transaction_type='redeemed',  # Reverse of earned
+                        points=-bill.points_earned,
+                        balance_after=bill.customer.loyalty_points,
+                        description=f'Points removed from deleted Bill {bill.bill_number}'
+                    )
+                    transaction.save()
+                
+                bill.customer.save()
 
         bill.save()
 
@@ -557,9 +652,12 @@ def get_deleted_bills():
             query = query.filter(deleted_at__gte=start)
         if end_date:
             end = datetime.strptime(end_date, '%Y-%m-%d')
+            # Set end to end of day to include all data from the end date
+            end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
             query = query.filter(deleted_at__lte=end)
 
-        bills = query.order_by('-deleted_at')
+        # Force evaluation by converting to list
+        bills = list(query.order_by('-deleted_at'))
 
         result = []
         for b in bills:
@@ -595,8 +693,11 @@ def get_bill_stats():
             query = query.filter(bill_date__gte=start)
         if end_date:
             end = datetime.strptime(end_date, '%Y-%m-%d')
+            # Set end to end of day to include all data from the end date
+            end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
             query = query.filter(bill_date__lte=end)
 
+        # Force evaluation by converting to list
         bills = list(query)
 
         total_bills = len(bills)

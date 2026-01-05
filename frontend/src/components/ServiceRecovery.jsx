@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { apiGet, apiPut } from '../utils/api';
 import Header from './Header';
 import './ServiceRecovery.css';
+import { useAuth } from '../contexts/AuthContext';
 
 const ServiceRecovery = () => {
+  const { currentBranch } = useAuth()
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ total: 0, open: 0, in_progress: 0, resolved: 0, closed: 0, resolution_rate: 0 });
@@ -17,7 +19,20 @@ const ServiceRecovery = () => {
     fetchCases();
     fetchStats();
     fetchManagers();
-  }, [filters]);
+  }, [filters, currentBranch]);
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[ServiceRecovery] Branch changed, refreshing data...')
+      fetchCases()
+      fetchStats()
+      fetchManagers()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   const fetchCases = async () => {
     try {

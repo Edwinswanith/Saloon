@@ -23,11 +23,13 @@ def get_dashboard_stats(current_user=None):
 
         start = datetime.strptime(start_date, '%Y-%m-%d')
         end = datetime.strptime(end_date, '%Y-%m-%d')
+        # Set end to end of day to include all data from the end date
+        end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
 
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         
-        # Total revenue from bills
+        # Total revenue from bills - force evaluation by converting to list
         bills_query = Bill.objects(
             is_deleted=False,
             bill_date__gte=start,
@@ -35,20 +37,20 @@ def get_dashboard_stats(current_user=None):
         )
         if branch:
             bills_query = bills_query.filter(branch=branch)
-        bills = bills_query
+        bills = list(bills_query)  # Force evaluation
         total_revenue = sum([float(b.final_amount) for b in bills]) if bills else 0.0
 
         # Total transactions (bills)
-        total_transactions = bills.count()
+        total_transactions = len(bills)
 
-        # Total expenses
+        # Total expenses - force evaluation by converting to list
         expenses_query = Expense.objects(
             expense_date__gte=start.date(),
             expense_date__lte=end.date()
         )
         if branch:
             expenses_query = expenses_query.filter(branch=branch)
-        expenses = expenses_query
+        expenses = list(expenses_query)  # Force evaluation
         total_expenses = sum([float(e.amount) for e in expenses]) if expenses else 0.0
 
         # Net profit
@@ -63,7 +65,7 @@ def get_dashboard_stats(current_user=None):
             customers_query = customers_query.filter(branch=branch)
         total_customers = customers_query.count()
 
-        # New customers in period
+        # New customers in period - ensure end includes full day
         new_customers_query = Customer.objects(
             created_at__gte=start,
             created_at__lte=end
@@ -140,21 +142,23 @@ def get_staff_performance(current_user=None):
 
         start = datetime.strptime(start_date, '%Y-%m-%d')
         end = datetime.strptime(end_date, '%Y-%m-%d')
+        # Set end to end of day to include all data from the end date
+        end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
 
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         
-        # Get staff filtered by branch
-        staff_list = filter_by_branch(Staff.objects(status='active'), branch)
+        # Get staff filtered by branch - force evaluation
+        staff_list = list(filter_by_branch(Staff.objects(status='active'), branch))
 
         performance = []
         for staff in staff_list:
-            # Get bills with items served by this staff (filtered by branch)
-            bills = filter_by_branch(Bill.objects(
+            # Get bills with items served by this staff (filtered by branch) - force evaluation
+            bills = list(filter_by_branch(Bill.objects(
                 is_deleted=False,
                 bill_date__gte=start,
                 bill_date__lte=end
-            ), branch)
+            ), branch))
             
             total_revenue = 0.0
             total_services = 0
@@ -192,13 +196,17 @@ def get_staff_performance(current_user=None):
         return jsonify({'error': str(e)}), 500
 
 @dashboard_bp.route('/top-customers', methods=['GET'])
-def get_top_customers():
+@require_auth
+def get_top_customers(current_user=None):
     """Get top 10 customers by revenue"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         limit = request.args.get('limit', 10, type=int)
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
+        
         # Get bills in date range
         bills_query = Bill.objects(is_deleted=False)
         if start_date:
@@ -206,9 +214,16 @@ def get_top_customers():
             bills_query = bills_query.filter(bill_date__gte=start)
         if end_date:
             end = datetime.strptime(end_date, '%Y-%m-%d')
+            # Set end to end of day to include all data from the end date
+            end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
             bills_query = bills_query.filter(bill_date__lte=end)
         
-        bills = bills_query
+        # Apply branch filter
+        if branch:
+            bills_query = bills_query.filter(branch=branch)
+        
+        # Force evaluation by converting to list
+        bills = list(bills_query)
         
         # Group by customer
         customer_stats = {}
@@ -239,22 +254,33 @@ def get_top_customers():
         return jsonify({'error': str(e)}), 500
 
 @dashboard_bp.route('/top-offerings', methods=['GET'])
-def get_top_offerings():
+@require_auth
+def get_top_offerings(current_user=None):
     """Get top 10 services/products by revenue"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         limit = request.args.get('limit', 10, type=int)
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
+        
         bills_query = Bill.objects(is_deleted=False)
         if start_date:
             start = datetime.strptime(start_date, '%Y-%m-%d')
             bills_query = bills_query.filter(bill_date__gte=start)
         if end_date:
             end = datetime.strptime(end_date, '%Y-%m-%d')
+            # Set end to end of day to include all data from the end date
+            end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
             bills_query = bills_query.filter(bill_date__lte=end)
         
-        bills = bills_query
+        # Apply branch filter
+        if branch:
+            bills_query = bills_query.filter(branch=branch)
+        
+        # Force evaluation by converting to list
+        bills = list(bills_query)
 
         # Group by service/product/package
         offerings = {}
@@ -298,7 +324,8 @@ def get_top_offerings():
         return jsonify({'error': str(e)}), 500
 
 @dashboard_bp.route('/revenue-breakdown', methods=['GET'])
-def get_revenue_breakdown():
+@require_auth
+def get_revenue_breakdown(current_user=None):
     """Get revenue breakdown by source"""
     try:
         start_date = request.args.get('start_date')
@@ -309,14 +336,26 @@ def get_revenue_breakdown():
         if not end_date:
             end_date = datetime.now().strftime('%Y-%m-%d')
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
+        
         start = datetime.strptime(start_date, '%Y-%m-%d')
         end = datetime.strptime(end_date, '%Y-%m-%d')
+        # Set end to end of day to include all data from the end date
+        end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
 
-        bills = Bill.objects(
+        bills_query = Bill.objects(
             is_deleted=False,
             bill_date__gte=start,
             bill_date__lte=end
         )
+        
+        # Apply branch filter
+        if branch:
+            bills_query = bills_query.filter(branch=branch)
+        
+        # Force evaluation by converting to list
+        bills = list(bills_query)
 
         breakdown = {
             'service': 0,
@@ -347,7 +386,8 @@ def get_revenue_breakdown():
         return jsonify({'error': str(e)}), 500
 
 @dashboard_bp.route('/payment-distribution', methods=['GET'])
-def get_payment_distribution():
+@require_auth
+def get_payment_distribution(current_user=None):
     """Get payment method breakdown"""
     try:
         start_date = request.args.get('start_date')
@@ -358,15 +398,27 @@ def get_payment_distribution():
         if not end_date:
             end_date = datetime.now().strftime('%Y-%m-%d')
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
+        
         start = datetime.strptime(start_date, '%Y-%m-%d')
         end = datetime.strptime(end_date, '%Y-%m-%d')
+        # Set end to end of day to include all data from the end date
+        end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
 
-        bills = Bill.objects(
+        bills_query = Bill.objects(
             is_deleted=False,
             bill_date__gte=start,
             bill_date__lte=end,
             payment_mode__ne=None
         )
+        
+        # Apply branch filter
+        if branch:
+            bills_query = bills_query.filter(branch=branch)
+        
+        # Force evaluation by converting to list
+        bills = list(bills_query)
         
         # Group by payment mode
         payment_stats = {}
@@ -392,7 +444,8 @@ def get_payment_distribution():
         return jsonify({'error': str(e)}), 500
 
 @dashboard_bp.route('/client-funnel', methods=['GET'])
-def get_client_funnel():
+@require_auth
+def get_client_funnel(current_user=None):
     """Get client acquisition funnel"""
     try:
         start_date = request.args.get('start_date')
@@ -405,24 +458,40 @@ def get_client_funnel():
 
         if end_date:
             end = datetime.strptime(end_date, '%Y-%m-%d')
+            # Set end to end of day to include all data from the end date
+            end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
         else:
             end = datetime.now()
 
-        # Total customers
-        total_customers = Customer.objects.count()
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
 
-        # New customers in period
-        new_customers = Customer.objects(
+        # Total customers - filter by branch
+        customers_query = Customer.objects
+        if branch:
+            customers_query = customers_query.filter(branch=branch)
+        total_customers = customers_query.count()
+
+        # New customers in period - filter by branch
+        new_customers_query = Customer.objects(
             created_at__gte=start,
             created_at__lte=end
-        ).count()
+        )
+        if branch:
+            new_customers_query = new_customers_query.filter(branch=branch)
+        new_customers = new_customers_query.count()
 
-        # Returning customers (with more than 1 bill)
-        bills_in_period = Bill.objects(
+        # Returning customers (with more than 1 bill) - filter by branch
+        bills_query = Bill.objects(
             is_deleted=False,
             bill_date__gte=start,
             bill_date__lte=end
         )
+        if branch:
+            bills_query = bills_query.filter(branch=branch)
+        
+        # Force evaluation by converting to list
+        bills_in_period = list(bills_query)
         customer_bill_count = {}
         for bill in bills_in_period:
             if bill.customer:
@@ -451,7 +520,8 @@ def get_client_funnel():
         return jsonify({'error': str(e)}), 500
 
 @dashboard_bp.route('/alerts', methods=['GET'])
-def get_operational_alerts():
+@require_auth
+def get_operational_alerts(current_user=None):
     """Get operational alerts"""
     try:
         alerts = []

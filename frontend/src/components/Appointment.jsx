@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { FaBars, FaCalendarAlt, FaPlus, FaTimes } from 'react-icons/fa'
+import { FaBars, FaCalendarAlt, FaPlus, FaTimes, FaEdit, FaShare, FaDownload } from 'react-icons/fa'
 import './Appointment.css'
 import { API_BASE_URL } from '../config'
 import { useAuth } from '../contexts/AuthContext'
 import { apiGet, apiPost, apiDelete } from '../utils/api'
 import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
 
-const Appointment = () => {
+const Appointment = ({ setActivePage }) => {
   const { currentBranch } = useAuth()
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [viewMode, setViewMode] = useState('day')
@@ -16,7 +16,9 @@ const Appointment = () => {
   const [loading, setLoading] = useState(true)
   const [showBookingModal, setShowBookingModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
+  const [showDetailModal, setShowDetailModal] = useState(false)
   const [selectedAppointment, setSelectedAppointment] = useState(null)
+  const [appointmentDetail, setAppointmentDetail] = useState(null)
   const [bookingForm, setBookingForm] = useState({
     customer_id: '',
     staff_id: '',
@@ -306,9 +308,59 @@ const Appointment = () => {
     setShowBookingModal(true)
   }
 
+  const openDetailModal = async (appointment) => {
+    setSelectedAppointment(appointment)
+    // Fetch full appointment details including service price
+    try {
+      const response = await apiGet(`/api/appointments/${appointment.id}`)
+      if (response.ok) {
+        const data = await response.json()
+        setAppointmentDetail(data)
+        setShowDetailModal(true)
+      } else {
+        // Fallback to basic appointment data
+        setAppointmentDetail(appointment)
+        setShowDetailModal(true)
+      }
+    } catch (error) {
+      console.error('Error fetching appointment details:', error)
+      // Fallback to basic appointment data
+      setAppointmentDetail(appointment)
+      setShowDetailModal(true)
+    }
+  }
+
   const openCancelModal = (appointment) => {
     setSelectedAppointment(appointment)
     setShowCancelModal(true)
+  }
+
+  const handleEditAppointment = (appointment) => {
+    // Store appointment data in localStorage for QuickSale to pick up
+    const appointmentData = {
+      appointmentId: appointment.id || appointmentDetail?.id,
+      customer_id: appointment.customer_id || appointmentDetail?.customer_id,
+      customer_name: appointment.customer_name || appointmentDetail?.customer_name,
+      customer_mobile: appointment.customer_mobile || appointmentDetail?.customer_mobile,
+      staff_id: appointment.staff_id || appointmentDetail?.staff_id,
+      staff_name: appointment.staff_name || appointmentDetail?.staff_name,
+      service_id: appointment.service_id || appointmentDetail?.service_id,
+      service_name: appointment.service_name || appointmentDetail?.service_name,
+      service_price: appointment.service_price || appointmentDetail?.service_price,
+      appointment_date: appointment.appointment_date || appointmentDetail?.appointment_date,
+      start_time: appointment.start_time || appointmentDetail?.start_time,
+      notes: appointment.notes || appointmentDetail?.notes,
+      status: appointment.status || appointmentDetail?.status,
+    }
+    localStorage.setItem('edit_appointment_data', JSON.stringify(appointmentData))
+    
+    // Navigate to QuickSale
+    if (setActivePage) {
+      setActivePage('quick-sale')
+    } else {
+      window.dispatchEvent(new CustomEvent('navigateToPage', { detail: { page: 'quick-sale' } }))
+    }
+    setShowDetailModal(false)
   }
 
   return (
@@ -453,7 +505,7 @@ const Appointment = () => {
                           className={`appointment-block ${apt.status}`}
                           onClick={(e) => {
                             e.stopPropagation()
-                            openCancelModal(apt)
+                            openDetailModal(apt)
                           }}
                           title={`${apt.customer_name} - ${apt.service_name || 'Service'}`}
                         >
@@ -549,6 +601,91 @@ const Appointment = () => {
                 <button type="submit">Book Appointment</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Appointment Detail Modal (Invoice Style) */}
+      {showDetailModal && appointmentDetail && (
+        <div className="modal-overlay" onClick={() => setShowDetailModal(false)}>
+          <div className="appointment-invoice-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="invoice-header">
+              <div className="invoice-customer-info">
+                <h3>{appointmentDetail.customer_name || 'Customer'} - {appointmentDetail.customer_mobile ? `+91 ${appointmentDetail.customer_mobile}` : ''}</h3>
+                <p className="invoice-date">Date: {appointmentDetail.appointment_date ? new Date(appointmentDetail.appointment_date).toISOString().split('T')[0] : 'N/A'}</p>
+              </div>
+              <button className="close-btn" onClick={() => setShowDetailModal(false)}>
+                <FaTimes />
+              </button>
+            </div>
+            
+            <div className="invoice-table-container">
+              <table className="invoice-table">
+                <thead>
+                  <tr>
+                    <th>No.</th>
+                    <th>Service</th>
+                    <th>Staff</th>
+                    <th>Price (₹)</th>
+                    <th>Total (₹)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>1</td>
+                    <td>{appointmentDetail.service_name || 'Service'}</td>
+                    <td>{appointmentDetail.staff_name || 'N/A'}</td>
+                    <td>{appointmentDetail.service_price ? appointmentDetail.service_price.toFixed(2) : '0.00'}</td>
+                    <td>{(() => {
+                      const price = appointmentDetail.service_price || 0
+                      const tax = price * 0.18 // 18% GST
+                      return (price + tax).toFixed(2)
+                    })()}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="invoice-summary">
+              <div className="summary-row">
+                <span className="summary-label">Total:</span>
+                <span className="summary-value">₹ {appointmentDetail.service_price ? appointmentDetail.service_price.toFixed(2) : '0.00'}</span>
+              </div>
+              <div className="summary-row">
+                <span className="summary-label">Discount:</span>
+                <span className="summary-value">₹ 0.00</span>
+              </div>
+              <div className="summary-row">
+                <span className="summary-label">IGST / CGST:</span>
+                <span className="summary-value">₹ {(() => {
+                  const price = appointmentDetail.service_price || 0
+                  return (price * 0.18).toFixed(2)
+                })()}</span>
+              </div>
+              <div className="summary-row final">
+                <span className="summary-label">Grand Total:</span>
+                <span className="summary-value">₹ {(() => {
+                  const price = appointmentDetail.service_price || 0
+                  const tax = price * 0.18
+                  return (price + tax).toFixed(2)
+                })()}</span>
+              </div>
+            </div>
+
+            <div className="invoice-actions">
+              <button className="invoice-action-btn edit-btn" onClick={() => handleEditAppointment(appointmentDetail)}>
+                <FaEdit /> Edit
+              </button>
+              <button className="invoice-action-btn share-btn">
+                <FaShare /> Share Invoice
+              </button>
+              <button className="invoice-action-btn download-btn">
+                <FaDownload /> Download Invoice
+              </button>
+              <button className="invoice-action-btn close-btn" onClick={() => setShowDetailModal(false)}>
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

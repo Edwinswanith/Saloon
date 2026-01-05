@@ -20,7 +20,7 @@ def get_membership_plans():
 
         plans = list(query.order_by('-created_at'))
 
-        return jsonify([{
+        result = [{
                 'id': str(p.id),
                 'name': p.name,
                 'validity_days': p.validity_days,
@@ -30,9 +30,15 @@ def get_membership_plans():
                 'allocated_discount': p.allocated_discount,  # Keep both for compatibility
                 'status': p.status,
                 'description': p.description
-            } for p in plans])
+            } for p in plans]
+        
+        response = jsonify(result)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        response = jsonify({'error': str(e)})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
 
 @membership_plan_bp.route('/<plan_id>', methods=['GET'])
 def get_membership_plan(plan_id):
@@ -42,7 +48,7 @@ def get_membership_plan(plan_id):
             return jsonify({'error': 'Invalid plan ID format'}), 400
         
         plan = MembershipPlan.objects.get(id=plan_id)
-        return jsonify({
+        response = jsonify({
             'id': str(plan.id),
             'name': plan.name,
             'validity': plan.validity_days,
@@ -51,10 +57,16 @@ def get_membership_plan(plan_id):
             'status': plan.status,
             'description': plan.description
         })
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
     except DoesNotExist:
-        return jsonify({'error': 'Plan not found'}), 404
+        response = jsonify({'error': 'Plan not found'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 404
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        response = jsonify({'error': str(e)})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
 
 @membership_plan_bp.route('/', methods=['POST'])
 @require_role('owner')
@@ -81,12 +93,16 @@ def create_membership_plan(current_user=None):
         )
         plan.save()
         
-        return jsonify({
+        response = jsonify({
             'id': str(plan.id),
             'message': 'Membership plan created successfully'
-        }), 201
+        })
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 201
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        response = jsonify({'error': str(e)})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
 
 @membership_plan_bp.route('/<plan_id>', methods=['PUT'])
 @require_role('owner')
@@ -115,11 +131,17 @@ def update_membership_plan(plan_id, current_user=None):
         plan.updated_at = datetime.utcnow()
         plan.save()
         
-        return jsonify({'message': 'Membership plan updated successfully'})
+        response = jsonify({'message': 'Membership plan updated successfully'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
     except DoesNotExist:
-        return jsonify({'error': 'Plan not found'}), 404
+        response = jsonify({'error': 'Plan not found'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 404
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        response = jsonify({'error': str(e)})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
 
 @membership_plan_bp.route('/<plan_id>', methods=['DELETE'])
 @require_role('owner')
@@ -138,13 +160,21 @@ def delete_membership_plan(plan_id, current_user=None):
             plan.status = 'inactive'
             plan.updated_at = datetime.utcnow()
             plan.save()
-            return jsonify({'message': 'Membership plan deactivated successfully'})
+            response = jsonify({'message': 'Membership plan deactivated successfully'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response
         else:
             # Hard delete if not in use
             plan.delete()
-            return jsonify({'message': 'Membership plan deleted successfully'})
+            response = jsonify({'message': 'Membership plan deleted successfully'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response
     except DoesNotExist:
-        return jsonify({'error': 'Plan not found'}), 404
+        response = jsonify({'error': 'Plan not found'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 404
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        response = jsonify({'error': str(e)})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
 

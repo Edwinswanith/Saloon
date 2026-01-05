@@ -10,8 +10,10 @@ import {
 import './ServiceSalesAnalysis.css'
 import { API_BASE_URL } from '../config'
 import { apiGet } from '../utils/api'
+import { useAuth } from '../contexts/AuthContext'
 
 const ServiceSalesAnalysis = ({ setActivePage }) => {
+  const { currentBranch } = useAuth()
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [dateRangeFilter, setDateRangeFilter] = useState('today')
   const [salesData, setSalesData] = useState([])
@@ -70,7 +72,19 @@ const ServiceSalesAnalysis = ({ setActivePage }) => {
   useEffect(() => {
     fetchSalesData()
     fetchServiceGroups()
-  }, [dateRangeFilter, categoryFilter])
+  }, [dateRangeFilter, categoryFilter, currentBranch])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[ServiceSalesAnalysis] Branch changed, refreshing data...')
+      fetchSalesData()
+      fetchServiceGroups()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   const fetchServiceGroups = async () => {
     try {

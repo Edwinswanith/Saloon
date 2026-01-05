@@ -10,8 +10,10 @@ import {
 import './StaffIncentiveReport.css'
 import { API_BASE_URL } from '../config'
 import { apiGet } from '../utils/api'
+import { useAuth } from '../contexts/AuthContext'
 
 const StaffIncentiveReport = ({ setActivePage }) => {
+  const { currentBranch } = useAuth()
   const [dateFilter, setDateFilter] = useState('last-30-days')
   const [staffPerformance, setStaffPerformance] = useState([])
   const [loading, setLoading] = useState(true)
@@ -70,7 +72,18 @@ const StaffIncentiveReport = ({ setActivePage }) => {
 
   useEffect(() => {
     fetchStaffPerformance()
-  }, [dateFilter])
+  }, [dateFilter, currentBranch])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[StaffIncentiveReport] Branch changed, refreshing data...')
+      fetchStaffPerformance()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   const fetchStaffPerformance = async () => {
     try {

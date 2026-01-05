@@ -52,7 +52,7 @@
   justify-content: space-between;
   padding: 24px;
   border-bottom: 1px solid #e5e7eb;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #0F766E;
   border-radius: 12px 12px 0 0;
 }
 
@@ -120,7 +120,7 @@
 .profile-error,
 .profile-success {
   padding: 12px 16px;
-  border-radius: 8px;
+  border-radius: 12px;
   margin-bottom: 20px;
   display: flex;
   align-items: center;
@@ -169,7 +169,7 @@
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: #667eea;
+  background: #0F766E;
   color: white;
   border: none;
   border-radius: 6px;
@@ -208,14 +208,13 @@
 }
 
 .field-icon {
-  color: #667eea;
   font-size: 14px;
 }
 
 .profile-input {
   padding: 12px 16px;
   border: 1px solid #d1d5db;
-  border-radius: 8px;
+  border-radius: 12px;
   font-size: 14px;
   transition: all 0.2s;
   background: white;
@@ -223,7 +222,6 @@
 
 .profile-input:focus {
   outline: none;
-  border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -231,7 +229,7 @@
   padding: 12px 16px;
   background: #f9fafb;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border-radius: 12px;
   font-size: 14px;
   color: #111827;
   min-height: 44px;
@@ -291,7 +289,7 @@
   gap: 8px;
   padding: 12px 24px;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -313,7 +311,7 @@
 }
 
 .profile-btn-save {
-  background: #667eea;
+  background: #0F766E;
   color: white;
 }
 

@@ -13,7 +13,7 @@ import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
 import { useAuth } from '../contexts/AuthContext'
 
 const Staffs = () => {
-  const { getBranchId } = useAuth()
+  const { getBranchId, currentBranch } = useAuth()
   const [currentPage, setCurrentPage] = useState(1)
   const [staffs, setStaffs] = useState([])
   const [loading, setLoading] = useState(true)
@@ -30,11 +30,20 @@ const Staffs = () => {
     commissionRate: ''
   })
 
-  
-
   useEffect(() => {
     fetchStaffs()
-  }, [])
+  }, [currentBranch])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[Staffs] Branch changed, refreshing staff...')
+      fetchStaffs()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   const fetchStaffs = async () => {
     try {

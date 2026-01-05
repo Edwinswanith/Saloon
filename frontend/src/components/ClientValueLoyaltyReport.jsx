@@ -10,6 +10,7 @@ import {
 import './ClientValueLoyaltyReport.css'
 import { API_BASE_URL } from '../config'
 import { apiGet } from '../utils/api'
+import { useAuth } from '../contexts/AuthContext'
 import {
   ComposedChart,
   Bar,
@@ -23,6 +24,7 @@ import {
 } from 'recharts'
 
 const ClientValueLoyaltyReport = ({ setActivePage }) => {
+  const { currentBranch } = useAuth()
   const [dateRange, setDateRange] = useState('Last 12 Months')
   const [activeTab, setActiveTab] = useState('top-spenders')
   const [loading, setLoading] = useState(true)
@@ -39,7 +41,18 @@ const ClientValueLoyaltyReport = ({ setActivePage }) => {
 
   useEffect(() => {
     fetchClientValueData()
-  }, [dateRange])
+  }, [dateRange, currentBranch])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[ClientValueLoyaltyReport] Branch changed, refreshing data...')
+      fetchClientValueData()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   const fetchClientValueData = async () => {
     try {

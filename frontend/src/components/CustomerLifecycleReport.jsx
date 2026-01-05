@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiGet, apiPost } from '../utils/api';
 import Header from './Header';
+import { FaExclamationTriangle, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
 import './CustomerLifecycleReport.css';
 
 const CustomerLifecycleReport = () => {
@@ -17,7 +18,7 @@ const CustomerLifecycleReport = () => {
 
   // PLACEHOLDER: WhatsApp Integration Status
   const WHATSAPP_ENABLED = false; // Set to true when WhatsApp API is configured
-  const WHATSAPP_PLACEHOLDER_MESSAGE = '⚠️ WhatsApp integration is in placeholder mode. Will be activated when API credentials are provided.';
+  const WHATSAPP_PLACEHOLDER_MESSAGE = 'WhatsApp integration is in placeholder mode. Will be activated when API credentials are provided.';
 
   // Refetch data when filters change
   useEffect(() => {
@@ -272,7 +273,9 @@ const CustomerLifecycleReport = () => {
         {/* WhatsApp Placeholder Notice */}
         {!WHATSAPP_ENABLED && (
           <div className="placeholder-notice">
-            <p>{WHATSAPP_PLACEHOLDER_MESSAGE}</p>
+            <p style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FaExclamationTriangle size={16} color="#f59e0b" /> {WHATSAPP_PLACEHOLDER_MESSAGE}
+            </p>
           </div>
         )}
 
@@ -345,7 +348,17 @@ const CustomerLifecycleReport = () => {
                         {customer.segment}
                       </span>
                     </td>
-                    <td>{customer.whatsapp_consent ? '✅ Yes' : '❌ No'}</td>
+                    <td style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {customer.whatsapp_consent ? (
+                        <>
+                          <FaCheckCircle size={14} color="#10b981" /> Yes
+                        </>
+                      ) : (
+                        <>
+                          <FaTimesCircle size={14} color="#ef4444" /> No
+                        </>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}
@@ -360,7 +373,9 @@ const CustomerLifecycleReport = () => {
               <h2>Send WhatsApp Message</h2>
               {!WHATSAPP_ENABLED && (
                 <div className="placeholder-notice">
-                  <p>{WHATSAPP_PLACEHOLDER_MESSAGE}</p>
+                  <p style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <FaExclamationTriangle size={16} color="#f59e0b" /> {WHATSAPP_PLACEHOLDER_MESSAGE}
+                  </p>
                 </div>
               )}
               <div className="form-group">

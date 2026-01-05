@@ -31,11 +31,14 @@ def list_missed_enquiries(current_user=None):
         
         # Filter by branch
         branch = get_selected_branch(request, current_user)
-        enquiries = filter_by_branch(MissedEnquiry.objects(query), branch).order_by('-created_at')
+        enquiries_query = filter_by_branch(MissedEnquiry.objects(query), branch).order_by('-created_at')
         
         # Debug logging
         print(f"[Missed Enquiries] Branch: {branch.name if branch else 'ALL'}")
-        print(f"[Missed Enquiries] Total enquiries found: {enquiries.count()}")
+        print(f"[Missed Enquiries] Total enquiries found: {enquiries_query.count()}")
+        
+        # Force evaluation by converting to list
+        enquiries = list(enquiries_query)
         
         result = []
         for enquiry in enquiries:

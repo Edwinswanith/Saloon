@@ -5,6 +5,7 @@
  */
 
 import toast from 'react-hot-toast'
+import { FaExclamationTriangle, FaInfoCircle } from 'react-icons/fa'
 
 /**
  * Show success notification
@@ -46,16 +47,31 @@ export const showError = (message, options = {}) => {
  * @param {object} options - Additional toast options
  */
 export const showWarning = (message, options = {}) => {
-  return toast(message, {
-    icon: '⚠️',
-    ...options,
-    style: {
-      background: '#fffbeb',
-      color: '#92400e',
-      border: '1px solid #fcd34d',
-      ...options.style,
-    },
-  })
+  return toast.custom(
+    (t) => (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          background: '#fffbeb',
+          color: '#92400e',
+          border: '1px solid #fcd34d',
+          padding: '12px 16px',
+          borderRadius: '8px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          ...options.style,
+        }}
+      >
+        <FaExclamationTriangle size={20} color="#f59e0b" />
+        <span>{message}</span>
+      </div>
+    ),
+    {
+      duration: options.duration || 4000,
+      ...options,
+    }
+  )
 }
 
 /**
@@ -64,16 +80,31 @@ export const showWarning = (message, options = {}) => {
  * @param {object} options - Additional toast options
  */
 export const showInfo = (message, options = {}) => {
-  return toast(message, {
-    icon: 'ℹ️',
-    ...options,
-    style: {
-      background: '#eff6ff',
-      color: '#1e40af',
-      border: '1px solid #93c5fd',
-      ...options.style,
-    },
-  })
+  return toast.custom(
+    (t) => (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          background: '#eff6ff',
+          color: '#1e40af',
+          border: '1px solid #93c5fd',
+          padding: '12px 16px',
+          borderRadius: '8px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          ...options.style,
+        }}
+      >
+        <FaInfoCircle size={20} color="#3b82f6" />
+        <span>{message}</span>
+      </div>
+    ),
+    {
+      duration: options.duration || 4000,
+      ...options,
+    }
+  )
 }
 
 /**

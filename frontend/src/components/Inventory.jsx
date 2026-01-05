@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react'
 import { FaBars, FaUser, FaEdit, FaTrash } from 'react-icons/fa'
 import './Inventory.css'
 import { apiGet, apiPost, apiDelete } from '../utils/api'
+import { useAuth } from '../contexts/AuthContext'
 
 const Inventory = () => {
+  const { currentBranch } = useAuth()
   const [activeTab, setActiveTab] = useState('supplier')
   const [searchQuery, setSearchQuery] = useState('')
   const [suppliers, setSuppliers] = useState([])
@@ -22,7 +24,20 @@ const Inventory = () => {
     if (activeTab === 'supplier') {
       fetchSuppliers()
     }
-  }, [activeTab, searchQuery])
+  }, [activeTab, searchQuery, currentBranch])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[Inventory] Branch changed, refreshing data...')
+      if (activeTab === 'supplier') {
+        fetchSuppliers()
+      }
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch, activeTab])
 
   const fetchSuppliers = async () => {
     try {

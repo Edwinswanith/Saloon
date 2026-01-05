@@ -6,7 +6,7 @@
 export const antdTheme = {
   token: {
     // Primary color (matches your existing primary color)
-    colorPrimary: '#667eea',
+    colorPrimary: '#0F766E',
     colorSuccess: '#10b981',
     colorWarning: '#f59e0b',
     colorError: '#ef4444',

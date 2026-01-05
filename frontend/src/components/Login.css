@@ -169,7 +169,7 @@
   color: var(--text-primary);
   background: var(--bg-primary);
   border: 2px solid var(--border-light);
-  border-radius: var(--radius-lg);
+  border-radius: 12px;
   transition: all var(--transition-base);
   font-family: var(--font-sans);
   outline: none;
@@ -197,7 +197,7 @@
   gap: var(--space-2);
   padding: var(--space-1);
   background: var(--bg-secondary);
-  border-radius: var(--radius-lg);
+  border-radius: 12px;
 }
 
 .toggle-btn {
@@ -207,7 +207,7 @@
   color: var(--text-secondary);
   background: transparent;
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   cursor: pointer;
   transition: all var(--transition-base);
   font-family: var(--font-sans);
@@ -232,7 +232,7 @@
   padding: var(--space-3) var(--space-4);
   background: var(--error-50);
   border: 1px solid var(--error-500);
-  border-radius: var(--radius-lg);
+  border-radius: 12px;
   color: var(--error-700);
   font-size: var(--text-sm);
   animation: shake 0.3s ease-in-out;
@@ -257,7 +257,7 @@
   color: white;
   background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
   border: none;
-  border-radius: var(--radius-lg);
+  border-radius: 12px;
   cursor: pointer;
   transition: all var(--transition-base);
   box-shadow: var(--shadow-md);

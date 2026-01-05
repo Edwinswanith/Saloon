@@ -9,8 +9,10 @@ import {
 import './ListOfDeletedBills.css'
 import { API_BASE_URL } from '../config'
 import { apiGet } from '../utils/api'
+import { useAuth } from '../contexts/AuthContext'
 
 const ListOfDeletedBills = ({ setActivePage }) => {
+  const { currentBranch } = useAuth()
   const [dateFilter, setDateFilter] = useState('today')
   const [deletedBills, setDeletedBills] = useState([])
   const [loading, setLoading] = useState(true)
@@ -66,7 +68,18 @@ const ListOfDeletedBills = ({ setActivePage }) => {
 
   useEffect(() => {
     fetchDeletedBills()
-  }, [dateFilter])
+  }, [dateFilter, currentBranch])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[ListOfDeletedBills] Branch changed, refreshing data...')
+      fetchDeletedBills()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   const fetchDeletedBills = async () => {
     try {

@@ -38,7 +38,7 @@
   padding: var(--space-2);
   color: var(--text-secondary);
   transition: all var(--transition-base);
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -69,7 +69,7 @@
 .staff-attendance-header .logo-box {
   padding: var(--space-2) var(--space-4);
   background: linear-gradient(135deg, var(--accent-50) 0%, var(--accent-100) 100%);
-  border-radius: var(--radius-lg);
+  border-radius: 12px;
   border: 1px solid var(--accent-200);
   box-shadow: var(--shadow-sm);
 }
@@ -85,7 +85,7 @@
   width: 40px;
   height: 40px;
   border: 1px solid var(--border-light);
-  border-radius: var(--radius-lg);
+  border-radius: 12px;
   background: var(--bg-primary);
   cursor: pointer;
   font-size: 18px;
@@ -114,7 +114,7 @@
 .staff-attendance-card {
   background: var(--bg-elevated);
   border: 1px solid var(--border-medium);
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   overflow: hidden;
   animation: scaleIn var(--transition-slow) ease-out;
 }
@@ -154,7 +154,7 @@
   justify-content: center;
   background: var(--primary-600);
   color: white;
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   font-size: var(--text-lg);
 }
 
@@ -187,7 +187,7 @@
 .date-picker {
   padding: var(--space-3) var(--space-10) var(--space-3) var(--space-4);
   border: 1px solid var(--border-medium);
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
   background: var(--bg-primary);
@@ -234,7 +234,7 @@
   background: var(--success-600);
   color: white;
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
   cursor: pointer;
@@ -253,7 +253,7 @@
   background: var(--primary-600);
   color: white;
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
   cursor: pointer;

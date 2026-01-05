@@ -5,10 +5,12 @@ import dayjs from 'dayjs'
 import './LeadManagement.css'
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
+import { useAuth } from '../contexts/AuthContext'
 
 const { TextArea } = Input
 
 const LeadManagement = () => {
+  const { currentBranch } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
@@ -29,7 +31,18 @@ const LeadManagement = () => {
 
   useEffect(() => {
     fetchLeads()
-  }, [statusFilter, searchQuery])
+  }, [statusFilter, searchQuery, currentBranch])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[LeadManagement] Branch changed, refreshing leads...')
+      fetchLeads()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   const fetchLeads = async () => {
     try {

@@ -23,7 +23,8 @@ def handle_preflight():
 def get_product_categories():
     """Get all product categories"""
     try:
-        categories = ProductCategory.objects.order_by('display_order')
+        # Force evaluation by converting to list
+        categories = list(ProductCategory.objects.order_by('display_order'))
         response = jsonify([{
             'id': str(cat.id),
             'name': cat.name,
@@ -310,7 +311,8 @@ def delete_product(id, current_user=None):
 def get_low_stock_products():
     """Get products with stock below minimum level"""
     try:
-        products = Product.objects(status='active').order_by('stock_quantity')
+        # Force evaluation by converting to list
+        products = list(Product.objects(status='active').order_by('stock_quantity'))
         
         # Filter for low stock in Python (MongoEngine doesn't support field comparison)
         low_stock_products = [

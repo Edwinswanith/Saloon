@@ -2,18 +2,51 @@ import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../config';
 import Header from './Header';
 import './DiscountApprovals.css';
+import { useAuth } from '../contexts/AuthContext';
 
 const DiscountApprovals = () => {
+  const { user, currentBranch } = useAuth()
   const [approvals, setApprovals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedApproval, setSelectedApproval] = useState(null);
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [approvalMethod, setApprovalMethod] = useState('in_app'); // 'in_app' or 'code'
   const [approvalCode, setApprovalCode] = useState('');
+  
+  // Restrict access to owners only
+  if (!user || user.role !== 'owner') {
+    return (
+      <div style={{ 
+        padding: '40px', 
+        textAlign: 'center',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '400px'
+      }}>
+        <h2 style={{ color: '#dc2626', marginBottom: '16px' }}>Access Denied</h2>
+        <p style={{ color: '#6b7280', fontSize: '16px' }}>
+          Only owners can access discount approvals.
+        </p>
+      </div>
+    );
+  }
 
   useEffect(() => {
     fetchApprovals();
-  }, []);
+  }, [currentBranch]);
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[DiscountApprovals] Branch changed, refreshing approvals...')
+      fetchApprovals()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   const fetchApprovals = async () => {
     try {

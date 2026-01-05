@@ -20,11 +20,33 @@ import {
 import { PageTransition, StaggerContainer, StaggerItem, HoverScale } from './shared/PageTransition'
 import { StatSkeleton, ChartSkeleton, TableSkeleton } from './shared/SkeletonLoaders'
 import { EmptyTable } from './shared/EmptyStates'
+import {
+  FaCut,
+  FaShoppingBag,
+  FaBox,
+  FaCrown,
+  FaCreditCard,
+  FaMobileAlt,
+  FaMoneyBillWave,
+  FaWallet,
+  FaChartBar,
+  FaBullseye,
+  FaPhone,
+  FaCalendar,
+  FaCheckCircle,
+  FaTimesCircle,
+  FaCircle,
+  FaInfoCircle,
+  FaBell,
+  FaStar
+} from 'react-icons/fa'
 
 const Dashboard = () => {
   const { currentBranch } = useAuth()
   const [activeTab, setActiveTab] = useState('staff')
   const [filter, setFilter] = useState('month')
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1) // 1-12
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({
     totalTax: 0,
@@ -65,8 +87,12 @@ const Dashboard = () => {
     yesterday.setDate(yesterday.getDate() - 1)
     const weekStart = new Date(today)
     weekStart.setDate(today.getDate() - today.getDay())
-    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
-    const yearStart = new Date(today.getFullYear(), 0, 1)
+    
+    // Use selected year/month for month and year filters
+    const monthStart = new Date(selectedYear, selectedMonth - 1, 1)
+    const monthEnd = new Date(selectedYear, selectedMonth, 0) // Last day of selected month
+    const yearStart = new Date(selectedYear, 0, 1)
+    const yearEnd = new Date(selectedYear, 11, 31, 23, 59, 59) // Last day of selected year
 
     switch (filter) {
       case 'today':
@@ -85,14 +111,20 @@ const Dashboard = () => {
           end_date: today.toISOString().split('T')[0],
         }
       case 'month':
+        // If selected month/year is current month/year, use today as end date
+        // Otherwise, use the last day of the selected month
+        const isCurrentMonth = selectedYear === today.getFullYear() && selectedMonth === today.getMonth() + 1
         return {
           start_date: monthStart.toISOString().split('T')[0],
-          end_date: today.toISOString().split('T')[0],
+          end_date: isCurrentMonth ? today.toISOString().split('T')[0] : monthEnd.toISOString().split('T')[0],
         }
       case 'year':
+        // If selected year is current year, use today as end date
+        // Otherwise, use the last day of the selected year
+        const isCurrentYear = selectedYear === today.getFullYear()
         return {
           start_date: yearStart.toISOString().split('T')[0],
-          end_date: today.toISOString().split('T')[0],
+          end_date: isCurrentYear ? today.toISOString().split('T')[0] : yearEnd.toISOString().split('T')[0],
         }
       default:
         return {
@@ -103,23 +135,28 @@ const Dashboard = () => {
   }
 
   useEffect(() => {
+    console.log('[Dashboard] Fetching data - filter:', filter, 'year:', selectedYear, 'month:', selectedMonth, 'activeTab:', activeTab, 'currentBranch:', currentBranch?.id || currentBranch)
     fetchDashboardData()
-  }, [filter, activeTab, currentBranch])
+  }, [filter, selectedYear, selectedMonth, activeTab, currentBranch])
 
   // Listen for branch changes
   useEffect(() => {
     const handleBranchChange = () => {
+      console.log('[Dashboard] Branch changed, refreshing data...', currentBranch)
       fetchDashboardData()
     }
     
     window.addEventListener('branchChanged', handleBranchChange)
     return () => window.removeEventListener('branchChanged', handleBranchChange)
-  }, [])
+  }, [currentBranch])
 
   const fetchDashboardData = async () => {
     setLoading(true)
     const dateRange = getDateRange()
     const params = new URLSearchParams(dateRange)
+    
+    // Add timestamp to prevent caching
+    params.append('_t', Date.now())
 
     try {
       // Fetch stats
@@ -205,19 +242,28 @@ const Dashboard = () => {
           setAlerts(alertsData || [])
         }
       } else {
-        // Fetch staff performance
+        // Fetch staff performance (branch-specific)
         const staffRes = await apiGet(`/api/dashboard/staff-performance?${params}`)
         if (staffRes.ok) {
           const staffData = await staffRes.json()
+          console.log('[Dashboard] Staff Performance Data (Branch):', staffData)
           setStaffPerformance(staffData || [])
+        } else {
+          console.error('[Dashboard] Failed to fetch staff performance:', staffRes.status)
+          setStaffPerformance([])
         }
         
-        // Fetch top performer
+        // Fetch top performer (company-wide, not branch-specific)
         const topPerformerRes = await apiGet(`/api/dashboard/top-performer?${params}`)
         if (topPerformerRes.ok) {
           const performerData = await topPerformerRes.json()
+          console.log('[Dashboard] Top Performer Data (Company-Wide):', performerData)
           setTopPerformer(performerData.top_performer)
           setStaffLeaderboard(performerData.leaderboard || [])
+        } else {
+          console.error('[Dashboard] Failed to fetch top performer:', topPerformerRes.status)
+          setTopPerformer(null)
+          setStaffLeaderboard([])
         }
       }
     } catch (error) {
@@ -457,7 +503,9 @@ const Dashboard = () => {
                       </div>
                       <div className="stat-item">
                         <span className="stat-label">Rating</span>
-                        <span className="stat-value">{topPerformer.avg_rating}/5 ⭐</span>
+                        <span className="stat-value" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          {topPerformer.avg_rating}/5 <FaStar size={14} color="#fbbf24" />
+                        </span>
                       </div>
                       <div className="stat-item">
                         <span className="stat-label">Appointments</span>
@@ -558,7 +606,7 @@ const Dashboard = () => {
             <div className="chart-card" style={{
               backgroundColor: 'white',
               padding: '20px',
-              borderRadius: '8px',
+              borderRadius: '12px',
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
             }}>
               <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '16px', fontWeight: '600' }}>
@@ -596,7 +644,7 @@ const Dashboard = () => {
             <div className="chart-card" style={{
               backgroundColor: 'white',
               padding: '20px',
-              borderRadius: '8px',
+              borderRadius: '12px',
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
             }}>
               <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '16px', fontWeight: '600' }}>
@@ -624,7 +672,7 @@ const Dashboard = () => {
             <div className="chart-card" style={{
               backgroundColor: 'white',
               padding: '20px',
-              borderRadius: '8px',
+              borderRadius: '12px',
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
             }}>
               <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '16px', fontWeight: '600' }}>
@@ -666,7 +714,7 @@ const Dashboard = () => {
             <div className="chart-card" style={{
               backgroundColor: 'white',
               padding: '20px',
-              borderRadius: '8px',
+              borderRadius: '12px',
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
             }}>
               <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '16px', fontWeight: '600' }}>
@@ -730,10 +778,12 @@ const Dashboard = () => {
                       <tr key={staff.staff_id}>
                         <td><strong>{index + 1}</strong></td>
                         <td>{staff.staff_name}</td>
-                        <td><strong style={{color: '#667eea'}}>{staff.performance_score}</strong></td>
+                        <td><strong>{staff.performance_score}</strong></td>
                         <td>{formatCurrency(staff.revenue)}</td>
                         <td>{staff.service_count}</td>
-                        <td>{staff.avg_rating} ⭐</td>
+                        <td style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          {staff.avg_rating} <FaStar size={14} color="#fbbf24" />
+                        </td>
                         <td>{staff.feedback_count}</td>
                         <td>{staff.completed_appointments}</td>
                       </tr>
@@ -788,59 +838,6 @@ const Dashboard = () => {
                         <td>{customer.customer_name}</td>
                         <td>{customer.visit_count}</td>
                         <td>{formatCurrency(customer.total_spent)}</td>
-                        <td>
-                          <button className="view-link">View</button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Top 10 Offering Group */}
-          <div className="table-section">
-            <div className="section-header">
-              <h2 className="section-title">Top 10 Offering Group</h2>
-              <button 
-                className="export-link" 
-                onClick={(e) => {
-                  e.preventDefault()
-                  // TODO: Implement export functionality
-                }}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', textDecoration: 'underline' }}
-              >
-                Export Full Report
-              </button>
-            </div>
-            <div className="table-container">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Offering Group</th>
-                    <th>Count</th>
-                    <th>Revenue</th>
-                    <th>View Details</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan="5" className="empty-row">Loading...</td>
-                    </tr>
-                  ) : topOfferings.length === 0 ? (
-                    <tr>
-                      <td colSpan="5" className="empty-row">No data available</td>
-                    </tr>
-                  ) : (
-                    topOfferings.slice(0, 10).map((offering, index) => (
-                      <tr key={index}>
-                        <td>{index + 1}</td>
-                        <td>{offering.name}</td>
-                        <td>{offering.quantity}</td>
-                        <td>{formatCurrency(offering.revenue)}</td>
                         <td>
                           <button className="view-link">View</button>
                         </td>
@@ -909,122 +906,486 @@ const Dashboard = () => {
             {/* Right Sidebar */}
             <aside className="dashboard-sidebar">
               {/* Revenue & Payments */}
-              <div className="sidebar-card">
-                <h3 className="sidebar-title">Revenue & Payments</h3>
+              <div className="sidebar-card" style={{
+                background: 'white',
+                borderRadius: '12px',
+                padding: '24px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                marginBottom: '20px'
+              }}>
+                <h3 className="sidebar-title" style={{
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  marginBottom: '20px',
+                  color: '#1f2937',
+                  borderBottom: '2px solid #e5e7eb',
+                  paddingBottom: '12px'
+                }}>Revenue & Payments</h3>
 
-                <div className="revenue-section">
-                  <h4 className="subsection-title">REVENUE SOURCES:</h4>
-                  <ul className="revenue-list">
-                    <li className="revenue-item">
-                      <span>Service Revenue:</span>
-                      <span className="amount">{loading ? 'Loading...' : formatCurrency(revenueBreakdown.service?.amount || 0)}</span>
-                    </li>
-                    <li className="revenue-item">
-                      <span>Retail Product Sales:</span>
-                      <span className="amount">{loading ? 'Loading...' : formatCurrency(revenueBreakdown.product?.amount || 0)}</span>
-                    </li>
-                    <li className="revenue-item">
-                      <span>Package Sales:</span>
-                      <span className="amount">{loading ? 'Loading...' : formatCurrency(revenueBreakdown.package?.amount || 0)}</span>
-                    </li>
-                    <li className="revenue-item">
-                      <span>Membership Sales:</span>
-                      <span className="amount">{loading ? 'Loading...' : formatCurrency(revenueBreakdown.membership?.amount || 0)}</span>
-                    </li>
-                    <li className="revenue-item">
-                      <span>Prepaid Packages Sold:</span>
-                      <span className="amount">{loading ? 'Loading...' : formatCurrency(revenueBreakdown.prepaid?.amount || 0)}</span>
-                    </li>
-                  </ul>
+                {/* Revenue Sources */}
+                <div className="revenue-section" style={{ marginBottom: '24px' }}>
+                  <h4 style={{
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    color: '#6b7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    marginBottom: '16px',
+                    marginTop: 0
+                  }}>Revenue Sources</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {[
+                      { label: 'Service Revenue', value: revenueBreakdown.service?.amount || 0, icon: <FaCut size={20} />, color: '#3b82f6' },
+                      { label: 'Retail Product Sales', value: revenueBreakdown.product?.amount || 0, icon: <FaShoppingBag size={20} />, color: '#10b981' },
+                      { label: 'Package Sales', value: revenueBreakdown.package?.amount || 0, icon: <FaBox size={20} />, color: '#f59e0b' },
+                      { label: 'Membership Sales', value: revenueBreakdown.membership?.amount || 0, icon: <FaCrown size={20} />, color: '#8b5cf6' },
+                      { label: 'Prepaid Packages', value: revenueBreakdown.prepaid?.amount || 0, icon: <FaCreditCard size={20} />, color: '#ec4899' }
+                    ].map((item, index) => (
+                      <div key={index} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 16px',
+                        background: item.value > 0 ? '#f9fafb' : '#ffffff',
+                        borderRadius: '8px',
+                        border: item.value > 0 ? `1px solid ${item.color}20` : '1px solid #e5e7eb',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (item.value > 0) {
+                          e.currentTarget.style.background = `${item.color}08`
+                          e.currentTarget.style.transform = 'translateX(4px)'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (item.value > 0) {
+                          e.currentTarget.style.background = '#f9fafb'
+                          e.currentTarget.style.transform = 'translateX(0)'
+                        }
+                      }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          {item.icon}
+                          <span style={{
+                            fontSize: '14px',
+                            color: item.value > 0 ? '#374151' : '#9ca3af',
+                            fontWeight: '500'
+                          }}>{item.label}</span>
+                        </div>
+                        <span style={{
+                          fontSize: '15px',
+                          fontWeight: '600',
+                          color: item.value > 0 ? item.color : '#9ca3af'
+                        }}>
+                          {loading ? '...' : formatCurrency(item.value)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
+                {/* Payment Distribution */}
                 <div className="payment-section">
-                  <h4 className="subsection-title">PAYMENT DISTRIBUTION:</h4>
-                  <ul className="payment-list">
-                    {loading ? (
-                      <li className="payment-item">Loading...</li>
-                    ) : paymentDistribution.length === 0 ? (
-                      <li className="payment-item">No payment data</li>
-                    ) : (
-                      paymentDistribution.map((payment, index) => (
-                        <li key={index} className="payment-item">
-                          <span>{payment.payment_mode}:</span>
-                          <span className="amount">{formatCurrency(payment.amount)}</span>
-                        </li>
-                      ))
-                    )}
-                  </ul>
+                  <h4 style={{
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    color: '#6b7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    marginBottom: '16px',
+                    marginTop: 0
+                  }}>Payment Distribution</h4>
+                  {loading ? (
+                    <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af' }}>Loading...</div>
+                  ) : paymentDistribution.length === 0 ? (
+                    <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af' }}>No payment data</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {paymentDistribution.map((payment, index) => {
+                        const paymentIcons = {
+                          'upi': <FaMobileAlt size={20} />,
+                          'card': <FaCreditCard size={20} />,
+                          'cash': <FaMoneyBillWave size={20} />,
+                          'wallet': <FaWallet size={20} />
+                        }
+                        const paymentColors = {
+                          'upi': '#6366f1',
+                          'card': '#3b82f6',
+                          'cash': '#10b981',
+                          'wallet': '#f59e0b'
+                        }
+                        const mode = payment.payment_mode?.toLowerCase() || 'cash'
+                        const icon = paymentIcons[mode] || <FaCreditCard size={20} />
+                        const color = paymentColors[mode] || '#3b82f6'
+                        
+                        return (
+                          <div key={index} style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '14px 16px',
+                            background: '#f9fafb',
+                            borderRadius: '8px',
+                            border: `1px solid ${color}20`,
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = `${color}08`
+                            e.currentTarget.style.transform = 'translateX(4px)'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = '#f9fafb'
+                            e.currentTarget.style.transform = 'translateX(0)'
+                          }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              {icon}
+                              <span style={{
+                                fontSize: '14px',
+                                color: '#374151',
+                                fontWeight: '600',
+                                textTransform: 'capitalize'
+                              }}>{payment.payment_mode}</span>
+                            </div>
+                            <span style={{
+                              fontSize: '15px',
+                              fontWeight: '700',
+                              color: color
+                            }}>
+                              {formatCurrency(payment.amount)}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Client Source */}
-              <div className="sidebar-card">
-                <h3 className="sidebar-title">Client Source</h3>
-                <div className="client-source-content">
-                  <p className="empty-message">No data available</p>
+              <div className="sidebar-card" style={{
+                background: 'white',
+                borderRadius: '12px',
+                padding: '24px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                marginBottom: '20px'
+              }}>
+                <h3 className="sidebar-title" style={{
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  marginBottom: '20px',
+                  color: '#1f2937',
+                  borderBottom: '2px solid #e5e7eb',
+                  paddingBottom: '12px'
+                }}>Client Source</h3>
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '40px 20px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{
+                    width: '64px',
+                    height: '64px',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: '16px'
+                  }}>
+                    <FaChartBar size={32} color="#9ca3af" />
+                  </div>
+                  <p style={{
+                    fontSize: '14px',
+                    color: '#6b7280',
+                    margin: 0,
+                    fontWeight: '500'
+                  }}>No data available</p>
+                  <p style={{
+                    fontSize: '12px',
+                    color: '#9ca3af',
+                    margin: '8px 0 0 0'
+                  }}>Client source data will appear here</p>
                 </div>
               </div>
 
               {/* Client & Lead Funnel */}
-              <div className="sidebar-card">
-                <h3 className="sidebar-title">Client & Lead Funnel</h3>
-                <div className="client-metrics">
-                  <div className="metric-card">
-                    <div className="metric-value">{loading ? '...' : clientFunnel.newClients}</div>
-                    <div className="metric-label">New Clients</div>
+              <div className="sidebar-card" style={{
+                background: 'white',
+                borderRadius: '12px',
+                padding: '24px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                marginBottom: '20px'
+              }}>
+                <h3 className="sidebar-title" style={{
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  marginBottom: '20px',
+                  color: '#1f2937',
+                  borderBottom: '2px solid #e5e7eb',
+                  paddingBottom: '12px'
+                }}>Client & Lead Funnel</h3>
+                
+                {/* Client Metrics */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '12px',
+                  marginBottom: '24px'
+                }}>
+                  <div style={{
+                    padding: '16px',
+                    background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
+                    borderRadius: '10px',
+                    border: '1px solid #3b82f620',
+                    textAlign: 'center',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)'
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.15)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
+                  >
+                    <div style={{
+                      fontSize: '28px',
+                      fontWeight: '700',
+                      color: '#1e40af',
+                      marginBottom: '4px'
+                    }}>
+                      {loading ? '...' : clientFunnel.newClients}
+                    </div>
+                    <div style={{
+                      fontSize: '12px',
+                      color: '#1e40af',
+                      fontWeight: '600',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>New Clients</div>
                   </div>
-                  <div className="metric-card">
-                    <div className="metric-value">{loading ? '...' : clientFunnel.returningClients}</div>
-                    <div className="metric-label">Returning Clients</div>
+                  
+                  <div style={{
+                    padding: '16px',
+                    background: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)',
+                    borderRadius: '10px',
+                    border: '1px solid #10b98120',
+                    textAlign: 'center',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)'
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.15)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
+                  >
+                    <div style={{
+                      fontSize: '28px',
+                      fontWeight: '700',
+                      color: '#047857',
+                      marginBottom: '4px'
+                    }}>
+                      {loading ? '...' : clientFunnel.returningClients}
+                    </div>
+                    <div style={{
+                      fontSize: '12px',
+                      color: '#047857',
+                      fontWeight: '600',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>Returning Clients</div>
                   </div>
                 </div>
-                <div className="divider"></div>
-                <div className="lead-funnel-section">
-                  <h4 className="subsection-title">TODAY'S LEAD FUNNEL</h4>
-                  <ul className="funnel-list">
-                    <li className="funnel-item">
-                      <span>Total Leads Generated</span>
-                      <span className="funnel-value">{loading ? '...' : clientFunnel.totalLeads}</span>
-                    </li>
-                    <li className="funnel-item">
-                      <span>Contacted</span>
-                      <span className="funnel-value">{loading ? '...' : clientFunnel.contacted}</span>
-                    </li>
-                    <li className="funnel-item">
-                      <span>Follow-ups Scheduled</span>
-                      <span className="funnel-value">{loading ? '...' : clientFunnel.followups}</span>
-                    </li>
-                    <li className="funnel-item">
-                      <span>Completed</span>
-                      <span className="funnel-value completed">{loading ? '...' : clientFunnel.completed}</span>
-                    </li>
-                    <li className="funnel-item">
-                      <span>Lost</span>
-                      <span className="funnel-value lost">{loading ? '...' : clientFunnel.lost}</span>
-                    </li>
-                  </ul>
+
+                {/* Divider */}
+                <div style={{
+                  height: '1px',
+                  background: 'linear-gradient(90deg, transparent, #e5e7eb, transparent)',
+                  margin: '20px 0'
+                }}></div>
+
+                {/* Today's Lead Funnel */}
+                <div>
+                  <h4 style={{
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    color: '#6b7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    marginBottom: '16px',
+                    marginTop: 0
+                  }}>Today's Lead Funnel</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {[
+                      { label: 'Total Leads Generated', value: clientFunnel.totalLeads, icon: <FaBullseye size={18} />, color: '#3b82f6' },
+                      { label: 'Contacted', value: clientFunnel.contacted, icon: <FaPhone size={18} />, color: '#6366f1' },
+                      { label: 'Follow-ups Scheduled', value: clientFunnel.followups, icon: <FaCalendar size={18} />, color: '#8b5cf6' },
+                      { label: 'Completed', value: clientFunnel.completed, icon: <FaCheckCircle size={18} />, color: '#10b981' },
+                      { label: 'Lost', value: clientFunnel.lost, icon: <FaTimesCircle size={18} />, color: '#ef4444' }
+                    ].map((item, index) => (
+                      <div key={index} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 14px',
+                        background: '#f9fafb',
+                        borderRadius: '8px',
+                        border: `1px solid ${item.color}20`,
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = `${item.color}08`
+                        e.currentTarget.style.transform = 'translateX(4px)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = '#f9fafb'
+                        e.currentTarget.style.transform = 'translateX(0)'
+                      }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          {item.icon}
+                          <span style={{
+                            fontSize: '13px',
+                            color: '#374151',
+                            fontWeight: '500'
+                          }}>{item.label}</span>
+                        </div>
+                        <span style={{
+                          fontSize: '15px',
+                          fontWeight: '700',
+                          color: item.color,
+                          minWidth: '40px',
+                          textAlign: 'right'
+                        }}>
+                          {loading ? '...' : item.value}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
               {/* Operational Alerts */}
-              <div className="sidebar-card">
-                <h3 className="sidebar-title">Operational Alerts</h3>
-                <ul className="alerts-list">
-                  {loading ? (
-                    <li className="alert-item">Loading alerts...</li>
-                  ) : alerts.length === 0 ? (
-                    <li className="alert-item">No alerts</li>
-                  ) : (
-                    alerts.map((alert, index) => (
-                      <li key={index} className="alert-item">
-                        <span>{alert.message}</span>
-                        <span className={`alert-value ${alert.severity}`}>
-                          {alert.count}
-                        </span>
-                      </li>
-                    ))
-                  )}
-                </ul>
+              <div className="sidebar-card" style={{
+                background: 'white',
+                borderRadius: '12px',
+                padding: '24px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                marginBottom: '20px'
+              }}>
+                <h3 className="sidebar-title" style={{
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  marginBottom: '20px',
+                  color: '#1f2937',
+                  borderBottom: '2px solid #e5e7eb',
+                  paddingBottom: '12px'
+                }}>Operational Alerts</h3>
+                {loading ? (
+                  <div style={{
+                    padding: '20px',
+                    textAlign: 'center',
+                    color: '#9ca3af',
+                    fontSize: '14px'
+                  }}>Loading alerts...</div>
+                ) : alerts.length === 0 ? (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '30px 20px',
+                    textAlign: 'center'
+                  }}>
+                    <div style={{
+                      width: '56px',
+                      height: '56px',
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: '12px'
+                    }}>
+                      <FaBell size={28} color="#f59e0b" />
+                    </div>
+                    <p style={{
+                      fontSize: '14px',
+                      color: '#6b7280',
+                      margin: 0,
+                      fontWeight: '500'
+                    }}>No alerts</p>
+                    <p style={{
+                      fontSize: '12px',
+                      color: '#9ca3af',
+                      margin: '6px 0 0 0'
+                    }}>All systems operational</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {alerts.map((alert, index) => {
+                      const severityColors = {
+                        'high': { bg: '#fee2e2', border: '#ef4444', text: '#dc2626', icon: <FaCircle size={18} color="#dc2626" /> },
+                        'medium': { bg: '#fef3c7', border: '#f59e0b', text: '#d97706', icon: <FaCircle size={18} color="#d97706" /> },
+                        'low': { bg: '#dbeafe', border: '#3b82f6', text: '#2563eb', icon: <FaCircle size={18} color="#2563eb" /> },
+                        'info': { bg: '#f3f4f6', border: '#6b7280', text: '#4b5563', icon: <FaInfoCircle size={18} color="#4b5563" /> }
+                      }
+                      const severity = alert.severity?.toLowerCase() || 'info'
+                      const colors = severityColors[severity] || severityColors.info
+                      
+                      return (
+                        <div key={index} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '14px 16px',
+                          background: colors.bg,
+                          borderRadius: '8px',
+                          border: `1px solid ${colors.border}40`,
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateX(4px)'
+                          e.currentTarget.style.boxShadow = `0 2px 8px ${colors.border}20`
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateX(0)'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            {colors.icon}
+                            <span style={{
+                              fontSize: '13px',
+                              color: colors.text,
+                              fontWeight: '500'
+                            }}>{alert.message}</span>
+                          </div>
+                          <span style={{
+                            fontSize: '16px',
+                            fontWeight: '700',
+                            color: colors.text,
+                            background: 'white',
+                            padding: '4px 10px',
+                            borderRadius: '12px',
+                            minWidth: '32px',
+                            textAlign: 'center'
+                          }}>
+                            {alert.count}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             </aside>
           </>

@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react'
 import { FaBars, FaCalendarAlt, FaCloudDownloadAlt, FaEdit, FaTrash } from 'react-icons/fa'
 import './CashRegister.css'
 import { API_BASE_URL } from '../config'
+import { useAuth } from '../contexts/AuthContext'
 
 const CashRegister = () => {
+  const { currentBranch } = useAuth()
   const [viewMode, setViewMode] = useState('daily')
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [transactions, setTransactions] = useState([])
@@ -20,7 +22,19 @@ const CashRegister = () => {
   useEffect(() => {
     fetchTransactions()
     fetchSummary()
-  }, [selectedDate, viewMode])
+  }, [selectedDate, viewMode, currentBranch])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[CashRegister] Branch changed, refreshing transactions...')
+      fetchTransactions()
+      fetchSummary()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   const fetchTransactions = async () => {
     try {

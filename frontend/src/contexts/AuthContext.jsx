@@ -287,11 +287,10 @@ export const AuthProvider = ({ children }) => {
       'staff_attendance': ['manager', 'owner'],
       'staff_incentives': ['manager', 'owner'],
 
-      // Discount Management
-      'discount_15_percent': ['staff', 'manager', 'owner'],
-      'discount_25_percent': ['manager', 'owner'],
-      'discount_unlimited': ['owner'],
-      'approve_discounts': ['manager', 'owner'],
+      // Discount Management - Owner only
+      'apply_discounts': ['owner'],
+      'approve_discounts': ['owner'],
+      'view_discount_approvals': ['owner'],
 
       // Manager Functions
       'view_manager_dashboard': ['manager', 'owner'],
@@ -313,14 +312,14 @@ export const AuthProvider = ({ children }) => {
     return allowedRoles.includes(user.role);
   };
 
-  // Get maximum discount percentage user can apply without approval
+  // Get maximum discount percentage user can apply - Only owner can apply discounts
   const getMaxDiscountPercent = () => {
     if (!user || !user.role) return 0;
 
     const discountLimits = {
-      'staff': 15,
-      'manager': 25,
-      'owner': 100, // Unlimited
+      'staff': 0,      // No discount access
+      'manager': 0,    // No discount access
+      'owner': 100,    // Unlimited (only owner)
     };
 
     return discountLimits[user.role] || 0;

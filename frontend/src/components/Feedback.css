@@ -71,7 +71,7 @@
 /* Feedback Card */
 .feedback-card {
   background: white;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   border: 1px solid #e5e7eb;
@@ -302,7 +302,7 @@
 
 .modal-content {
   background: white;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 24px;
   max-width: 500px;
   width: 90%;

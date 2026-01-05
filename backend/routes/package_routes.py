@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from models import Package
+from models import Package, Service
 from datetime import datetime
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
@@ -7,6 +7,29 @@ from utils.auth import require_auth, require_role
 import json
 
 package_bp = Blueprint('package', __name__)
+
+def get_service_details(service_ids):
+    """Helper function to get service details from IDs"""
+    if not service_ids:
+        return []
+    
+    services = []
+    for service_id in service_ids:
+        try:
+            if ObjectId.is_valid(service_id):
+                service = Service.objects.get(id=service_id)
+                services.append({
+                    'id': str(service.id),
+                    'name': service.name,
+                    'price': service.price,
+                    'duration': service.duration
+                })
+        except DoesNotExist:
+            continue
+        except Exception:
+            continue
+    
+    return services
 
 @package_bp.before_request
 def handle_preflight():
@@ -33,7 +56,8 @@ def get_packages():
         if search:
             query = query.filter(name__icontains=search)
 
-        packages = query.order_by('name')
+        # Force evaluation by converting to list
+        packages = list(query.order_by('name'))
 
         response = jsonify([{
             'id': str(p.id),
@@ -41,6 +65,7 @@ def get_packages():
             'price': p.price,
             'description': p.description,
             'services': json.loads(p.services) if p.services else [],
+            'service_details': get_service_details(json.loads(p.services) if p.services else []),
             'status': p.status,
             'created_at': p.created_at.isoformat() if p.created_at else None,
             'updated_at': p.updated_at.isoformat() if p.updated_at else None
@@ -66,6 +91,7 @@ def get_package(id):
             'price': package.price,
             'description': package.description,
             'services': json.loads(package.services) if package.services else [],
+            'service_details': get_service_details(json.loads(package.services) if package.services else []),
             'status': package.status,
             'created_at': package.created_at.isoformat() if package.created_at else None,
             'updated_at': package.updated_at.isoformat() if package.updated_at else None
@@ -186,7 +212,8 @@ def get_active_packages():
             'name': p.name,
             'price': p.price,
             'description': p.description,
-            'services': json.loads(p.services) if p.services else []
+            'services': json.loads(p.services) if p.services else [],
+            'service_details': get_service_details(json.loads(p.services) if p.services else [])
         } for p in packages])
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response

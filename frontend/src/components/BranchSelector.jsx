@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { FaBuilding } from 'react-icons/fa';
 import './BranchSelector.css';
 
 const BranchSelector = () => {
@@ -49,7 +50,7 @@ const BranchSelector = () => {
         onClick={() => setIsOpen(!isOpen)}
         disabled={loading}
       >
-        <span className="branch-icon">🏢</span>
+        <span className="branch-icon"><FaBuilding size={16} /></span>
         <span className="branch-name">{currentBranchName}</span>
         <span className="branch-arrow">{isOpen ? '▲' : '▼'}</span>
       </button>

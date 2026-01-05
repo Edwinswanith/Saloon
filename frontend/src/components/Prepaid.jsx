@@ -13,8 +13,10 @@ import {
 import * as XLSX from 'xlsx'
 import './Prepaid.css'
 import { API_BASE_URL } from '../config'
+import { useAuth } from '../contexts/AuthContext'
 
 const Prepaid = () => {
+  const { currentBranch } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [prepaidGroups, setPrepaidGroups] = useState([])
   const [loading, setLoading] = useState(true)
@@ -25,7 +27,18 @@ const Prepaid = () => {
 
   useEffect(() => {
     fetchPrepaidGroups()
-  }, [])
+  }, [currentBranch])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[Prepaid] Branch changed, refreshing prepaid groups...')
+      fetchPrepaidGroups()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   const fetchPrepaidGroups = async () => {
     try {

@@ -45,6 +45,13 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.sidebar-branch-selector {
+  position: relative;
+  z-index: 1;
+  margin-top: var(--space-2);
 }
 
 /* Navigation Styles */
@@ -93,7 +100,7 @@
   cursor: pointer;
   transition: all var(--transition-base);
   position: relative;
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   overflow: hidden;
 }
 
@@ -204,7 +211,7 @@
   background: var(--primary-50);
   padding: var(--space-2) 0;
   margin: var(--space-2) var(--space-4);
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   border-left: 2px solid var(--primary-300);
   animation: fadeIn var(--transition-base) ease-out;
 }

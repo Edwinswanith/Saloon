@@ -93,7 +93,7 @@
 
 .staff-performance-content {
   background: #f0f0f0;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 24px;
   width: 100%;
 }
@@ -179,7 +179,7 @@
 
 .performer-card {
   background: white;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 20px;
   display: flex;
   align-items: center;
@@ -196,7 +196,7 @@
 .performer-icon {
   width: 56px;
   height: 56px;
-  border-radius: 8px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -248,7 +248,7 @@
 /* Chart Section */
 .chart-section {
   background: white;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 24px;
   margin-bottom: 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -328,7 +328,7 @@
   align-items: stretch;
   width: 100%;
   background: #ffffff;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 20px;
 }
 
@@ -601,14 +601,14 @@
 /* Leaderboard Section */
 .leaderboard-section {
   background: white;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .table-container {
   overflow-x: auto;
-  border-radius: 8px;
+  border-radius: 12px;
   border: 1px solid #e5e7eb;
 }
 

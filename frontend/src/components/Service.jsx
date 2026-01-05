@@ -13,8 +13,10 @@ import {
 import './Service.css'
 import { API_BASE_URL } from '../config'
 import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
+import { useAuth } from '../contexts/AuthContext'
 
 const Service = () => {
+  const { currentBranch } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [serviceGroups, setServiceGroups] = useState([])
   const [loading, setLoading] = useState(true)
@@ -38,6 +40,18 @@ const Service = () => {
   useEffect(() => {
     fetchServiceGroups()
   }, [])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[Service] Branch changed, refreshing service groups...')
+      fetchServiceGroups()
+      setServicesByGroup({}) // Clear services cache
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   useEffect(() => {
     if (Object.keys(expandedGroups).length > 0) {
@@ -89,6 +103,9 @@ const Service = () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/services/groups/${groupId}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
       })
       if (response.ok) {
         fetchServiceGroups()
@@ -119,6 +136,7 @@ const Service = () => {
         method,
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         },
         body: JSON.stringify({
           name: groupFormData.name.trim(),
@@ -132,7 +150,7 @@ const Service = () => {
         setShowGroupModal(false)
         setEditingGroup(null)
         setGroupFormData({ name: '' })
-        showError(data.message || (editingGroup ? 'Service group updated successfully!' : 'Service group added successfully!'))
+        showSuccess(data.message || (editingGroup ? 'Service group updated successfully!' : 'Service group added successfully!'))
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         showError(errorData.error || `Failed to save service group (Status: ${response.status})`)
@@ -167,6 +185,7 @@ const Service = () => {
         method,
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         },
         body: JSON.stringify({
           name: serviceFormData.name.trim(),
@@ -194,7 +213,7 @@ const Service = () => {
           description: '',
           groupId: ''
         })
-        showError(data.message || (editingService ? 'Service updated successfully!' : 'Service added successfully!'))
+        showSuccess(data.message || (editingService ? 'Service updated successfully!' : 'Service added successfully!'))
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         showError(errorData.error || `Failed to save service (Status: ${response.status})`)
@@ -253,7 +272,10 @@ const Service = () => {
               try {
                 const groupResponse = await fetch(`${API_BASE_URL}/api/services/groups`, {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
+                  headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                  },
                   body: JSON.stringify({ name: groupName }),
                 })
                 if (groupResponse.ok) {
@@ -270,7 +292,10 @@ const Service = () => {
             try {
               const response = await fetch(`${API_BASE_URL}/api/services`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                },
                 body: JSON.stringify(serviceData),
               })
               if (response.ok) {
@@ -447,6 +472,9 @@ const Service = () => {
                                 try {
                                   const response = await fetch(`${API_BASE_URL}/api/services/${service.id}`, {
                                     method: 'DELETE',
+                                    headers: {
+                                      'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                                    },
                                   })
                                   if (response.ok) {
                                     fetchServicesForGroup(group.id)

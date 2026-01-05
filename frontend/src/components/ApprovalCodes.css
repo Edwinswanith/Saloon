@@ -13,7 +13,7 @@
   background: #fff3cd;
   border: 2px solid #ffc107;
   padding: 20px;
-  border-radius: 8px;
+  border-radius: 12px;
   margin-bottom: 20px;
   text-align: center;
 }
@@ -44,7 +44,7 @@
 }
 
 .btn-copy {
-  background: #667eea;
+  background: #0F766E;
   color: white;
 }
 
@@ -55,7 +55,7 @@
 
 .codes-table {
   background: white;
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
 }
 
@@ -103,7 +103,7 @@
 }
 
 .btn-primary {
-  background: #667eea;
+  background: #0F766E;
   color: white;
   border: none;
   padding: 10px 20px;
@@ -127,7 +127,7 @@
 .modal-content {
   background: white;
   padding: 30px;
-  border-radius: 8px;
+  border-radius: 12px;
   width: 90%;
   max-width: 500px;
 }

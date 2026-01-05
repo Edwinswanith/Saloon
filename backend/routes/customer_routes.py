@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from models import Customer
+from models import Customer, Bill, Membership
 from datetime import datetime
 from mongoengine import Q
 from utils.auth import require_auth
@@ -47,7 +47,8 @@ def get_customers(current_user=None):
         )
     
     total = query.count()
-    customers = query.skip((page - 1) * per_page).limit(per_page)
+    # Force evaluation by converting to list
+    customers = list(query.skip((page - 1) * per_page).limit(per_page))
     
     return jsonify({
         'customers': [{
@@ -71,7 +72,7 @@ def get_customers(current_user=None):
 @customer_bp.route('/<customer_id>', methods=['GET'])
 @require_auth
 def get_customer(customer_id, current_user=None):
-    """Get single customer by ID"""
+    """Get single customer by ID with visit history"""
     try:
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
@@ -83,6 +84,39 @@ def get_customer(customer_id, current_user=None):
             response = jsonify({'error': 'Customer not found'})
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 404
+        
+        # Calculate visit history and revenue from bills
+        bills_query = Bill.objects(customer=customer)
+        if branch:
+            bills_query = bills_query.filter(branch=branch)
+        
+        bills = list(bills_query)
+        total_visits = len(bills)
+        total_revenue = sum(bill.final_amount for bill in bills if bill.final_amount)
+        last_visit = max((bill.bill_date for bill in bills if bill.bill_date), default=None)
+        
+        # Get active membership info
+        active_membership = Membership.objects(
+            customer=customer,
+            status='active',
+            expiry_date__gte=datetime.utcnow()
+        ).first()
+        
+        membership_data = None
+        if active_membership:
+            membership_data = {
+                'id': str(active_membership.id),
+                'name': active_membership.name,
+                'plan': {
+                    'id': str(active_membership.plan.id) if active_membership.plan else None,
+                    'name': active_membership.plan.name if active_membership.plan else None,
+                    'allocated_discount': active_membership.plan.allocated_discount if active_membership.plan else 0.0
+                } if active_membership.plan else None,
+                'purchase_date': active_membership.purchase_date.isoformat() if active_membership.purchase_date else None,
+                'expiry_date': active_membership.expiry_date.isoformat() if active_membership.expiry_date else None,
+                'status': active_membership.status
+            }
+        
         response = jsonify({
             'id': str(customer.id),
             'mobile': customer.mobile,
@@ -93,9 +127,14 @@ def get_customer(customer_id, current_user=None):
             'gender': customer.gender,
             'dob': customer.dob.isoformat() if customer.dob else None,
             'dobRange': customer.dob_range,
-            'loyaltyPoints': customer.loyalty_points,
+            'loyalty_points': customer.loyalty_points,
             'referralCode': customer.referral_code,
-            'wallet': customer.wallet_balance
+            'wallet_balance': customer.wallet_balance,
+            'membership': membership_data,
+            'last_visit': last_visit.isoformat() if last_visit else None,
+            'total_visits': total_visits,
+            'total_revenue': total_revenue,
+            'notes': getattr(customer, 'notes', 'N/A')
         })
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
@@ -103,6 +142,11 @@ def get_customer(customer_id, current_user=None):
         response = jsonify({'error': 'Customer not found'})
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 404
+    except Exception as e:
+        print(f"Error fetching customer details: {str(e)}")
+        response = jsonify({'error': str(e)})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
 
 @customer_bp.route('/', methods=['POST'])
 @require_auth
@@ -248,6 +292,78 @@ def delete_customer(customer_id):
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 404
     except Exception as e:
+        response = jsonify({'error': str(e)})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
+
+@customer_bp.route('/<customer_id>/active-membership', methods=['GET'])
+@require_auth
+def get_customer_active_membership(customer_id, current_user=None):
+    """Get customer's active membership with plan details"""
+    try:
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
+        query = Customer.objects(id=customer_id)
+        if branch:
+            query = query.filter(branch=branch)
+        customer = query.first()
+        
+        if not customer:
+            response = jsonify({'error': 'Customer not found'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 404
+        
+        # Get active membership (status='active' and expiry_date >= today)
+        membership_query = Membership.objects(
+            customer=customer,
+            status='active',
+            expiry_date__gte=datetime.utcnow()
+        )
+        if branch:
+            membership_query = membership_query.filter(branch=branch)
+        
+        active_membership = membership_query.first()
+        
+        if not active_membership:
+            response = jsonify({
+                'active': False,
+                'membership': None
+            })
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 200
+        
+        # Return membership with plan details
+        membership_data = {
+            'id': str(active_membership.id),
+            'name': active_membership.name,
+            'purchase_date': active_membership.purchase_date.isoformat() if active_membership.purchase_date else None,
+            'expiry_date': active_membership.expiry_date.isoformat() if active_membership.expiry_date else None,
+            'status': active_membership.status,
+            'plan': None
+        }
+        
+        if active_membership.plan:
+            membership_data['plan'] = {
+                'id': str(active_membership.plan.id),
+                'name': active_membership.plan.name,
+                'allocated_discount': active_membership.plan.allocated_discount,
+                'validity_days': active_membership.plan.validity_days,
+                'description': active_membership.plan.description
+            }
+        
+        response = jsonify({
+            'active': True,
+            'membership': membership_data
+        })
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 200
+        
+    except Customer.DoesNotExist:
+        response = jsonify({'error': 'Customer not found'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 404
+    except Exception as e:
+        print(f"Error fetching customer active membership: {str(e)}")
         response = jsonify({'error': str(e)})
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 500

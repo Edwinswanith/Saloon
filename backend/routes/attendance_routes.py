@@ -48,7 +48,8 @@ def get_attendance(current_user=None):
         if status:
             query = query.filter(status=status)
 
-        attendance_records = query.order_by('-attendance_date')
+        # Force evaluation by converting to list
+        attendance_records = list(query.order_by('-attendance_date'))
 
         return jsonify([{
             'id': str(a.id),

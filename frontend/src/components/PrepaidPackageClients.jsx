@@ -10,8 +10,10 @@ import {
 import './PrepaidPackageClients.css'
 import { apiGet } from '../utils/api'
 import { API_BASE_URL } from '../config'
+import { useAuth } from '../contexts/AuthContext'
 
 const PrepaidPackageClients = ({ setActivePage }) => {
+  const { currentBranch } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [clients, setClients] = useState([])
@@ -20,7 +22,18 @@ const PrepaidPackageClients = ({ setActivePage }) => {
 
   useEffect(() => {
     fetchPrepaidClients()
-  }, [])
+  }, [currentBranch])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[PrepaidPackageClients] Branch changed, refreshing data...')
+      fetchPrepaidClients()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   useEffect(() => {
     if (searchQuery) {

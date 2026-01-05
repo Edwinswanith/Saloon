@@ -2,7 +2,11 @@
    MODERN SALON MANAGEMENT - DESIGN SYSTEM
    ============================================ */
 
-/* ========== CSS VARIABLES ========== */
+/* Import design tokens first */
+@import './styles/design-tokens.css';
+@import './styles/typography.css';
+
+/* ========== CSS VARIABLES (Legacy - maintained for backward compatibility) ========== */
 :root {
   /* Primary Colors - Professional Teal/Cyan Theme */
   --primary-50: #f0fdfa;

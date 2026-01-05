@@ -50,7 +50,7 @@
 .form-input {
   padding: 0.75rem;
   border: 2px solid #e0e0e0;
-  border-radius: 8px;
+  border-radius: 12px;
   font-size: 1rem;
   transition: border-color 0.2s;
 }
@@ -68,7 +68,7 @@
 
 .message {
   padding: 1rem;
-  border-radius: 8px;
+  border-radius: 12px;
   font-size: 0.95rem;
 }
 
@@ -89,7 +89,7 @@
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;

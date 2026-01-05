@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
-from models import Staff
-from datetime import datetime
+from models import Staff, StaffTempAssignment
+from datetime import datetime, date
 from mongoengine.errors import DoesNotExist, NotUniqueError, ValidationError
 from bson import ObjectId
 from utils.branch_filter import get_selected_branch
@@ -21,13 +21,17 @@ def handle_preflight():
 @staff_bp.route('/', methods=['GET'])
 @require_role('manager', 'owner')
 def get_staffs(current_user=None):
-    """Get all staff members (Manager and Owner only)"""
+    """Get all staff members including temp-assigned staff (Manager and Owner only)"""
     try:
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
+        today = date.today()
+        
+        # Get permanent staff for this branch
         query = Staff.objects()
         if branch:
             query = query.filter(branch=branch)
+        
         # Filter by active status if specified, otherwise show all
         status_filter = request.args.get('status')
         if status_filter:
@@ -37,18 +41,69 @@ def get_staffs(current_user=None):
             from mongoengine import Q
             query = query.filter(Q(status='active') | Q(status__exists=False))
         
-        staffs = query.order_by('first_name', 'last_name')
+        permanent_staffs = list(query.order_by('first_name', 'last_name'))
         
-        response = jsonify({
-            'staffs': [{
+        # Get temp-assigned staff for this branch (currently active) - force evaluation
+        temp_assigned_staffs = []
+        if branch:
+            temp_assignments = list(StaffTempAssignment.objects(
+                temp_branch=branch,
+                status='active',
+                start_date__lte=today,
+                end_date__gte=today
+            ))
+            for assignment in temp_assignments:
+                temp_assigned_staffs.append({
+                    'staff': assignment.staff,
+                    'is_temp': True,
+                    'original_branch': assignment.original_branch.name if assignment.original_branch else None,
+                    'original_branch_id': str(assignment.original_branch.id) if assignment.original_branch else None,
+                    'end_date': assignment.end_date.isoformat(),
+                    'assignment_id': str(assignment.id)
+                })
+        
+        # Build response
+        staff_list = []
+        
+        # Add permanent staff
+        for s in permanent_staffs:
+            staff_list.append({
                 'id': str(s.id),
                 'mobile': s.mobile,
                 'firstName': s.first_name,
                 'lastName': s.last_name,
                 'email': s.email,
                 'salary': s.salary,
-                'commissionRate': s.commission_rate
-            } for s in staffs]
+                'commissionRate': s.commission_rate,
+                'branch': s.branch.name if s.branch else None,
+                'branchId': str(s.branch.id) if s.branch else None,
+                'isTemp': False,
+                'originalBranch': None,
+                'originalBranchId': None,
+                'tempEndDate': None,
+                'assignmentId': None
+            })
+        
+        # Add temp-assigned staff
+        for item in temp_assigned_staffs:
+            s = item['staff']
+            staff_list.append({
+                'id': str(s.id),
+                'mobile': s.mobile,
+                'firstName': s.first_name,
+                'lastName': s.last_name,
+                'email': s.email,
+                'salary': s.salary,
+                'commissionRate': s.commission_rate,
+                'isTemp': True,
+                'originalBranch': item['original_branch'],
+                'originalBranchId': item['original_branch_id'],
+                'tempEndDate': item['end_date'],
+                'assignmentId': item['assignment_id']
+            })
+        
+        response = jsonify({
+            'staffs': staff_list
         })
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response

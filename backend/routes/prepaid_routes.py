@@ -22,7 +22,8 @@ def handle_preflight():
 def get_prepaid_groups():
     """Get all prepaid groups"""
     try:
-        groups = PrepaidGroup.objects.order_by('display_order')
+        # Force evaluation by converting to list
+        groups = list(PrepaidGroup.objects.order_by('display_order'))
         return jsonify([{
             'id': str(g.id),
             'name': g.name,
@@ -128,7 +129,8 @@ def get_prepaid_packages():
             except DoesNotExist:
                 pass
 
-        packages = query.order_by('-created_at')
+        # Force evaluation by converting to list
+        packages = list(query.order_by('-created_at'))
 
         return jsonify([{
             'id': str(p.id),
@@ -296,8 +298,8 @@ def delete_prepaid_package(id):
 def get_prepaid_clients():
     """Get all clients with active prepaid packages"""
     try:
-        # Get all active prepaid packages
-        active_packages = PrepaidPackage.objects(status='active')
+        # Get all active prepaid packages - force evaluation
+        active_packages = list(PrepaidPackage.objects(status='active'))
 
         # Group by customer
         client_data = {}

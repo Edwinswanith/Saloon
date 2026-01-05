@@ -14,6 +14,7 @@ import {
   FaChevronUp,
   FaChevronDown,
   FaStar,
+  FaExchangeAlt,
 } from 'react-icons/fa'
 import { useAuth } from '../contexts/AuthContext'
 import './Sidebar.css'
@@ -70,6 +71,8 @@ const Sidebar = ({ activePage, setActivePage }) => {
       setActivePage('staffs')
     } else if (itemId === 'staff-attendance') {
       setActivePage('staff-attendance')
+    } else if (itemId === 'staff-temp-assignment') {
+      setActivePage('staff-temp-assignment')
     } else if (itemId === 'asset-management') {
       setActivePage('asset-management')
     } else if (itemId === 'expense') {
@@ -100,7 +103,7 @@ const Sidebar = ({ activePage, setActivePage }) => {
           id: 'discount-approvals', 
           label: 'Discount Approvals', 
           icon: <FaDollarSign />,
-          requiresRole: ['manager', 'owner'] // Only manager and owner can approve discounts
+          requiresRole: ['owner'] // Only owner can approve discounts
         },
         { 
           id: 'approval-codes', 
@@ -141,6 +144,12 @@ const Sidebar = ({ activePage, setActivePage }) => {
           label: 'Staff Attendance', 
           icon: <FaCheckCircle />,
           requiresRole: ['manager', 'owner'] // Only manager and owner can see attendance
+        },
+        { 
+          id: 'staff-temp-assignment', 
+          label: 'Staff Reassignment', 
+          icon: <FaExchangeAlt />,
+          requiresRole: ['manager', 'owner'] // Only manager and owner can reassign staff
         },
         { 
           id: 'asset-management', 

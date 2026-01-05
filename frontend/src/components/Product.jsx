@@ -14,8 +14,10 @@ import * as XLSX from 'xlsx'
 import './Product.css'
 import { API_BASE_URL } from '../config'
 import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
+import { useAuth } from '../contexts/AuthContext'
 
 const Product = () => {
+  const { currentBranch } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [productCategories, setProductCategories] = useState([])
   const [productsByCategory, setProductsByCategory] = useState({})
@@ -41,6 +43,18 @@ const Product = () => {
   useEffect(() => {
     fetchCategories()
   }, [])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[Product] Branch changed, refreshing categories...')
+      fetchCategories()
+      setProductsByCategory({}) // Clear products cache
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   useEffect(() => {
     if (Object.keys(expandedCategories).length > 0) {

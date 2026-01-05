@@ -9,8 +9,10 @@ import {
 } from 'react-icons/fa'
 import './StaffAttendance.css'
 import { apiGet, apiPost } from '../utils/api'
+import { useAuth } from '../contexts/AuthContext'
 
 const StaffAttendance = () => {
+  const { currentBranch } = useAuth()
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [staffAttendance, setStaffAttendance] = useState([])
   const [staffMembers, setStaffMembers] = useState([])
@@ -18,13 +20,24 @@ const StaffAttendance = () => {
 
   useEffect(() => {
     fetchStaff()
-  }, [])
+  }, [currentBranch])
 
   useEffect(() => {
     if (staffMembers.length > 0) {
       fetchAttendance()
     }
-  }, [selectedDate, staffMembers])
+  }, [selectedDate, staffMembers, currentBranch])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[StaffAttendance] Branch changed, refreshing data...')
+      fetchStaff()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   const fetchStaff = async () => {
     try {

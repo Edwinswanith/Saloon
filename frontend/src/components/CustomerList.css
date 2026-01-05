@@ -2,7 +2,7 @@
 .customer-list-page {
   width: 100%;
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background-color: var(--surface-canvas);
 }
 
 /* Header */
@@ -12,7 +12,7 @@
   align-items: center;
   padding: 16px 24px;
   background: white;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-light);
   margin-bottom: 24px;
 }
 
@@ -28,18 +28,18 @@
   font-size: 20px;
   cursor: pointer;
   padding: 4px;
-  color: #374151;
+  color: var(--text-secondary);
   transition: color 0.2s ease;
 }
 
 .menu-icon:hover {
-  color: #7c3aed;
+  color: var(--money-primary);
 }
 
 .header-title {
   font-size: 20px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -52,13 +52,13 @@
   padding: 6px 12px;
   background: #f3f4f6;
   border-radius: 6px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light);
 }
 
 .logo-text {
   font-size: 11px;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-secondary);
   letter-spacing: 0.5px;
 }
 
@@ -71,16 +71,16 @@
 /* Customer List Card */
 .customer-list-card {
   background: white;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light);
 }
 
 .card-title {
   font-size: 20px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
   margin: 0 0 20px 0;
 }
 
@@ -108,42 +108,42 @@
 }
 
 .download-btn {
-  background: #3b82f6;
+  background: var(--status-info);
   color: white;
 }
 
 .download-btn:hover {
-  background: #2563eb;
+  background: var(--status-info);
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
 .manage-btn {
-  background: #3b82f6;
+  background: var(--status-info);
   color: white;
 }
 
 .manage-btn:hover {
-  background: #2563eb;
+  background: var(--status-info);
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
 .import-btn {
-  background: #7c3aed;
+  background: var(--money-primary);
   color: white;
 }
 
 .import-btn:hover {
-  background: #6d28d9;
+  background: var(--money-primary-hover);
   box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
 }
 
 .add-btn {
-  background: #7c3aed;
+  background: var(--money-primary);
   color: white;
 }
 
 .add-btn:hover {
-  background: #6d28d9;
+  background: var(--money-primary-hover);
   box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
 }
 
@@ -156,7 +156,7 @@
   width: 100%;
   max-width: 400px;
   padding: 10px 16px;
-  border: 2px solid #7c3aed;
+  border: 2px solid var(--money-primary);
   border-radius: 6px;
   font-size: 14px;
   transition: all 0.2s ease;
@@ -164,7 +164,7 @@
 
 .search-input:focus {
   outline: none;
-  border-color: #6d28d9;
+  border-color: var(--money-primary-hover);
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
 }
 
@@ -182,14 +182,14 @@
 
 .customer-table thead {
   background: #f9fafb;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--border-light);
 }
 
 .customer-table th {
   padding: 12px 16px;
   text-align: left;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-secondary);
   font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -199,7 +199,7 @@
 .customer-table td {
   padding: 12px 16px;
   color: #6b7280;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--surface-secondary);
 }
 
 .customer-table tbody tr:hover {
@@ -209,8 +209,8 @@
 .source-badge {
   display: inline-block;
   padding: 4px 8px;
-  background: #ede9fe;
-  color: #7c3aed;
+  background: var(--status-info-bg);
+  color: var(--money-primary);
   border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
@@ -225,17 +225,17 @@
 .copy-btn {
   padding: 4px 8px;
   background: #f3f4f6;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-medium);
   border-radius: 4px;
   font-size: 11px;
-  color: #374151;
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .copy-btn:hover {
-  background: #e5e7eb;
-  border-color: #9ca3af;
+  background: var(--border-light);
+  border-color: var(--text-muted);
 }
 
 .action-icons {
@@ -259,15 +259,15 @@
 }
 
 .view-btn:hover {
-  background: #dbeafe;
+  background: var(--status-info-bg);
 }
 
 .edit-btn:hover {
-  background: #ede9fe;
+  background: var(--status-info-bg);
 }
 
 .delete-btn:hover {
-  background: #fee2e2;
+  background: var(--status-error-bg);
 }
 
 /* Pagination */
@@ -281,10 +281,10 @@
 
 .page-btn {
   padding: 8px 16px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-medium);
   border-radius: 6px;
   background: white;
-  color: #374151;
+  color: var(--text-secondary);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -294,7 +294,7 @@
 
 .page-btn:hover:not(:disabled) {
   background: #f9fafb;
-  border-color: #9ca3af;
+  border-color: var(--text-muted);
 }
 
 .page-btn:disabled {
@@ -303,9 +303,9 @@
 }
 
 .page-btn.active {
-  background: #7c3aed;
+  background: var(--money-primary);
   color: white;
-  border-color: #7c3aed;
+  border-color: var(--money-primary);
 }
 
 /* Responsive Design */
@@ -367,7 +367,7 @@
 
 .modal-content {
   background: white;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 24px;
   max-width: 500px;
   width: 90%;
@@ -380,7 +380,7 @@
   margin: 0 0 20px 0;
   font-size: 20px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
 }
 
 .form-group {
@@ -392,7 +392,7 @@
   margin-bottom: 6px;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-secondary);
 }
 
 .form-group input,
@@ -400,7 +400,7 @@
 .form-group textarea {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-medium);
   border-radius: 6px;
   font-size: 14px;
   transition: all 0.2s ease;
@@ -410,7 +410,7 @@
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #7c3aed;
+  border-color: var(--money-primary);
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
 }
 
@@ -420,15 +420,15 @@
   justify-content: flex-end;
   margin-top: 24px;
   padding-top: 20px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border-light);
 }
 
 .btn-cancel {
   padding: 10px 20px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-medium);
   border-radius: 6px;
   background: white;
-  color: #374151;
+  color: var(--text-secondary);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -437,14 +437,14 @@
 
 .btn-cancel:hover {
   background: #f9fafb;
-  border-color: #9ca3af;
+  border-color: var(--text-muted);
 }
 
 .btn-save {
   padding: 10px 20px;
   border: none;
   border-radius: 6px;
-  background: #7c3aed;
+  background: var(--money-primary);
   color: white;
   font-size: 14px;
   font-weight: 500;
@@ -453,7 +453,7 @@
 }
 
 .btn-save:hover {
-  background: #6d28d9;
+  background: var(--money-primary-hover);
   box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
 }
 
@@ -468,7 +468,7 @@
   background: #f9fafb;
   border-radius: 4px;
   margin-bottom: 8px;
-  color: #374151;
+  color: var(--text-secondary);
 }
 
 .import-instructions {
@@ -477,7 +477,7 @@
 
 .import-instructions p {
   margin: 0 0 10px 0;
-  color: #374151;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 

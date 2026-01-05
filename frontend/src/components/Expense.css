@@ -1,7 +1,7 @@
 .expense-page {
   width: 100%;
   min-height: 100vh;
-  background-color: #ffffff;
+  background-color: var(--surface-primary);
 }
 
 /* Header */
@@ -10,8 +10,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
-  border-bottom: 1px solid #e5e7eb;
-  background: white;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--surface-primary);
 }
 
 .header-left {
@@ -26,7 +26,7 @@
   font-size: 20px;
   cursor: pointer;
   padding: 4px;
-  color: #374151;
+  color: var(--text-secondary);
   transition: color 0.2s ease;
   display: flex;
   align-items: center;
@@ -34,13 +34,13 @@
 }
 
 .menu-icon:hover {
-  color: #7c3aed;
+  color: var(--money-primary);
 }
 
 .header-title {
   font-size: 20px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -52,24 +52,24 @@
 
 .logo-box {
   padding: 6px 12px;
-  background: #f3f4f6;
+  background: var(--surface-secondary);
   border-radius: 6px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light);
 }
 
 .logo-text {
   font-size: 11px;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-secondary);
   letter-spacing: 0.5px;
 }
 
 .header-icon {
   width: 36px;
   height: 36px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light);
   border-radius: 6px;
-  background: white;
+  background: var(--surface-primary);
   cursor: pointer;
   font-size: 16px;
   display: flex;
@@ -79,8 +79,8 @@
 }
 
 .header-icon:hover {
-  background: #f9fafb;
-  border-color: #7c3aed;
+  background: var(--surface-secondary);
+  border-color: var(--money-primary);
 }
 
 .header-icon svg {
@@ -102,9 +102,9 @@
 
 /* Left Panel - Filters */
 .expense-filters-panel {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  background: var(--surface-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
   padding: 20px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   height: fit-content;
@@ -113,7 +113,7 @@
 .panel-title {
   font-size: 18px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
   margin: 0 0 20px 0;
 }
 
@@ -133,38 +133,38 @@
 .filter-label {
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-secondary);
 }
 
 .filter-dropdown {
   padding: 8px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-medium);
   border-radius: 6px;
   font-size: 14px;
-  color: #374151;
-  background: white;
+  color: var(--text-secondary);
+  background: var(--surface-primary);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .filter-dropdown:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: var(--status-info);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .total-expense {
   padding-top: 20px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border-light);
   font-size: 16px;
-  color: #1f2937;
+  color: var(--text-primary);
 }
 
 /* Right Panel - Summary */
 .expense-summary-panel {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  background: var(--surface-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
   padding: 20px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
@@ -197,30 +197,30 @@
 }
 
 .manage-btn {
-  background: #3b82f6;
+  background: var(--status-info);
   color: white;
 }
 
 .manage-btn:hover {
-  background: #2563eb;
+  background: var(--status-info);
 }
 
 .add-btn {
-  background: #3b82f6;
+  background: var(--status-info);
   color: white;
 }
 
 .add-btn:hover {
-  background: #2563eb;
+  background: var(--status-info);
 }
 
 .download-btn {
-  background: #3b82f6;
+  background: var(--status-info);
   color: white;
 }
 
 .download-btn:hover {
-  background: #2563eb;
+  background: var(--status-info);
 }
 
 .chart-container {
@@ -250,14 +250,14 @@
 .chart-amount {
   font-size: 32px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--text-primary);
   line-height: 1;
   transition: all 0.3s ease;
 }
 
 .chart-label {
   font-size: 16px;
-  color: #6b7280;
+  color: var(--text-muted);
   margin-top: 4px;
   transition: all 0.3s ease;
 }
@@ -282,14 +282,14 @@
 
 .legend-label {
   font-size: 14px;
-  color: #374151;
+  color: var(--text-secondary);
 }
 
 /* Expense Table Section */
 .expense-table-section {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  background: var(--surface-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
   padding: 20px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
@@ -305,15 +305,15 @@
 }
 
 .expense-table thead {
-  background: #f9fafb;
-  border-bottom: 2px solid #e5e7eb;
+  background: var(--surface-secondary);
+  border-bottom: 2px solid var(--border-light);
 }
 
 .expense-table th {
   padding: 12px 16px;
   text-align: left;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-secondary);
   font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -321,12 +321,12 @@
 
 .expense-table td {
   padding: 12px 16px;
-  color: #6b7280;
-  border-bottom: 1px solid #f3f4f6;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--surface-secondary);
 }
 
 .expense-table tbody tr:hover {
-  background: #f9fafb;
+  background: var(--surface-secondary);
 }
 
 .expense-table tbody tr:last-child td {
@@ -343,13 +343,13 @@
   width: 32px;
   height: 32px;
   border-radius: 4px;
-  background: white;
+  background: var(--surface-primary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light);
 }
 
 .icon-btn svg {
@@ -358,23 +358,23 @@
 }
 
 .edit-btn {
-  color: #3b82f6;
-  border-color: #93c5fd;
+  color: var(--status-info);
+  border-color: var(--status-info);
 }
 
 .edit-btn:hover {
-  background: #dbeafe;
-  border-color: #3b82f6;
+  background: var(--status-info-bg);
+  border-color: var(--status-info);
 }
 
 .delete-btn {
-  color: #ef4444;
-  border-color: #fca5a5;
+  color: var(--status-error);
+  border-color: var(--status-error);
 }
 
 .delete-btn:hover {
-  background: #fee2e2;
-  border-color: #ef4444;
+  background: var(--status-error-bg);
+  border-color: var(--status-error);
 }
 
 /* Responsive Design */
@@ -425,8 +425,8 @@
 }
 
 .modal-content {
-  background: white;
-  border-radius: 8px;
+  background: var(--surface-primary);
+  border-radius: 12px;
   padding: 24px;
   max-width: 600px;
   width: 90%;
@@ -439,7 +439,7 @@
   margin: 0 0 20px 0;
   font-size: 20px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
 }
 
 .form-group {
@@ -451,7 +451,7 @@
   margin-bottom: 6px;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-secondary);
 }
 
 .form-group input,
@@ -459,10 +459,10 @@
 .form-group textarea {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-medium);
   border-radius: 6px;
   font-size: 14px;
-  color: #1f2937;
+  color: var(--text-primary);
   transition: border-color 0.2s ease;
   font-family: inherit;
 }
@@ -471,7 +471,7 @@
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #7c3aed;
+  border-color: var(--money-primary);
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
 }
 
@@ -499,28 +499,28 @@
 }
 
 .btn-cancel {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--surface-secondary);
+  color: var(--text-secondary);
 }
 
 .btn-cancel:hover {
-  background: #e5e7eb;
+  background: var(--border-light);
 }
 
 .btn-save {
-  background: #7c3aed;
+  background: var(--money-primary);
   color: white;
 }
 
 .btn-save:hover {
-  background: #6d28d9;
+  background: var(--money-primary-hover);
   box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
 }
 
 .empty-row {
   text-align: center;
   padding: 40px 20px;
-  color: #9ca3af;
+  color: var(--text-muted);
   font-size: 14px;
 }
 

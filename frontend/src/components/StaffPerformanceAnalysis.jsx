@@ -15,6 +15,7 @@ import * as XLSX from 'xlsx'
 import './StaffPerformanceAnalysis.css'
 import { API_BASE_URL } from '../config'
 import { apiGet } from '../utils/api'
+import { useAuth } from '../contexts/AuthContext'
 import {
   BarChart,
   Bar,
@@ -27,6 +28,7 @@ import {
 } from 'recharts'
 
 const StaffPerformanceAnalysis = ({ setActivePage }) => {
+  const { currentBranch } = useAuth()
   const [dateRange, setDateRange] = useState('Last 30 Days')
   const [loading, setLoading] = useState(false)
   const [performanceData, setPerformanceData] = useState({
@@ -222,7 +224,18 @@ const StaffPerformanceAnalysis = ({ setActivePage }) => {
 
   useEffect(() => {
     fetchStaffPerformanceData()
-  }, [dateRange])
+  }, [dateRange, currentBranch])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[StaffPerformanceAnalysis] Branch changed, refreshing data...')
+      fetchStaffPerformanceData()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   const formatCurrency = (value) => {
     return `₹${value.toLocaleString('en-IN', {

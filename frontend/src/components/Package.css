@@ -96,7 +96,7 @@
 .package-card {
   background: white;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   overflow: hidden;
 }
@@ -147,16 +147,23 @@
   transition: background 0.2s ease;
 }
 
+.package-row-container {
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.package-row-container:last-child {
+  border-bottom: none;
+}
+
 .package-row:hover {
   background: #f9fafb;
 }
 
-.package-row:last-child {
-  border-bottom: none;
-}
-
 .package-info {
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .package-name {
@@ -165,10 +172,108 @@
   color: #374151;
 }
 
+.services-count {
+  font-size: 12px;
+  background: #ede9fe;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
 .package-actions {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.dropdown-btn {
+  transition: transform 0.3s ease;
+}
+
+.dropdown-btn.expanded {
+  transform: rotate(180deg);
+}
+
+/* Expandable Services Section */
+.package-services-expanded {
+  padding: 20px 24px;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+  }
+}
+
+.package-services-expanded h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 12px 0;
+}
+
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+.service-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px;
+  transition: all 0.2s ease;
+}
+
+.service-card:hover {
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+  transform: translateY(-2px);
+}
+
+.service-card-header {
+  margin-bottom: 8px;
+}
+
+.service-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.service-card-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.service-card-price {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.service-card-duration {
+  font-size: 12px;
+  color: #9ca3af;
+  background: #f3f4f6;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.no-services-message {
+  font-size: 13px;
+  color: #9ca3af;
+  font-style: italic;
+  margin: 0;
 }
 
 .icon-btn {
@@ -258,7 +363,7 @@
 
 .modal-content {
   background: white;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 24px;
   max-width: 600px;
   width: 90%;

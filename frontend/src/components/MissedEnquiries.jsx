@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { apiGet, apiPost, apiPut } from '../utils/api';
 import Header from './Header';
 import './MissedEnquiries.css';
+import { useAuth } from '../contexts/AuthContext';
 
 const MissedEnquiries = () => {
+  const { currentBranch } = useAuth()
   const [enquiries, setEnquiries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -32,7 +34,20 @@ const MissedEnquiries = () => {
     fetchEnquiries();
     fetchStats();
     fetchReminders();
-  }, [filters]);
+  }, [filters, currentBranch]);
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[MissedEnquiries] Branch changed, refreshing data...')
+      fetchEnquiries()
+      fetchStats()
+      fetchReminders()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   const fetchEnquiries = async () => {
     try {

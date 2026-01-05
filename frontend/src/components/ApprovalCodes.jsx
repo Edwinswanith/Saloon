@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../config';
 import Header from './Header';
+import { FaExclamationTriangle } from 'react-icons/fa';
 import './ApprovalCodes.css';
 
 const ApprovalCodes = () => {
@@ -100,7 +101,9 @@ const ApprovalCodes = () => {
         {/* Generated Code Display */}
         {generatedCode && (
           <div className="generated-code-alert">
-            <h3>⚠️ IMPORTANT: Save this code securely!</h3>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FaExclamationTriangle size={18} color="#f59e0b" /> IMPORTANT: Save this code securely!
+            </h3>
             <p className="code-display">{generatedCode}</p>
             <p>This code will not be shown again. Copy it now!</p>
             <button onClick={() => {

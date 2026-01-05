@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { FaBars, FaStar, FaPlus } from 'react-icons/fa'
+import { FaBars, FaStar, FaPlus, FaExclamationTriangle, FaFrown } from 'react-icons/fa'
 import './Feedback.css'
 import { apiGet, apiPost, apiPut } from '../utils/api'
 import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
+import { useAuth } from '../contexts/AuthContext'
 
 const Feedback = () => {
+  const { currentBranch } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [feedbacks, setFeedbacks] = useState([])
@@ -32,7 +34,20 @@ const Feedback = () => {
     fetchFeedbacks()
     fetchCustomers()
     fetchStaff()
-  }, [searchQuery])
+  }, [searchQuery, currentBranch])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[Feedback] Branch changed, refreshing data...')
+      fetchFeedbacks()
+      fetchCustomers()
+      fetchStaff()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   const fetchCustomers = async () => {
     try {
@@ -414,7 +429,9 @@ const Feedback = () => {
       {showGoogleReviewModal && (
         <div className="modal-overlay" onClick={() => setShowGoogleReviewModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Thank You for Your Feedback! ⭐</h2>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              Thank You for Your Feedback! <FaStar size={20} color="#fbbf24" />
+            </h2>
             <p>We're thrilled you had a great experience! Would you like to share your review on Google?</p>
             <div className="modal-actions">
               <button className="btn-cancel" onClick={() => setShowGoogleReviewModal(false)}>
@@ -445,8 +462,8 @@ const Feedback = () => {
                 Post to Google
               </button>
             </div>
-            <p className="placeholder-note" style={{ fontSize: '12px', color: '#666', marginTop: '10px' }}>
-              ⚠️ Google Review integration is in placeholder mode. Link will be activated when provided.
+            <p className="placeholder-note" style={{ fontSize: '12px', color: '#666', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <FaExclamationTriangle size={14} /> Google Review integration is in placeholder mode. Link will be activated when provided.
             </p>
           </div>
         </div>
@@ -456,7 +473,9 @@ const Feedback = () => {
       {showServiceRecoveryMessage && (
         <div className="modal-overlay" onClick={() => setShowServiceRecoveryMessage(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>We're Sorry 😔</h2>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              We're Sorry <FaFrown size={20} color="#6b7280" />
+            </h2>
             <p>We're sorry to hear about your experience. A service recovery case has been created and our team will reach out to you shortly to make things right.</p>
             <p>Thank you for helping us improve!</p>
             <div className="modal-actions">

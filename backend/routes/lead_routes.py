@@ -50,7 +50,8 @@ def get_leads(current_user=None):
         if converted is not None:
             query = query.filter(converted_to_customer=converted)
 
-        leads = query.order_by('-created_at')
+        # Force evaluation by converting to list
+        leads = list(query.order_by('-created_at'))
 
         response = jsonify([{
             'id': str(lead.id),

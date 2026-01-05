@@ -12,6 +12,7 @@ import {
 import './BusinessGrowthTrendAnalysis.css'
 import { API_BASE_URL } from '../config'
 import { apiGet } from '../utils/api'
+import { useAuth } from '../contexts/AuthContext'
 import {
   AreaChart,
   Area,
@@ -25,6 +26,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 const BusinessGrowthTrendAnalysis = ({ setActivePage }) => {
+  const { currentBranch } = useAuth()
   const [dateRange, setDateRange] = useState('last-3-years')
   const [viewBy, setViewBy] = useState('monthly')
   const [loading, setLoading] = useState(false)
@@ -117,7 +119,18 @@ const BusinessGrowthTrendAnalysis = ({ setActivePage }) => {
 
   useEffect(() => {
     fetchBusinessGrowthData()
-  }, [dateRange, viewBy])
+  }, [dateRange, viewBy, currentBranch])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[BusinessGrowthTrendAnalysis] Branch changed, refreshing data...')
+      fetchBusinessGrowthData()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   const kpiCards = [
     {

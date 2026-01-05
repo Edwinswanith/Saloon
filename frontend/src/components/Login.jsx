@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../config';
+import { FaExclamationTriangle } from 'react-icons/fa';
 import './Login.css';
 
 const Login = ({ onLoginSuccess }) => {
@@ -533,8 +534,8 @@ const Login = ({ onLoginSuccess }) => {
 
           {/* Error Message */}
           {error && (
-            <div className="error-message">
-              <span className="error-icon">⚠</span>
+            <div className="error-message" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FaExclamationTriangle size={16} color="#ef4444" />
               {error}
             </div>
           )}

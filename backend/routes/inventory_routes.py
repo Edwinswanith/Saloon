@@ -34,7 +34,8 @@ def get_suppliers(current_user=None):
                 Q(contact_no__icontains=search)
             )
 
-        suppliers = query.order_by('name')
+        # Force evaluation by converting to list
+        suppliers = list(query.order_by('name'))
 
         return jsonify([{
             'id': str(s.id),
@@ -181,9 +182,11 @@ def get_orders(current_user=None):
             query = query.filter(order_date__gte=start)
         if end_date:
             end = datetime.strptime(end_date, '%Y-%m-%d').date()
+            # Note: order_date is a DateField, so we can't set time, but the filter will include the full day
             query = query.filter(order_date__lte=end)
 
-        orders = query.order_by('-order_date')
+        # Force evaluation by converting to list
+        orders = list(query.order_by('-order_date'))
 
         return jsonify([{
             'id': str(o.id),

@@ -3,11 +3,121 @@
    Reusable UI components across the app
    ============================================ */
 
-/* ========== MODERN BUTTONS ========== */
+/* ========== STANDARDIZED BUTTONS ========== */
 .btn-group {
   display: flex;
-  gap: var(--space-3);
+  gap: var(--space-12);
   flex-wrap: wrap;
+}
+
+/* Base button styles */
+button,
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12) var(--space-32);
+  border: none;
+  border-radius: var(--radius-2xl);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  gap: var(--space-8);
+}
+
+/* Filled Buttons */
+.btn-filled-primary {
+  background: var(--action-primary);
+  color: var(--text-inverse);
+}
+
+.btn-filled-primary:hover:not(:disabled) {
+  background: var(--action-primary-hover);
+}
+
+.btn-filled-secondary {
+  background: var(--action-secondary);
+  color: var(--text-inverse);
+}
+
+.btn-filled-secondary:hover:not(:disabled) {
+  background: var(--action-secondary-hover);
+}
+
+.btn-filled-destructive {
+  background: var(--action-destructive);
+  color: var(--text-inverse);
+}
+
+.btn-filled-destructive:hover:not(:disabled) {
+  background: var(--action-destructive-hover);
+}
+
+/* Outlined Buttons */
+.btn-outlined-primary {
+  background: transparent;
+  border: 1px solid var(--action-primary);
+  color: var(--action-primary);
+}
+
+.btn-outlined-primary:hover:not(:disabled) {
+  background: var(--action-primary);
+  color: var(--text-inverse);
+}
+
+.btn-outlined-secondary {
+  background: transparent;
+  border: 1px solid var(--action-secondary);
+  color: var(--action-secondary);
+}
+
+.btn-outlined-secondary:hover:not(:disabled) {
+  background: var(--action-secondary);
+  color: var(--text-inverse);
+}
+
+/* Text Buttons */
+.btn-text-primary {
+  background: transparent;
+  border: none;
+  color: var(--action-primary);
+  padding: var(--space-8) var(--space-16);
+}
+
+.btn-text-primary:hover:not(:disabled) {
+  background: var(--surface-secondary);
+}
+
+.btn-text-secondary {
+  background: transparent;
+  border: none;
+  color: var(--action-secondary);
+  padding: var(--space-8) var(--space-16);
+}
+
+.btn-text-secondary:hover:not(:disabled) {
+  background: var(--surface-secondary);
+}
+
+/* Button States */
+button:disabled,
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Button Sizes */
+.btn-sm {
+  padding: var(--space-8) var(--space-16);
+  font-size: var(--text-xs);
+}
+
+.btn-lg {
+  padding: var(--space-16) var(--space-40);
+  font-size: var(--text-base);
 }
 
 .btn-icon {
@@ -17,61 +127,46 @@
   width: 40px;
   height: 40px;
   padding: 0;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-2xl);
 }
 
-.btn-sm {
-  padding: var(--space-2) var(--space-4);
-  font-size: var(--text-xs);
-}
-
-.btn-lg {
-  padding: var(--space-4) var(--space-8);
-  font-size: var(--text-lg);
-}
-
+/* Legacy button classes for backward compatibility */
 .btn-outline {
   background: transparent;
-  border: 2px solid var(--primary-500);
-  color: var(--primary-600);
+  border: 2px solid var(--action-primary);
+  color: var(--action-primary);
 }
 
 .btn-outline:hover {
-  background: var(--primary-500);
-  color: white;
+  background: var(--action-primary);
+  color: var(--text-inverse);
 }
 
 .btn-danger {
-  background: var(--error-600);
-  color: white;
+  background: var(--action-destructive);
+  color: var(--text-inverse);
 }
 
 .btn-danger:hover {
-  background: var(--error-700);
+  background: var(--action-destructive-hover);
 }
 
 .btn-warning {
-  background: var(--warning-600);
-  color: white;
+  background: var(--status-warning);
+  color: var(--text-inverse);
 }
 
 .btn-info {
-  background: var(--info-600);
-  color: white;
+  background: var(--status-info);
+  color: var(--text-inverse);
 }
 
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none !important;
-}
-
-/* ========== MODERN FORMS ========== */
+/* ========== STANDARDIZED INPUTS ========== */
 .form-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: var(--space-5);
-  margin-bottom: var(--space-5);
+  gap: var(--space-24);
+  margin-bottom: var(--space-24);
 }
 
 .form-row.two-col {
@@ -82,54 +177,158 @@
   grid-template-columns: repeat(3, 1fr);
 }
 
+/* Base input styles */
+input,
+textarea,
+select {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  background: var(--surface-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-2xl);
+  transition: all var(--transition-base);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--action-primary);
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+}
+
+/* Text Input */
+.input-text,
+.form-input {
+  width: 100%;
+  padding: var(--space-12) var(--space-16);
+  font-size: var(--text-sm);
+}
+
+.input-text::placeholder,
+.form-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Search Input */
+.input-search {
+  width: 100%;
+  padding: var(--space-12) var(--space-16) var(--space-12) var(--space-40);
+  font-size: var(--text-sm);
+}
+
+/* Price Input (with ₹ prefix) */
+.input-price {
+  position: relative;
+  width: 100%;
+}
+
+.input-price::before {
+  content: '₹';
+  position: absolute;
+  left: var(--space-16);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  font-weight: var(--font-medium);
+  pointer-events: none;
+}
+
+.input-price input {
+  padding-left: var(--space-32);
+  font-family: var(--font-mono);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Dropdown/Select */
+.input-dropdown,
+.input-select,
+.form-select {
+  width: 100%;
+  padding: var(--space-12) var(--space-16);
+  font-size: var(--text-sm);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23475569' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-12) center;
+  padding-right: var(--space-40);
+}
+
+/* Input with Icon */
 .form-input-icon {
   position: relative;
 }
 
 .form-input-icon input {
-  padding-left: var(--space-10);
+  padding-left: var(--space-40);
 }
 
 .form-input-icon .icon {
   position: absolute;
-  left: var(--space-4);
+  left: var(--space-16);
   top: 50%;
   transform: translateY(-50%);
-  color: var(--text-tertiary);
+  color: var(--text-muted);
   font-size: 18px;
+  pointer-events: none;
 }
 
-.form-input::placeholder,
+/* Textarea */
+.form-textarea,
+textarea {
+  width: 100%;
+  padding: var(--space-12) var(--space-16);
+  font-size: var(--text-sm);
+  resize: vertical;
+  min-height: 100px;
+}
+
 .form-textarea::placeholder {
-  color: var(--text-tertiary);
+  color: var(--text-muted);
 }
 
+/* Error States */
 .form-input.error,
+.input-text.error,
+.input-search.error,
+.input-price.error input,
 .form-select.error,
 .form-textarea.error {
-  border-color: var(--error-500);
+  border-color: var(--status-error);
+}
+
+.form-input.error:focus,
+.input-text.error:focus,
+.input-search.error:focus,
+.input-price.error input:focus,
+.form-select.error:focus,
+.form-textarea.error:focus {
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
 }
 
 .form-error {
   display: block;
-  margin-top: var(--space-2);
+  margin-top: var(--space-8);
   font-size: var(--text-sm);
-  color: var(--error-600);
+  color: var(--status-error);
   font-weight: var(--font-medium);
 }
 
 .form-helper {
   display: block;
-  margin-top: var(--space-2);
+  margin-top: var(--space-8);
   font-size: var(--text-xs);
-  color: var(--text-tertiary);
+  color: var(--text-muted);
 }
 
+/* Checkbox and Radio */
 .form-checkbox,
 .form-radio {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-12);
   cursor: pointer;
 }
 
@@ -138,15 +337,42 @@
   width: 20px;
   height: 20px;
   cursor: pointer;
-  accent-color: var(--primary-600);
+  accent-color: var(--action-primary);
 }
 
-/* ========== MODERN TABLES ========== */
+/* ========== STANDARDIZED TABLES ========== */
 .table-container {
   overflow-x: auto;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-2xl);
   border: 1px solid var(--border-light);
-  background: var(--bg-elevated);
+  background: var(--surface-elevated);
+}
+
+/* Numeric cells - right-aligned with tabular numbers */
+.table-numeric {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Totals row - sticky footer for tables */
+.table-totals {
+  position: sticky;
+  bottom: 0;
+  background: var(--surface-elevated);
+  border-top: 2px solid var(--border-light);
+  font-weight: var(--font-semibold);
+  z-index: 10;
+}
+
+.table-totals td {
+  padding: var(--space-16) var(--space-16);
+  background: var(--surface-secondary);
+}
+
+.table-totals .table-numeric {
+  font-size: var(--text-base);
+  font-weight: var(--font-bold);
 }
 
 .table-header {
@@ -236,11 +462,70 @@
   color: white;
 }
 
-/* ========== MODERN CARDS ========== */
+/* ========== STANDARDIZED CARDS ========== */
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: var(--space-6);
+  gap: var(--space-24);
+}
+
+/* KPI Card - For dashboard statistics */
+.card-kpi {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-24);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+}
+
+.card-kpi:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+/* Summary Card - For general content */
+.card-summary {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-24);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Financial Summary Card - For bill summaries and financial data */
+.card-financial {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-24);
+  box-shadow: var(--shadow-sm);
+}
+
+.card-financial .summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-12) 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.card-financial .summary-row:last-child {
+  border-bottom: none;
+}
+
+.card-financial .summary-label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: var(--font-normal);
+}
+
+.card-financial .summary-value {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  font-weight: var(--font-medium);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .status-badge {
@@ -638,6 +923,54 @@
   margin: var(--space-2) 0;
 }
 
+/* ========== UTILITY CLASSES ========== */
+/* Money text colors */
+.text-money-wallet {
+  color: var(--money-wallet);
+}
+
+.text-money-primary {
+  color: var(--money-primary);
+}
+
+.text-money-loyalty {
+  color: var(--money-loyalty);
+}
+
+.text-money-tax {
+  color: var(--money-tax);
+}
+
+/* Background utilities */
+.bg-surface-elevated {
+  background: var(--surface-elevated);
+}
+
+.bg-surface-secondary {
+  background: var(--surface-secondary);
+}
+
+.bg-surface-canvas {
+  background: var(--surface-canvas);
+}
+
+/* Spacing utilities */
+.spacing-4 { margin: var(--space-4); }
+.spacing-8 { margin: var(--space-8); }
+.spacing-12 { margin: var(--space-12); }
+.spacing-16 { margin: var(--space-16); }
+.spacing-24 { margin: var(--space-24); }
+.spacing-32 { margin: var(--space-32); }
+.spacing-40 { margin: var(--space-40); }
+
+.p-4 { padding: var(--space-4); }
+.p-8 { padding: var(--space-8); }
+.p-12 { padding: var(--space-12); }
+.p-16 { padding: var(--space-16); }
+.p-24 { padding: var(--space-24); }
+.p-32 { padding: var(--space-32); }
+.p-40 { padding: var(--space-40); }
+
 /* ========== RESPONSIVE UTILITIES ========== */
 @media (max-width: 768px) {
   .form-row {
@@ -655,7 +988,7 @@
   
   .modal {
     max-width: 100%;
-    margin: var(--space-4);
+    margin: var(--space-16);
   }
   
   .search-box {

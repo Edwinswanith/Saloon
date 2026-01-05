@@ -228,6 +228,9 @@ class Bill(Document):
     discount_requested_by = ReferenceField('Staff')  # Phase 5: Who requested discount
     discount_approval_status = StringField(max_length=20, choices=['none', 'pending', 'approved', 'rejected'], default='none')  # Phase 5
     discount_approval_request = ReferenceField('DiscountApprovalRequest')  # Phase 5
+    points_used = IntField(default=0)  # Number of loyalty points redeemed
+    points_discount = FloatField(default=0.0)  # Discount amount from points redemption
+    points_earned = IntField(default=0)  # Points earned on this bill
     items = ListField(EmbeddedDocumentField(BillItemEmbedded), default=list)
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
@@ -388,6 +391,7 @@ class LoyaltyProgramSettings(Document):
     enabled = BooleanField(default=False)
     earning_rate = FloatField(default=100.0)  # Amount customer must spend to earn 1 point
     redemption_rate = FloatField(default=1.0)  # Number of points needed to redeem for ₹1
+    minimum_points_to_redeem = IntField(default=10)  # Minimum points required to redeem
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
     
@@ -396,9 +400,21 @@ class LoyaltyProgramSettings(Document):
         """Get or create default settings"""
         settings = cls.objects.first()
         if not settings:
-            settings = cls(enabled=False, earning_rate=100.0, redemption_rate=1.0)
+            settings = cls(enabled=False, earning_rate=100.0, redemption_rate=1.0, minimum_points_to_redeem=10)
             settings.save()
         return settings
+
+# Loyalty Points Transaction Model
+class LoyaltyPointsTransaction(Document):
+    meta = {'collection': 'loyalty_points_transactions'}
+    
+    customer = ReferenceField('Customer', required=True)
+    bill = ReferenceField('Bill')  # Optional - for earned/redeemed transactions
+    transaction_type = StringField(required=True, choices=['earned', 'redeemed'])  # earned or redeemed
+    points = IntField(required=True)  # Positive for earned, negative for redeemed
+    balance_after = IntField(required=True)  # Customer's point balance after this transaction
+    description = StringField()  # e.g., "Earned from Bill #123" or "Redeemed 50 points"
+    created_at = DateTimeField(default=datetime.utcnow)
 
 # Referral Program Settings Model
 class ReferralProgramSettings(Document):
@@ -605,6 +621,44 @@ class ApprovalCode(Document):
     max_uses = IntField()  # Optional limit
     expires_at = DateTimeField()  # Optional expiration
     created_at = DateTimeField(default=datetime.utcnow)
+
+# Staff Leave Model
+class StaffLeave(Document):
+    """Tracks staff leave/absence requests"""
+    meta = {'collection': 'staff_leaves'}
+    
+    staff = ReferenceField('Staff', required=True)
+    branch = ReferenceField('Branch', required=True)
+    start_date = DateField(required=True)
+    end_date = DateField(required=True)
+    leave_type = StringField(max_length=30, default='casual', choices=['casual', 'sick', 'vacation', 'emergency', 'other'])
+    reason = StringField(max_length=500)
+    status = StringField(max_length=20, default='pending', choices=['pending', 'approved', 'rejected', 'cancelled'])
+    coverage_required = BooleanField(default=True)
+    covered_by = ReferenceField('StaffTempAssignment')  # Links to temp assignment
+    approved_by = ReferenceField('Staff')
+    rejection_reason = StringField(max_length=500)
+    created_at = DateTimeField(default=datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.utcnow)
+
+# Staff Temporary Assignment Model
+class StaffTempAssignment(Document):
+    """Tracks temporary staff assignments to different branches"""
+    meta = {'collection': 'staff_temp_assignments'}
+    
+    staff = ReferenceField('Staff', required=True)
+    original_branch = ReferenceField('Branch', required=True)  # Home branch
+    temp_branch = ReferenceField('Branch', required=True)  # Covering branch
+    start_date = DateField(required=True)
+    end_date = DateField(required=True)
+    reason = StringField(max_length=50, default='leave_coverage', choices=['leave_coverage', 'training', 'support', 'event', 'other'])
+    covering_for = ReferenceField('Staff')  # Optional: Staff member on leave
+    related_leave = ReferenceField('StaffLeave')  # Optional: Link to leave request
+    notes = StringField(max_length=500)
+    status = StringField(max_length=20, default='active', choices=['active', 'completed', 'cancelled'])
+    created_by = ReferenceField('Staff')  # Who created this assignment
+    created_at = DateTimeField(default=datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.utcnow)
 
 # Backward compatibility aliases for routes not yet converted
 # These allow old route imports to work but routes need conversion to use embedded documents

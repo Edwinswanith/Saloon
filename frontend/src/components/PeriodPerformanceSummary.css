@@ -93,7 +93,7 @@
 
 .period-performance-content {
   background: #f0f0f0;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 24px;
   width: 100%;
 }
@@ -178,7 +178,7 @@
 
 .metric-card {
   background: white;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 24px;
   display: flex;
   align-items: center;
@@ -253,7 +253,7 @@
 
 .content-card {
   background: white;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 24px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }

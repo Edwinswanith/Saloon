@@ -9,8 +9,10 @@ import {
 import './ListOfBills.css'
 import { API_BASE_URL } from '../config'
 import { apiGet } from '../utils/api'
+import { useAuth } from '../contexts/AuthContext'
 
 const ListOfBills = ({ setActivePage }) => {
+  const { currentBranch } = useAuth()
   const [dateFilter, setDateFilter] = useState('month') // Default to month to show more bills
   const [bills, setBills] = useState([])
   const [loading, setLoading] = useState(true)
@@ -19,7 +21,18 @@ const ListOfBills = ({ setActivePage }) => {
 
   useEffect(() => {
     fetchBills()
-  }, [dateFilter])
+  }, [dateFilter, currentBranch])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[ListOfBills] Branch changed, refreshing bills...')
+      fetchBills()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   const getDateRange = () => {
     const today = new Date()

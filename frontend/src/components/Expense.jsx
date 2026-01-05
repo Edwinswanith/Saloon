@@ -9,6 +9,7 @@ import Header from './Header'
 import './Expense.css'
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
+import { useAuth } from '../contexts/AuthContext'
 import {
   PieChart,
   Pie,
@@ -24,6 +25,7 @@ import { TableSkeleton, ChartSkeleton } from './shared/SkeletonLoaders'
 import { EmptyTable } from './shared/EmptyStates'
 
 const Expense = () => {
+  const { currentBranch } = useAuth()
   const [dateFilter, setDateFilter] = useState('current-month')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [paymentModeFilter, setPaymentModeFilter] = useState('all')
@@ -53,7 +55,20 @@ const Expense = () => {
     fetchCategories()
     fetchExpenses()
     fetchExpenseSummary()
-  }, [dateFilter, categoryFilter, paymentModeFilter])
+  }, [dateFilter, categoryFilter, paymentModeFilter, currentBranch])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[Expense] Branch changed, refreshing data...')
+      fetchCategories()
+      fetchExpenses()
+      fetchExpenseSummary()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   const fetchCategories = async () => {
     try {
@@ -82,6 +97,7 @@ const Expense = () => {
           end_date: lastDay.toISOString().split('T')[0]
         }
       case 'last-month':
+        // Correctly handle year transition (e.g., if current month is January, last month is December of previous year)
         const lastMonthFirst = new Date(today.getFullYear(), today.getMonth() - 1, 1)
         const lastMonthLast = new Date(today.getFullYear(), today.getMonth(), 0)
         return {

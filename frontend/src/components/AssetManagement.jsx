@@ -12,8 +12,10 @@ import {
 import * as XLSX from 'xlsx'
 import './AssetManagement.css'
 import { API_BASE_URL } from '../config'
+import { useAuth } from '../contexts/AuthContext'
 
 const AssetManagement = () => {
+  const { currentBranch } = useAuth()
   const [assets, setAssets] = useState([])
   const [loading, setLoading] = useState(true)
   const [showAssetModal, setShowAssetModal] = useState(false)
@@ -34,7 +36,18 @@ const AssetManagement = () => {
 
   useEffect(() => {
     fetchAssets()
-  }, [])
+  }, [currentBranch])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[AssetManagement] Branch changed, refreshing assets...')
+      fetchAssets()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   const fetchAssets = async () => {
     try {

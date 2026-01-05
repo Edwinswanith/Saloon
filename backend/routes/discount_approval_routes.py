@@ -11,36 +11,24 @@ from models import to_dict
 
 discount_approval_bp = Blueprint('discount_approval', __name__)
 
-# Discount limits by role
+# Discount limits by role - Only owner can apply discounts
 DISCOUNT_LIMITS = {
-    'staff': 15,
-    'manager': 25,
-    'owner': 100  # Unlimited
+    'staff': 0,      # No discount access
+    'manager': 0,   # No discount access
+    'owner': 100     # Unlimited (only owner)
 }
 
 @discount_approval_bp.route('/', methods=['GET'])
-@require_auth
+@require_role('owner')
 def list_approvals(current_user=None):
-    """List discount approval requests with filters"""
+    """List discount approval requests - Owner only"""
     try:
         status = request.args.get('status', 'pending')
         requested_by_id = request.args.get('requested_by_id')
         
         query = Q(approval_status=status)
         
-        # Managers can only see requests they can approve
-        user_role = current_user.get('role') if current_user else None
-        if user_role == 'manager':
-            # Managers can see staff requests (>15%)
-            query &= Q(requested_by__role='staff')
-        elif user_role == 'owner':
-            # Owners can see all requests
-            pass
-        else:
-            # Staff can only see their own requests
-            if current_user and current_user.get('user_type') == 'staff':
-                query &= Q(requested_by=current_user['id'])
-        
+        # Only owners can see all requests
         if requested_by_id:
             query &= Q(requested_by=requested_by_id)
         
@@ -66,7 +54,7 @@ def list_approvals(current_user=None):
         return response, 500
 
 @discount_approval_bp.route('/<approval_id>', methods=['GET'])
-@require_auth
+@require_role('owner')
 def get_approval(approval_id, current_user=None):
     """Get a single approval request"""
     try:
@@ -94,9 +82,9 @@ def get_approval(approval_id, current_user=None):
         return response, 500
 
 @discount_approval_bp.route('/<approval_id>/approve', methods=['POST'])
-@require_role('manager', 'owner')
+@require_role('owner')
 def approve_request(approval_id, current_user=None):
-    """Approve a discount request via in-app"""
+    """Approve a discount request via in-app - Owner only"""
     try:
         approval = DiscountApprovalRequest.objects(id=approval_id).first()
         if not approval:
@@ -109,25 +97,7 @@ def approve_request(approval_id, current_user=None):
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 400
         
-        # Check if current user can approve
-        user_role = current_user.get('role') if current_user else None
-        requested_role = approval.requested_by.role if approval.requested_by else 'staff'
-        
-        if requested_role == 'staff' and user_role not in ['manager', 'owner']:
-            response = jsonify({'error': 'Insufficient permissions to approve this request'})
-            response.headers.add('Access-Control-Allow-Origin', '*')
-            return response, 403
-        
-        if requested_role == 'manager' and user_role != 'owner':
-            response = jsonify({'error': 'Only owner can approve manager requests'})
-            response.headers.add('Access-Control-Allow-Origin', '*')
-            return response, 403
-        
-        # Get approving manager/owner
-        if current_user and current_user.get('user_type') == 'manager':
-            manager = Manager.objects(id=current_user['id']).first()
-            if manager:
-                approval.approved_by = manager
+        # Only owners can approve - no additional checks needed
         
         approval.approval_status = 'approved'
         approval.approval_method = 'in_app'
@@ -149,7 +119,7 @@ def approve_request(approval_id, current_user=None):
         return response, 500
 
 @discount_approval_bp.route('/<approval_id>/approve-with-code', methods=['POST'])
-@require_role('manager', 'owner')
+@require_role('owner')
 def approve_with_code(approval_id, current_user=None):
     """Approve a discount request using an approval code"""
     try:
@@ -181,11 +151,9 @@ def approve_with_code(approval_id, current_user=None):
                 if not can_use_code(approval_code.usage_count, approval_code.max_uses):
                     continue
                 
-                # Check role requirement
+                # Only owners can use approval codes
                 user_role = current_user.get('role') if current_user else None
-                if approval_code.role == 'manager' and user_role not in ['manager', 'owner']:
-                    continue
-                if approval_code.role == 'owner' and user_role != 'owner':
+                if user_role != 'owner':
                     continue
                 
                 matched_code = approval_code
@@ -196,11 +164,7 @@ def approve_with_code(approval_id, current_user=None):
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 400
         
-        # Approve the request
-        if current_user and current_user.get('user_type') == 'manager':
-            manager = Manager.objects(id=current_user['id']).first()
-            if manager:
-                approval.approved_by = manager
+        # Approve the request - only owners can approve
         
         approval.approval_status = 'approved'
         approval.approval_method = 'code'
@@ -227,7 +191,7 @@ def approve_with_code(approval_id, current_user=None):
         return response, 500
 
 @discount_approval_bp.route('/<approval_id>/reject', methods=['POST'])
-@require_role('manager', 'owner')
+@require_role('owner')
 def reject_request(approval_id, current_user=None):
     """Reject a discount request"""
     try:

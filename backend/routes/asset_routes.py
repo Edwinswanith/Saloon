@@ -46,7 +46,8 @@ def get_assets(current_user=None):
         if search:
             query = query.filter(name__icontains=search)
 
-        assets = query.order_by('-created_at')
+        # Force evaluation by converting to list
+        assets = list(query.order_by('-created_at'))
 
         response = jsonify([{
             'id': str(a.id),

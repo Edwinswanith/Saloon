@@ -12,6 +12,7 @@ const LoyaltyProgram = () => {
     enabled: false,
     earningRate: 100,
     redemptionRate: 1,
+    minimumPointsToRedeem: 10,
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -31,6 +32,7 @@ const LoyaltyProgram = () => {
           enabled: data.enabled || false,
           earningRate: data.earningRate || 100,
           redemptionRate: data.redemptionRate || 1,
+          minimumPointsToRedeem: data.minimumPointsToRedeem || 10,
         })
       }
     } catch (error) {
@@ -63,6 +65,7 @@ const LoyaltyProgram = () => {
           enabled: settings.enabled,
           earningRate: parseFloat(settings.earningRate),
           redemptionRate: parseFloat(settings.redemptionRate),
+          minimumPointsToRedeem: parseInt(settings.minimumPointsToRedeem) || 10,
         }),
       })
 
@@ -171,6 +174,27 @@ const LoyaltyProgram = () => {
                   }
                   min="0.01"
                   step="0.01"
+                  required
+                  disabled={!settings.enabled}
+                  className={!settings.enabled ? 'disabled' : ''}
+                />
+              </div>
+
+              {/* Minimum Points to Redeem */}
+              <div className="form-group">
+                <label htmlFor="minimumPointsToRedeem">Minimum Points to Redeem</label>
+                <p className="field-note">
+                  (Note: Minimum number of points required for a customer to redeem)
+                </p>
+                <input
+                  type="number"
+                  id="minimumPointsToRedeem"
+                  value={settings.minimumPointsToRedeem}
+                  onChange={(e) =>
+                    handleInputChange('minimumPointsToRedeem', e.target.value)
+                  }
+                  min="0"
+                  step="1"
                   required
                   disabled={!settings.enabled}
                   className={!settings.enabled ? 'disabled' : ''}

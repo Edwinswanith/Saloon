@@ -21,7 +21,8 @@ def handle_preflight():
 @service_bp.route('/groups', methods=['GET'])
 def get_service_groups():
     """Get all service groups"""
-    groups = ServiceGroup.objects.order_by('display_order')
+    # Force evaluation by converting to list
+    groups = list(ServiceGroup.objects.order_by('display_order'))
     
     response = jsonify({
         'groups': [{
@@ -107,7 +108,8 @@ def get_services():
     if search:
         query = query.filter(name__icontains=search)
     
-    services = query
+    # Force evaluation by converting to list
+    services = list(query)
     
     response = jsonify({
         'services': [{

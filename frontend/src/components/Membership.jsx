@@ -9,8 +9,10 @@ import {
 } from 'react-icons/fa'
 import './Membership.css'
 import { API_BASE_URL } from '../config'
+import { useAuth } from '../contexts/AuthContext'
 
 const Membership = () => {
+  const { currentBranch } = useAuth()
   const [membershipPlans, setMembershipPlans] = useState([])
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -26,7 +28,18 @@ const Membership = () => {
 
   useEffect(() => {
     fetchMembershipPlans()
-  }, [])
+  }, [currentBranch])
+
+  // Listen for branch changes
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[Membership] Branch changed, refreshing membership plans...')
+      fetchMembershipPlans()
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
 
   const fetchMembershipPlans = async () => {
     try {
@@ -36,7 +49,8 @@ const Membership = () => {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       const data = await response.json()
-      setMembershipPlans(data.plans || [])
+      // Backend returns array directly, not wrapped in {plans: [...]}
+      setMembershipPlans(Array.isArray(data) ? data : (data.plans || []))
     } catch (error) {
       console.error('Error fetching membership plans:', error)
       setMembershipPlans([])

@@ -159,11 +159,13 @@ def get_expenses(current_user=None):
             query = query.filter(expense_date__gte=start)
         if end_date:
             end = datetime.strptime(end_date, '%Y-%m-%d').date()
+            # Note: expense_date is a DateField, so we can't set time, but the filter will include the full day
             query = query.filter(expense_date__lte=end)
         if search:
             query = query.filter(name__icontains=search)
 
-        expenses = query.order_by('-expense_date')
+        # Force evaluation by converting to list
+        expenses = list(query.order_by('-expense_date'))
 
         response = jsonify([{
             'id': str(e.id),
@@ -219,6 +221,13 @@ def create_expense(current_user=None):
     """Create a new expense (Manager and Owner only)"""
     try:
         data = request.get_json()
+
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
+        if not branch:
+            response = jsonify({'error': 'Branch not found or not accessible'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
 
         # Parse expense date
         expense_date = datetime.strptime(data['expense_date'], '%Y-%m-%d').date()
@@ -331,14 +340,19 @@ def delete_expense(id, current_user=None):
         return response, 500
 
 @expense_bp.route('/summary', methods=['GET'])
-def get_expense_summary():
+@require_auth
+def get_expense_summary(current_user=None):
     """Get expense summary by category for a date range"""
     try:
         # Query parameters
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
         query = Expense.objects
+        if branch:
+            query = query.filter(branch=branch)
 
         # Apply date filters
         if start_date:
@@ -346,9 +360,10 @@ def get_expense_summary():
             query = query.filter(expense_date__gte=start)
         if end_date:
             end = datetime.strptime(end_date, '%Y-%m-%d').date()
+            # Note: expense_date is a DateField, so we can't set time, but the filter will include the full day
             query = query.filter(expense_date__lte=end)
 
-        # Get all expenses and group by category
+        # Force evaluation by converting to list
         expenses = list(query)
         category_totals = {}
         
@@ -392,8 +407,10 @@ def get_total_expenses():
             query = query.filter(expense_date__gte=start)
         if end_date:
             end = datetime.strptime(end_date, '%Y-%m-%d').date()
+            # Note: expense_date is a DateField, so we can't set time, but the filter will include the full day
             query = query.filter(expense_date__lte=end)
 
+        # Force evaluation by converting to list
         expenses = list(query)
         total = sum(e.amount or 0 for e in expenses)
 

@@ -37,9 +37,12 @@ def service_sales_analysis(current_user=None):
             bills_query = bills_query.filter(bill_date__gte=start)
         if end_date:
             end = datetime.strptime(end_date, '%Y-%m-%d')
+            # Set end to end of day to include all data from the end date
+            end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
             bills_query = bills_query.filter(bill_date__lte=end)
 
-        bills = bills_query
+        # Force evaluation by converting to list
+        bills = list(bills_query)
 
         # Group by service
         service_stats = {}
@@ -88,9 +91,9 @@ def list_of_bills(current_user=None):
             start = datetime.strptime(start_date, '%Y-%m-%d')
             query = query.filter(bill_date__gte=start)
         if end_date:
-            # Set end_date to end of day (23:59:59) to include all bills on that date
+            # Set end_date to end of day to include all bills on that date
             end = datetime.strptime(end_date, '%Y-%m-%d')
-            end = end.replace(hour=23, minute=59, second=59)
+            end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
             query = query.filter(bill_date__lte=end)
         if customer_id and ObjectId.is_valid(customer_id):
             try:
@@ -99,7 +102,8 @@ def list_of_bills(current_user=None):
             except DoesNotExist:
                 pass
 
-        bills = query.order_by('-bill_date')
+        # Force evaluation by converting to list
+        bills = list(query.order_by('-bill_date'))
 
         response = jsonify([{
             'bill_number': b.bill_number,
@@ -140,12 +144,13 @@ def deleted_bills_report(current_user=None):
             start = datetime.strptime(start_date, '%Y-%m-%d')
             query = query.filter(deleted_at__gte=start)
         if end_date:
-            # Set end_date to end of day (23:59:59) to include all bills on that date
+            # Set end_date to end of day to include all bills on that date
             end = datetime.strptime(end_date, '%Y-%m-%d')
-            end = end.replace(hour=23, minute=59, second=59)
+            end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
             query = query.filter(deleted_at__lte=end)
 
-        bills = query.order_by('-deleted_at')
+        # Force evaluation by converting to list
+        bills = list(query.order_by('-deleted_at'))
 
         response = jsonify([{
             'bill_number': b.bill_number,
@@ -181,9 +186,12 @@ def sales_by_service_group(current_user=None):
             bills_query = bills_query.filter(bill_date__gte=start)
         if end_date:
             end = datetime.strptime(end_date, '%Y-%m-%d')
+            # Set end to end of day to include all data from the end date
+            end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
             bills_query = bills_query.filter(bill_date__lte=end)
 
-        bills = bills_query
+        # Force evaluation by converting to list
+        bills = list(bills_query)
 
         # Group by service group
         group_stats = {}
@@ -260,10 +268,11 @@ def membership_clients_report(current_user=None):
 
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
-        memberships = Membership.objects(status=status)
+        memberships_query = Membership.objects(status=status)
         if branch:
-            memberships = memberships.filter(branch=branch)
-        memberships = memberships.order_by('-purchase_date')
+            memberships_query = memberships_query.filter(branch=branch)
+        # Force evaluation by converting to list
+        memberships = list(memberships_query.order_by('-purchase_date'))
 
         response = jsonify([{
             'customer_name': f"{m.customer.first_name} {m.customer.last_name}" if m.customer else None,
@@ -294,9 +303,11 @@ def staff_incentive_report(current_user=None):
 
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
-        staff_list = Staff.objects(status='active')
+        staff_query = Staff.objects(status='active')
         if branch:
-            staff_list = staff_list.filter(branch=branch)
+            staff_query = staff_query.filter(branch=branch)
+        # Force evaluation by converting to list
+        staff_list = list(staff_query)
 
         report = []
         for staff in staff_list:
@@ -309,11 +320,12 @@ def staff_incentive_report(current_user=None):
                 bills_query = bills_query.filter(bill_date__gte=start)
             if end_date:
                 end = datetime.strptime(end_date, '%Y-%m-%d')
-                # Add one day to include the end date
-                end = end + timedelta(days=1)
-                bills_query = bills_query.filter(bill_date__lt=end)
+                # Set end to end of day to include all data from the end date
+                end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
+                bills_query = bills_query.filter(bill_date__lte=end)
 
-            bills = bills_query
+            # Force evaluation by converting to list
+            bills = list(bills_query)
 
             # Breakdown by item type
             service_revenue = 0.0
@@ -397,7 +409,8 @@ def expense_report():
             except DoesNotExist:
                 pass
 
-        expenses = query.order_by('-expense_date')
+        # Force evaluation by converting to list
+        expenses = list(query.order_by('-expense_date'))
 
         total = sum([float(e.amount) for e in expenses])
 
@@ -485,9 +498,11 @@ def staff_combined_report():
             query = query.filter(bill_date__gte=start)
         if end_date:
             end = datetime.strptime(end_date, '%Y-%m-%d')
-            end = end.replace(hour=23, minute=59, second=59)
+            # Set end to end of day to include all data from the end date
+            end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
             query = query.filter(bill_date__lte=end)
 
+        # Force evaluation by converting to list
         bills = list(query)
 
         # Group by staff
@@ -546,14 +561,15 @@ def business_growth_report():
 
         start = datetime.strptime(start_date, '%Y-%m-%d')
         end = datetime.strptime(end_date, '%Y-%m-%d')
-        end = end.replace(hour=23, minute=59, second=59)
+        # Set end to end of day to include all data from the end date
+        end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
 
-        # Get all bills in date range
-        bills = Bill.objects.filter(
+        # Get all bills in date range - force evaluation
+        bills = list(Bill.objects.filter(
             is_deleted=False,
             bill_date__gte=start,
             bill_date__lte=end
-        )
+        ))
 
         # Group bills by month
         monthly_revenue = {}
@@ -564,11 +580,11 @@ def business_growth_report():
             monthly_revenue[month_key]['revenue'] += bill.final_amount or 0
             monthly_revenue[month_key]['bills'] += 1
 
-        # Get all expenses in date range
-        expenses = Expense.objects.filter(
+        # Get all expenses in date range - force evaluation
+        expenses = list(Expense.objects.filter(
             expense_date__gte=start.date(),
             expense_date__lte=end.date()
-        )
+        ))
 
         # Group expenses by month
         monthly_expenses = {}
@@ -609,7 +625,8 @@ def staff_performance_analysis():
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
 
-        staff_list = Staff.objects.filter(status='active')
+        # Force evaluation by converting to list
+        staff_list = list(Staff.objects.filter(status='active'))
 
         # Build date filter for bills
         if start_date:
@@ -619,16 +636,17 @@ def staff_performance_analysis():
         
         if end_date:
             end = datetime.strptime(end_date, '%Y-%m-%d')
-            end = end.replace(hour=23, minute=59, second=59)
+            # Set end to end of day to include all data from the end date
+            end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
         else:
             end = datetime.now()
 
-        # Get all bills in date range
-        bills = Bill.objects.filter(
+        # Get all bills in date range - force evaluation
+        bills = list(Bill.objects.filter(
             is_deleted=False,
             bill_date__gte=start,
             bill_date__lte=end
-        )
+        ))
 
         performance = []
         for staff in staff_list:
@@ -716,23 +734,23 @@ def period_summary():
 
         start = datetime.strptime(start_date, '%Y-%m-%d')
         end = datetime.strptime(end_date, '%Y-%m-%d')
+        # Set end to end of day to include all data from the end date
+        end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
 
-        end = end.replace(hour=23, minute=59, second=59)
-
-        # Revenue
-        bills = Bill.objects.filter(
+        # Revenue - force evaluation
+        bills = list(Bill.objects.filter(
             is_deleted=False,
             bill_date__gte=start,
             bill_date__lte=end
-        )
+        ))
         total_revenue = sum(bill.final_amount or 0 for bill in bills)
-        total_bills = bills.count()
+        total_bills = len(bills)
 
-        # Expenses
-        expenses = Expense.objects.filter(
+        # Expenses - force evaluation
+        expenses = list(Expense.objects.filter(
             expense_date__gte=start.date(),
             expense_date__lte=end.date()
-        )
+        ))
         total_expenses = sum(expense.amount or 0 for expense in expenses)
 
         # Profit

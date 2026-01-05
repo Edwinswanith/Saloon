@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../config';
-import { FaUser, FaTimes, FaEdit, FaSave, FaEnvelope, FaPhone, FaBuilding, FaShieldAlt } from 'react-icons/fa';
+import { FaUser, FaTimes, FaEdit, FaSave, FaEnvelope, FaPhone, FaBuilding, FaShieldAlt, FaExclamationTriangle } from 'react-icons/fa';
 import './Profile.css';
 
 const Profile = ({ isOpen, onClose }) => {
@@ -184,8 +184,8 @@ const Profile = ({ isOpen, onClose }) => {
 
         <div className="profile-content">
           {error && (
-            <div className="profile-error">
-              <span className="error-icon">⚠</span>
+            <div className="profile-error" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FaExclamationTriangle size={16} color="#ef4444" />
               {error}
             </div>
           )}
