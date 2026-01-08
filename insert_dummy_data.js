@@ -95,7 +95,7 @@ db.managers.insertMany([
     last_name: "Mehta",
     email: "arun@salon.com",
     mobile: "9876543220",
-    salon: "Glamour Salon - Main Branch",
+    salon: "Glamour Saloon - Main Branch",
     // Password: manager123 (hashed with bcrypt)
     password_hash: "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5ND2hq9SJmGLO",
     role: "manager",
@@ -110,7 +110,7 @@ db.managers.insertMany([
     last_name: "Desai",
     email: "kavita@salon.com",
     mobile: "9876543221",
-    salon: "Glamour Salon - Main Branch",
+    salon: "Glamour Saloon - Main Branch",
     // Password: manager456 (hashed with bcrypt)
     password_hash: "$2b$12$8Wqo3PDBkZF8qNXyZqU0/.ZhPCxPU7LqPzY0Bw3yPL6aPqR0fJmXy",
     role: "manager",
@@ -125,7 +125,7 @@ db.managers.insertMany([
     last_name: "Chopra",
     email: "owner@salon.com",
     mobile: "9876543230",
-    salon: "Glamour Salon - All Branches",
+    salon: "Glamour Saloon - All Branches",
     // Password: owner123 (hashed with bcrypt)
     password_hash: "$2b$12$vN7dPQ8yXqU2cTxZnP7Ohe.fMQwGp1YqL5Jz8vY3nK9sW4Rm6Xu1u",
     role: "owner",

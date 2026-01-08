@@ -33,12 +33,12 @@ All your data is stored in **MongoDB Atlas Cloud**, accessible from anywhere wit
 Created and stored in MongoDB Cloud:
 - Beauty Products India (T. Nagar)
 - Hair Care Wholesale (Anna Nagar)
-- Professional Salon Supplies (Velachery)
+- Professional Saloon Supplies (Velachery)
 - Cosmetics Direct (Adyar)
 - Spa Equipment Co (Porur)
 - Nail Art Supplies (Chrompet)
 - Hair Color Specialists (Tambaram)
-- Salon Furniture Plus, Beauty Tools, Hygiene Products
+- Saloon Furniture Plus, Beauty Tools, Hygiene Products
 - Plus 3 existing suppliers
 
 **Status:** ✓ All stored in cloud
@@ -154,7 +154,7 @@ This script:
 
 ## Summary
 
-**Your entire Salon Management System is using MongoDB Cloud Atlas:**
+**Your entire Saloon Management System is using MongoDB Cloud Atlas:**
 
 - ✓ 7 Branches
 - ✓ 7 Staff members

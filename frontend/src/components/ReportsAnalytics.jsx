@@ -1,6 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
-  FaBars,
   FaUser,
   FaChartBar,
   FaClipboardList,
@@ -22,8 +21,15 @@ import {
 } from 'react-icons/fa'
 import './ReportsAnalytics.css'
 
-const ReportsAnalytics = ({ setActivePage }) => {
-  const [activeTab, setActiveTab] = useState('operational')
+const ReportsAnalytics = ({ setActivePage, initialTab }) => {
+  const [activeTab, setActiveTab] = useState(initialTab || 'operational')
+
+  // Update activeTab when initialTab prop changes
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab)
+    }
+  }, [initialTab])
 
   const handleReportClick = (reportId) => {
     // Handle Analytics Dashboard reports first
@@ -62,7 +68,9 @@ const ReportsAnalytics = ({ setActivePage }) => {
         return
       } else if (reportId === 7) {
         // Service & Product Performance
-        alert('Service & Product Performance is coming soon!')
+        if (setActivePage) {
+          setActivePage('service-product-performance')
+        }
         return
       } else if (reportId === 8) {
         // Discount & Coupon Analysis
@@ -409,20 +417,6 @@ const ReportsAnalytics = ({ setActivePage }) => {
 
   return (
     <div className="reports-analytics-page">
-      {/* Header */}
-      <header className="reports-analytics-header">
-        <div className="header-left">
-          <button className="menu-icon"><FaBars /></button>
-          <h1 className="header-title">Reports & Analytics</h1>
-        </div>
-        <div className="header-right">
-          <button className="user-icon"><FaUser /></button>
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-        </div>
-      </header>
-
       <div className="reports-analytics-container">
         {/* Reports Card */}
         <div className="reports-card">

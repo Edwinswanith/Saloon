@@ -59,9 +59,7 @@ def get_customers(current_user=None):
             'source': c.source,
             'gender': c.gender,
             'dobRange': c.dob_range,
-            'loyaltyPoints': c.loyalty_points,
-            'referralCode': c.referral_code,
-            'wallet': c.wallet_balance
+            'referralCode': c.referral_code
         } for c in customers],
         'total': total,
         'page': page,
@@ -127,9 +125,7 @@ def get_customer(customer_id, current_user=None):
             'gender': customer.gender,
             'dob': customer.dob.isoformat() if customer.dob else None,
             'dobRange': customer.dob_range,
-            'loyalty_points': customer.loyalty_points,
             'referralCode': customer.referral_code,
-            'wallet_balance': customer.wallet_balance,
             'membership': membership_data,
             'last_visit': last_visit.isoformat() if last_visit else None,
             'total_visits': total_visits,
@@ -203,8 +199,6 @@ def create_customer(current_user=None):
             gender=data.get('gender', ''),
             dob=dob,
             dob_range=data.get('dobRange', ''),
-            loyalty_points=data.get('loyaltyPoints', 0),
-            wallet_balance=data.get('wallet', 0.0),
             referral_code=generate_referral_code(data.get('firstName', '')),
             branch=branch
         )
@@ -251,10 +245,6 @@ def update_customer(customer_id, current_user=None):
             customer.gender = data['gender']
         if 'dobRange' in data:
             customer.dob_range = data['dobRange']
-        if 'loyaltyPoints' in data:
-            customer.loyalty_points = data['loyaltyPoints']
-        if 'wallet' in data:
-            customer.wallet_balance = data['wallet']
         customer.updated_at = datetime.utcnow()
         
         if data.get('dob'):
@@ -387,7 +377,6 @@ def search_customers():
             'id': str(c.id),
             'mobile': c.mobile,
             'firstName': c.first_name,
-            'lastName': c.last_name,
-            'wallet': c.wallet_balance
+            'lastName': c.last_name
         } for c in customers]
     })

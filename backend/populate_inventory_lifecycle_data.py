@@ -19,12 +19,12 @@ def populate_suppliers():
     supplier_data = [
         ("Beauty Products India", "9876543210", "contact@beautyproducts.in", "Mumbai, Maharashtra"),
         ("Hair Care Wholesale", "9876543211", "sales@haircare.com", "Delhi"),
-        ("Professional Salon Supplies", "9876543212", "info@salonsupplies.in", "Bangalore, Karnataka"),
+        ("Professional Saloon Supplies", "9876543212", "info@salonsupplies.in", "Bangalore, Karnataka"),
         ("Cosmetics Direct", "9876543213", "orders@cosmeticsdirect.com", "Chennai, Tamil Nadu"),
         ("Spa Equipment Co", "9876543214", "support@spaequipment.in", "Hyderabad, Telangana"),
         ("Nail Art Supplies", "9876543215", "sales@nailart.in", "Pune, Maharashtra"),
         ("Hair Color Specialists", "9876543216", "info@haircolor.com", "Kolkata, West Bengal"),
-        ("Salon Furniture Plus", "9876543217", "contact@salonfurniture.in", "Ahmedabad, Gujarat"),
+        ("Saloon Furniture Plus", "9876543217", "contact@salonfurniture.in", "Ahmedabad, Gujarat"),
         ("Beauty Tools Pvt Ltd", "9876543218", "sales@beautytools.co.in", "Jaipur, Rajasthan"),
         ("Hygiene Products Supply", "9876543219", "orders@hygiene.in", "Lucknow, Uttar Pradesh"),
     ]

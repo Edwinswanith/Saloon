@@ -226,33 +226,53 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem;
+  padding: 16px 20px;
   border-bottom: 1px solid #e0e0e0;
+  min-height: 56px;
+  box-sizing: border-box;
 }
 
 .modal-header h3 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 600;
   color: #333;
+  flex: 1;
+  line-height: 1.4;
 }
 
 .modal-close {
-  background: none;
+  background: rgba(0, 0, 0, 0.05);
   border: none;
-  font-size: 1.5rem;
+  font-size: 16px;
   cursor: pointer;
   color: #666;
   padding: 0;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  margin-left: 12px;
+  transition: all 0.2s ease;
 }
 
-.modal-close:hover {
+.modal-close:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.1);
   color: #333;
+}
+
+.modal-close:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.modal-close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .manager-form {
@@ -322,5 +342,224 @@
 
 .btn-submit:hover {
   background-color: #357abd;
+}
+
+/* ========== RESPONSIVE DESIGN ========== */
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .manager-container {
+    padding: var(--space-6);
+  }
+
+  .manager-card {
+    padding: var(--space-6);
+  }
+
+  .manager-table th,
+  .manager-table td {
+    padding: var(--space-4);
+    font-size: var(--text-sm);
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .manager-header {
+    padding: var(--space-4);
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+
+  .header-left {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .header-title {
+    font-size: var(--text-xl);
+  }
+
+  .header-right {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .menu-icon,
+  .header-icon {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .manager-container {
+    padding: var(--space-4);
+  }
+
+  .manager-card {
+    padding: var(--space-4);
+  }
+
+  .manager-section-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-4);
+  }
+
+  .section-title {
+    font-size: var(--text-xl);
+  }
+
+  .add-manager-btn {
+    width: 100%;
+    padding: var(--space-4);
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .manager-table {
+    min-width: 700px;
+    font-size: var(--text-sm);
+  }
+
+  .manager-table th,
+  .manager-table td {
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-xs);
+  }
+
+  .icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay {
+    padding: var(--space-4);
+    align-items: flex-end;
+  }
+
+  .modal-content {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 16px 16px 0 0;
+    max-height: 95vh;
+  }
+
+  .modal-header {
+    padding: var(--space-4);
+  }
+
+  .modal-header h3 {
+    font-size: var(--text-lg);
+  }
+
+  .modal-close {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .manager-form {
+    padding: var(--space-4);
+  }
+
+  .form-group {
+    margin-bottom: var(--space-4);
+  }
+
+  .form-group input,
+  .form-group select {
+    padding: var(--space-4);
+    font-size: 16px; /* Prevents zoom on iOS */
+    min-height: 44px;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+    gap: var(--space-2);
+    padding-top: var(--space-4);
+    margin-top: var(--space-4);
+  }
+
+  .btn-cancel,
+  .btn-submit {
+    width: 100%;
+    padding: var(--space-4);
+    min-height: 44px;
+  }
+}
+
+/* Small Mobile */
+@media (max-width: 480px) {
+  .manager-header {
+    padding: var(--space-3);
+  }
+
+  .header-title {
+    font-size: var(--text-lg);
+  }
+
+  .manager-container {
+    padding: var(--space-3);
+  }
+
+  .manager-card {
+    padding: var(--space-3);
+  }
+
+  .section-title {
+    font-size: var(--text-lg);
+  }
+
+  .manager-table {
+    min-width: 600px;
+    font-size: 11px;
+  }
+
+  .manager-table th,
+  .manager-table td {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .modal-content {
+    border-radius: 12px 12px 0 0;
+    max-height: 98vh;
+  }
+
+  .modal-header {
+    padding: var(--space-3);
+  }
+
+  .modal-header h3 {
+    font-size: var(--text-base);
+  }
+
+  .manager-form {
+    padding: var(--space-3);
+  }
+
+  .form-group {
+    margin-bottom: var(--space-3);
+  }
+
+  .form-group label {
+    font-size: var(--text-sm);
+  }
+
+  .form-group input,
+  .form-group select {
+    padding: var(--space-3);
+    font-size: 16px;
+  }
 }
 

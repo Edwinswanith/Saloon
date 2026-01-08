@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for Salon Management System
+# Multi-stage Dockerfile for Saloon Management System
 # Stage 1: Build React Frontend
 FROM node:18-alpine AS frontend-build
 

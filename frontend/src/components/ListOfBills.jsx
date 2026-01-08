@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import {
-  FaBars,
-  FaBell,
-  FaUser,
   FaArrowLeft,
   FaCloudDownloadAlt,
+  FaTimes,
 } from 'react-icons/fa'
 import './ListOfBills.css'
 import { API_BASE_URL } from '../config'
 import { apiGet } from '../utils/api'
+import { formatLocalDate } from '../utils/dateUtils'
 import { useAuth } from '../contexts/AuthContext'
 
 const ListOfBills = ({ setActivePage }) => {
@@ -18,6 +17,10 @@ const ListOfBills = ({ setActivePage }) => {
   const [loading, setLoading] = useState(true)
   const [totalTransactions, setTotalTransactions] = useState(0)
   const [totalRevenue, setTotalRevenue] = useState(0)
+  const [showModal, setShowModal] = useState(false)
+  const [selectedBill, setSelectedBill] = useState(null)
+  const [billDetails, setBillDetails] = useState(null)
+  const [loadingDetails, setLoadingDetails] = useState(false)
 
   useEffect(() => {
     fetchBills()
@@ -45,15 +48,15 @@ const ListOfBills = ({ setActivePage }) => {
 
     switch (dateFilter) {
       case 'today':
-        return { start: today.toISOString().split('T')[0], end: today.toISOString().split('T')[0] }
+        return { start: formatLocalDate(today), end: formatLocalDate(today) }
       case 'yesterday':
-        return { start: yesterday.toISOString().split('T')[0], end: yesterday.toISOString().split('T')[0] }
+        return { start: formatLocalDate(yesterday), end: formatLocalDate(yesterday) }
       case 'week':
-        return { start: weekStart.toISOString().split('T')[0], end: today.toISOString().split('T')[0] }
+        return { start: formatLocalDate(weekStart), end: formatLocalDate(today) }
       case 'month':
-        return { start: monthStart.toISOString().split('T')[0], end: today.toISOString().split('T')[0] }
+        return { start: formatLocalDate(monthStart), end: formatLocalDate(today) }
       case 'year':
-        return { start: yearStart.toISOString().split('T')[0], end: today.toISOString().split('T')[0] }
+        return { start: formatLocalDate(yearStart), end: formatLocalDate(today) }
       case 'all':
         return { start: null, end: null } // Show all bills
       default:
@@ -104,36 +107,76 @@ const ListOfBills = ({ setActivePage }) => {
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A'
-    const date = new Date(dateString)
-    const day = String(date.getDate()).padStart(2, '0')
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const year = date.getFullYear()
-    return `${day}-${month}-${year}`
+    try {
+      // Parse the ISO date string (which is in UTC)
+      const date = new Date(dateString)
+      // Get local date components to display the correct local date
+      // This handles timezone conversion properly
+      const day = String(date.getDate()).padStart(2, '0')
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const year = date.getFullYear()
+      return `${day}-${month}-${year}`
+    } catch (error) {
+      console.error('Error formatting date:', dateString, error)
+      return 'N/A'
+    }
+  }
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return 'N/A'
+    try {
+      const date = new Date(dateString)
+      const day = String(date.getDate()).padStart(2, '0')
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const year = date.getFullYear()
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      const ampm = hours >= 12 ? 'PM' : 'AM'
+      const hour12 = hours % 12 || 12
+      return `${day}-${month}-${year} ${hour12}:${minutes} ${ampm}`
+    } catch (error) {
+      return 'N/A'
+    }
+  }
+
+  const handleViewDetails = async (bill) => {
+    setSelectedBill(bill)
+    setShowModal(true)
+    setLoadingDetails(true)
+    setBillDetails(null)
+
+    try {
+      const billId = bill.id
+      if (!billId) {
+        console.error('Bill ID not found')
+        setLoadingDetails(false)
+        return
+      }
+
+      // Fetch detailed bill information
+      const detailsResponse = await apiGet(`/api/bills/${billId}`)
+      if (detailsResponse.ok) {
+        const details = await detailsResponse.json()
+        setBillDetails(details)
+      } else {
+        // Fallback: use basic bill data
+        setBillDetails(bill)
+      }
+    } catch (error) {
+      console.error('Error fetching bill details:', error)
+      // Fallback: use basic bill data
+      setBillDetails(bill)
+    } finally {
+      setLoadingDetails(false)
+    }
+  }
+
+  const formatCurrency = (amount) => {
+    return `₹${amount?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`
   }
 
   return (
     <div className="list-of-bills-page">
-      {/* Header */}
-      <header className="list-of-bills-header">
-        <div className="header-left">
-          <button className="menu-icon">
-            <FaBars />
-          </button>
-          <h1 className="header-title">List of Bills</h1>
-        </div>
-        <div className="header-right">
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-          <button className="header-icon bell-icon">
-            <FaBell />
-          </button>
-          <button className="header-icon user-icon">
-            <FaUser />
-          </button>
-        </div>
-      </header>
-
       <div className="list-of-bills-container">
         {/* Main Report Card */}
         <div className="report-card">
@@ -253,10 +296,8 @@ const ListOfBills = ({ setActivePage }) => {
                       <td>₹{bill.final_amount?.toFixed(2) || '0.00'}</td>
                       <td>
                         <button 
-                          className="action-btn"
-                          onClick={() => {
-                            alert(`Bill Details:\nBill Number: ${bill.bill_number}\nCustomer: ${bill.customer_name}\nDate: ${formatDate(bill.bill_date)}\nFinal Amount: ₹${bill.final_amount?.toFixed(2) || '0.00'}`)
-                          }}
+                          className="view-btn"
+                          onClick={() => handleViewDetails(bill)}
                         >
                           View
                         </button>
@@ -269,6 +310,127 @@ const ListOfBills = ({ setActivePage }) => {
           </div>
         </div>
       </div>
+
+      {/* Bill Details Modal */}
+      {showModal && selectedBill && (
+        <div className="customer-modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="customer-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="customer-modal-header">
+              <h2>Bill Details</h2>
+              <button className="customer-modal-close" onClick={() => setShowModal(false)}>
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="customer-modal-body">
+              {loadingDetails ? (
+                <div className="customer-modal-loading">Loading bill details...</div>
+              ) : (
+                <>
+                  {/* Bill Information */}
+                  <div className="customer-details-section">
+                    <h3>Bill Information</h3>
+                    <div className="customer-details-grid">
+                      <div className="customer-detail-item">
+                        <span className="detail-label">Bill Number:</span>
+                        <span className="detail-value">{selectedBill.bill_number || 'N/A'}</span>
+                      </div>
+                      <div className="customer-detail-item">
+                        <span className="detail-label">Date:</span>
+                        <span className="detail-value">{formatDateTime(selectedBill.bill_date || billDetails?.bill_date)}</span>
+                      </div>
+                      <div className="customer-detail-item">
+                        <span className="detail-label">Customer:</span>
+                        <span className="detail-value">{selectedBill.customer_name || billDetails?.customer_name || 'Walk-in'}</span>
+                      </div>
+                      {selectedBill.customer_mobile && (
+                        <div className="customer-detail-item">
+                          <span className="detail-label">Customer Mobile:</span>
+                          <span className="detail-value">{selectedBill.customer_mobile}</span>
+                        </div>
+                      )}
+                      <div className="customer-detail-item">
+                        <span className="detail-label">Payment Mode:</span>
+                        <span className="detail-value">{selectedBill.payment_mode || billDetails?.payment_mode || 'N/A'}</span>
+                      </div>
+                      {billDetails?.booking_status && (
+                        <div className="customer-detail-item">
+                          <span className="detail-label">Booking Status:</span>
+                          <span className="detail-value">{billDetails.booking_status}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Amount Breakdown */}
+                  <div className="customer-details-section">
+                    <h3>Amount Breakdown</h3>
+                    <div className="customer-details-grid">
+                      <div className="customer-detail-item">
+                        <span className="detail-label">Subtotal:</span>
+                        <span className="detail-value">{formatCurrency(selectedBill.subtotal || billDetails?.subtotal || 0)}</span>
+                      </div>
+                      <div className="customer-detail-item">
+                        <span className="detail-label">Discount:</span>
+                        <span className="detail-value">{formatCurrency(selectedBill.discount || billDetails?.discount_amount || 0)}</span>
+                      </div>
+                      <div className="customer-detail-item">
+                        <span className="detail-label">Tax:</span>
+                        <span className="detail-value">{formatCurrency(selectedBill.tax || billDetails?.tax_amount || 0)}</span>
+                      </div>
+                      <div className="customer-detail-item">
+                        <span className="detail-label">Final Amount:</span>
+                        <span className="detail-value revenue-stat">{formatCurrency(selectedBill.final_amount || billDetails?.final_amount || 0)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bill Items */}
+                  {billDetails?.items && Array.isArray(billDetails.items) && billDetails.items.length > 0 && (
+                    <div className="customer-details-section">
+                      <h3>Bill Items</h3>
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                          <thead>
+                            <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
+                              <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Item</th>
+                              <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Type</th>
+                              <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: '#374151' }}>Quantity</th>
+                              <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: '#374151' }}>Price</th>
+                              <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: '#374151' }}>Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {billDetails.items.map((item, index) => (
+                              <tr key={index} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                <td style={{ padding: '8px 12px', color: '#374151' }}>
+                                  {item.service_name || item.product_name || item.package_name || item.prepaid_name || 'N/A'}
+                                </td>
+                                <td style={{ padding: '8px 12px', color: '#6b7280', textTransform: 'capitalize' }}>
+                                  {item.item_type || 'N/A'}
+                                </td>
+                                <td style={{ padding: '8px 12px', textAlign: 'right', color: '#374151' }}>
+                                  {item.quantity || 1}
+                                </td>
+                                <td style={{ padding: '8px 12px', textAlign: 'right', color: '#374151' }}>
+                                  {formatCurrency(item.price || 0)}
+                                </td>
+                                <td style={{ padding: '8px 12px', textAlign: 'right', color: '#374151', fontWeight: 500 }}>
+                                  {formatCurrency(item.total || 0)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

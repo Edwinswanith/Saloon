@@ -44,14 +44,14 @@ connect(host=connection_string)
 def create_expense_categories():
     """Create expense categories if they don't exist"""
     categories = [
-        {'name': 'Rent', 'description': 'Monthly rent for salon space'},
+        {'name': 'Rent', 'description': 'Monthly rent for saloon space'},
         {'name': 'Utilities', 'description': 'Electricity, water, internet bills'},
         {'name': 'Salaries', 'description': 'Staff salaries and wages'},
         {'name': 'Products', 'description': 'Hair products, cosmetics, supplies'},
         {'name': 'Equipment', 'description': 'Equipment maintenance and purchases'},
         {'name': 'Marketing', 'description': 'Advertising and promotional expenses'},
         {'name': 'Insurance', 'description': 'Business insurance premiums'},
-        {'name': 'Maintenance', 'description': 'Salon maintenance and repairs'},
+        {'name': 'Maintenance', 'description': 'Saloon maintenance and repairs'},
         {'name': 'Transportation', 'description': 'Delivery and transportation costs'},
         {'name': 'Other', 'description': 'Miscellaneous expenses'}
     ]

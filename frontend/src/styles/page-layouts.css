@@ -407,5 +407,42 @@
     padding: var(--space-3);
     font-size: var(--text-xs);
   }
+
+  .responsive-table-wrapper {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Small Mobile */
+@media (max-width: 480px) {
+  .page-header {
+    padding: var(--space-3);
+  }
+
+  .page-header .header-title {
+    font-size: var(--text-lg);
+  }
+
+  .page-content {
+    padding: var(--space-3);
+  }
+
+  .card-top-section {
+    padding: var(--space-3);
+  }
+
+  .filters-section {
+    padding: var(--space-3);
+  }
+
+  .form-section {
+    padding: var(--space-3);
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: var(--space-2);
+    font-size: 11px;
+  }
 }
 

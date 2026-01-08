@@ -6,6 +6,7 @@ from bson import ObjectId
 from mongoengine import Q
 from utils.branch_filter import get_selected_branch
 from utils.auth import require_auth
+from utils.date_utils import get_ist_date_range
 
 feedback_bp = Blueprint('feedback', __name__)
 
@@ -49,14 +50,12 @@ def get_feedback(current_user=None):
             query = query.filter(rating__gte=min_rating)
         if max_rating:
             query = query.filter(rating__lte=max_rating)
-        if start_date:
-            start = datetime.strptime(start_date, '%Y-%m-%d')
-            query = query.filter(created_at__gte=start)
-        if end_date:
-            end = datetime.strptime(end_date, '%Y-%m-%d')
-            # Set end to end of day to include all data from the end date
-            end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
-            query = query.filter(created_at__lte=end)
+        if start_date or end_date:
+            start, end = get_ist_date_range(start_date, end_date)
+            if start:
+                query = query.filter(created_at__gte=start)
+            if end:
+                query = query.filter(created_at__lte=end)
 
         # Force evaluation by converting to list
         feedbacks = list(query.order_by('-created_at'))

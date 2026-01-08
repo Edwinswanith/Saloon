@@ -4,6 +4,7 @@ from datetime import datetime, date
 from models import MissedEnquiry, Appointment, Staff
 from utils.auth import require_auth, get_current_user
 from utils.branch_filter import get_selected_branch, filter_by_branch, get_user_branch
+from utils.date_utils import get_ist_date_range
 from models import to_dict
 
 missed_enquiry_bp = Blueprint('missed_enquiry', __name__)
@@ -24,10 +25,12 @@ def list_missed_enquiries(current_user=None):
             query &= Q(status=status)
         if enquiry_type:
             query &= Q(enquiry_type=enquiry_type)
-        if start_date:
-            query &= Q(created_at__gte=datetime.fromisoformat(start_date))
-        if end_date:
-            query &= Q(created_at__lte=datetime.fromisoformat(end_date))
+        if start_date or end_date:
+            start, end = get_ist_date_range(start_date, end_date)
+            if start:
+                query &= Q(created_at__gte=start)
+            if end:
+                query &= Q(created_at__lte=end)
         
         # Filter by branch
         branch = get_selected_branch(request, current_user)

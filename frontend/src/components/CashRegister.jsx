@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { FaBars, FaCalendarAlt, FaCloudDownloadAlt, FaEdit, FaTrash } from 'react-icons/fa'
+import { FaCalendarAlt, FaCloudDownloadAlt, FaEdit, FaTrash } from 'react-icons/fa'
 import './CashRegister.css'
 import { API_BASE_URL } from '../config'
 import { useAuth } from '../contexts/AuthContext'
@@ -157,19 +157,6 @@ const CashRegister = () => {
 
   return (
     <div className="cash-register-page">
-      {/* Top Header */}
-      <header className="cash-register-header">
-        <div className="header-left">
-          <button className="menu-icon"><FaBars /></button>
-          <h1 className="header-title">Cash Register</h1>
-        </div>
-        <div className="header-right">
-          <div className="logo-circle">
-            <span className="logo-text">ISI HAIR STUDIO</span>
-          </div>
-        </div>
-      </header>
-
       <div className="cash-register-container">
         {/* Control Panel / Filters */}
         <div className="control-panel">

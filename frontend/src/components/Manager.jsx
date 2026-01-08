@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import {
-  FaBars,
-  FaBell,
-  FaUser,
   FaEdit,
   FaTrash,
   FaPlus,
@@ -138,27 +135,6 @@ const Manager = () => {
 
   return (
     <div className="manager-page">
-      {/* Header */}
-      <header className="manager-header">
-        <div className="header-left">
-          <button className="menu-icon">
-            <FaBars />
-          </button>
-          <h1 className="header-title">Manager</h1>
-        </div>
-        <div className="header-right">
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-          <button className="header-icon bell-icon">
-            <FaBell />
-          </button>
-          <button className="header-icon user-icon">
-            <FaUser />
-          </button>
-        </div>
-      </header>
-
       <div className="manager-container">
         {/* Manager Management Card */}
         <div className="manager-card">
@@ -181,7 +157,7 @@ const Manager = () => {
                     <th>Name</th>
                     <th>Email</th>
                     <th>Mobile</th>
-                    <th>Salon</th>
+                    <th>Saloon</th>
                     <th>Status</th>
                     <th>Actions</th>
                   </tr>
@@ -292,14 +268,14 @@ const Manager = () => {
                 />
               </div>
               <div className="form-group">
-                <label>Salon</label>
+                <label>Saloon</label>
                 <input
                   type="text"
                   value={formData.salon}
                   onChange={(e) =>
                     setFormData({ ...formData, salon: e.target.value })
                   }
-                  placeholder="Salon name or account"
+                  placeholder="Saloon name or account"
                 />
               </div>
               <div className="form-group">

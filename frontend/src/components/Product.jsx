@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react'
 import {
-  FaBars,
-  FaBell,
-  FaUser,
   FaEdit,
   FaTrash,
   FaPlus,
   FaArrowsAltV,
   FaChevronDown,
   FaCloudUploadAlt,
+  FaSearch,
+  FaTimes,
 } from 'react-icons/fa'
 import * as XLSX from 'xlsx'
 import './Product.css'
 import { API_BASE_URL } from '../config'
 import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
 import { useAuth } from '../contexts/AuthContext'
+import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
+import Header from './Header'
 
 const Product = () => {
   const { currentBranch } = useAuth()
@@ -28,6 +29,7 @@ const Product = () => {
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [editingCategory, setEditingCategory] = useState(null)
   const [showImportModal, setShowImportModal] = useState(false)
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false)
   const [categoryFormData, setCategoryFormData] = useState({ name: '' })
   const [productFormData, setProductFormData] = useState({
     name: '',
@@ -66,10 +68,21 @@ const Product = () => {
     }
   }, [expandedCategories])
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showCategoryDropdown && !event.target.closest('.custom-dropdown-wrapper')) {
+        setShowCategoryDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showCategoryDropdown])
+
   const fetchCategories = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE_URL}/api/products/categories`)
+      const response = await apiGet('/api/products/categories')
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -81,7 +94,7 @@ const Product = () => {
       // Get product count for each category
       const categoriesWithCount = await Promise.all(
         categories.map(async (cat) => {
-          const prodResponse = await fetch(`${API_BASE_URL}/api/products?category_id=${cat.id}`)
+          const prodResponse = await apiGet(`/api/products?category_id=${cat.id}`)
           const prodData = await prodResponse.json()
           // Products endpoint returns array directly
           const products = Array.isArray(prodData) ? prodData : (prodData.products || [])
@@ -94,12 +107,12 @@ const Product = () => {
       setProductCategories([])
     } finally {
       setLoading(false)
-    }
+}
   }
 
   const fetchProductsForCategory = async (categoryId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/products?category_id=${categoryId}`)
+      const response = await apiGet(`/api/products?category_id=${categoryId}`)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -142,20 +155,18 @@ const Product = () => {
 
     try {
       const url = editingCategory 
-        ? `${API_BASE_URL}/api/products/categories/${editingCategory.id}`
-        : `${API_BASE_URL}/api/products/categories`
-      const method = editingCategory ? 'PUT' : 'POST'
+        ? `/api/products/categories/${editingCategory.id}`
+        : `/api/products/categories`
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: categoryFormData.name.trim(),
-          display_order: editingCategory?.display_order || 0
-        }),
-      })
+      const response = editingCategory 
+        ? await apiPut(url, {
+            name: categoryFormData.name.trim(),
+            display_order: editingCategory?.display_order || 0
+          })
+        : await apiPost(url, {
+            name: categoryFormData.name.trim(),
+            display_order: editingCategory?.display_order || 0
+          })
 
       if (response.ok) {
         const data = await response.json()
@@ -163,7 +174,7 @@ const Product = () => {
         setShowCategoryModal(false)
         setEditingCategory(null)
         setCategoryFormData({ name: '' })
-        showError(data.message || (editingCategory ? 'Category updated successfully!' : 'Category added successfully!'))
+        showSuccess(data.message || (editingCategory ? 'Category updated successfully!' : 'Category added successfully!'))
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         showError(errorData.error || `Failed to save category (Status: ${response.status})`)
@@ -179,9 +190,7 @@ const Product = () => {
       return
     }
     try {
-      const response = await fetch(`${API_BASE_URL}/api/products/categories/${categoryId}`, {
-        method: 'DELETE',
-      })
+      const response = await apiDelete(`/api/products/categories/${categoryId}`)
       if (response.ok) {
         fetchCategories()
         showSuccess('Category deleted successfully')
@@ -200,9 +209,7 @@ const Product = () => {
       return
     }
     try {
-      const response = await fetch(`${API_BASE_URL}/api/products/${productId}`, {
-        method: 'DELETE',
-      })
+      const response = await apiDelete(`/api/products/${productId}`)
       if (response.ok) {
         // Refresh products for this category
         fetchProductsForCategory(categoryId)
@@ -243,25 +250,24 @@ const Product = () => {
     
     try {
       const url = editingProduct 
-        ? `${API_BASE_URL}/api/products/${editingProduct.id}`
-        : `${API_BASE_URL}/api/products`
-      const method = editingProduct ? 'PUT' : 'POST'
+        ? `/api/products/${editingProduct.id}`
+        : `/api/products`
 
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: productFormData.name.trim(),
-          price: parseFloat(productFormData.price) || 0,
-          cost: parseFloat(productFormData.cost) || 0,
-          stock_quantity: parseInt(productFormData.stock_quantity) || 0,  // Quantity is a number, keep parseInt
-          min_stock_level: parseInt(productFormData.min_stock_level) || 0,  // Quantity is a number, keep parseInt
-          sku: productFormData.sku || '',
-          description: productFormData.description || '',
-          category_id: productFormData.category_id,  // MongoDB ObjectId as string
-          status: 'active'
-        }),
-      })
+      const productData = {
+        name: productFormData.name.trim(),
+        price: parseFloat(productFormData.price) || 0,
+        cost: parseFloat(productFormData.cost) || 0,
+        stock_quantity: parseInt(productFormData.stock_quantity) || 0,  // Quantity is a number, keep parseInt
+        min_stock_level: parseInt(productFormData.min_stock_level) || 0,  // Quantity is a number, keep parseInt
+        sku: productFormData.sku || '',
+        description: productFormData.description || '',
+        category_id: productFormData.category_id,  // MongoDB ObjectId as string
+        status: 'active'
+      }
+
+      const response = editingProduct 
+        ? await apiPut(url, productData)
+        : await apiPost(url, productData)
 
       if (response.ok) {
         const data = await response.json()
@@ -271,6 +277,7 @@ const Product = () => {
         fetchCategories()
         setShowProductModal(false)
         setEditingProduct(null)
+        setShowCategoryDropdown(false)
         setProductFormData({
           name: '',
           price: '',
@@ -281,7 +288,7 @@ const Product = () => {
           description: '',
           category_id: ''
         })
-        showError(data.message || (editingProduct ? 'Product updated successfully!' : 'Product added successfully!'))
+        showSuccess(data.message || (editingProduct ? 'Product updated successfully!' : 'Product added successfully!'))
       } else {
         const error = await response.json().catch(() => ({ error: 'Unknown error' }))
         showError(error.error || 'Failed to save product')
@@ -402,11 +409,7 @@ const Product = () => {
           } else {
             // Create new category
             try {
-              const categoryResponse = await fetch(`${API_BASE_URL}/api/products/categories`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: categoryName }),
-              })
+              const categoryResponse = await apiPost('/api/products/categories', { name: categoryName })
               if (categoryResponse.ok) {
                 const categoryData = await categoryResponse.json()
                 productData.category_id = categoryData.id || categoryData.data?.id
@@ -421,11 +424,7 @@ const Product = () => {
 
         if (productData.name && productData.price > 0) {
           try {
-            const response = await fetch(`${API_BASE_URL}/api/products`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(productData),
-            })
+            const response = await apiPost('/api/products', productData)
             if (response.ok) {
               successCount++
               // Refresh products if category was specified
@@ -444,7 +443,11 @@ const Product = () => {
         }
       }
       
-      showError(`Products imported: ${successCount} successful, ${errorCount} failed`)
+      if (successCount > 0) {
+        showSuccess(`Products imported: ${successCount} successful${errorCount > 0 ? `, ${errorCount} failed` : ''}`)
+      } else {
+        showError(`Products import failed: ${errorCount} errors`)
+      }
       setShowImportModal(false)
       fetchCategories()
     } catch (error) {
@@ -459,46 +462,39 @@ const Product = () => {
 
   return (
     <div className="product-page">
-      {/* Header */}
-      <header className="product-header">
-        <div className="header-left">
-          <button className="menu-icon">
-            <FaBars />
-          </button>
-          <h1 className="header-title">Product</h1>
-        </div>
-        <div className="header-right">
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-          <button className="header-icon bell-icon">
-            <FaBell />
-          </button>
-          <button className="header-icon user-icon">
-            <FaUser />
-          </button>
-        </div>
-      </header>
-
+      <Header title="Products" />
+      
       <div className="product-container">
         {/* Product Card */}
         <div className="product-card">
           {/* Search and Action Bar */}
           <div className="product-action-bar">
             <div className="search-wrapper">
+              <FaSearch className="search-icon" />
               <input
                 type="text"
                 className="search-input"
-                placeholder="Search product"
+                placeholder="Search products or categories..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
+              {searchQuery && (
+                <button 
+                  className="search-clear"
+                  onClick={() => setSearchQuery('')}
+                  title="Clear search"
+                >
+                  <FaTimes />
+                </button>
+              )}
             </div>
             <div className="action-buttons">
               <button className="action-btn import-btn" onClick={() => setShowImportModal(true)}>
                 <FaCloudUploadAlt /> Import Products
               </button>
-              <button className="action-btn add-btn" onClick={handleAddCategory}>Add Product Category</button>
+              <button className="action-btn add-btn" onClick={handleAddCategory}>
+                <FaPlus /> Add Product Category
+              </button>
             </div>
           </div>
 
@@ -569,30 +565,39 @@ const Product = () => {
                       {productsByCategory[category.id].length === 0 ? (
                         <div className="empty-products">No products in this category</div>
                       ) : (
-                        productsByCategory[category.id].map((product) => (
-                          <div key={product.id} className="product-item">
-                            <span>
-                              {product.name} - ₹{product.price} 
-                              {product.stock_quantity !== undefined && ` (Stock: ${product.stock_quantity})`}
-                            </span>
-                            <div className="product-actions">
-                              <button 
-                                className="icon-btn edit-btn" 
-                                title="Edit"
-                                onClick={() => handleEditProduct({ ...product, category_id: category.id })}
-                              >
-                                <FaEdit />
-                              </button>
-                              <button
-                                className="icon-btn delete-btn"
-                                title="Delete"
-                                onClick={() => handleDeleteProduct(product.id, category.id)}
-                              >
-                                <FaTrash />
-                              </button>
+                        <div className="products-grid">
+                          {productsByCategory[category.id].map((product) => (
+                            <div key={product.id} className="product-item-card">
+                              <div className="product-item-header">
+                                <span className="product-item-name">{product.name}</span>
+                              </div>
+                              <div className="product-item-details">
+                                <span className="product-item-price">₹{parseFloat(product.price).toLocaleString('en-IN')}</span>
+                                {product.stock_quantity !== undefined && (
+                                  <span className={`product-item-stock ${product.stock_quantity <= (product.min_stock_level || 0) ? 'low-stock' : ''}`}>
+                                    Stock: {product.stock_quantity}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="product-item-actions">
+                                <button 
+                                  className="icon-btn edit-btn" 
+                                  title="Edit"
+                                  onClick={() => handleEditProduct({ ...product, category_id: category.id })}
+                                >
+                                  <FaEdit />
+                                </button>
+                                <button
+                                  className="icon-btn delete-btn"
+                                  title="Delete"
+                                  onClick={() => handleDeleteProduct(product.id, category.id)}
+                                >
+                                  <FaTrash />
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        ))
+                          ))}
+                        </div>
                       )}
                     </div>
                   )}
@@ -628,7 +633,10 @@ const Product = () => {
 
       {/* Add/Edit Product Modal */}
       {showProductModal && (
-        <div className="modal-overlay" onClick={() => setShowProductModal(false)}>
+        <div className="modal-overlay" onClick={() => {
+          setShowProductModal(false)
+          setShowCategoryDropdown(false)
+        }}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h2>{editingProduct ? 'Edit Product' : 'Add Product'}</h2>
             <div className="form-group">
@@ -643,16 +651,46 @@ const Product = () => {
             </div>
             <div className="form-group">
               <label>Category *</label>
-              <select
-                value={productFormData.category_id}
-                onChange={(e) => setProductFormData({ ...productFormData, category_id: e.target.value })}
-                required
-              >
-                <option value="">Select Category</option>
-                {productCategories.map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
-                ))}
-              </select>
+              <div className="custom-dropdown-wrapper">
+                <button
+                  type="button"
+                  className="custom-dropdown-toggle"
+                  onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+                >
+                  <span>
+                    {productFormData.category_id 
+                      ? productCategories.find(c => c.id === productFormData.category_id)?.name || 'Select Category'
+                      : 'Select Category'
+                    }
+                  </span>
+                  <FaChevronDown className={`dropdown-arrow ${showCategoryDropdown ? 'open' : ''}`} />
+                </button>
+                {showCategoryDropdown && (
+                  <div className="custom-dropdown-menu">
+                    <div
+                      className={`custom-dropdown-option ${!productFormData.category_id ? 'selected' : ''}`}
+                      onClick={() => {
+                        setProductFormData({ ...productFormData, category_id: '' })
+                        setShowCategoryDropdown(false)
+                      }}
+                    >
+                      Select Category
+                    </div>
+                    {productCategories.map(cat => (
+                      <div
+                        key={cat.id}
+                        className={`custom-dropdown-option ${productFormData.category_id === cat.id ? 'selected' : ''}`}
+                        onClick={() => {
+                          setProductFormData({ ...productFormData, category_id: cat.id })
+                          setShowCategoryDropdown(false)
+                        }}
+                      >
+                        {cat.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="form-group">
               <label>Price *</label>
@@ -712,7 +750,10 @@ const Product = () => {
               />
             </div>
             <div className="modal-actions">
-              <button className="btn-cancel" onClick={() => setShowProductModal(false)}>Cancel</button>
+              <button className="btn-cancel" onClick={() => {
+                setShowProductModal(false)
+                setShowCategoryDropdown(false)
+              }}>Cancel</button>
               <button className="btn-save" onClick={handleSaveProduct}>Save</button>
             </div>
           </div>

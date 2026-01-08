@@ -1,5 +1,5 @@
 /* ============================================
-   MODERN SALON MANAGEMENT - DESIGN SYSTEM
+   MODERN SALOON MANAGEMENT - DESIGN SYSTEM
    ============================================ */
 
 /* Import design tokens first */
@@ -282,5 +282,64 @@ body {
   background-size: 2000px 100%;
   animation: shimmer 2s infinite linear;
   border-radius: var(--radius-md);
+}
+
+/* ========== MOBILE RESPONSIVENESS ========== */
+/* Touch-friendly tap targets (minimum 44px) */
+@media (max-width: 768px) {
+  button,
+  [role="button"],
+  a,
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Ensure inputs don't cause zoom on iOS (16px minimum) */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Table scroll wrapper utility */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Hide desktop-only elements */
+  .desktop-only {
+    display: none !important;
+  }
+}
+
+/* Show mobile-only elements */
+.mobile-only {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-only {
+    display: block;
+  }
+}
+
+/* Small mobile adjustments */
+@media (max-width: 480px) {
+  html {
+    font-size: 14px;
+  }
+
+  /* Stack buttons on small screens */
+  .button-group {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .button-group button {
+    width: 100%;
+  }
 }
 

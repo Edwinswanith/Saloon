@@ -5,6 +5,7 @@ from mongoengine.errors import DoesNotExist
 from bson import ObjectId
 from utils.auth import require_auth, require_role
 from utils.branch_filter import get_selected_branch
+from utils.date_utils import get_ist_date_range
 
 report_bp = Blueprint('report', __name__)
 
@@ -25,6 +26,7 @@ def service_sales_analysis(current_user=None):
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
+        service_group = request.args.get('service_group')  # Add service group filter parameter
 
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
@@ -32,14 +34,12 @@ def service_sales_analysis(current_user=None):
         if branch:
             bills_query = bills_query.filter(branch=branch)
 
-        if start_date:
-            start = datetime.strptime(start_date, '%Y-%m-%d')
-            bills_query = bills_query.filter(bill_date__gte=start)
-        if end_date:
-            end = datetime.strptime(end_date, '%Y-%m-%d')
-            # Set end to end of day to include all data from the end date
-            end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
-            bills_query = bills_query.filter(bill_date__lte=end)
+        if start_date or end_date:
+            start, end = get_ist_date_range(start_date, end_date)
+            if start:
+                bills_query = bills_query.filter(bill_date__gte=start)
+            if end:
+                bills_query = bills_query.filter(bill_date__lte=end)
 
         # Force evaluation by converting to list
         bills = list(bills_query)
@@ -49,17 +49,38 @@ def service_sales_analysis(current_user=None):
         for bill in bills:
             for item in bill.items:
                 if item.item_type == 'service' and item.service:
-                    service_id = str(item.service.id)
-                if service_id not in service_stats:
-                    service_stats[service_id] = {
-                        'service_name': item.service.name,
-                        'service_group': item.service.group.name if item.service.group else None,
-                        'count': 0,
-                        'revenue': 0
-                    }
-
-                    service_stats[service_id]['count'] += int(item.quantity) if item.quantity else 0
-                    service_stats[service_id]['revenue'] += float(item.total) if item.total else 0.0
+                    try:
+                        # Reload service to ensure it's dereferenced
+                        item.service.reload()
+                        service_id = str(item.service.id)
+                        
+                        # Get service group name
+                        service_group_name = None
+                        if hasattr(item.service, 'group') and item.service.group:
+                            try:
+                                item.service.group.reload()
+                                service_group_name = item.service.group.name if hasattr(item.service.group, 'name') else None
+                            except (DoesNotExist, AttributeError):
+                                pass
+                        
+                        # Filter by service group if specified
+                        if service_group and service_group != 'all':
+                            if not service_group_name or service_group_name.lower() != service_group.lower():
+                                continue
+                        
+                        if service_id not in service_stats:
+                            service_stats[service_id] = {
+                                'service_name': item.service.name if hasattr(item.service, 'name') else 'Unknown Service',
+                                'service_group': service_group_name,
+                                'count': 0,
+                                'revenue': 0
+                            }
+                        
+                        service_stats[service_id]['count'] += int(item.quantity) if item.quantity else 0
+                        service_stats[service_id]['revenue'] += float(item.total) if item.total else 0.0
+                    except (DoesNotExist, AttributeError, TypeError) as e:
+                        # Skip items with broken references
+                        continue
 
         # Convert to list and sort by revenue
         results = sorted(service_stats.values(), key=lambda x: x['revenue'], reverse=True)
@@ -87,14 +108,12 @@ def list_of_bills(current_user=None):
         if branch:
             query = query.filter(branch=branch)
 
-        if start_date:
-            start = datetime.strptime(start_date, '%Y-%m-%d')
-            query = query.filter(bill_date__gte=start)
-        if end_date:
-            # Set end_date to end of day to include all bills on that date
-            end = datetime.strptime(end_date, '%Y-%m-%d')
-            end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
-            query = query.filter(bill_date__lte=end)
+        if start_date or end_date:
+            start, end = get_ist_date_range(start_date, end_date)
+            if start:
+                query = query.filter(bill_date__gte=start)
+            if end:
+                query = query.filter(bill_date__lte=end)
         if customer_id and ObjectId.is_valid(customer_id):
             try:
                 customer = Customer.objects.get(id=customer_id)
@@ -105,20 +124,30 @@ def list_of_bills(current_user=None):
         # Force evaluation by converting to list
         bills = list(query.order_by('-bill_date'))
 
-        response = jsonify([{
-            'bill_number': b.bill_number,
-            'bill_date': b.bill_date.isoformat() if b.bill_date else None,
-            'customer_name': f"{b.customer.first_name} {b.customer.last_name}" if b.customer else 'Walk-in',
-            'customer_mobile': b.customer.mobile if b.customer else None,
-            'customer_id': str(b.customer.id) if b.customer else None,
-            'id': str(b.id),
-            'subtotal': b.subtotal,
-            'discount': b.discount_amount,
-            'tax': b.tax_amount,
-            'final_amount': b.final_amount,
-            'payment_mode': b.payment_mode,
-            'booking_status': b.booking_status
-        } for b in bills])
+        result = []
+        for b in bills:
+            try:
+                # Format bill_date to show local date correctly
+                bill_date_iso = b.bill_date.isoformat() if b.bill_date else None
+                result.append({
+                    'bill_number': b.bill_number,
+                    'bill_date': bill_date_iso,
+                    'customer_name': f"{b.customer.first_name} {b.customer.last_name}" if b.customer else 'Walk-in',
+                    'customer_mobile': b.customer.mobile if b.customer else None,
+                    'customer_id': str(b.customer.id) if b.customer else None,
+                    'id': str(b.id),
+                    'subtotal': b.subtotal,
+                    'discount': b.discount_amount,
+                    'tax': b.tax_amount,
+                    'final_amount': b.final_amount,
+                    'payment_mode': b.payment_mode,
+                    'booking_status': b.booking_status
+                })
+            except Exception as e:
+                print(f"Error processing bill {b.id}: {e}")
+                continue
+        
+        response = jsonify(result)
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
     except Exception as e:
@@ -181,14 +210,12 @@ def sales_by_service_group(current_user=None):
         if branch:
             bills_query = bills_query.filter(branch=branch)
 
-        if start_date:
-            start = datetime.strptime(start_date, '%Y-%m-%d')
-            bills_query = bills_query.filter(bill_date__gte=start)
-        if end_date:
-            end = datetime.strptime(end_date, '%Y-%m-%d')
-            # Set end to end of day to include all data from the end date
-            end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
-            bills_query = bills_query.filter(bill_date__lte=end)
+        if start_date or end_date:
+            start, end = get_ist_date_range(start_date, end_date)
+            if start:
+                bills_query = bills_query.filter(bill_date__gte=start)
+            if end:
+                bills_query = bills_query.filter(bill_date__lte=end)
 
         # Force evaluation by converting to list
         bills = list(bills_query)
@@ -386,14 +413,20 @@ def staff_incentive_report(current_user=None):
         return response, 500
 
 @report_bp.route('/expense-report', methods=['GET'])
-def expense_report():
+@require_role('manager', 'owner')
+def expense_report(current_user=None):
     """Expense report with filters"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         category_id = request.args.get('category_id', type=str)
+        payment_mode = request.args.get('payment_mode')
 
+        # Get branch for filtering
+        branch = get_selected_branch(request, current_user)
         query = Expense.objects
+        if branch:
+            query = query.filter(branch=branch)
 
         if start_date:
             start = datetime.strptime(start_date, '%Y-%m-%d').date()
@@ -408,6 +441,8 @@ def expense_report():
                 query = query.filter(category=category)
             except DoesNotExist:
                 pass
+        if payment_mode:
+            query = query.filter(payment_mode=payment_mode)
 
         # Force evaluation by converting to list
         expenses = list(query.order_by('-expense_date'))
@@ -626,7 +661,11 @@ def staff_performance_analysis():
         end_date = request.args.get('end_date')
 
         # Force evaluation by converting to list
-        staff_list = list(Staff.objects.filter(status='active'))
+        try:
+            staff_list = list(Staff.objects.filter(status='active'))
+        except Exception as e:
+            print(f"Error fetching staff list: {str(e)}")
+            staff_list = []
 
         # Build date filter for bills
         if start_date:
@@ -650,65 +689,116 @@ def staff_performance_analysis():
 
         performance = []
         for staff in staff_list:
-            staff_id = str(staff.id)
-            
-            # Calculate breakdown by item type
-            service_revenue = 0
-            package_revenue = 0
-            prepaid_revenue = 0
-            product_revenue = 0
-            membership_revenue = 0
-            total_revenue = 0
-            item_count = 0
+            try:
+                staff_id = str(staff.id)
 
-            # Group by service type for service breakdown
-            service_breakdown = {}
+                # Calculate breakdown by item type
+                service_revenue = 0
+                package_revenue = 0
+                prepaid_revenue = 0
+                product_revenue = 0
+                membership_revenue = 0
+                total_revenue = 0
+                item_count = 0
 
-            # Filter items for this staff
-            for bill in bills:
-                for item in (bill.items or []):
-                    if not item.staff or str(item.staff.id) != staff_id:
+                # Group by service type for service breakdown
+                service_breakdown = {}
+
+                # Filter items for this staff
+                for bill in bills:
+                    if not bill.items:
                         continue
-                    
-                    item_type = item.item_type or 'service'
-                    item_count += item.quantity if item.quantity else 1
-                    total_revenue += item.total or 0
+                    for item in bill.items:
+                        if not item:
+                            continue
+                        # Handle staff reference - could be ObjectId, ReferenceField, or None
+                        item_staff_id = None
+                        try:
+                            if item.staff:
+                                # If it's a ReferenceField, get the ID
+                                if hasattr(item.staff, 'id'):
+                                    item_staff_id = str(item.staff.id)
+                                # If it's already an ObjectId or string
+                                elif isinstance(item.staff, (str, ObjectId)):
+                                    item_staff_id = str(item.staff)
+                                # Try to get ID from the object
+                                else:
+                                    item_staff_id = str(getattr(item.staff, 'id', item.staff))
+                        except Exception as e:
+                            # If we can't get staff ID, skip this item
+                            continue
 
-                    if item_type == 'service':
-                        service_revenue += item.total or 0
-                        if item.service:
+                        if not item_staff_id or item_staff_id != staff_id:
+                            continue
+
+                        item_type = item.item_type or 'service'
+                        item_count += item.quantity if item.quantity else 1
+                        total_revenue += float(item.total) if item.total else 0.0
+
+                        if item_type == 'service':
+                            service_revenue += float(item.total) if item.total else 0.0
+                            # Try to access service, but handle case where service was deleted
+                            group_name = 'Other'
                             try:
-                                # Reload service to get group
-                                item.service.reload()
-                                group_name = item.service.group.name if item.service.group else 'Other'
-                            except:
+                                # Check if service reference exists in raw data first
+                                has_service_ref = False
+                                if hasattr(item, '_data') and 'service' in item._data:
+                                    has_service_ref = item._data['service'] is not None
+
+                                # Only try to access service if reference exists
+                                if has_service_ref:
+                                    try:
+                                        # Access service - this may raise DoesNotExist if service was deleted
+                                        service_obj = item.service
+                                        if service_obj:
+                                            # Reload service to get group
+                                            if hasattr(service_obj, 'reload'):
+                                                service_obj.reload()
+                                            # Safely access group name
+                                            if hasattr(service_obj, 'group') and service_obj.group:
+                                                if hasattr(service_obj.group, 'name') and service_obj.group.name:
+                                                    group_name = service_obj.group.name
+                                    except DoesNotExist:
+                                        # Service was deleted, use 'Other'
+                                        group_name = 'Other'
+                                    except (AttributeError, Exception):
+                                        # Any other error accessing service/group, use 'Other'
+                                        group_name = 'Other'
+                            except Exception:
+                                # Any error, use 'Other'
                                 group_name = 'Other'
-                            
+
                             if group_name not in service_breakdown:
                                 service_breakdown[group_name] = {'count': 0, 'revenue': 0}
                             service_breakdown[group_name]['count'] += item.quantity if item.quantity else 1
-                            service_breakdown[group_name]['revenue'] += item.total or 0
-                    elif item_type == 'package':
-                        package_revenue += item.total or 0
-                    elif item_type == 'prepaid':
-                        prepaid_revenue += item.total or 0
-                    elif item_type == 'product':
-                        product_revenue += item.total or 0
-                    elif item_type == 'membership':
-                        membership_revenue += item.total or 0
+                            service_breakdown[group_name]['revenue'] += float(item.total) if item.total else 0.0
+                        elif item_type == 'package':
+                            package_revenue += float(item.total) if item.total else 0.0
+                        elif item_type == 'prepaid':
+                            prepaid_revenue += float(item.total) if item.total else 0.0
+                        elif item_type == 'product':
+                            product_revenue += float(item.total) if item.total else 0.0
+                        elif item_type == 'membership':
+                            membership_revenue += float(item.total) if item.total else 0.0
 
-            performance.append({
-                'staff_name': f"{staff.first_name} {staff.last_name}",
-                'total_revenue': round(total_revenue, 2),
-                'total_services': item_count,
-                'service_revenue': round(service_revenue, 2),
-                'package_revenue': round(package_revenue, 2),
-                'prepaid_revenue': round(prepaid_revenue, 2),
-                'product_revenue': round(product_revenue, 2),
-                'membership_revenue': round(membership_revenue, 2),
-                'service_breakdown': service_breakdown,
-                'average_per_service': round(total_revenue / item_count, 2) if item_count > 0 else 0
-            })
+                performance.append({
+                    'staff_name': f"{staff.first_name or ''} {staff.last_name or ''}".strip(),
+                    'total_revenue': round(float(total_revenue), 2),
+                    'total_services': int(item_count),
+                    'service_revenue': round(float(service_revenue), 2),
+                    'package_revenue': round(float(package_revenue), 2),
+                    'prepaid_revenue': round(float(prepaid_revenue), 2),
+                    'product_revenue': round(float(product_revenue), 2),
+                    'membership_revenue': round(float(membership_revenue), 2),
+                    'service_breakdown': service_breakdown,
+                    'average_per_service': round(float(total_revenue) / item_count, 2) if item_count > 0 else 0
+                })
+            except Exception as staff_error:
+                # If processing one staff fails, log and continue with next staff
+                print(f"Error processing staff {getattr(staff, 'id', 'unknown')}: {str(staff_error)}")
+                import traceback
+                print(traceback.format_exc())
+                continue
 
         performance.sort(key=lambda x: x['total_revenue'], reverse=True)
 
@@ -716,7 +806,11 @@ def staff_performance_analysis():
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
     except Exception as e:
-        response = jsonify({'error': str(e)})
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"Error in staff_performance_analysis: {str(e)}")
+        print(f"Traceback: {error_trace}")
+        response = jsonify({'error': str(e), 'traceback': error_trace})
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 500
 

@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import {
-  FaBars,
-  FaBell,
-  FaUser,
   FaArrowLeft,
   FaCloudDownloadAlt,
+  FaTimes,
 } from 'react-icons/fa'
 import './ListOfDeletedBills.css'
 import { API_BASE_URL } from '../config'
@@ -16,6 +14,8 @@ const ListOfDeletedBills = ({ setActivePage }) => {
   const [dateFilter, setDateFilter] = useState('today')
   const [deletedBills, setDeletedBills] = useState([])
   const [loading, setLoading] = useState(true)
+  const [showModal, setShowModal] = useState(false)
+  const [selectedBill, setSelectedBill] = useState(null)
 
   const handleBackToReports = () => {
     if (setActivePage) {
@@ -129,29 +129,34 @@ const ListOfDeletedBills = ({ setActivePage }) => {
     return new Date(dateString).toLocaleDateString()
   }
 
+  const formatDateTime = (dateString) => {
+    if (!dateString) return 'N/A'
+    try {
+      const date = new Date(dateString)
+      const day = String(date.getDate()).padStart(2, '0')
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const year = date.getFullYear()
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      const ampm = hours >= 12 ? 'PM' : 'AM'
+      const hour12 = hours % 12 || 12
+      return `${day}-${month}-${year} ${hour12}:${minutes} ${ampm}`
+    } catch (error) {
+      return 'N/A'
+    }
+  }
+
+  const handleViewDetails = (bill) => {
+    setSelectedBill(bill)
+    setShowModal(true)
+  }
+
+  const formatCurrency = (amount) => {
+    return `₹${amount?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`
+  }
+
   return (
     <div className="list-of-deleted-bills-page">
-      {/* Header */}
-      <header className="list-of-deleted-bills-header">
-        <div className="header-left">
-          <button className="menu-icon">
-            <FaBars />
-          </button>
-          <h1 className="header-title">List of Deleted Bills</h1>
-        </div>
-        <div className="header-right">
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-          <button className="header-icon bell-icon">
-            <FaBell />
-          </button>
-          <button className="header-icon user-icon">
-            <FaUser />
-          </button>
-        </div>
-      </header>
-
       <div className="list-of-deleted-bills-container">
         {/* Main Report Card */}
         <div className="report-card">
@@ -217,7 +222,10 @@ const ListOfDeletedBills = ({ setActivePage }) => {
                       <td>{bill.deletion_reason || 'N/A'}</td>
                       <td>₹{bill.final_amount?.toFixed(2) || '0.00'}</td>
                       <td>
-                        <button className="action-btn" onClick={() => alert(`Bill Details:\nInvoice: ${bill.bill_number}\nCustomer: ${bill.customer_name}\nAmount: ₹${bill.final_amount?.toFixed(2) || '0.00'}\nReason: ${bill.deletion_reason || 'N/A'}`)}>
+                        <button 
+                          className="view-btn"
+                          onClick={() => handleViewDetails(bill)}
+                        >
                           View
                         </button>
                       </td>
@@ -229,6 +237,62 @@ const ListOfDeletedBills = ({ setActivePage }) => {
           </div>
         </div>
       </div>
+
+      {/* Deleted Bill Details Modal */}
+      {showModal && selectedBill && (
+        <div className="customer-modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="customer-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="customer-modal-header">
+              <h2>Deleted Bill Details</h2>
+              <button className="customer-modal-close" onClick={() => setShowModal(false)}>
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="customer-modal-body">
+              <>
+                {/* Bill Information */}
+                <div className="customer-details-section">
+                  <h3>Bill Information</h3>
+                  <div className="customer-details-grid">
+                    <div className="customer-detail-item">
+                      <span className="detail-label">Bill Number:</span>
+                      <span className="detail-value">{selectedBill.bill_number || 'N/A'}</span>
+                    </div>
+                    <div className="customer-detail-item">
+                      <span className="detail-label">Customer:</span>
+                      <span className="detail-value">{selectedBill.customer_name || 'Walk-in'}</span>
+                    </div>
+                    <div className="customer-detail-item">
+                      <span className="detail-label">Original Bill Date:</span>
+                      <span className="detail-value">{formatDateTime(selectedBill.bill_date)}</span>
+                    </div>
+                    <div className="customer-detail-item">
+                      <span className="detail-label">Original Amount:</span>
+                      <span className="detail-value revenue-stat">{formatCurrency(selectedBill.final_amount || 0)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Deletion Details */}
+                <div className="customer-details-section">
+                  <h3>Deletion Details</h3>
+                  <div className="customer-details-grid">
+                    <div className="customer-detail-item">
+                      <span className="detail-label">Deleted At:</span>
+                      <span className="detail-value">{formatDateTime(selectedBill.deleted_at)}</span>
+                    </div>
+                    <div className="customer-detail-item">
+                      <span className="detail-label">Deletion Reason:</span>
+                      <span className="detail-value">{selectedBill.deletion_reason || 'N/A'}</span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -377,9 +377,18 @@
   transition: all 0.2s ease;
 }
 
-.btn-close-modal:hover {
+.btn-close-modal:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.3);
   transform: rotate(90deg);
+}
+
+.btn-close-modal:active:not(:disabled) {
+  transform: rotate(90deg) scale(0.95);
+}
+
+.btn-close-modal:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .modal-body {
@@ -535,12 +544,14 @@
 }
 
 .toggle-btn.active {
-  background: white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: #0F766E;
+  color: white;
+  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.3);
 }
 
 .toggle-btn:hover:not(.active) {
-  color: #34495e;
+  color: #0F766E;
+  background: rgba(15, 118, 110, 0.08);
 }
 
 /* Coverage Dashboard Sections */
@@ -868,6 +879,13 @@
   .toggle-btn {
     flex: 1;
     justify-content: center;
+    min-height: 44px;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .toggle-btn.active {
+    background: #0F766E;
+    color: white;
   }
 
   .btn-add-assignment {

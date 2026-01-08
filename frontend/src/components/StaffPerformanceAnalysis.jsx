@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import {
-  FaBars,
-  FaUser,
   FaStar,
   FaShoppingBag,
   FaBox,
@@ -61,7 +59,7 @@ const StaffPerformanceAnalysis = ({ setActivePage }) => {
 
   const handleBackToReports = () => {
     if (setActivePage) {
-      setActivePage('reports')
+      setActivePage('reports-analytics')
     }
   }
 
@@ -284,24 +282,6 @@ const StaffPerformanceAnalysis = ({ setActivePage }) => {
 
   return (
     <div className="staff-performance-page">
-      {/* Header */}
-      <header className="staff-performance-header">
-        <div className="header-left">
-          <button className="menu-icon">
-            <FaBars />
-          </button>
-          <h1 className="header-title">Staff Performance Analysis</h1>
-        </div>
-        <div className="header-right">
-          <button className="user-icon">
-            <FaUser />
-          </button>
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-        </div>
-      </header>
-
       <div className="staff-performance-container">
         {loading && (
           <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>

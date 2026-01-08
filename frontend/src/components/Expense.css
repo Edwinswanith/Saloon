@@ -408,6 +408,88 @@
   .expense-table {
     min-width: 800px;
   }
+
+  .table-container {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .expense-table {
+    font-size: var(--text-xs);
+  }
+
+  .expense-table th,
+  .expense-table td {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .modal-content {
+    max-width: 95%;
+    padding: var(--space-4);
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+    gap: var(--space-2);
+  }
+
+  .btn-cancel,
+  .btn-save {
+    width: 100%;
+    padding: var(--space-4);
+    min-height: 44px;
+  }
+}
+
+/* Small Mobile */
+@media (max-width: 480px) {
+  .action-btn {
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-sm);
+    min-height: 44px;
+  }
+
+  .expense-table {
+    min-width: 700px;
+    font-size: 11px;
+  }
+
+  .expense-table th,
+  .expense-table td {
+    padding: var(--space-2);
+  }
+
+  .modal-content {
+    max-width: 100%;
+    width: 100%;
+    padding: var(--space-3);
+    border-radius: 16px 16px 0 0;
+  }
+
+  .modal-content h2 {
+    font-size: var(--text-lg);
+  }
+
+  .form-group {
+    margin-bottom: var(--space-3);
+  }
+
+  .form-group label {
+    font-size: var(--text-sm);
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
+    padding: var(--space-3);
+    min-height: 44px;
+  }
+
+  .btn-cancel,
+  .btn-save {
+    padding: var(--space-4);
+    font-size: var(--text-base);
+  }
 }
 
 /* Modal Styles */

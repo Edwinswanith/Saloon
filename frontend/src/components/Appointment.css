@@ -178,8 +178,9 @@
 }
 
 .view-btn.active {
-  background: var(--primary-600);
+  background: #0F766E;
   color: white;
+  font-weight: var(--font-semibold);
 }
 
 /* ========== SCHEDULE GRID ========== */
@@ -348,8 +349,11 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: var(--space-6);
+  padding: 16px 20px;
   padding-bottom: var(--space-4);
   border-bottom: 1px solid var(--border-medium);
+  min-height: 56px;
+  box-sizing: border-box;
 }
 
 .modal-header h2 {
@@ -357,12 +361,25 @@
   font-size: var(--text-xl);
   font-weight: var(--font-bold);
   color: var(--text-primary);
+  flex: 1;
+  line-height: 1.4;
 }
 
 .close-btn {
-  background: transparent;
+  background: rgba(0, 0, 0, 0.05);
   border: none;
-  font-size: var(--text-lg);
+  font-size: var(--text-base);
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 12px;
+  padding: 0;
   color: var(--text-secondary);
   cursor: pointer;
   padding: var(--space-2);
@@ -371,8 +388,8 @@
 }
 
 .close-btn:hover {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-secondary);
 }
 
 .form-group {
@@ -433,7 +450,8 @@
 }
 
 .modal-actions button[type="button"]:hover {
-  background: var(--bg-elevated);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 .modal-actions button[type="submit"],
@@ -444,7 +462,8 @@
 
 .modal-actions button[type="submit"]:hover,
 .modal-actions button:not([type="button"]):hover {
-  background: var(--primary-700);
+  background: var(--primary-600);
+  color: white;
 }
 
 .cancel-btn {
@@ -453,7 +472,8 @@
 }
 
 .cancel-btn:hover {
-  background: var(--error-700) !important;
+  background: var(--error-600) !important;
+  color: white !important;
 }
 
 .appointment-details {
@@ -472,11 +492,22 @@
 }
 
 /* ========== INVOICE MODAL ========== */
+.appointment-detail-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 0;
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
 .appointment-invoice-modal {
   background: white;
   border-radius: 12px;
   padding: 0;
-  max-width: 700px;
+  max-width: 900px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
@@ -603,8 +634,8 @@
 }
 
 .invoice-action-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  transform: none;
+  box-shadow: none;
   opacity: 1 !important;
 }
 
@@ -621,9 +652,9 @@
 .invoice-action-btn.edit-btn:hover {
   background: var(--status-info) !important;
   transform: none;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+  box-shadow: none;
   opacity: 1 !important;
-  z-index: 2;
+  z-index: 1;
 }
 
 .invoice-action-btn.edit-btn svg {
@@ -650,7 +681,8 @@
 }
 
 .invoice-action-btn.download-btn:hover {
-  background: var(--money-primary-hover) !important;
+  background: var(--money-primary) !important;
+  color: white !important;
   opacity: 1 !important;
 }
 
@@ -667,6 +699,620 @@
 }
 
 .invoice-action-btn.close-btn:hover {
-  background: var(--text-secondary);
+  background: var(--text-muted);
+  color: white !important;
   opacity: 1 !important;
+}
+
+/* New Invoice Modal Styles */
+.appointment-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-light);
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
+  min-height: 56px;
+  box-sizing: border-box;
+}
+
+.appointment-modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+  line-height: 1.4;
+}
+
+.invoice-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-light);
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
+  min-height: 56px;
+  box-sizing: border-box;
+}
+
+.invoice-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+}
+
+.back-btn:hover {
+  background: var(--primary-50);
+  border-color: var(--primary-300);
+  color: var(--primary-600);
+}
+
+.invoice-modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+  line-height: 1.4;
+}
+
+.invoice-preview-wrapper {
+  padding: 24px;
+}
+
+.invoice-loading-state {
+  padding: 60px 24px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.invoice-loading-state p {
+  margin: 0;
+  font-size: 16px;
+}
+
+.invoice-no-data {
+  padding: 60px 24px;
+  text-align: center;
+}
+
+.invoice-no-data p {
+  margin: 8px 0;
+  color: var(--text-secondary);
+  font-size: 16px;
+}
+
+.invoice-no-data-subtitle {
+  font-size: 14px !important;
+  color: var(--text-muted) !important;
+}
+
+.invoice-fallback-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+/* Appointment Details View Styles */
+.appointment-details-content {
+  padding: 24px;
+}
+
+.appointment-info-section {
+  margin-bottom: 24px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.info-value {
+  color: var(--text-primary);
+  font-size: 14px;
+  text-align: right;
+}
+
+.info-value.status-confirmed {
+  color: var(--status-success);
+}
+
+.info-value.status-cancelled {
+  color: var(--status-error);
+}
+
+.info-value.status-completed {
+  color: var(--status-info);
+}
+
+.appointment-actions-section {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-light);
+}
+
+.appointment-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  flex: 1;
+  min-width: 150px;
+  justify-content: center;
+}
+
+.appointment-action-btn.edit-btn {
+  background: var(--status-info);
+  color: white;
+}
+
+.appointment-action-btn.edit-btn:hover {
+  background: var(--status-info);
+  color: white;
+}
+
+.appointment-action-btn.view-bill-btn {
+  background: var(--money-primary);
+  color: white;
+}
+
+.appointment-action-btn.view-bill-btn:hover {
+  background: var(--money-primary);
+  color: white;
+}
+
+.appointment-action-btn.share-btn {
+  background: var(--money-wallet);
+  color: white;
+}
+
+.appointment-action-btn.share-btn:hover {
+  background: var(--money-wallet);
+  color: white;
+}
+
+/* ========== RESPONSIVE DESIGN ========== */
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .appointment-header {
+    padding: var(--space-4) var(--space-6);
+  }
+
+  .header-nav-bar {
+    gap: var(--space-3);
+  }
+
+  .nav-controls-left {
+    gap: var(--space-3);
+  }
+
+  .schedule-container {
+    padding: var(--space-4);
+  }
+
+  .modal-content {
+    max-width: 90%;
+    padding: var(--space-5);
+  }
+
+  .appointment-detail-modal,
+  .appointment-invoice-modal {
+    max-width: 95%;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .appointment-page {
+    padding: 0;
+  }
+
+  .appointment-header {
+    padding: var(--space-3) var(--space-4);
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+
+  .header-left {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .header-title {
+    font-size: var(--text-lg);
+  }
+
+  .header-nav-bar {
+    width: 100%;
+    flex-direction: column;
+    gap: var(--space-3);
+    align-items: stretch;
+  }
+
+  .nav-controls-left {
+    width: 100%;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .nav-btn-group {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .nav-btn {
+    flex: 1;
+    padding: var(--space-3);
+    min-height: 44px;
+  }
+
+  .date-input-group,
+  .staff-select-group {
+    width: 100%;
+  }
+
+  .date-display {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .staff-select {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .view-mode-buttons {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .view-btn {
+    flex: 1;
+    padding: var(--space-3);
+    min-height: 44px;
+  }
+
+  .schedule-container {
+    padding: var(--space-3);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .schedule-grid {
+    min-width: 800px;
+  }
+
+  .time-header,
+  .staff-header {
+    padding: var(--space-2);
+    font-size: var(--text-xs);
+  }
+
+  .time-label {
+    padding: var(--space-2);
+    font-size: var(--text-xs);
+    min-height: 50px;
+  }
+
+  .schedule-cell {
+    min-height: 50px;
+  }
+
+  .appointment-block {
+    font-size: 10px;
+    padding: var(--space-1);
+  }
+
+  .modal-overlay {
+    padding: var(--space-2);
+    align-items: flex-end;
+  }
+
+  .modal-content {
+    max-width: 100%;
+    width: 100%;
+    max-height: 95vh;
+    padding: var(--space-4);
+    border-radius: 16px 16px 0 0;
+  }
+
+  .appointment-detail-modal,
+  .appointment-invoice-modal {
+    max-width: 100%;
+    width: 100%;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .modal-header {
+    padding-bottom: var(--space-3);
+    margin-bottom: var(--space-4);
+  }
+
+  .modal-header h2 {
+    font-size: var(--text-lg);
+  }
+
+  .close-btn {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .form-group {
+    margin-bottom: var(--space-4);
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: var(--space-4);
+    font-size: 16px; /* Prevents zoom on iOS */
+    min-height: 44px;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+    gap: var(--space-2);
+  }
+
+  .modal-actions button {
+    width: 100%;
+    padding: var(--space-4);
+    min-height: 44px;
+    font-size: var(--text-base);
+  }
+
+  .appointment-actions-section {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .appointment-action-btn {
+    width: 100%;
+    min-width: auto;
+    padding: var(--space-4);
+    min-height: 44px;
+  }
+
+  .invoice-header {
+    padding: var(--space-4);
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .invoice-table-container {
+    padding: var(--space-4);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .invoice-table {
+    min-width: 600px;
+    font-size: var(--text-xs);
+  }
+
+  .invoice-table th,
+  .invoice-table td {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .invoice-summary {
+    padding: var(--space-4);
+  }
+
+  .invoice-actions {
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-4);
+  }
+
+  .invoice-action-btn {
+    width: 100%;
+    justify-content: center;
+    padding: var(--space-4);
+    min-height: 44px;
+  }
+
+  .appointment-modal-header,
+  .invoice-modal-header {
+    padding: 14px 16px;
+    min-height: 52px;
+  }
+  
+  .appointment-modal-header h2,
+  .invoice-modal-header h2 {
+    font-size: 18px;
+  }
+
+  .back-btn {
+    min-height: 44px;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .invoice-preview-wrapper {
+    padding: var(--space-4);
+  }
+
+  .appointment-details-content {
+    padding: var(--space-4);
+  }
+
+  .info-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-1);
+    padding: var(--space-3) 0;
+  }
+
+  .info-value {
+    text-align: left;
+  }
+}
+
+/* Small Mobile */
+@media (max-width: 480px) {
+  .appointment-header {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .header-title {
+    font-size: var(--text-base);
+  }
+
+  .menu-icon {
+    font-size: 18px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .nav-btn {
+    font-size: var(--text-xs);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .view-btn {
+    font-size: var(--text-xs);
+    padding: var(--space-2) var(--space-3);
+    min-height: 44px;
+  }
+
+  .view-btn.active {
+    background: #0F766E;
+    color: white;
+  }
+
+  .schedule-container {
+    padding: var(--space-2);
+  }
+
+  .schedule-grid {
+    min-width: 700px;
+  }
+
+  .time-header,
+  .staff-header {
+    padding: var(--space-1) var(--space-2);
+    font-size: 10px;
+  }
+
+  .time-label {
+    font-size: 10px;
+    min-height: 45px;
+  }
+
+  .schedule-cell {
+    min-height: 45px;
+  }
+
+  .appointment-block {
+    font-size: 9px;
+  }
+
+  .modal-content {
+    padding: var(--space-3);
+    max-height: 98vh;
+  }
+
+  .modal-header h2 {
+    font-size: var(--text-base);
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: var(--space-3);
+    font-size: 16px;
+  }
+
+  .appointment-detail-modal,
+  .appointment-invoice-modal {
+    border-radius: 12px 12px 0 0;
+  }
+
+  .invoice-header {
+    padding: var(--space-3);
+  }
+
+  .invoice-table-container {
+    padding: var(--space-3);
+  }
+
+  .invoice-table {
+    min-width: 500px;
+    font-size: 11px;
+  }
+
+  .invoice-table th,
+  .invoice-table td {
+    padding: var(--space-2);
+  }
+
+  .appointment-modal-header,
+  .invoice-modal-header {
+    padding: 12px 14px;
+    min-height: 48px;
+  }
+
+  .appointment-modal-header h2,
+  .invoice-modal-header h2 {
+    font-size: 16px;
+  }
+
+  .appointment-details-content {
+    padding: var(--space-3);
+  }
+
+  .info-label,
+  .info-value {
+    font-size: var(--text-xs);
+  }
 }

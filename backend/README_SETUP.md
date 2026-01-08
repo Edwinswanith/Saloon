@@ -1,4 +1,4 @@
-# Salon Management System - Backend Setup Guide
+# Saloon Management System - Backend Setup Guide
 
 ## Prerequisites
 
@@ -58,7 +58,7 @@ The seed script populates your database with:
 | **Leads** | 5 | Different lead statuses |
 | **Feedback** | 15 | Customer reviews with ratings |
 | **Attendance** | 150+ | Last 30 days for all staff |
-| **Assets** | 6 | Salon furniture and equipment |
+| **Assets** | 6 | Saloon furniture and equipment |
 | **Cash Transactions** | 50 | Cash in/out transactions |
 
 ## Sample Credentials

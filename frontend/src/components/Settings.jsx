@@ -1,8 +1,5 @@
 import React from 'react'
 import {
-  FaBars,
-  FaBell,
-  FaUser,
   FaFileAlt,
   FaGift,
   FaShare,
@@ -25,24 +22,18 @@ const Settings = ({ setActivePage }) => {
     },
     {
       id: 2,
-      title: 'Loyalty Program',
-      description: 'Enable and manage customer loyalty points and rewards',
-      icon: <FaGift />,
-    },
-    {
-      id: 3,
       title: 'Referral Program',
       description: 'Set rewards and manage the customer referral program',
       icon: <FaShare />,
     },
     {
-      id: 4,
+      id: 3,
       title: 'Tax',
       description: 'Customize tax groups and taxes that align with business needs',
       icon: <FaDownload />,
     },
     {
-      id: 5,
+      id: 4,
       title: 'Manager',
       description: 'Manage your Managers',
       icon: <FaUsers />,
@@ -52,7 +43,7 @@ const Settings = ({ setActivePage }) => {
   // Add Owner Settings option if user is owner
   if (isOwner) {
     settingsOptions.push({
-      id: 6,
+      id: 5,
       title: 'Owner Settings',
       description: 'Update your email address and password',
       icon: <FaKey />,
@@ -61,27 +52,6 @@ const Settings = ({ setActivePage }) => {
 
   return (
     <div className="settings-page">
-      {/* Header */}
-      <header className="settings-header">
-        <div className="header-left">
-          <button className="menu-icon">
-            <FaBars />
-          </button>
-          <h1 className="header-title">Settings</h1>
-        </div>
-        <div className="header-right">
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-          <button className="header-icon bell-icon">
-            <FaBell />
-          </button>
-          <button className="header-icon user-icon">
-            <FaUser />
-          </button>
-        </div>
-      </header>
-
       <div className="settings-container">
         {/* Main Heading */}
         <h2 className="main-heading">Settings</h2>
@@ -97,18 +67,15 @@ const Settings = ({ setActivePage }) => {
                   // Membership card clicked
                   setActivePage('membership')
                 } else if (option.id === 2 && setActivePage) {
-                  // Loyalty Program card clicked
-                  setActivePage('loyalty-program')
-                } else if (option.id === 3 && setActivePage) {
                   // Referral Program card clicked
                   setActivePage('referral-program')
-                } else if (option.id === 4 && setActivePage) {
+                } else if (option.id === 3 && setActivePage) {
                   // Tax card clicked
                   setActivePage('tax')
-                } else if (option.id === 5 && setActivePage) {
+                } else if (option.id === 4 && setActivePage) {
                   // Manager card clicked
                   setActivePage('manager')
-                } else if (option.id === 6 && setActivePage) {
+                } else if (option.id === 5 && setActivePage) {
                   // Owner Settings card clicked
                   setActivePage('owner-settings')
                 }

@@ -234,8 +234,8 @@ const MissedEnquiries = () => {
         </div>
 
         {/* Enquiries List */}
-        <div className="enquiries-table">
-          <table>
+        <div className="table-container">
+          <table className="data-table">
             <thead>
               <tr>
                 <th>Customer</th>
@@ -250,9 +250,9 @@ const MissedEnquiries = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="8">Loading...</td></tr>
+                <tr><td colSpan="8" className="empty-row">Loading...</td></tr>
               ) : enquiries.length === 0 ? (
-                <tr><td colSpan="8">No enquiries found</td></tr>
+                <tr><td colSpan="8" className="empty-row">No enquiries found</td></tr>
               ) : (
                 enquiries.map(enquiry => (
                   <tr key={enquiry.id}>
@@ -268,12 +268,14 @@ const MissedEnquiries = () => {
                       </span>
                     </td>
                     <td>
-                      <button onClick={() => openEditModal(enquiry)}>Edit</button>
-                      {enquiry.status === 'open' && (
-                        <button onClick={() => handleConvert(enquiry.id)} className="btn-convert">
-                          Convert to Booking
-                        </button>
-                      )}
+                      <div className="action-buttons">
+                        <button onClick={() => openEditModal(enquiry)} className="btn-edit">Edit</button>
+                        {enquiry.status === 'open' && (
+                          <button onClick={() => handleConvert(enquiry.id)} className="btn-convert">
+                            Convert to Booking
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))

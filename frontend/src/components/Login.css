@@ -219,8 +219,8 @@
 }
 
 .toggle-btn.active {
-  color: white;
-  background: var(--primary-600);
+  color: #ffffff !important;
+  background: #0d9488 !important;
   box-shadow: var(--shadow-sm);
 }
 

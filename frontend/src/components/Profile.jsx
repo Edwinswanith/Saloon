@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../config';
-import { FaUser, FaTimes, FaEdit, FaSave, FaEnvelope, FaPhone, FaBuilding, FaShieldAlt, FaExclamationTriangle } from 'react-icons/fa';
+import { FaUser, FaTimes, FaEdit, FaSave, FaEnvelope, FaPhone, FaBuilding, FaShieldAlt, FaExclamationTriangle, FaCamera, FaSignOutAlt } from 'react-icons/fa';
 import './Profile.css';
 
 const Profile = ({ isOpen, onClose }) => {
-  const { user, token, updateUser } = useAuth();
+  const { user, token, updateUser, logout } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [headerImage, setHeaderImage] = useState(null);
+  const [headerImagePreview, setHeaderImagePreview] = useState(null);
   const [profileData, setProfileData] = useState({
     first_name: '',
     last_name: '',
@@ -35,6 +37,9 @@ const Profile = ({ isOpen, onClose }) => {
       setError('');
       setSuccess('');
       setIsEditing(false);
+      // Reset image states
+      setHeaderImage(null);
+      setHeaderImagePreview(null);
     }
   }, [isOpen, user]);
 
@@ -149,6 +154,46 @@ const Profile = ({ isOpen, onClose }) => {
     setIsEditing(false);
     setError('');
     setSuccess('');
+    // Reset image states
+    setHeaderImage(null);
+    setHeaderImagePreview(null);
+  };
+
+  const handleHeaderImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select a valid image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image size must be less than 5MB');
+      return;
+    }
+
+    setHeaderImage(file);
+    setError('');
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setHeaderImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveHeaderImage = () => {
+    setHeaderImage(null);
+    setHeaderImagePreview(null);
+    // Reset file input
+    const fileInput = document.getElementById('header-image-input');
+    if (fileInput) {
+      fileInput.value = '';
+    }
   };
 
   const getRoleDisplayName = (role) => {
@@ -165,21 +210,55 @@ const Profile = ({ isOpen, onClose }) => {
   return (
     <div className="profile-overlay" onClick={onClose}>
       <div className="profile-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="profile-header">
-          <div className="profile-header-left">
-            <div className="profile-avatar">
-              <FaUser />
+        <div 
+          className="profile-header"
+          style={{
+            backgroundImage: headerImagePreview ? `url(${headerImagePreview})` : undefined,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat'
+          }}
+        >
+          <div className="profile-header-overlay"></div>
+          <div className="profile-header-content">
+            <div className="profile-header-left">
+              <div className="profile-avatar">
+                <FaUser />
+              </div>
+              <div className="profile-title-section">
+                <h2 className="profile-title">My Profile</h2>
+                <p className="profile-subtitle">
+                  {profileData.first_name} {profileData.last_name}
+                </p>
+              </div>
             </div>
-            <div className="profile-title-section">
-              <h2 className="profile-title">My Profile</h2>
-              <p className="profile-subtitle">
-                {profileData.first_name} {profileData.last_name}
-              </p>
+            <div className="profile-header-right">
+              {isEditing && (
+                <label className="profile-header-upload-btn" title="Upload header image">
+                  <FaCamera />
+                  <input
+                    id="header-image-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleHeaderImageChange}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+              )}
+              {headerImagePreview && isEditing && (
+                <button 
+                  className="profile-header-remove-btn"
+                  onClick={handleRemoveHeaderImage}
+                  title="Remove image"
+                >
+                  <FaTimes />
+                </button>
+              )}
+              <button className="profile-close-btn" onClick={onClose}>
+                <FaTimes />
+              </button>
             </div>
           </div>
-          <button className="profile-close-btn" onClick={onClose}>
-            <FaTimes />
-          </button>
         </div>
 
         <div className="profile-content">
@@ -308,7 +387,7 @@ const Profile = ({ isOpen, onClose }) => {
                       className="profile-input"
                       value={profileData.salon}
                       onChange={handleInputChange}
-                      placeholder="Enter salon name"
+                      placeholder="Enter saloon name"
                     />
                   ) : (
                     <div className="profile-value">
@@ -337,6 +416,7 @@ const Profile = ({ isOpen, onClose }) => {
                   className="profile-btn profile-btn-cancel"
                   onClick={handleCancel}
                   disabled={loading}
+                  type="button"
                 >
                   Cancel
                 </button>
@@ -344,6 +424,7 @@ const Profile = ({ isOpen, onClose }) => {
                   className="profile-btn profile-btn-save"
                   onClick={handleSave}
                   disabled={loading}
+                  type="button"
                 >
                   {loading ? (
                     <>
@@ -358,6 +439,20 @@ const Profile = ({ isOpen, onClose }) => {
                 </button>
               </div>
             )}
+          </div>
+
+          {/* Logout Section */}
+          <div className="profile-logout-section">
+            <button
+              className="profile-btn profile-btn-logout"
+              onClick={async () => {
+                await logout();
+                onClose();
+              }}
+              type="button"
+            >
+              <FaSignOutAlt /> Logout
+            </button>
           </div>
         </div>
       </div>

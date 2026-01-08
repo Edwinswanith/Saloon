@@ -26,7 +26,6 @@ import Product from './components/Product'
 import Prepaid from './components/Prepaid'
 import Settings from './components/Settings'
 import Membership from './components/Membership'
-import LoyaltyProgram from './components/LoyaltyProgram'
 import ReferralProgram from './components/ReferralProgram'
 import Tax from './components/Tax'
 import Manager from './components/Manager'
@@ -50,13 +49,54 @@ import BusinessGrowthTrendAnalysis from './components/BusinessGrowthTrendAnalysi
 import StaffPerformanceAnalysis from './components/StaffPerformanceAnalysis'
 import PeriodPerformanceSummary from './components/PeriodPerformanceSummary'
 import ClientValueLoyaltyReport from './components/ClientValueLoyaltyReport'
+import ServiceProductPerformance from './components/ServiceProductPerformance'
 import GlobalHeader from './components/GlobalHeader'
 import './App.css'
 
 // Main application content (protected - requires authentication)
 function AppContent() {
   const [activePage, setActivePage] = useState('dashboard')
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    // Load from localStorage
+    const saved = localStorage.getItem('sidebarCollapsed')
+    return saved ? JSON.parse(saved) : false
+  })
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const { isAuthenticated, loading, user } = useAuth()
+
+  // Save sidebar state to localStorage
+  useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', JSON.stringify(isSidebarCollapsed))
+  }, [isSidebarCollapsed])
+
+  // Close mobile sidebar when page changes
+  useEffect(() => {
+    setIsMobileSidebarOpen(false)
+  }, [activePage])
+
+  // Handle body scroll lock when mobile sidebar is open
+  useEffect(() => {
+    if (isMobileSidebarOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isMobileSidebarOpen])
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => !prev)
+  }
+
+  const toggleMobileSidebar = () => {
+    setIsMobileSidebarOpen((prev) => !prev)
+  }
+
+  const closeMobileSidebar = () => {
+    setIsMobileSidebarOpen(false)
+  }
 
   // Listen for navigation events - must be called before any conditional returns
   useEffect(() => {
@@ -75,7 +115,7 @@ function AppContent() {
       <div className="app-loading">
         <div className="loading-container">
           <div className="loading-spinner-large"></div>
-          <p className="loading-text">Loading Salon Management System...</p>
+          <p className="loading-text">Loading Saloon Management System...</p>
         </div>
       </div>
     )
@@ -88,13 +128,16 @@ function AppContent() {
 
   // Render authenticated app
   return (
-    <div className="app">
+    <div className={`app ${isSidebarCollapsed ? 'sidebar-collapsed' : ''} ${isMobileSidebarOpen ? 'mobile-sidebar-open' : ''}`}>
       <Sidebar
         activePage={activePage}
         setActivePage={setActivePage}
-        user={user}
+        onToggle={toggleSidebar}
+        isCollapsed={isSidebarCollapsed}
+        isMobileOpen={isMobileSidebarOpen}
+        onMobileClose={closeMobileSidebar}
       />
-      <GlobalHeader />
+      <GlobalHeader onMobileMenuToggle={toggleMobileSidebar} />
       <main className="main-content">
         <AnimatePresence mode="wait">
           {activePage === 'dashboard' && <Dashboard key="dashboard" />}
@@ -133,12 +176,12 @@ function AppContent() {
         )}
         {activePage === 'reports-analytics' && (
           <RequireRole roles={['manager', 'owner']}>
-            <ReportsAnalytics setActivePage={setActivePage} />
+            <ReportsAnalytics setActivePage={setActivePage} initialTab="analytics" />
           </RequireRole>
         )}
         {activePage === 'analytics' && (
           <RequireRole roles={['manager', 'owner']}>
-            <ReportsAnalytics setActivePage={setActivePage} />
+            <ReportsAnalytics setActivePage={setActivePage} initialTab="analytics" />
           </RequireRole>
         )}
         {activePage === 'service-sales-analysis' && (
@@ -211,6 +254,11 @@ function AppContent() {
             <ClientValueLoyaltyReport setActivePage={setActivePage} />
           </RequireRole>
         )}
+        {activePage === 'service-product-performance' && (
+          <RequireRole roles={['manager', 'owner']}>
+            <ServiceProductPerformance setActivePage={setActivePage} />
+          </RequireRole>
+        )}
         {activePage === 'service' && <Service />}
         {activePage === 'package' && <Package />}
         {activePage === 'product' && <Product />}
@@ -223,11 +271,6 @@ function AppContent() {
         {activePage === 'membership' && (
           <RequireRole roles={['owner']}>
             <Membership />
-          </RequireRole>
-        )}
-        {activePage === 'loyalty-program' && (
-          <RequireRole roles={['owner']}>
-            <LoyaltyProgram />
           </RequireRole>
         )}
         {activePage === 'referral-program' && (

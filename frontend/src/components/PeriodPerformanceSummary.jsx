@@ -1,7 +1,5 @@
 import React, { useState } from 'react'
 import {
-  FaBars,
-  FaUser,
   FaLayerGroup,
   FaMoneyBillWave,
   FaExclamationTriangle,
@@ -74,24 +72,6 @@ const PeriodPerformanceSummary = ({ setActivePage }) => {
 
   return (
     <div className="period-performance-page">
-      {/* Header */}
-      <header className="period-performance-header">
-        <div className="header-left">
-          <button className="menu-icon">
-            <FaBars />
-          </button>
-          <h1 className="header-title">Period Performance Summary</h1>
-        </div>
-        <div className="header-right">
-          <button className="user-icon">
-            <FaUser />
-          </button>
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-        </div>
-      </header>
-
       <div className="period-performance-container">
         <div className="period-performance-content">
           {/* Back Button and Date Range */}

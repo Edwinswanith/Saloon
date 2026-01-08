@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { FaBuilding } from 'react-icons/fa';
 import './BranchSelector.css';
 
 const BranchSelector = () => {
@@ -50,7 +49,6 @@ const BranchSelector = () => {
         onClick={() => setIsOpen(!isOpen)}
         disabled={loading}
       >
-        <span className="branch-icon"><FaBuilding size={16} /></span>
         <span className="branch-name">{currentBranchName}</span>
         <span className="branch-arrow">{isOpen ? '▲' : '▼'}</span>
       </button>
@@ -74,8 +72,10 @@ const BranchSelector = () => {
                     onClick={() => handleBranchChange(branch.id)}
                     disabled={loading || (currentBranch && currentBranch.id === branch.id)}
                   >
-                    <span className="branch-item-name">{branch.name}</span>
-                    <span className="branch-item-city">{branch.city}</span>
+                    <div className="branch-item-content">
+                      <span className="branch-item-name">{branch.name}</span>
+                      <span className="branch-item-city">{branch.city}</span>
+                    </div>
                     {currentBranch && currentBranch.id === branch.id && (
                       <span className="branch-check">✓</span>
                     )}

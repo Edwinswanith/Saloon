@@ -735,7 +735,7 @@ def seed_assets():
     print("Seeding assets...")
 
     assets_data = [
-        {"name": "Salon Chairs (Set of 6)", "category": "Furniture", "purchase_date": date(2023, 1, 15), "purchase_price": 60000, "current_value": 50000, "depreciation_rate": 10, "status": "active", "location": "Main Floor"},
+        {"name": "Saloon Chairs (Set of 6)", "category": "Furniture", "purchase_date": date(2023, 1, 15), "purchase_price": 60000, "current_value": 50000, "depreciation_rate": 10, "status": "active", "location": "Main Floor"},
         {"name": "Hair Dryers (Professional)", "category": "Equipment", "purchase_date": date(2023, 3, 20), "purchase_price": 35000, "current_value": 30000, "depreciation_rate": 15, "status": "active", "location": "Styling Area"},
         {"name": "Facial Steamers", "category": "Equipment", "purchase_date": date(2023, 5, 10), "purchase_price": 25000, "current_value": 22000, "depreciation_rate": 12, "status": "active", "location": "Facial Room"},
         {"name": "Massage Tables", "category": "Furniture", "purchase_date": date(2022, 11, 1), "purchase_price": 40000, "current_value": 32000, "depreciation_rate": 10, "status": "active", "location": "Spa Area"},

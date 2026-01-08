@@ -288,7 +288,7 @@ const Login = ({ onLoginSuccess }) => {
           <div className="login-logo">
             <div className="logo-icon">✂</div>
           </div>
-          <h1 className="login-title">Salon Management</h1>
+          <h1 className="login-title">Saloon Management</h1>
           <p className="login-subtitle">Sign in to your account</p>
         </div>
 

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { FaBars, FaCalendarAlt, FaPlus, FaTimes, FaEdit, FaShare, FaDownload } from 'react-icons/fa'
+import { FaBars, FaCalendarAlt, FaPlus, FaTimes, FaEdit, FaShare, FaDownload, FaArrowLeft } from 'react-icons/fa'
 import './Appointment.css'
 import { API_BASE_URL } from '../config'
 import { useAuth } from '../contexts/AuthContext'
 import { apiGet, apiPost, apiDelete } from '../utils/api'
 import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
+import InvoicePreview from './InvoicePreview'
 
 const Appointment = ({ setActivePage }) => {
   const { currentBranch } = useAuth()
@@ -19,6 +20,10 @@ const Appointment = ({ setActivePage }) => {
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [selectedAppointment, setSelectedAppointment] = useState(null)
   const [appointmentDetail, setAppointmentDetail] = useState(null)
+  const [invoiceData, setInvoiceData] = useState(null)
+  const [loadingInvoice, setLoadingInvoice] = useState(false)
+  const [billId, setBillId] = useState(null)
+  const [showInvoiceView, setShowInvoiceView] = useState(false) // Track whether to show invoice or appointment details
   const [bookingForm, setBookingForm] = useState({
     customer_id: '',
     staff_id: '',
@@ -310,6 +315,11 @@ const Appointment = ({ setActivePage }) => {
 
   const openDetailModal = async (appointment) => {
     setSelectedAppointment(appointment)
+    setShowInvoiceView(false) // Start with appointment details view
+    setInvoiceData(null)
+    setBillId(null)
+    setLoadingInvoice(false)
+    
     // Fetch full appointment details including service price
     try {
       const response = await apiGet(`/api/appointments/${appointment.id}`)
@@ -317,6 +327,19 @@ const Appointment = ({ setActivePage }) => {
         const data = await response.json()
         setAppointmentDetail(data)
         setShowDetailModal(true)
+        
+        // Check if bill exists (but don't fetch invoice data yet)
+        try {
+          const billResponse = await apiGet(`/api/appointments/${appointment.id}/bill`)
+          if (billResponse.ok) {
+            const billData = await billResponse.json()
+            if (billData.bill_id) {
+              setBillId(billData.bill_id)
+            }
+          }
+        } catch (billError) {
+          console.error('Error checking bill for appointment:', billError)
+        }
       } else {
         // Fallback to basic appointment data
         setAppointmentDetail(appointment)
@@ -328,6 +351,113 @@ const Appointment = ({ setActivePage }) => {
       setAppointmentDetail(appointment)
       setShowDetailModal(true)
     }
+  }
+
+  const handleViewBill = async () => {
+    if (!billId) {
+      showError('No bill found for this appointment')
+      return
+    }
+    
+    setLoadingInvoice(true)
+    setShowInvoiceView(true)
+    
+    try {
+      await fetchInvoiceData(billId)
+    } catch (error) {
+      console.error('Error fetching invoice data:', error)
+      showError('Failed to load invoice data')
+      setLoadingInvoice(false)
+    }
+  }
+
+  const handleBackToAppointment = () => {
+    setShowInvoiceView(false)
+    setInvoiceData(null)
+  }
+
+  const fetchInvoiceData = async (billId) => {
+    try {
+      setLoadingInvoice(true)
+      const response = await apiGet(`/api/bills/${billId}/invoice`)
+      if (response.ok) {
+        const data = await response.json()
+        setInvoiceData(data)
+      } else {
+        showError('Failed to load invoice data')
+      }
+    } catch (error) {
+      console.error('Error fetching invoice data:', error)
+      showError('Error loading invoice data')
+    } finally {
+      setLoadingInvoice(false)
+    }
+  }
+
+  const handleDownloadInvoice = async () => {
+    if (!billId) {
+      showError('No bill found for this appointment')
+      return
+    }
+
+    try {
+      // Use the correct token key (auth_token) and branch ID
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('token')
+      let branchId = currentBranch?.id
+      if (!branchId) {
+        const storedBranch = localStorage.getItem('current_branch')
+        if (storedBranch) {
+          try {
+            const branch = JSON.parse(storedBranch)
+            branchId = branch?.id
+          } catch (e) {
+            console.error('Error parsing stored branch:', e)
+          }
+        }
+      }
+      
+      if (!token) {
+        showError('Authentication token not found. Please log in again.')
+        return
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/api/bills/${billId}/invoice/pdf`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'X-Branch-Id': branchId || ''
+        }
+      })
+
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `invoice_${invoiceData?.bill_number || invoiceData?.invoice_number || billId}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+        showSuccess('Invoice downloaded successfully')
+      } else {
+        const errorText = await response.text().catch(() => 'Failed to download invoice')
+        console.error('Failed to download invoice:', response.status, errorText)
+        if (response.status === 401) {
+          showError('Unauthorized. Please log in again.')
+        } else {
+          showError(`Failed to download invoice: ${errorText}`)
+        }
+      }
+    } catch (error) {
+      console.error('Error downloading invoice:', error)
+      showError('Error downloading invoice')
+    }
+  }
+
+  const handleReviewUs = () => {
+    // Placeholder for review functionality
+    showWarning('Review functionality coming soon')
   }
 
   const openCancelModal = (appointment) => {
@@ -605,87 +735,140 @@ const Appointment = ({ setActivePage }) => {
         </div>
       )}
 
-      {/* Appointment Detail Modal (Invoice Style) */}
+      {/* Appointment Detail Modal */}
       {showDetailModal && appointmentDetail && (
         <div className="modal-overlay" onClick={() => setShowDetailModal(false)}>
-          <div className="appointment-invoice-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="invoice-header">
-              <div className="invoice-customer-info">
-                <h3>{appointmentDetail.customer_name || 'Customer'} - {appointmentDetail.customer_mobile ? `+91 ${appointmentDetail.customer_mobile}` : ''}</h3>
-                <p className="invoice-date">Date: {appointmentDetail.appointment_date ? new Date(appointmentDetail.appointment_date).toISOString().split('T')[0] : 'N/A'}</p>
-              </div>
-              <button className="close-btn" onClick={() => setShowDetailModal(false)}>
-                <FaTimes />
-              </button>
-            </div>
-            
-            <div className="invoice-table-container">
-              <table className="invoice-table">
-                <thead>
-                  <tr>
-                    <th>No.</th>
-                    <th>Service</th>
-                    <th>Staff</th>
-                    <th>Price (₹)</th>
-                    <th>Total (₹)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>1</td>
-                    <td>{appointmentDetail.service_name || 'Service'}</td>
-                    <td>{appointmentDetail.staff_name || 'N/A'}</td>
-                    <td>{appointmentDetail.service_price ? appointmentDetail.service_price.toFixed(2) : '0.00'}</td>
-                    <td>{(() => {
-                      const price = appointmentDetail.service_price || 0
-                      const tax = price * 0.18 // 18% GST
-                      return (price + tax).toFixed(2)
-                    })()}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div className="invoice-summary">
-              <div className="summary-row">
-                <span className="summary-label">Total:</span>
-                <span className="summary-value">₹ {appointmentDetail.service_price ? appointmentDetail.service_price.toFixed(2) : '0.00'}</span>
-              </div>
-              <div className="summary-row">
-                <span className="summary-label">Discount:</span>
-                <span className="summary-value">₹ 0.00</span>
-              </div>
-              <div className="summary-row">
-                <span className="summary-label">IGST / CGST:</span>
-                <span className="summary-value">₹ {(() => {
-                  const price = appointmentDetail.service_price || 0
-                  return (price * 0.18).toFixed(2)
-                })()}</span>
-              </div>
-              <div className="summary-row final">
-                <span className="summary-label">Grand Total:</span>
-                <span className="summary-value">₹ {(() => {
-                  const price = appointmentDetail.service_price || 0
-                  const tax = price * 0.18
-                  return (price + tax).toFixed(2)
-                })()}</span>
-              </div>
-            </div>
-
-            <div className="invoice-actions">
-              <button className="invoice-action-btn edit-btn" onClick={() => handleEditAppointment(appointmentDetail)}>
-                <FaEdit /> Edit
-              </button>
-              <button className="invoice-action-btn share-btn">
-                <FaShare /> Share Invoice
-              </button>
-              <button className="invoice-action-btn download-btn">
-                <FaDownload /> Download Invoice
-              </button>
-              <button className="invoice-action-btn close-btn" onClick={() => setShowDetailModal(false)}>
-                Close
-              </button>
-            </div>
+          <div className="appointment-detail-modal" onClick={(e) => e.stopPropagation()}>
+            {showInvoiceView ? (
+              // Invoice View
+              <>
+                <div className="invoice-modal-header">
+                  <div className="invoice-header-left">
+                    <button className="back-btn" onClick={handleBackToAppointment}>
+                      <FaArrowLeft /> Back
+                    </button>
+                    <h2>Invoice</h2>
+                  </div>
+                  <button className="close-btn" onClick={() => setShowDetailModal(false)}>
+                    <FaTimes />
+                  </button>
+                </div>
+                
+                {loadingInvoice ? (
+                  <div className="invoice-loading-state">
+                    <p>Loading invoice data...</p>
+                  </div>
+                ) : invoiceData ? (
+                  <div className="invoice-preview-wrapper">
+                    <InvoicePreview 
+                      invoiceData={invoiceData}
+                      onDownload={handleDownloadInvoice}
+                      onReview={handleReviewUs}
+                    />
+                  </div>
+                ) : (
+                  <div className="invoice-no-data">
+                    <p>No invoice data available for this appointment.</p>
+                    <p className="invoice-no-data-subtitle">A bill may not have been created yet.</p>
+                    <div className="invoice-fallback-actions">
+                      <button className="invoice-action-btn back-btn" onClick={handleBackToAppointment}>
+                        <FaArrowLeft /> Back to Appointment
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              // Appointment Details View
+              <>
+                <div className="appointment-modal-header">
+                  <h2>Appointment Details</h2>
+                  <button className="close-btn" onClick={() => setShowDetailModal(false)}>
+                    <FaTimes />
+                  </button>
+                </div>
+                
+                <div className="appointment-details-content">
+                  <div className="appointment-info-section">
+                    <div className="info-row">
+                      <span className="info-label">Customer:</span>
+                      <span className="info-value">{appointmentDetail.customer_name || 'N/A'}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="info-label">Mobile:</span>
+                      <span className="info-value">{appointmentDetail.customer_mobile || 'N/A'}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="info-label">Service:</span>
+                      <span className="info-value">{appointmentDetail.service_name || 'N/A'}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="info-label">Staff:</span>
+                      <span className="info-value">{appointmentDetail.staff_name || 'N/A'}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="info-label">Date:</span>
+                      <span className="info-value">
+                        {appointmentDetail.appointment_date 
+                          ? new Date(appointmentDetail.appointment_date).toLocaleDateString('en-IN', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric'
+                            })
+                          : 'N/A'}
+                      </span>
+                    </div>
+                    <div className="info-row">
+                      <span className="info-label">Time:</span>
+                      <span className="info-value">
+                        {appointmentDetail.start_time 
+                          ? new Date(`2000-01-01T${appointmentDetail.start_time}`).toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true
+                            })
+                          : 'N/A'}
+                      </span>
+                    </div>
+                    <div className="info-row">
+                      <span className="info-label">Status:</span>
+                      <span className={`info-value status-${appointmentDetail.status || 'confirmed'}`}>
+                        {appointmentDetail.status || 'confirmed'}
+                      </span>
+                    </div>
+                    {appointmentDetail.notes && (
+                      <div className="info-row">
+                        <span className="info-label">Notes:</span>
+                        <span className="info-value">{appointmentDetail.notes}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="appointment-actions-section">
+                    <button 
+                      className="appointment-action-btn edit-btn" 
+                      onClick={() => handleEditAppointment(appointmentDetail)}
+                    >
+                      <FaEdit /> Edit Appointment
+                    </button>
+                    {billId && (
+                      <button 
+                        className="appointment-action-btn view-bill-btn" 
+                        onClick={handleViewBill}
+                      >
+                        <FaDownload /> View Bill
+                      </button>
+                    )}
+                    <button 
+                      className="appointment-action-btn share-btn" 
+                      onClick={() => showWarning('Share functionality coming soon')}
+                    >
+                      <FaShare /> Share
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

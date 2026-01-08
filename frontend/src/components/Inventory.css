@@ -317,6 +317,56 @@
 
   .table-wrapper {
     overflow-x: scroll;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .supplier-table {
+    min-width: 700px;
+    font-size: var(--text-xs);
+  }
+
+  .supplier-table th,
+  .supplier-table td {
+    padding: var(--space-2) var(--space-3);
+  }
+}
+
+/* Small Mobile */
+@media (max-width: 480px) {
+  .inventory-container {
+    padding: 0 var(--space-3) var(--space-3);
+  }
+
+  .inventory-card {
+    padding: var(--space-3);
+  }
+
+  .tab {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-xs);
+    min-height: 44px;
+  }
+
+  .search-input {
+    font-size: 16px; /* Prevents zoom on iOS */
+    padding: var(--space-3);
+    min-height: 44px;
+  }
+
+  .add-supplier-btn {
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-sm);
+    min-height: 44px;
+  }
+
+  .supplier-table {
+    min-width: 600px;
+    font-size: 11px;
+  }
+
+  .supplier-table th,
+  .supplier-table td {
+    padding: var(--space-2);
   }
 }
 

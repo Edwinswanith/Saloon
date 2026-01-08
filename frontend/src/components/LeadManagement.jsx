@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { FaBars, FaCloudUploadAlt, FaPlus, FaDownload, FaEdit, FaTrash, FaChevronDown } from 'react-icons/fa'
+import { FaCloudUploadAlt, FaPlus, FaDownload, FaEdit, FaTrash, FaChevronDown } from 'react-icons/fa'
 import { Modal, Input, Select, DatePicker, Button, Form } from 'antd'
 import dayjs from 'dayjs'
 import './LeadManagement.css'
@@ -272,19 +272,6 @@ const LeadManagement = () => {
 
   return (
     <div className="lead-management-page">
-      {/* Header */}
-      <header className="lead-management-header">
-        <div className="header-left">
-          <button className="menu-icon"><FaBars /></button>
-          <h1 className="header-title">Lead Management</h1>
-        </div>
-        <div className="header-right">
-          <div className="logo-box">
-            <span className="logo-text">IST HAIR STUDIO</span>
-          </div>
-        </div>
-      </header>
-
       <div className="lead-management-container">
         {/* Lead Management Card */}
         <div className="lead-management-card">

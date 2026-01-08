@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   FaChartBar,
   FaCreditCard,
@@ -11,21 +11,50 @@ import {
   FaCheckCircle,
   FaBriefcase,
   FaDollarSign,
+  FaKey,
   FaChevronUp,
   FaChevronDown,
+  FaChevronLeft,
+  FaChevronRight,
   FaStar,
   FaExchangeAlt,
 } from 'react-icons/fa'
 import { useAuth } from '../contexts/AuthContext'
 import './Sidebar.css'
 
-const Sidebar = ({ activePage, setActivePage }) => {
-  const { hasAnyRole, canAccess } = useAuth()
+/**
+ * Modern Sidebar Component with Collapse/Expand Functionality
+ *
+ * @param {string} activePage - Currently active page ID
+ * @param {function} setActivePage - Function to set active page
+ * @param {function} onToggle - Function called when toggle button is clicked
+ * @param {boolean} isCollapsed - Whether sidebar is collapsed (default: false)
+ * @param {boolean} isMobileOpen - Whether sidebar is open on mobile (default: false)
+ * @param {function} onMobileClose - Function to close sidebar on mobile
+ */
+const Sidebar = ({
+  activePage,
+  setActivePage,
+  onToggle,
+  isCollapsed = false,
+  isMobileOpen = false,
+  onMobileClose
+}) => {
+  const { hasAnyRole } = useAuth()
   const [expandedItems, setExpandedItems] = useState({
-    'salon-settings': true,
-    billing: true,
+    'salon-settings': false,
     customers: false,
   })
+  
+  // Close submenus when sidebar collapses
+  useEffect(() => {
+    if (isCollapsed) {
+      setExpandedItems({
+        'salon-settings': false,
+        customers: false,
+      })
+    }
+  }, [isCollapsed])
 
   const toggleExpand = (item) => {
     setExpandedItems((prev) => ({
@@ -35,85 +64,68 @@ const Sidebar = ({ activePage, setActivePage }) => {
   }
 
   const handleNavClick = (itemId) => {
-    if (itemId === 'dashboard') {
-      setActivePage('dashboard')
-    } else if (itemId === 'quick-sale') {
-      setActivePage('quick-sale')
-    } else if (itemId === 'cash-register') {
-      setActivePage('cash-register')
-    } else if (itemId === 'appointment') {
-      setActivePage('appointment')
-    } else if (itemId === 'customer-list') {
-      setActivePage('customer-list')
-    } else if (itemId === 'lead-management') {
-      setActivePage('lead-management')
-    } else if (itemId === 'missed-enquiries') {
-      setActivePage('missed-enquiries')
-    } else if (itemId === 'feedback') {
-      setActivePage('feedback')
-    } else if (itemId === 'service-recovery') {
-      setActivePage('service-recovery')
-    } else if (itemId === 'inventory') {
-      setActivePage('inventory')
-    } else if (itemId === 'reports' || itemId === 'analytics') {
-      setActivePage('reports')
-    } else if (itemId === 'service') {
-      setActivePage('service')
-    } else if (itemId === 'package') {
-      setActivePage('package')
-    } else if (itemId === 'product') {
-      setActivePage('product')
-    } else if (itemId === 'prepaid') {
-      setActivePage('prepaid')
-    } else if (itemId === 'settings') {
-      setActivePage('settings')
-    } else if (itemId === 'staffs') {
-      setActivePage('staffs')
-    } else if (itemId === 'staff-attendance') {
-      setActivePage('staff-attendance')
-    } else if (itemId === 'staff-temp-assignment') {
-      setActivePage('staff-temp-assignment')
-    } else if (itemId === 'asset-management') {
-      setActivePage('asset-management')
-    } else if (itemId === 'expense') {
-      setActivePage('expense')
-    } else if (itemId === 'discount-approvals') {
-      setActivePage('discount-approvals')
-    } else if (itemId === 'approval-codes') {
-      setActivePage('approval-codes')
+    if (setActivePage) {
+      setActivePage(itemId)
     }
   }
 
-  const menuSections = [
-    {
+  // Menu configuration
+  const menuConfig = {
+    logo: {
+      icon: <FaStar />,
+      text: 'Priyanka Nature cure'
+    },
+    dashboardItem: { 
+      id: 'dashboard', 
+      label: 'Dashboard', 
+      icon: <FaChartBar /> 
+    },
+    billingSection: {
+      section: 'BILLING',
+      items: [
+        { id: 'quick-sale', label: 'Quick Sale', icon: <FaCreditCard /> },
+        { id: 'cash-register', label: 'Cash Register', icon: <FaMoneyBillWave /> },
+        { id: 'appointment', label: 'Appointment', icon: <FaCalendarAlt /> },
+        {
+          id: 'customers',
+          label: 'Customers',
+          icon: <FaUsers />,
+          subItems: [
+            { id: 'customer-list', label: 'Customer List' },
+            { id: 'lead-management', label: 'Lead Management' },
+            { id: 'missed-enquiries', label: 'Missed Enquiries' },
+            { id: 'feedback', label: 'Feedback' },
+            { id: 'service-recovery', label: 'Service Recovery', requiresRole: ['manager', 'owner'] },
+          ],
+          expanded: expandedItems.customers,
+        },
+        { id: 'inventory', label: 'Inventory', icon: <FaBox /> },
+        { 
+          id: 'discount-approvals', 
+          label: 'Discount Approvals', 
+          icon: <FaDollarSign />,
+          requiresRole: ['owner']
+        },
+        { 
+          id: 'approval-codes', 
+          label: 'Approval Codes', 
+          icon: <FaKey />,
+          requiresRole: ['owner']
+        }
+      ],
+    },
+    analyticsSection: {
       section: 'ANALYTICS',
       items: [
         { 
           id: 'reports', 
           label: 'Reports & Analytics', 
           icon: <FaChartBar />,
-          requiresRole: ['manager', 'owner'] // Only manager and owner can see reports
+          requiresRole: ['manager', 'owner']
         }
       ],
     },
-    {
-      section: 'BILLING',
-      items: [
-        { 
-          id: 'discount-approvals', 
-          label: 'Discount Approvals', 
-          icon: <FaDollarSign />,
-          requiresRole: ['owner'] // Only owner can approve discounts
-        },
-        { 
-          id: 'approval-codes', 
-          label: 'Approval Codes', 
-          icon: <FaDollarSign />,
-          requiresRole: ['owner'] // Only owner can manage approval codes
-        }
-      ],
-    },
-    {
+    masterSection: {
       section: 'MASTER',
       items: [
         {
@@ -128,7 +140,7 @@ const Sidebar = ({ activePage, setActivePage }) => {
             { 
               id: 'settings', 
               label: 'Settings',
-              requiresRole: ['manager', 'owner'] // Only manager and owner can see settings
+              requiresRole: ['manager', 'owner']
             },
           ],
           expanded: expandedItems['salon-settings'],
@@ -137,191 +149,177 @@ const Sidebar = ({ activePage, setActivePage }) => {
           id: 'staffs', 
           label: 'Staffs', 
           icon: <FaUser />,
-          requiresRole: ['manager', 'owner'] // Only manager and owner can manage staff
+          requiresRole: ['manager', 'owner']
         },
         { 
           id: 'staff-attendance', 
           label: 'Staff Attendance', 
           icon: <FaCheckCircle />,
-          requiresRole: ['manager', 'owner'] // Only manager and owner can see attendance
+          requiresRole: ['manager', 'owner']
         },
         { 
           id: 'staff-temp-assignment', 
           label: 'Staff Reassignment', 
           icon: <FaExchangeAlt />,
-          requiresRole: ['manager', 'owner'] // Only manager and owner can reassign staff
+          requiresRole: ['manager', 'owner']
         },
         { 
           id: 'asset-management', 
           label: 'Asset Management', 
           icon: <FaBriefcase />,
-          requiresRole: ['manager', 'owner'] // Only manager and owner can manage assets
+          requiresRole: ['manager', 'owner']
         },
         { 
           id: 'expense', 
           label: 'Expense', 
           icon: <FaDollarSign />,
-          requiresRole: ['manager', 'owner'] // Only manager and owner can manage expenses
+          requiresRole: ['manager', 'owner']
         },
       ],
     },
-  ]
+  }
 
-  const topMenuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: <FaChartBar /> },
-    {
-      id: 'billing',
-      label: 'Billing',
-      icon: <FaCreditCard />,
-      subItems: [{ id: 'quick-sale', label: 'Quick Sale' }],
-      expanded: expandedItems.billing,
-    },
-    { id: 'cash-register', label: 'Cash Register', icon: <FaMoneyBillWave /> },
-    { id: 'appointment', label: 'Appointment', icon: <FaCalendarAlt /> },
-    {
-      id: 'customers',
-      label: 'Customers',
-      icon: <FaUsers />,
-      subItems: [
-        { id: 'customer-list', label: 'Customer List' },
-        { id: 'lead-management', label: 'Lead Management' },
-        { id: 'missed-enquiries', label: 'Missed Enquiries' },
-        { id: 'feedback', label: 'Feedback' },
-        { id: 'service-recovery', label: 'Service Recovery', requiresRole: ['manager', 'owner'] },
-      ],
-      expanded: expandedItems.customers,
-    },
-    { id: 'inventory', label: 'Inventory', icon: <FaBox /> },
-  ]
+  const { logo, dashboardItem, billingSection, analyticsSection, masterSection } = menuConfig
+
+  // Update expanded state for menu items
+  if (billingSection.items) {
+    billingSection.items.forEach(item => {
+      if (item.id === 'customers') {
+        item.expanded = expandedItems.customers
+      }
+    })
+  }
+  if (masterSection.items) {
+    masterSection.items.forEach(item => {
+      if (item.id === 'salon-settings') {
+        item.expanded = expandedItems['salon-settings']
+      }
+    })
+  }
+
+  const renderMenuItem = (item, sectionKey = '') => {
+    const itemKey = `${sectionKey}-${item.id}`
+    const isActive = activePage === item.id
+    const hasSubItems = item.subItems && item.subItems.length > 0
+    const isExpanded = item.expanded || expandedItems[item.id]
+    const shouldShow = !item.requiresRole || hasAnyRole(...item.requiresRole)
+
+    if (!shouldShow) return null
+
+    return (
+      <div key={itemKey}>
+        <div
+          className={`nav-item ${isActive ? 'active' : ''} ${hasSubItems ? 'has-submenu' : ''} ${hasSubItems && isExpanded ? 'expanded' : ''}`}
+          onClick={() => {
+            if (isCollapsed && hasSubItems) {
+              if (onToggle) onToggle()
+              setTimeout(() => toggleExpand(item.id), 100)
+            } else if (hasSubItems) {
+              toggleExpand(item.id)
+            } else {
+              handleNavClick(item.id)
+            }
+          }}
+          title={isCollapsed ? item.label : ''}
+        >
+          <span className="nav-icon">{item.icon}</span>
+          <span className="nav-label">{item.label}</span>
+          {hasSubItems && !isCollapsed && (
+            <span className="nav-arrow">
+              {isExpanded ? <FaChevronUp /> : <FaChevronDown />}
+            </span>
+          )}
+        </div>
+        {hasSubItems && isExpanded && !isCollapsed && (
+          <div className="submenu">
+            {item.subItems
+              .filter((subItem) => !subItem.requiresRole || hasAnyRole(...subItem.requiresRole))
+              .map((subItem) => (
+                <div
+                  key={subItem.id}
+                  className={`submenu-item ${activePage === subItem.id ? 'active' : ''}`}
+                  onClick={() => handleNavClick(subItem.id)}
+                >
+                  <span className="submenu-label">{subItem.label}</span>
+                </div>
+              ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const renderSection = (section, sectionKey) => {
+    if (!section || !section.items) return null
+
+    return (
+      <div key={sectionKey} className="menu-section">
+        {!isCollapsed && section.section && (
+          <div className="section-header">{section.section}</div>
+        )}
+        {section.items.map((item) => renderMenuItem(item, sectionKey))}
+      </div>
+    )
+  }
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-header">
+    <>
+      {/* Mobile backdrop overlay */}
+      {isMobileOpen && (
+        <div
+          className="sidebar-backdrop"
+          onClick={onMobileClose}
+          aria-hidden="true"
+        />
+      )}
+      <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''} ${isMobileOpen ? 'mobile-open' : ''}`}>
+        <div className="sidebar-header">
         <div className="logo">
-          <FaStar />
-          Bizzzup
+          {!isCollapsed && (
+            <img 
+              src="/logo/priyanka logo.png" 
+              alt="Priyanka Nature Cure" 
+              className="logo-image"
+            />
+          )}
         </div>
+        {onToggle && (
+          <button 
+            className="sidebar-toggle"
+            onClick={onToggle}
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? <FaChevronRight /> : <FaChevronLeft />}
+          </button>
+        )}
       </div>
       <nav className="sidebar-nav">
-        {/* Top Menu Items */}
-        {topMenuItems
-          .filter((item) => {
-            // Filter items based on role requirements
-            if (item.requiresRole) {
-              return hasAnyRole(...item.requiresRole)
-            }
-            return true
-          })
-          .map((item) => (
-          <div key={item.id}>
+        {/* Dashboard - Standalone (first) */}
+        {dashboardItem && (
+          <div>
             <div
-              className={`nav-item ${
-                activePage === item.id ? 'active' : ''
-              } ${item.subItems ? 'has-submenu' : ''} ${
-                item.subItems && expandedItems[item.id] ? 'expanded' : ''
-              }`}
-              onClick={() => {
-                if (item.subItems) {
-                  toggleExpand(item.id)
-                } else {
-                  handleNavClick(item.id)
-                }
-              }}
+              className={`nav-item ${activePage === dashboardItem.id ? 'active' : ''}`}
+              onClick={() => handleNavClick(dashboardItem.id)}
+              title={isCollapsed ? dashboardItem.label : ''}
             >
-              <span className="nav-icon">{item.icon}</span>
-              <span className="nav-label">{item.label}</span>
-              {item.subItems && (
-                <span className="nav-arrow">
-                  {expandedItems[item.id] ? <FaChevronUp /> : <FaChevronDown />}
-                </span>
-              )}
+              <span className="nav-icon">{dashboardItem.icon}</span>
+              <span className="nav-label">{dashboardItem.label}</span>
             </div>
-            {item.subItems && expandedItems[item.id] && (
-              <div className="submenu">
-                {item.subItems
-                  .filter((subItem) => {
-                    // Filter sub-items based on role requirements
-                    if (subItem.requiresRole) {
-                      return hasAnyRole(...subItem.requiresRole)
-                    }
-                    return true
-                  })
-                  .map((subItem) => (
-                  <div
-                    key={subItem.id}
-                    className={`submenu-item ${
-                      activePage === subItem.id ? 'active' : ''
-                    }`}
-                    onClick={() => handleNavClick(subItem.id)}
-                  >
-                    <span className="submenu-icon">{item.icon}</span>
-                    <span className="submenu-label">{subItem.label}</span>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
-        ))}
+        )}
 
-        {/* Sectioned Menu Items */}
-        {menuSections.map((section, sectionIndex) => (
-          <div key={section.section} className="menu-section">
-            <div className="section-header">{section.section}</div>
-            {section.items
-              .filter((item) => {
-                // Filter items based on role requirements
-                if (item.requiresRole) {
-                  return hasAnyRole(...item.requiresRole)
-                }
-                return true
-              })
-              .map((item) => (
-              <div key={item.id}>
-                <div
-                  className={`nav-item ${
-                    activePage === item.id ? 'active' : ''
-                  } ${item.subItems ? 'has-submenu' : ''} ${
-                    item.subItems && expandedItems[item.id] ? 'expanded' : ''
-                  }`}
-                  onClick={() => {
-                    if (item.subItems) {
-                      toggleExpand(item.id)
-                    } else {
-                      handleNavClick(item.id)
-                    }
-                  }}
-                >
-                  <span className="nav-icon">{item.icon}</span>
-                  <span className="nav-label">{item.label}</span>
-                  {item.subItems && (
-                    <span className="nav-arrow">
-                      {expandedItems[item.id] ? <FaChevronUp /> : <FaChevronDown />}
-                    </span>
-                  )}
-                </div>
-                {item.subItems && expandedItems[item.id] && (
-                  <div className="submenu">
-                    {item.subItems.map((subItem) => (
-                      <div
-                        key={subItem.id}
-                        className={`submenu-item ${
-                          activePage === subItem.id ? 'active' : ''
-                        }`}
-                        onClick={() => handleNavClick(subItem.id)}
-                      >
-                        <span className="submenu-label">{subItem.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        ))}
+        {/* BILLING Section */}
+        {renderSection(billingSection, 'billing')}
+
+        {/* ANALYTICS Section */}
+        {renderSection(analyticsSection, 'analytics')}
+
+        {/* MASTER Section */}
+        {renderSection(masterSection, 'master')}
       </nav>
-    </aside>
+      </aside>
+    </>
   )
 }
 
 export default Sidebar
-

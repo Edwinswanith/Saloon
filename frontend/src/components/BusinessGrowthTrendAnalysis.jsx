@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import {
-  FaBars,
-  FaBell,
-  FaUser,
   FaArrowLeft,
   FaChartLine,
   FaShoppingBasket,
@@ -46,7 +43,7 @@ const BusinessGrowthTrendAnalysis = ({ setActivePage }) => {
 
   const handleBackToReports = () => {
     if (setActivePage) {
-      setActivePage('reports')
+      setActivePage('reports-analytics')
     }
   }
 
@@ -180,27 +177,6 @@ const BusinessGrowthTrendAnalysis = ({ setActivePage }) => {
 
   return (
     <div className="business-growth-trend-analysis-page">
-      {/* Header */}
-      <header className="business-growth-header">
-        <div className="header-left">
-          <button className="menu-icon">
-            <FaBars />
-          </button>
-          <h1 className="header-title">Business Growth & Trend Analysis</h1>
-        </div>
-        <div className="header-right">
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-          <button className="header-icon bell-icon">
-            <FaBell />
-          </button>
-          <button className="header-icon user-icon">
-            <FaUser />
-          </button>
-        </div>
-      </header>
-
       <div className="business-growth-container">
         {loading && (
           <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>

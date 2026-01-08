@@ -325,5 +325,47 @@
   .icon-symbol {
     font-size: 28px;
   }
+
+  .tab {
+    min-height: 44px;
+  }
+}
+
+/* Small Mobile */
+@media (max-width: 480px) {
+  .reports-analytics-container {
+    padding: 0 var(--space-3) var(--space-3);
+  }
+
+  .reports-card {
+    padding: var(--space-3);
+  }
+
+  .tab {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-xs);
+    min-height: 44px;
+  }
+
+  .reports-grid {
+    gap: var(--space-3);
+  }
+
+  .report-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .icon-symbol {
+    font-size: 24px;
+  }
+
+  .report-title {
+    font-size: var(--text-base);
+  }
+
+  .report-description {
+    font-size: var(--text-xs);
+  }
 }
 

@@ -185,7 +185,7 @@ Every login attempt is logged to `login_history` collection with:
   last_name: "Mehta",
   email: "arun@salon.com",
   mobile: "9876543220",
-  salon: "Glamour Salon - Main Branch",
+  salon: "Glamour Saloon - Main Branch",
   password_hash: "$2b$12$...",  // bcrypt hash
   role: "manager",  // manager or owner
   permissions: [],

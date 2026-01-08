@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { FaBars, FaStar, FaPlus, FaExclamationTriangle, FaFrown } from 'react-icons/fa'
+import { FaStar, FaPlus, FaExclamationTriangle, FaFrown } from 'react-icons/fa'
 import './Feedback.css'
 import { apiGet, apiPost, apiPut } from '../utils/api'
 import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
@@ -248,19 +248,6 @@ const Feedback = () => {
 
   return (
     <div className="feedback-page">
-      {/* Header */}
-      <header className="feedback-header">
-        <div className="header-left">
-          <button className="menu-icon"><FaBars /></button>
-          <h1 className="header-title">Feedback</h1>
-        </div>
-        <div className="header-right">
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-        </div>
-      </header>
-
       <div className="feedback-container">
         {/* Feedback Card */}
         <div className="feedback-card">

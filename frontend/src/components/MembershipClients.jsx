@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import {
-  FaBars,
-  FaBell,
-  FaUser,
   FaArrowLeft,
   FaCloudDownloadAlt,
+  FaTimes,
 } from 'react-icons/fa'
 import './MembershipClients.css'
 import { API_BASE_URL } from '../config'
@@ -18,6 +16,10 @@ const MembershipClients = ({ setActivePage }) => {
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
   const [filteredClients, setFilteredClients] = useState([])
+  const [showModal, setShowModal] = useState(false)
+  const [selectedClient, setSelectedClient] = useState(null)
+  const [customerDetails, setCustomerDetails] = useState(null)
+  const [loadingDetails, setLoadingDetails] = useState(false)
 
   useEffect(() => {
     fetchMembershipClients()
@@ -67,6 +69,7 @@ const MembershipClients = ({ setActivePage }) => {
           price: client.price || 0,
           discount: client.plan?.allocated_discount || 0,
           expiry: getExpiryText(client.expiry_date, client.days_remaining),
+          rawData: client, // Store raw data for modal
         }))
         setClients(formattedClients)
         setFilteredClients(formattedClients)
@@ -124,29 +127,73 @@ const MembershipClients = ({ setActivePage }) => {
     }
   }
 
+  const handleViewDetails = async (client) => {
+    setSelectedClient(client)
+    setShowModal(true)
+    setLoadingDetails(true)
+    setCustomerDetails(null)
+
+    try {
+      const mobile = client.mobile
+      if (!mobile || mobile === 'N/A') {
+        console.error('Customer mobile not found')
+        setLoadingDetails(false)
+        return
+      }
+
+      // Fetch customer by mobile using search parameter
+      const customersResponse = await apiGet(`/api/customers?search=${mobile}`)
+      if (customersResponse.ok) {
+        const customersData = await customersResponse.json()
+        const customersList = customersData.customers || customersData
+        if (Array.isArray(customersList) && customersList.length > 0) {
+          // Find exact mobile match
+          const customer = customersList.find(c => c.mobile === mobile) || customersList[0]
+          const customerId = customer.id || customer._id
+          
+          // Fetch detailed customer information
+          const detailsResponse = await apiGet(`/api/customers/${customerId}`)
+          if (detailsResponse.ok) {
+            const details = await detailsResponse.json()
+            setCustomerDetails(details)
+          } else {
+            // Fallback: use basic customer data
+            setCustomerDetails(customer)
+          }
+        } else {
+          // No customer found, show membership data only
+          setCustomerDetails(null)
+        }
+      } else {
+        console.error('Failed to fetch customer by mobile')
+      }
+    } catch (error) {
+      console.error('Error fetching customer details:', error)
+    } finally {
+      setLoadingDetails(false)
+    }
+  }
+
+  const formatCurrency = (amount) => {
+    return `₹${amount?.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) || 0}`
+  }
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A'
+    try {
+      const date = new Date(dateString)
+      return date.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      })
+    } catch (e) {
+      return 'N/A'
+    }
+  }
+
   return (
     <div className="membership-clients-page">
-      {/* Header */}
-      <header className="membership-clients-header">
-        <div className="header-left">
-          <button className="menu-icon">
-            <FaBars />
-          </button>
-          <h1 className="header-title">Membership Clients</h1>
-        </div>
-        <div className="header-right">
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-          <button className="header-icon bell-icon">
-            <FaBell />
-          </button>
-          <button className="header-icon user-icon">
-            <FaUser />
-          </button>
-        </div>
-      </header>
-
       <div className="membership-clients-container">
         {/* Main Report Card */}
         <div className="report-card">
@@ -239,12 +286,10 @@ const MembershipClients = ({ setActivePage }) => {
                       </td>
                       <td>
                         <button 
-                          className="view-bill-btn"
-                          onClick={() => {
-                            alert(`Membership Details:\nCustomer: ${client.customerName}\nMobile: ${client.mobile}\nMembership: ${client.membershipName}\nPrice: ₹${client.price}\nDiscount: ${client.discount}%\nExpiry: ${client.expiry}`)
-                          }}
+                          className="view-btn"
+                          onClick={() => handleViewDetails(client)}
                         >
-                          View Bill
+                          View
                         </button>
                       </td>
                     </tr>
@@ -298,6 +343,159 @@ const MembershipClients = ({ setActivePage }) => {
           )}
         </div>
       </div>
+
+      {/* Membership Details Modal */}
+      {showModal && (
+        <div className="customer-modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="customer-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="customer-modal-header">
+              <h2>Membership Details</h2>
+              <button className="customer-modal-close" onClick={() => setShowModal(false)}>
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="customer-modal-body">
+              {loadingDetails ? (
+                <div className="customer-modal-loading">Loading membership details...</div>
+              ) : (
+                <>
+                  {/* Customer Information */}
+                  {customerDetails && (
+                    <div className="customer-details-section">
+                      <h3>Customer Information</h3>
+                      <div className="customer-details-grid">
+                        <div className="customer-detail-item">
+                          <span className="detail-label">Name:</span>
+                          <span className="detail-value">
+                            {customerDetails.firstName && customerDetails.lastName
+                              ? `${customerDetails.firstName} ${customerDetails.lastName}`
+                              : selectedClient?.customerName || 'N/A'}
+                          </span>
+                        </div>
+                        <div className="customer-detail-item">
+                          <span className="detail-label">Mobile:</span>
+                          <span className="detail-value">{selectedClient?.mobile || 'N/A'}</span>
+                        </div>
+                        {customerDetails.email && (
+                          <div className="customer-detail-item">
+                            <span className="detail-label">Email:</span>
+                            <span className="detail-value">{customerDetails.email || '-'}</span>
+                          </div>
+                        )}
+                        {customerDetails.source && (
+                          <div className="customer-detail-item">
+                            <span className="detail-label">Source:</span>
+                            <span className="detail-value">{customerDetails.source || '-'}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Membership Information */}
+                  <div className="customer-details-section">
+                    <h3>Membership Information</h3>
+                    <div className="customer-details-grid">
+                      <div className="customer-detail-item">
+                        <span className="detail-label">Membership Name:</span>
+                        <span className="detail-value">{selectedClient?.membershipName || 'N/A'}</span>
+                      </div>
+                      <div className="customer-detail-item">
+                        <span className="detail-label">Purchase Date:</span>
+                        <span className="detail-value">{selectedClient?.purchaseDate || 'N/A'}</span>
+                      </div>
+                      <div className="customer-detail-item">
+                        <span className="detail-label">Price:</span>
+                        <span className="detail-value">{formatCurrency(selectedClient?.price || 0)}</span>
+                      </div>
+                      <div className="customer-detail-item">
+                        <span className="detail-label">Discount:</span>
+                        <span className="detail-value">{selectedClient?.discount || 0}%</span>
+                      </div>
+                      <div className="customer-detail-item">
+                        <span className="detail-label">Expiry:</span>
+                        <span className={`detail-value ${selectedClient?.expiry === 'Expired' ? 'expired-status' : ''}`}>
+                          {selectedClient?.expiry || 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Customer Statistics */}
+                  {customerDetails && (customerDetails.total_visits || customerDetails.total_revenue) && (
+                    <div className="customer-details-section">
+                      <h3>Customer Statistics</h3>
+                      <div className="customer-stats-grid">
+                        {customerDetails.total_revenue !== undefined && (
+                          <div className="customer-stat-card">
+                            <div className="stat-label">Total Revenue</div>
+                            <div className="stat-value revenue-stat">
+                              {formatCurrency(customerDetails.total_revenue)}
+                            </div>
+                            <div className="stat-description">Total spending</div>
+                          </div>
+                        )}
+                        {customerDetails.total_visits !== undefined && (
+                          <div className="customer-stat-card">
+                            <div className="stat-label">Total Visits</div>
+                            <div className="stat-value">
+                              {customerDetails.total_visits || 0}
+                            </div>
+                            <div className="stat-description">Number of visits</div>
+                          </div>
+                        )}
+                        {customerDetails.last_visit && (
+                          <div className="customer-stat-card">
+                            <div className="stat-label">Last Visit</div>
+                            <div className="stat-value">
+                              {formatDate(customerDetails.last_visit)}
+                            </div>
+                            <div className="stat-description">Most recent visit</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Membership Details from Customer */}
+                  {customerDetails?.membership && (
+                    <div className="customer-details-section">
+                      <h3>Active Membership</h3>
+                      <div className="customer-details-grid">
+                        {customerDetails.membership.plan?.name && (
+                          <div className="customer-detail-item">
+                            <span className="detail-label">Plan:</span>
+                            <span className="detail-value">{customerDetails.membership.plan.name}</span>
+                          </div>
+                        )}
+                        {customerDetails.membership.purchase_date && (
+                          <div className="customer-detail-item">
+                            <span className="detail-label">Purchase Date:</span>
+                            <span className="detail-value">{formatDate(customerDetails.membership.purchase_date)}</span>
+                          </div>
+                        )}
+                        {customerDetails.membership.expiry_date && (
+                          <div className="customer-detail-item">
+                            <span className="detail-label">Expiry Date:</span>
+                            <span className="detail-value">{formatDate(customerDetails.membership.expiry_date)}</span>
+                          </div>
+                        )}
+                        {customerDetails.membership.plan?.allocated_discount !== undefined && (
+                          <div className="customer-detail-item">
+                            <span className="detail-label">Discount:</span>
+                            <span className="detail-value">{customerDetails.membership.plan.allocated_discount}%</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

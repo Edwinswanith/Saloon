@@ -1,9 +1,5 @@
 import React, { useState } from 'react'
 import {
-  FaBars,
-  FaBell,
-  FaUser,
-  FaQuestionCircle,
   FaArrowLeft,
   FaFileExcel,
   FaShoppingCart,
@@ -15,7 +11,6 @@ import {
 import './InventoryReport.css'
 
 const InventoryReport = ({ setActivePage }) => {
-  const [dateFilter, setDateFilter] = useState('current-month')
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
 
@@ -310,30 +305,6 @@ const InventoryReport = ({ setActivePage }) => {
 
   return (
     <div className="inventory-report-page">
-      {/* Header */}
-      <header className="inventory-report-header">
-        <div className="header-left">
-          <button className="menu-icon">
-            <FaBars />
-          </button>
-          <h1 className="header-title">Inventory Report</h1>
-        </div>
-        <div className="header-right">
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-          <button className="header-icon bell-icon">
-            <FaBell />
-          </button>
-          <button className="header-icon help-icon">
-            <FaQuestionCircle />
-          </button>
-          <button className="header-icon user-icon">
-            <FaUser />
-          </button>
-        </div>
-      </header>
-
       <div className="inventory-report-container">
         {/* Back Button */}
         <button className="back-button" onClick={handleBackToReports}>
@@ -360,16 +331,6 @@ const InventoryReport = ({ setActivePage }) => {
           <div className="section-header">
             <h2 className="section-title">Stock Movement & Inventory Report</h2>
             <div className="section-controls">
-              <select
-                className="date-filter-dropdown"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-              >
-                <option value="current-month">Current Month</option>
-                <option value="last-month">Last Month</option>
-                <option value="current-year">Current Year</option>
-                <option value="custom">Custom Range</option>
-              </select>
               <div className="search-wrapper">
                 <FaSearch className="search-icon" />
                 <input

@@ -1,10 +1,11 @@
-from flask import Blueprint, request, jsonify
-from models import Bill, Customer, Product, PrepaidPackage, LoyaltyProgramSettings, BillItemEmbedded, DiscountApprovalRequest, Staff, Membership, LoyaltyPointsTransaction
-from datetime import datetime
+from flask import Blueprint, request, jsonify, make_response
+from models import Bill, Customer, Product, PrepaidPackage, BillItemEmbedded, DiscountApprovalRequest, Staff, Membership, Branch
+from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 from mongoengine import Q
 from utils.auth import get_current_user, require_auth
 from utils.branch_filter import get_selected_branch
+from utils.date_utils import get_ist_date_range
 import uuid
 
 # Discount limits by role - Only owner can apply discounts
@@ -21,6 +22,43 @@ def generate_bill_number():
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
     random_suffix = str(uuid.uuid4().hex[:4]).upper()
     return f"BILL-{timestamp}-{random_suffix}"
+
+def generate_invoice_number():
+    """Generate sequential invoice number in format INV-000400"""
+    try:
+        # Get the last invoice number from bills
+        last_bill = Bill.objects.order_by('-created_at').first()
+        
+        if last_bill and last_bill.bill_number:
+            # Try to extract invoice number from bill_number or use a counter
+            # For now, we'll use a simple counter based on total bills
+            total_bills = Bill.objects.count()
+            invoice_num = total_bills + 1
+        else:
+            invoice_num = 1
+        
+        # Format as INV-000400 (6-digit zero-padded)
+        return f"INV-{invoice_num:06d}"
+    except Exception as e:
+        # Fallback to timestamp-based if error occurs
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        return f"INV-{timestamp[:6]}"
+
+def resolve_bill_branch(current_user=None, appointment=None, customer=None):
+    """Best-effort branch resolution for bills."""
+    if appointment and getattr(appointment, 'branch', None):
+        return appointment.branch
+    if customer and getattr(customer, 'branch', None):
+        return customer.branch
+
+    branch = None
+    if current_user:
+        branch = get_selected_branch(request, current_user)
+    if not branch:
+        branch_id_header = request.headers.get('X-Branch-Id')
+        if branch_id_header and ObjectId.is_valid(branch_id_header):
+            branch = Branch.objects(id=branch_id_header).first()
+    return branch
 
 @bill_bp.route('/bills', methods=['GET'])
 @require_auth
@@ -50,14 +88,12 @@ def get_bills(current_user=None):
                 query = query.filter(customer=customer)
             except Customer.DoesNotExist:
                 pass
-        if start_date:
-            start = datetime.strptime(start_date, '%Y-%m-%d')
-            query = query.filter(bill_date__gte=start)
-        if end_date:
-            end = datetime.strptime(end_date, '%Y-%m-%d')
-            # Set end to end of day to include all data from the end date
-            end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
-            query = query.filter(bill_date__lte=end)
+        if start_date or end_date:
+            start, end = get_ist_date_range(start_date, end_date)
+            if start:
+                query = query.filter(bill_date__gte=start)
+            if end:
+                query = query.filter(bill_date__lte=end)
         if payment_mode:
             query = query.filter(payment_mode=payment_mode)
         if booking_status:
@@ -176,9 +212,59 @@ def get_bill(id):
 
 @bill_bp.route('/bills', methods=['POST'])
 def create_bill():
-    """Create a new bill (draft)"""
+    """Create a new bill (draft) or return existing unchecked-out bill for appointment"""
     try:
         data = request.get_json()
+        current_user = get_current_user()
+
+        # Check if appointment_id is provided and if existing unchecked-out bill exists
+        appointment_id = data.get('appointment_id')
+        appointment = None
+        existing_bill = None
+        
+        if appointment_id:
+            from models import Appointment
+            try:
+                appointment = Appointment.objects.get(id=appointment_id)
+                # Find existing unchecked-out bill for this appointment
+                # Unchecked-out means: booking_status != 'service-completed' OR payment_mode is None
+                existing_bills = Bill.objects(
+                    appointment=appointment,
+                    is_deleted=False
+                ).order_by('-created_at')
+                
+                for bill in existing_bills:
+                    # Check if bill is unchecked-out
+                    is_checked_out = (bill.booking_status == 'service-completed' and bill.payment_mode)
+                    if not is_checked_out:
+                        existing_bill = bill
+                        break
+            except Appointment.DoesNotExist:
+                pass
+            except Exception as e:
+                # Log error but continue to create new bill
+                print(f"Error checking for existing bill: {e}")
+        
+        # If existing unchecked-out bill found, return it
+        if existing_bill:
+            if not existing_bill.branch:
+                branch = resolve_bill_branch(
+                    current_user=current_user,
+                    appointment=appointment,
+                    customer=existing_bill.customer
+                )
+                if branch:
+                    existing_bill.branch = branch
+                    existing_bill.save()
+            return jsonify({
+                'id': str(existing_bill.id),
+                'message': 'Using existing bill for appointment',
+                'data': {
+                    'id': str(existing_bill.id),
+                    'bill_number': existing_bill.bill_number,
+                    'existing': True
+                }
+            }), 200
 
         customer = None
         if data.get('customer_id'):
@@ -187,15 +273,51 @@ def create_bill():
             except Customer.DoesNotExist:
                 pass
 
+        # Handle bill_date - use provided date or current UTC time
+        bill_date = datetime.utcnow()
+        if data.get('bill_date'):
+            # If bill_date is provided as a date string (YYYY-MM-DD), convert to UTC datetime
+            try:
+                date_str = data.get('bill_date')
+                if isinstance(date_str, str) and len(date_str) == 10:  # YYYY-MM-DD format
+                    # Parse as local date and convert to UTC
+                    # Assuming IST (UTC+5:30), local date "2026-01-06" means UTC range
+                    local_date = datetime.strptime(date_str, '%Y-%m-%d')
+                    # Use noon local time (to avoid timezone edge cases) and convert to UTC
+                    bill_date = local_date.replace(hour=12, minute=0, second=0, microsecond=0) - timedelta(hours=5, minutes=30)
+                else:
+                    # Try parsing as ISO datetime string
+                    bill_date = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                    if bill_date.tzinfo:
+                        bill_date = bill_date.astimezone(timezone.utc).replace(tzinfo=None)
+            except (ValueError, AttributeError):
+                # If parsing fails, use current UTC time
+                bill_date = datetime.utcnow()
+
+        if appointment_id and not appointment:
+            from models import Appointment
+            try:
+                appointment = Appointment.objects.get(id=appointment_id)
+            except Appointment.DoesNotExist:
+                pass
+
+        branch = resolve_bill_branch(
+            current_user=current_user,
+            appointment=appointment,
+            customer=customer
+        )
+
         bill = Bill(
             bill_number=generate_bill_number(),
             customer=customer,
-            bill_date=datetime.utcnow(),
+            appointment=appointment,
+            branch=branch,
+            bill_date=bill_date,
             subtotal=0,
             discount_amount=0,
             tax_amount=0,
             final_amount=0,
-            booking_status=data.get('booking_status', 'service-completed'),
+            booking_status=data.get('booking_status', 'pending'),
             booking_note=data.get('booking_note'),
             items=[]
         )
@@ -206,7 +328,8 @@ def create_bill():
             'message': 'Bill created successfully',
             'data': {
                 'id': str(bill.id),
-                'bill_number': bill.bill_number
+                'bill_number': bill.bill_number,
+                'existing': False
             }
         }), 201
     except Exception as e:
@@ -279,16 +402,14 @@ def add_bill_item(id):
             total=data['total']
         )
 
-        # Reduce product inventory if product is being added
+        # Validate product stock availability (but don't reduce stock yet - will be reduced on checkout)
         if product and data.get('quantity'):
-            quantity_to_reduce = int(data.get('quantity', 1))
+            quantity_requested = int(data.get('quantity', 1))
             if product.stock_quantity is not None:
-                if product.stock_quantity < quantity_to_reduce:
+                if product.stock_quantity < quantity_requested:
                     return jsonify({
                         'error': f'Insufficient stock. Only {product.stock_quantity} units available'
                     }), 400
-                product.stock_quantity -= quantity_to_reduce
-                product.save()
 
         if not bill.items:
             bill.items = []
@@ -298,7 +419,7 @@ def add_bill_item(id):
         return jsonify({
             'id': len(bill.items) - 1,  # Return index
             'message': 'Item added to bill successfully',
-            'product_stock_updated': product is not None
+            'product_stock_validated': product is not None
         }), 201
     except Bill.DoesNotExist:
         return jsonify({'error': 'Bill not found'}), 404
@@ -329,6 +450,9 @@ def checkout_bill(id):
     try:
         bill = Bill.objects.get(id=id)
         data = request.get_json()
+
+        # Check if bill is already checked out to prevent double stock reduction
+        is_already_checked_out = (bill.booking_status == 'service-completed' and bill.payment_mode)
 
         # Get current user and check permissions
         current_user = get_current_user()
@@ -385,51 +509,9 @@ def checkout_bill(id):
         
         # No approval needed for owners - they have full discount access
 
-        # Apply points redemption discount (after membership discount, before tax)
-        points_used = 0
-        points_discount = 0.0
-        amount_after_membership_discount = float(subtotal) - float(discount_amount)
-        
-        if bill.customer:
-            points_to_use = int(data.get('points_to_use', 0) or 0)
-            if points_to_use > 0:
-                bill.customer.reload()
-                loyalty_settings = LoyaltyProgramSettings.get_settings()
-                
-                if loyalty_settings.enabled:
-                    # Validate minimum points requirement
-                    if points_to_use < loyalty_settings.minimum_points_to_redeem:
-                        return jsonify({
-                            'error': f'Minimum {loyalty_settings.minimum_points_to_redeem} points required to redeem'
-                        }), 400
-                    
-                    # Validate customer has enough points
-                    if bill.customer.loyalty_points < points_to_use:
-                        return jsonify({
-                            'error': f'Insufficient points. Available: {bill.customer.loyalty_points}, Requested: {points_to_use}'
-                        }), 400
-                    
-                    # Calculate points discount
-                    redemption_rate = float(loyalty_settings.redemption_rate) if loyalty_settings.redemption_rate else 1.0
-                    points_discount = float(points_to_use) / float(redemption_rate)
-                    
-                    # Ensure points discount doesn't exceed amount after membership discount
-                    if points_discount > amount_after_membership_discount:
-                        points_discount = amount_after_membership_discount
-                        # Recalculate points needed for the actual discount
-                        points_used = int(points_discount * redemption_rate)
-                    else:
-                        points_used = points_to_use
-                    
-                    # Deduct points from customer
-                    bill.customer.loyalty_points -= points_used
-                    if bill.customer.loyalty_points < 0:
-                        bill.customer.loyalty_points = 0
-                    bill.customer.save()
-
-        # Calculate tax on amount after both discounts
+        # Calculate tax on amount after membership discount
         tax_rate = float(data.get('tax_rate', 0) or 0)
-        amount_after_all_discounts = amount_after_membership_discount - points_discount
+        amount_after_all_discounts = float(subtotal) - float(discount_amount)
         if amount_after_all_discounts < 0:
             amount_after_all_discounts = 0.0
         tax_amount = float(amount_after_all_discounts) * (float(tax_rate) / 100.0)
@@ -437,27 +519,48 @@ def checkout_bill(id):
         # Calculate final amount
         final_amount = amount_after_all_discounts + tax_amount
 
+        # Update bill_date if provided in checkout data (for selected date from frontend)
+        if data.get('bill_date'):
+            try:
+                date_str = data.get('bill_date')
+                if isinstance(date_str, str) and len(date_str) == 10:  # YYYY-MM-DD format
+                    # Parse as local date and convert to UTC
+                    # Assuming IST (UTC+5:30), use noon local time to avoid edge cases
+                    local_date = datetime.strptime(date_str, '%Y-%m-%d')
+                    # Use noon local time (to avoid timezone edge cases) and convert to UTC
+                    bill.bill_date = local_date.replace(hour=12, minute=0, second=0, microsecond=0) - timedelta(hours=5, minutes=30)
+            except (ValueError, AttributeError):
+                # If parsing fails, keep existing bill_date
+                pass
+
+        if not bill.branch:
+            appointment = None
+            if bill.appointment:
+                try:
+                    bill.appointment.reload()
+                    appointment = bill.appointment
+                except Exception:
+                    appointment = bill.appointment
+            branch = resolve_bill_branch(
+                current_user=current_user,
+                appointment=appointment,
+                customer=bill.customer
+            )
+            if branch:
+                bill.branch = branch
+
         # Update bill
         bill.subtotal = subtotal
         bill.discount_amount = discount_amount
         bill.discount_type = discount_type
-        bill.points_used = points_used
-        bill.points_discount = points_discount
         bill.tax_amount = tax_amount
         bill.tax_rate = tax_rate
         bill.final_amount = final_amount
         bill.payment_mode = data['payment_mode']
-        bill.booking_status = data.get('booking_status', 'service-completed')
+        # Always set to 'service-completed' when checkout happens to mark as paid
+        bill.booking_status = 'service-completed'
         bill.discount_approval_status = 'none'  # Owners don't need approval
         bill.updated_at = datetime.utcnow()
-
-        # Process payment
-        if data['payment_mode'] == 'wallet' and bill.customer:
-            bill.customer.reload()
-            if bill.customer.wallet_balance < final_amount:
-                return jsonify({'error': 'Insufficient wallet balance'}), 400
-            bill.customer.wallet_balance -= final_amount
-            bill.customer.save()
 
         # Handle prepaid package payment
         if 'prepaid_package_id' in data and data['prepaid_package_id']:
@@ -472,61 +575,42 @@ def checkout_bill(id):
             except PrepaidPackage.DoesNotExist:
                 pass
 
-        # Update product stock
-        for item in bill.items:
-            if item.item_type == 'product' and item.product:
-                item.product.reload()
-                item.product.stock_quantity -= item.quantity
-                if item.product.stock_quantity < 0:
-                    return jsonify({'error': f'Insufficient stock for product: {item.product.name}'}), 400
-                item.product.save()
-
-        # Update customer loyalty points (earned on final amount after all discounts)
-        points_earned = 0
-        if bill.customer:
-            bill.customer.reload()
-            loyalty_settings = LoyaltyProgramSettings.get_settings()
-            if loyalty_settings.enabled and loyalty_settings.earning_rate:
-                earning_rate = float(loyalty_settings.earning_rate) if loyalty_settings.earning_rate else 0.0
-                if earning_rate > 0:
-                    points_earned = int(float(final_amount) / float(earning_rate))
-                    bill.customer.loyalty_points += points_earned
-                    bill.customer.save()
+        # Update product stock - validate and reduce for all products in bill
+        # Skip if bill is already checked out to prevent double stock reduction
+        if not is_already_checked_out:
+            products_to_update = []
+            for item in bill.items:
+                if item.item_type == 'product' and item.product:
+                    # Reload product to get latest stock count (handles concurrent checkouts)
+                    item.product.reload()
+                    quantity_needed = int(item.quantity) if item.quantity else 1
                     
-                    # Record earned transaction
-                    transaction = LoyaltyPointsTransaction(
-                        customer=bill.customer,
-                        bill=bill,
-                        transaction_type='earned',
-                        points=points_earned,
-                        balance_after=bill.customer.loyalty_points,
-                        description=f'Earned from Bill {bill.bill_number}'
-                    )
-                    transaction.save()
+                    # Validate stock availability before reducing
+                    if item.product.stock_quantity is not None:
+                        if item.product.stock_quantity < quantity_needed:
+                            return jsonify({
+                                'error': f'Insufficient stock for product: {item.product.name}. Available: {item.product.stock_quantity}, Required: {quantity_needed}'
+                            }), 400
+                        
+                        # Store product and quantity for batch update
+                        products_to_update.append({
+                            'product': item.product,
+                            'quantity': quantity_needed
+                        })
             
-            # Record redeemed transaction if points were used
-            if points_used > 0:
-                bill.customer.reload()
-                transaction = LoyaltyPointsTransaction(
-                    customer=bill.customer,
-                    bill=bill,
-                    transaction_type='redeemed',
-                    points=-points_used,
-                    balance_after=bill.customer.loyalty_points,
-                    description=f'Redeemed {points_used} points on Bill {bill.bill_number}'
-                )
-                transaction.save()
-        
-        bill.points_earned = points_earned
+            # Reduce stock for all products (atomic operation - all or nothing)
+            for product_update in products_to_update:
+                product_update['product'].stock_quantity -= product_update['quantity']
+                if product_update['product'].stock_quantity < 0:
+                    product_update['product'].stock_quantity = 0  # Prevent negative stock
+                product_update['product'].save()
+
         bill.save()
 
         return jsonify({
             'message': 'Checkout completed successfully',
             'bill_number': bill.bill_number,
-            'final_amount': bill.final_amount,
-            'points_earned': points_earned,
-            'points_used': points_used,
-            'points_discount': points_discount
+            'final_amount': bill.final_amount
         })
     except Bill.DoesNotExist:
         return jsonify({'error': 'Bill not found'}), 404
@@ -584,51 +668,6 @@ def delete_bill(id):
                 item.product.reload()
                 item.product.stock_quantity += item.quantity
                 item.product.save()
-
-        # Restore wallet balance
-        if bill.payment_mode == 'wallet' and bill.customer:
-            bill.customer.reload()
-            bill.customer.wallet_balance += bill.final_amount
-            bill.customer.save()
-
-        # Restore loyalty points - subtract points earned, restore points used
-        if bill.customer:
-            bill.customer.reload()
-            loyalty_settings = LoyaltyProgramSettings.get_settings()
-            if loyalty_settings.enabled:
-                # Restore points that were used (add them back)
-                if bill.points_used and bill.points_used > 0:
-                    bill.customer.loyalty_points += bill.points_used
-                    
-                    # Record reverse redemption transaction
-                    transaction = LoyaltyPointsTransaction(
-                        customer=bill.customer,
-                        bill=bill,
-                        transaction_type='earned',  # Reverse of redeemed
-                        points=bill.points_used,
-                        balance_after=bill.customer.loyalty_points,
-                        description=f'Points restored from deleted Bill {bill.bill_number}'
-                    )
-                    transaction.save()
-                
-                # Subtract points that were earned
-                if bill.points_earned and bill.points_earned > 0:
-                    bill.customer.loyalty_points -= bill.points_earned
-                    if bill.customer.loyalty_points < 0:
-                        bill.customer.loyalty_points = 0
-                    
-                    # Record reverse earned transaction
-                    transaction = LoyaltyPointsTransaction(
-                        customer=bill.customer,
-                        bill=bill,
-                        transaction_type='redeemed',  # Reverse of earned
-                        points=-bill.points_earned,
-                        balance_after=bill.customer.loyalty_points,
-                        description=f'Points removed from deleted Bill {bill.bill_number}'
-                    )
-                    transaction.save()
-                
-                bill.customer.save()
 
         bill.save()
 
@@ -719,5 +758,361 @@ def get_bill_stats():
             'average_bill_value': round(avg_bill_value, 2),
             'payment_mode_breakdown': payment_modes
         })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@bill_bp.route('/bills/<bill_id>/invoice', methods=['GET'])
+@require_auth
+def get_invoice_data(bill_id, current_user=None):
+    """Get complete invoice data for a bill"""
+    try:
+        bill = Bill.objects.get(id=bill_id)
+        
+        # Get customer data
+        customer_data = {
+            'id': None,
+            'name': 'Walk-in',
+            'mobile': None
+        }
+        if bill.customer:
+            try:
+                bill.customer.reload()
+                customer_data = {
+                    'id': str(bill.customer.id),
+                    'name': f"{bill.customer.first_name or ''} {bill.customer.last_name or ''}".strip(),
+                    'mobile': bill.customer.mobile
+                }
+            except:
+                pass
+        
+        # Get branch data
+        branch_data = {
+            'name': 'Saloon',
+            'address': '',
+            'city': '',
+            'phone': '',
+            'gstin': ''
+        }
+        if bill.branch:
+            try:
+                bill.branch.reload()
+                branch_data = {
+                    'name': bill.branch.name or 'Saloon',
+                    'address': bill.branch.address or '',
+                    'city': bill.branch.city or '',
+                    'phone': bill.branch.phone or '',
+                    'gstin': bill.branch.gstin or ''
+                }
+            except:
+                pass
+        
+        # Get bill items with full details
+        items = []
+        for idx, item in enumerate(bill.items or []):
+            item_name = 'Item'
+            item_type = item.item_type or 'service'
+            
+            # Get item name based on type
+            if item.item_type == 'service' and item.service:
+                try:
+                    item.service.reload()
+                    item_name = item.service.name if hasattr(item.service, 'name') else 'Service'
+                except:
+                    item_name = 'Service'
+            elif item.item_type == 'product' and item.product:
+                try:
+                    item.product.reload()
+                    item_name = item.product.name if hasattr(item.product, 'name') else 'Product'
+                except:
+                    item_name = 'Product'
+            elif item.item_type == 'package' and item.package:
+                try:
+                    item.package.reload()
+                    item_name = item.package.name if hasattr(item.package, 'name') else 'Package'
+                except:
+                    item_name = 'Package'
+            
+            # Get staff name
+            staff_name = 'N/A'
+            if item.staff:
+                try:
+                    item.staff.reload()
+                    staff_name = f"{item.staff.first_name or ''} {item.staff.last_name or ''}".strip() if hasattr(item.staff, 'first_name') else 'N/A'
+                except:
+                    staff_name = 'N/A'
+            
+            # Calculate tax per item (proportional)
+            item_tax = 0.0
+            if bill.tax_amount and bill.subtotal:
+                item_tax = (float(item.total) / float(bill.subtotal)) * float(bill.tax_amount) if bill.subtotal > 0 else 0.0
+            
+            items.append({
+                'id': idx + 1,
+                'name': item_name,
+                'type': item_type,
+                'staff_name': staff_name,
+                'quantity': int(item.quantity) if item.quantity else 1,
+                'price': float(item.price) if item.price else 0.0,
+                'tax': round(item_tax, 2),
+                'discount': float(item.discount) if item.discount else 0.0,
+                'total': float(item.total) if item.total else 0.0,
+                'start_time': item.start_time if item.start_time else None
+            })
+        
+        # Generate or retrieve invoice number
+        # Try to get from bill_number or generate sequential
+        invoice_number = getattr(bill, 'invoice_number', None)
+        if not invoice_number:
+            # Generate sequential invoice number based on bill creation order
+            try:
+                # Count bills created before this one (by created_at)
+                bills_before = Bill.objects(created_at__lt=bill.created_at).count()
+                invoice_num = bills_before + 1
+                invoice_number = f"INV-{invoice_num:06d}"
+            except:
+                # Fallback: use bill_number or generate
+                if bill.bill_number.startswith('BILL-'):
+                    parts = bill.bill_number.split('-')
+                    if len(parts) >= 2:
+                        try:
+                            # Try to extract a number from the timestamp
+                            num_part = parts[1] if len(parts) > 1 else '000001'
+                            # Use last 6 digits or generate sequential
+                            invoice_num = int(num_part[-6:]) if num_part[-6:].isdigit() else 1
+                            invoice_number = f"INV-{invoice_num:06d}"
+                        except:
+                            invoice_number = generate_invoice_number()
+                else:
+                    invoice_number = generate_invoice_number()
+        
+        # Format bill date for display as "Day, DD Mon, YYYY, HH:MM am/pm"
+        bill_date = bill.bill_date
+        booking_date_str = 'N/A'
+        booking_time_str = 'N/A'
+        
+        if bill_date:
+            # Format date as "Tue, 06 Jan, 2026"
+            booking_date_str = bill_date.strftime('%a, %d %b, %Y')
+            
+            # Get first item's start time if available, otherwise use bill_date time
+            if items and items[0].get('start_time'):
+                try:
+                    time_parts = items[0]['start_time'].split(':')
+                    if len(time_parts) >= 2:
+                        hour = int(time_parts[0])
+                        minute = int(time_parts[1])
+                        from datetime import time as dt_time
+                        time_obj = dt_time(hour, minute)
+                        booking_time_str = time_obj.strftime('%I:%M %p').lower()
+                except:
+                    # Fallback to bill_date time
+                    booking_time_str = bill_date.strftime('%I:%M %p').lower()
+            else:
+                # Use bill_date time
+                booking_time_str = bill_date.strftime('%I:%M %p').lower()
+        
+        invoice_data = {
+            'invoice_number': invoice_number,
+            'bill_number': bill.bill_number,
+            'bill_date': bill.bill_date.isoformat() if bill.bill_date else None,
+            'booking_date': booking_date_str,
+            'booking_time': booking_time_str,
+            'customer': customer_data,
+            'branch': branch_data,
+            'items': items,
+            'summary': {
+                'subtotal': float(bill.subtotal) if bill.subtotal else 0.0,
+                'discount': float(bill.discount_amount) if bill.discount_amount else 0.0,
+                'net': float(bill.subtotal) - float(bill.discount_amount) if bill.subtotal else 0.0,
+                'tax': float(bill.tax_amount) if bill.tax_amount else 0.0,
+                'tax_rate': float(bill.tax_rate) if bill.tax_rate else 0.0,
+                'total': float(bill.final_amount) if bill.final_amount else 0.0
+            },
+            'payment': {
+                'status': 'paid' if (bill.booking_status == 'service-completed' 
+                                    and bill.payment_mode 
+                                    and bill.final_amount > 0) else 'pending',
+                'mode': bill.payment_mode or 'cash',
+                'source': f"{bill.payment_mode or 'Cash'}: ₹{bill.final_amount or 0}" if (bill.payment_mode and bill.final_amount > 0) else 'Not paid'
+            }
+        }
+        
+        return jsonify(invoice_data)
+    except Bill.DoesNotExist:
+        return jsonify({'error': 'Bill not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@bill_bp.route('/bills/<bill_id>/invoice/pdf', methods=['GET'])
+@require_auth
+def download_invoice_pdf(bill_id, current_user=None):
+    """Generate and download invoice as PDF"""
+    try:
+        from services.invoice_pdf_service import generate_invoice_pdf
+        
+        # Get invoice data
+        bill = Bill.objects.get(id=bill_id)
+        
+        # Get customer data
+        customer_data = {
+            'id': None,
+            'name': 'Walk-in',
+            'mobile': None
+        }
+        if bill.customer:
+            try:
+                bill.customer.reload()
+                customer_data = {
+                    'id': str(bill.customer.id),
+                    'name': f"{bill.customer.first_name or ''} {bill.customer.last_name or ''}".strip(),
+                    'mobile': bill.customer.mobile
+                }
+            except:
+                pass
+        
+        # Get branch data
+        branch_data = {
+            'name': 'Saloon',
+            'address': '',
+            'city': '',
+            'phone': '',
+            'gstin': ''
+        }
+        if bill.branch:
+            try:
+                bill.branch.reload()
+                branch_data = {
+                    'name': bill.branch.name or 'Saloon',
+                    'address': bill.branch.address or '',
+                    'city': bill.branch.city or '',
+                    'phone': bill.branch.phone or '',
+                    'gstin': bill.branch.gstin or ''
+                }
+            except:
+                pass
+        
+        # Get bill items
+        items = []
+        for idx, item in enumerate(bill.items or []):
+            item_name = 'Item'
+            item_type = item.item_type or 'service'
+            
+            if item.item_type == 'service' and item.service:
+                try:
+                    item.service.reload()
+                    item_name = item.service.name if hasattr(item.service, 'name') else 'Service'
+                except:
+                    item_name = 'Service'
+            elif item.item_type == 'product' and item.product:
+                try:
+                    item.product.reload()
+                    item_name = item.product.name if hasattr(item.product, 'name') else 'Product'
+                except:
+                    item_name = 'Product'
+            elif item.item_type == 'package' and item.package:
+                try:
+                    item.package.reload()
+                    item_name = item.package.name if hasattr(item.package, 'name') else 'Package'
+                except:
+                    item_name = 'Package'
+            
+            staff_name = 'N/A'
+            if item.staff:
+                try:
+                    item.staff.reload()
+                    staff_name = f"{item.staff.first_name or ''} {item.staff.last_name or ''}".strip() if hasattr(item.staff, 'first_name') else 'N/A'
+                except:
+                    staff_name = 'N/A'
+            
+            item_tax = 0.0
+            if bill.tax_amount and bill.subtotal:
+                item_tax = (float(item.total) / float(bill.subtotal)) * float(bill.tax_amount) if bill.subtotal > 0 else 0.0
+            
+            items.append({
+                'id': idx + 1,
+                'name': item_name,
+                'type': item_type,
+                'staff_name': staff_name,
+                'quantity': int(item.quantity) if item.quantity else 1,
+                'price': float(item.price) if item.price else 0.0,
+                'tax': round(item_tax, 2),
+                'discount': float(item.discount) if item.discount else 0.0,
+                'total': float(item.total) if item.total else 0.0,
+                'start_time': item.start_time if item.start_time else None
+            })
+        
+        # Generate or retrieve invoice number (same logic as get_invoice_data)
+        invoice_number = getattr(bill, 'invoice_number', None)
+        if not invoice_number:
+            try:
+                bills_before = Bill.objects(created_at__lt=bill.created_at).count()
+                invoice_num = bills_before + 1
+                invoice_number = f"INV-{invoice_num:06d}"
+            except:
+                if bill.bill_number.startswith('BILL-'):
+                    parts = bill.bill_number.split('-')
+                    if len(parts) >= 2:
+                        try:
+                            num_part = parts[1] if len(parts) > 1 else '000001'
+                            invoice_num = int(num_part[-6:]) if num_part[-6:].isdigit() else 1
+                            invoice_number = f"INV-{invoice_num:06d}"
+                        except:
+                            invoice_number = generate_invoice_number()
+                else:
+                    invoice_number = generate_invoice_number()
+        
+        bill_date = bill.bill_date
+        booking_date_str = bill_date.strftime('%a, %d %b, %Y') if bill_date else 'N/A'
+        booking_time_str = bill_date.strftime('%I:%M %p') if bill_date else 'N/A'
+        
+        if items and items[0].get('start_time'):
+            try:
+                time_parts = items[0]['start_time'].split(':')
+                if len(time_parts) >= 2:
+                    hour = int(time_parts[0])
+                    minute = int(time_parts[1])
+                    from datetime import time as dt_time
+                    time_obj = dt_time(hour, minute)
+                    booking_time_str = time_obj.strftime('%I:%M %p')
+            except:
+                pass
+        
+        invoice_data = {
+            'invoice_number': invoice_number,
+            'bill_number': bill.bill_number,
+            'bill_date': bill.bill_date.isoformat() if bill.bill_date else None,
+            'booking_date': booking_date_str,
+            'booking_time': booking_time_str,
+            'customer': customer_data,
+            'branch': branch_data,
+            'items': items,
+            'summary': {
+                'subtotal': float(bill.subtotal) if bill.subtotal else 0.0,
+                'discount': float(bill.discount_amount) if bill.discount_amount else 0.0,
+                'net': float(bill.subtotal) - float(bill.discount_amount) if bill.subtotal else 0.0,
+                'tax': float(bill.tax_amount) if bill.tax_amount else 0.0,
+                'tax_rate': float(bill.tax_rate) if bill.tax_rate else 0.0,
+                'total': float(bill.final_amount) if bill.final_amount else 0.0
+            },
+            'payment': {
+                'status': 'paid' if (bill.booking_status == 'service-completed' 
+                                    and bill.payment_mode 
+                                    and bill.final_amount > 0) else 'pending',
+                'mode': bill.payment_mode or 'cash',
+                'source': f"{bill.payment_mode or 'Cash'}: ₹{bill.final_amount or 0}" if (bill.payment_mode and bill.final_amount > 0) else 'Not paid'
+            }
+        }
+        
+        # Generate PDF
+        pdf_bytes = generate_invoice_pdf(invoice_data)
+        
+        # Create response
+        response = make_response(pdf_bytes)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'attachment; filename=invoice_{invoice_number}.pdf'
+        
+        return response
+    except Bill.DoesNotExist:
+        return jsonify({'error': 'Bill not found'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500

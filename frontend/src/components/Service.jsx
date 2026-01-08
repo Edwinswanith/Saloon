@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react'
 import {
-  FaBars,
-  FaBell,
-  FaUser,
   FaEdit,
   FaTrash,
   FaPlus,
   FaArrowsAltV,
   FaChevronDown,
   FaCloudUploadAlt,
+  FaSearch,
+  FaTimes,
 } from 'react-icons/fa'
 import './Service.css'
 import { API_BASE_URL } from '../config'
 import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
 import { useAuth } from '../contexts/AuthContext'
+import Header from './Header'
 
 const Service = () => {
   const { currentBranch } = useAuth()
@@ -28,6 +28,7 @@ const Service = () => {
   const [editingGroup, setEditingGroup] = useState(null)
   const [editingService, setEditingService] = useState(null)
   const [selectedGroupId, setSelectedGroupId] = useState(null)
+  const [showGroupDropdown, setShowGroupDropdown] = useState(false)
   const [groupFormData, setGroupFormData] = useState({ name: '' })
   const [serviceFormData, setServiceFormData] = useState({
     name: '',
@@ -62,6 +63,17 @@ const Service = () => {
       })
     }
   }, [expandedGroups])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showGroupDropdown && !event.target.closest('.custom-dropdown-wrapper')) {
+        setShowGroupDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showGroupDropdown])
 
   const fetchServiceGroups = async () => {
     try {
@@ -206,6 +218,7 @@ const Service = () => {
         setShowServiceModal(false)
         setEditingService(null)
         setSelectedGroupId(null)
+        setShowGroupDropdown(false)
         setServiceFormData({
           name: '',
           price: '',
@@ -327,40 +340,31 @@ const Service = () => {
 
   return (
     <div className="service-page">
-      {/* Header */}
-      <header className="service-header">
-        <div className="header-left">
-          <button className="menu-icon">
-            <FaBars />
-          </button>
-          <h1 className="header-title">Service</h1>
-        </div>
-        <div className="header-right">
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-          <button className="header-icon bell-icon">
-            <FaBell />
-          </button>
-          <button className="header-icon user-icon">
-            <FaUser />
-          </button>
-        </div>
-      </header>
-
+      <Header title="Services" />
+      
       <div className="service-container">
         {/* Service Card */}
         <div className="service-card">
           {/* Search and Action Bar */}
           <div className="service-action-bar">
             <div className="search-wrapper">
+              <FaSearch className="search-icon" />
               <input
                 type="text"
                 className="search-input"
-                placeholder="Search services"
+                placeholder="Search services or groups..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
+              {searchQuery && (
+                <button 
+                  className="search-clear"
+                  onClick={() => setSearchQuery('')}
+                  title="Clear search"
+                >
+                  <FaTimes />
+                </button>
+              )}
             </div>
             <div className="action-buttons">
               <button className="action-btn import-btn" onClick={() => setShowImportModal(true)}>
@@ -370,7 +374,9 @@ const Service = () => {
                 setEditingGroup(null)
                 setGroupFormData({ name: '' })
                 setShowGroupModal(true)
-              }}>Add Service Group</button>
+              }}>
+                <FaPlus /> Add Service Group
+              </button>
             </div>
           </div>
 
@@ -440,10 +446,22 @@ const Service = () => {
                   </div>
                   {expandedGroups[group.id] && servicesByGroup[group.id] && (
                     <div className="services-list">
+                      {servicesByGroup[group.id].length === 0 ? (
+                        <div className="empty-services">No services in this group</div>
+                      ) : (
+                        <div className="services-grid">
                       {servicesByGroup[group.id].map((service) => (
-                        <div key={service.id} className="service-item">
-                          <span>{service.name} - ₹{service.price}</span>
-                          <div className="service-actions">
+                            <div key={service.id} className="service-item-card">
+                              <div className="service-card-header">
+                                <span className="service-card-name">{service.name}</span>
+                              </div>
+                              <div className="service-card-details">
+                                <span className="service-card-price">₹{parseFloat(service.price).toLocaleString('en-IN')}</span>
+                                {service.duration && (
+                                  <span className="service-card-duration">{service.duration} min</span>
+                                )}
+                              </div>
+                              <div className="service-card-actions">
                             <button 
                               className="icon-btn edit-btn" 
                               title="Edit"
@@ -479,6 +497,7 @@ const Service = () => {
                                   if (response.ok) {
                                     fetchServicesForGroup(group.id)
                                     fetchServiceGroups()
+                                        showSuccess('Service deleted successfully')
                                   } else {
                                     showError('Failed to delete service')
                                   }
@@ -493,6 +512,8 @@ const Service = () => {
                           </div>
                         </div>
                       ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -527,7 +548,10 @@ const Service = () => {
 
       {/* Add/Edit Service Modal */}
       {showServiceModal && (
-        <div className="modal-overlay" onClick={() => setShowServiceModal(false)}>
+        <div className="modal-overlay" onClick={() => {
+          setShowServiceModal(false)
+          setShowGroupDropdown(false)
+        }}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h2>{editingService ? 'Edit Service' : 'Add Service'}</h2>
             <div className="form-group">
@@ -542,16 +566,46 @@ const Service = () => {
             </div>
             <div className="form-group">
               <label>Service Group *</label>
-              <select
-                value={serviceFormData.groupId}
-                onChange={(e) => setServiceFormData({ ...serviceFormData, groupId: e.target.value })}
-                required
-              >
-                <option value="">Select Group</option>
+              <div className="custom-dropdown-wrapper">
+                <button
+                  type="button"
+                  className="custom-dropdown-toggle"
+                  onClick={() => setShowGroupDropdown(!showGroupDropdown)}
+                >
+                  <span>
+                    {serviceFormData.groupId 
+                      ? serviceGroups.find(g => g.id === serviceFormData.groupId)?.name || 'Select Group'
+                      : 'Select Group'
+                    }
+                  </span>
+                  <FaChevronDown className={`dropdown-arrow ${showGroupDropdown ? 'open' : ''}`} />
+                </button>
+                {showGroupDropdown && (
+                  <div className="custom-dropdown-menu">
+                    <div
+                      className={`custom-dropdown-option ${!serviceFormData.groupId ? 'selected' : ''}`}
+                      onClick={() => {
+                        setServiceFormData({ ...serviceFormData, groupId: '' })
+                        setShowGroupDropdown(false)
+                      }}
+                    >
+                      Select Group
+                    </div>
                 {serviceGroups.map(group => (
-                  <option key={group.id} value={group.id}>{group.name}</option>
+                      <div
+                        key={group.id}
+                        className={`custom-dropdown-option ${serviceFormData.groupId === group.id ? 'selected' : ''}`}
+                        onClick={() => {
+                          setServiceFormData({ ...serviceFormData, groupId: group.id })
+                          setShowGroupDropdown(false)
+                        }}
+                      >
+                        {group.name}
+                      </div>
                 ))}
-              </select>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="form-group">
               <label>Price *</label>
@@ -583,7 +637,10 @@ const Service = () => {
               />
             </div>
             <div className="modal-actions">
-              <button className="btn-cancel" onClick={() => setShowServiceModal(false)}>Cancel</button>
+              <button className="btn-cancel" onClick={() => {
+                setShowServiceModal(false)
+                setShowGroupDropdown(false)
+              }}>Cancel</button>
               <button className="btn-save" onClick={handleSaveService}>Save</button>
             </div>
           </div>

@@ -229,6 +229,38 @@
   font-style: italic;
 }
 
+.view-btn {
+  padding: 4px 12px;
+  max-height: 32px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  background: transparent;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 70px;
+  min-height: 32px;
+}
+
+.view-btn:hover {
+  background: rgba(15, 118, 110, 0.08);
+  border-color: #0F766E;
+  color: #0F766E;
+}
+
+.view-btn:active,
+.view-btn.active {
+  background: #0F766E;
+  border-color: #0F766E;
+  color: white;
+  font-weight: 600;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .filters-actions-section {
@@ -246,6 +278,219 @@
 
   .deleted-bills-table {
     min-width: 800px;
+  }
+
+  .view-btn {
+    padding: 3px 10px;
+    height: 26px;
+    font-size: 11px;
+    min-width: 55px;
+  }
+}
+
+/* Small Mobile */
+@media (max-width: 480px) {
+  .view-btn {
+    padding: 2px 8px;
+    height: 24px;
+    font-size: 10px;
+    min-width: 50px;
+  }
+}
+
+/* ============================================================================
+   DELETED BILL DETAILS MODAL
+   ============================================================================ */
+
+.customer-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.customer-modal-content {
+  background: #ffffff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 800px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: visible;
+  max-height: none;
+}
+
+.customer-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #ffffff;
+  min-height: 56px;
+  box-sizing: border-box;
+}
+
+.customer-modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  flex: 1;
+  line-height: 1.4;
+}
+
+.customer-modal-close {
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  font-size: 16px;
+  color: #6b7280;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 12px;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.customer-modal-close:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.1);
+  color: #374151;
+}
+
+.customer-modal-close:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.customer-modal-close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.customer-modal-body {
+  padding: 1.5rem;
+}
+
+.customer-modal-loading,
+.customer-modal-error {
+  text-align: center;
+  padding: 3rem;
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+.customer-modal-error {
+  color: #ef4444;
+}
+
+/* Customer Details Sections */
+.customer-details-section {
+  margin-bottom: 2rem;
+}
+
+.customer-details-section:last-child {
+  margin-bottom: 0;
+}
+
+.customer-details-section h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0.5rem;
+}
+
+.customer-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.customer-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.detail-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-value {
+  font-size: 1rem;
+  color: #1f2937;
+  font-weight: 500;
+}
+
+.detail-value.revenue-stat {
+  color: #059669;
+  font-weight: 600;
+}
+
+/* Responsive Modal */
+@media (max-width: 768px) {
+  .customer-modal-content {
+    max-width: 95%;
+  }
+
+  .customer-modal-header {
+    padding: 12px 16px;
+  }
+
+  .customer-modal-header h2 {
+    font-size: 1.125rem;
+  }
+
+  .customer-modal-body {
+    padding: 1rem;
+  }
+
+  .customer-details-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .customer-modal-overlay {
+    padding: 10px;
+  }
+
+  .customer-modal-content {
+    max-width: 100%;
+    border-radius: 12px 12px 0 0;
+  }
+
+  .customer-modal-header {
+    padding: 12px 16px;
+    min-height: 52px;
+  }
+
+  .customer-modal-header h2 {
+    font-size: 1rem;
+  }
+
+  .customer-modal-body {
+    padding: 0.875rem;
   }
 }
 

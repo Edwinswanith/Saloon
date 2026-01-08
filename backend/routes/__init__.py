@@ -13,13 +13,13 @@ from .inventory_routes import inventory_bp
 from .dashboard_routes import dashboard_bp
 from .report_routes import report_bp
 from .client_value_routes import client_value_bp
+from .service_product_routes import service_product_bp
 from .lead_routes import lead_bp
 from .feedback_routes import feedback_bp
 from .attendance_routes import attendance_bp
 from .asset_routes import asset_bp
 from .cash_routes import cash_bp
 from .membership_plan_routes import membership_plan_bp
-from .loyalty_program_routes import loyalty_program_bp
 from .referral_program_routes import referral_program_bp
 from .tax_routes import tax_bp
 from .manager_routes import manager_bp
@@ -47,13 +47,13 @@ def register_routes(app):
     app.register_blueprint(dashboard_bp, url_prefix='/api/dashboard')
     app.register_blueprint(report_bp, url_prefix='/api/reports')
     app.register_blueprint(client_value_bp)
+    app.register_blueprint(service_product_bp)
     app.register_blueprint(lead_bp, url_prefix='/api/leads')
     app.register_blueprint(feedback_bp, url_prefix='/api/feedback')
     app.register_blueprint(attendance_bp, url_prefix='/api/attendance')
     app.register_blueprint(asset_bp, url_prefix='/api/assets')
     app.register_blueprint(cash_bp, url_prefix='/api/cash')
     app.register_blueprint(membership_plan_bp, url_prefix='/api/membership-plans')
-    app.register_blueprint(loyalty_program_bp, url_prefix='/api/loyalty-program')
     app.register_blueprint(referral_program_bp, url_prefix='/api/referral-program')
     app.register_blueprint(tax_bp, url_prefix='/api/tax')
     app.register_blueprint(manager_bp, url_prefix='/api/managers')

@@ -199,13 +199,14 @@
 }
 
 .view-btn {
-  color: #3b82f6;
-  border-color: #93c5fd;
+  color: #0F766E;
+  border-color: rgba(15, 118, 110, 0.3);
 }
 
 .view-btn:hover {
-  background: #dbeafe;
-  border-color: #3b82f6;
+  background: rgba(15, 118, 110, 0.08);
+  border-color: #0F766E;
+  color: #0F766E;
 }
 
 .edit-btn {
@@ -241,11 +242,84 @@
   }
 
   .table-container {
-    overflow-x: scroll;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .staffs-table {
     min-width: 800px;
+    font-size: var(--text-xs);
+  }
+
+  .staffs-table th,
+  .staffs-table td {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .add-staff-btn {
+    padding: var(--space-4);
+    min-height: 44px;
+  }
+
+  .modal-content {
+    max-width: 95%;
+    padding: var(--space-4);
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+    gap: var(--space-2);
+  }
+
+  .btn-cancel,
+  .btn-save {
+    width: 100%;
+    padding: var(--space-4);
+    min-height: 44px;
+  }
+}
+
+/* Small Mobile */
+@media (max-width: 480px) {
+  .staffs-table {
+    min-width: 700px;
+    font-size: 11px;
+  }
+
+  .staffs-table th,
+  .staffs-table td {
+    padding: var(--space-2);
+  }
+
+  .modal-content {
+    max-width: 100%;
+    width: 100%;
+    padding: var(--space-3);
+    border-radius: 16px 16px 0 0;
+  }
+
+  .modal-content h2 {
+    font-size: var(--text-lg);
+  }
+
+  .form-group {
+    margin-bottom: var(--space-3);
+  }
+
+  .form-group label {
+    font-size: var(--text-sm);
+  }
+
+  .form-group input {
+    font-size: 16px; /* Prevents zoom on iOS */
+    padding: var(--space-3);
+    min-height: 44px;
+  }
+
+  .btn-cancel,
+  .btn-save {
+    padding: var(--space-4);
+    font-size: var(--text-base);
   }
 }
 

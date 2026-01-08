@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { FaBars, FaUser, FaEdit, FaTrash } from 'react-icons/fa'
+import { FaEdit, FaTrash } from 'react-icons/fa'
 import './Inventory.css'
 import { apiGet, apiPost, apiDelete } from '../utils/api'
 import { useAuth } from '../contexts/AuthContext'
@@ -122,20 +122,6 @@ const Inventory = () => {
 
   return (
     <div className="inventory-page">
-      {/* Header */}
-      <header className="inventory-header">
-        <div className="header-left">
-          <button className="menu-icon"><FaBars /></button>
-          <h1 className="header-title">Inventory</h1>
-        </div>
-        <div className="header-right">
-          <button className="user-icon"><FaUser /></button>
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-        </div>
-      </header>
-
       <div className="inventory-container">
         {/* Inventory Card */}
         <div className="inventory-card">

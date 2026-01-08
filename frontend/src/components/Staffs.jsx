@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import {
-  FaBars,
-  FaBell,
-  FaUser,
   FaList,
   FaEdit,
   FaTrash,
@@ -174,27 +171,6 @@ const Staffs = () => {
 
   return (
     <div className="staffs-page">
-      {/* Header */}
-      <header className="staffs-header">
-        <div className="header-left">
-          <button className="menu-icon">
-            <FaBars />
-          </button>
-          <h1 className="header-title">Staffs</h1>
-        </div>
-        <div className="header-right">
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-          <button className="header-icon bell-icon">
-            <FaBell />
-          </button>
-          <button className="header-icon user-icon">
-            <FaUser />
-          </button>
-        </div>
-      </header>
-
       <div className="staffs-container">
         {/* Staff List Card */}
         <div className="staffs-card">

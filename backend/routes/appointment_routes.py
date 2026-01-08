@@ -1,8 +1,9 @@
 from flask import Blueprint, request, jsonify
-from models import Appointment, Customer, Staff, Service
+from models import Appointment, Customer, Staff, Service, Bill
 from datetime import datetime, date, time, timedelta
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
+from mongoengine import Q
 from utils.branch_filter import get_selected_branch
 from utils.auth import require_auth
 
@@ -559,3 +560,77 @@ def get_appointment_stats(current_user=None):
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@appointment_bp.route('/appointments/<appointment_id>/bill', methods=['GET'])
+@require_auth
+def get_appointment_bill(appointment_id, current_user=None):
+    """Find bill associated with an appointment"""
+    try:
+        appointment = Appointment.objects.get(id=appointment_id)
+        
+        # First, check for direct appointment reference (preferred method)
+        bills_with_reference = Bill.objects(
+            appointment=appointment,
+            is_deleted=False
+        ).order_by('-created_at')
+        
+        if bills_with_reference:
+            # Return the most recent bill (checked out or not)
+            # Frontend can filter if needed
+            return jsonify({
+                'bill_id': str(bills_with_reference[0].id),
+                'bill_number': bills_with_reference[0].bill_number,
+                'is_checked_out': (bills_with_reference[0].booking_status == 'service-completed' 
+                                  and bills_with_reference[0].payment_mode is not None)
+            })
+        
+        # Fall back to legacy method: match by customer, date, and service
+        if not appointment.customer:
+            return jsonify({'error': 'Appointment has no customer', 'bill_id': None}), 404
+        
+        appointment_date = appointment.appointment_date
+        if not appointment_date:
+            return jsonify({'error': 'Appointment has no date', 'bill_id': None}), 404
+        
+        # Convert appointment date to datetime range for bill_date comparison
+        start_datetime = datetime.combine(appointment_date, datetime.min.time())
+        end_datetime = datetime.combine(appointment_date, datetime.max.time())
+        
+        # Find bills for this customer on this date
+        bills = Bill.objects(
+            customer=appointment.customer,
+            bill_date__gte=start_datetime,
+            bill_date__lte=end_datetime,
+            is_deleted=False
+        ).order_by('-bill_date')
+        
+        # If appointment has a service, try to match bills with that service
+        if appointment.service:
+            matching_bills = []
+            for bill in bills:
+                for item in (bill.items or []):
+                    if item.service and str(item.service.id) == str(appointment.service.id):
+                        matching_bills.append(bill)
+                        break
+            if matching_bills:
+                return jsonify({
+                    'bill_id': str(matching_bills[0].id),
+                    'bill_number': matching_bills[0].bill_number,
+                    'is_checked_out': (matching_bills[0].booking_status == 'service-completed' 
+                                      and matching_bills[0].payment_mode is not None)
+                })
+        
+        # If no service match, return the first bill for this customer on this date
+        if bills:
+            return jsonify({
+                'bill_id': str(bills[0].id),
+                'bill_number': bills[0].bill_number,
+                'is_checked_out': (bills[0].booking_status == 'service-completed' 
+                                  and bills[0].payment_mode is not None)
+            })
+        
+        return jsonify({'error': 'No bill found for this appointment', 'bill_id': None}), 404
+    except Appointment.DoesNotExist:
+        return jsonify({'error': 'Appointment not found', 'bill_id': None}), 404
+    except Exception as e:
+        return jsonify({'error': str(e), 'bill_id': None}), 500

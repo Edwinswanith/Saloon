@@ -81,7 +81,7 @@ def create_dummy_owner():
         # Create new owner
         password = 'owner123'
         owner = Owner(
-            first_name='Salon',
+            first_name='Saloon',
             last_name='Owner',
             email='owner@salon.com',
             mobile='9999999999',

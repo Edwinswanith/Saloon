@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import {
-  FaBars,
-  FaBell,
-  FaUser,
   FaEdit,
   FaTrash,
   FaPlus,
@@ -147,27 +144,6 @@ const Membership = () => {
 
   return (
     <div className="membership-page">
-      {/* Header */}
-      <header className="membership-header">
-        <div className="header-left">
-          <button className="menu-icon">
-            <FaBars />
-          </button>
-          <h1 className="header-title">Membership</h1>
-        </div>
-        <div className="header-right">
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-          <button className="header-icon bell-icon">
-            <FaBell />
-          </button>
-          <button className="header-icon user-icon">
-            <FaUser />
-          </button>
-        </div>
-      </header>
-
       <div className="membership-container">
         {/* Membership Card */}
         <div className="membership-card">

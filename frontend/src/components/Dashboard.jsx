@@ -4,6 +4,9 @@ import './Dashboard.css'
 import { API_BASE_URL } from '../config'
 import { useAuth } from '../contexts/AuthContext'
 import { apiGet } from '../utils/api'
+import DashboardStatsCards from './DashboardStatsCards'
+import TopMovingItems from './TopMovingItems'
+import Top10Customers from './Top10Customers'
 import {
   PieChart,
   Pie,
@@ -28,17 +31,31 @@ import {
   FaCreditCard,
   FaMobileAlt,
   FaMoneyBillWave,
-  FaWallet,
   FaChartBar,
   FaBullseye,
   FaPhone,
   FaCalendar,
+  FaCalendarCheck,
   FaCheckCircle,
   FaTimesCircle,
   FaCircle,
   FaInfoCircle,
   FaBell,
-  FaStar
+  FaStar,
+  FaTrophy,
+  FaMedal,
+  FaDollarSign,
+  FaCoins,
+  FaHandSparkles,
+  FaAward,
+  FaClipboardList,
+  FaUser,
+  FaTimes,
+  FaChartLine,
+  FaArrowUp,
+  FaArrowDown,
+  FaMinus,
+  FaExclamationCircle
 } from 'react-icons/fa'
 
 const Dashboard = () => {
@@ -63,11 +80,11 @@ const Dashboard = () => {
   const [topCustomers, setTopCustomers] = useState([])
   const [topOfferings, setTopOfferings] = useState([])
   const [revenueBreakdown, setRevenueBreakdown] = useState({
-    service: 0,
-    product: 0,
-    package: 0,
-    prepaid: 0,
-    membership: 0,
+    service: { amount: 0, percentage: 0 },
+    product: { amount: 0, percentage: 0 },
+    package: { amount: 0, percentage: 0 },
+    prepaid: { amount: 0, percentage: 0 },
+    membership: { amount: 0, percentage: 0 },
   })
   const [paymentDistribution, setPaymentDistribution] = useState([])
   const [clientFunnel, setClientFunnel] = useState({
@@ -80,6 +97,36 @@ const Dashboard = () => {
     lost: 0,
   })
   const [alerts, setAlerts] = useState([])
+  const [showStaffModal, setShowStaffModal] = useState(false)
+  const [selectedStaff, setSelectedStaff] = useState(null)
+  const [topMovingItems, setTopMovingItems] = useState({ 
+    services: [], 
+    packages: [], 
+    products: [] 
+  })
+  const [clientSource, setClientSource] = useState([])
+  const [showOfferingModal, setShowOfferingModal] = useState(false)
+  const [selectedOffering, setSelectedOffering] = useState(null)
+  const [offeringClients, setOfferingClients] = useState([])
+  const [loadingOfferingClients, setLoadingOfferingClients] = useState(false)
+
+  // Helper function to get local date string (YYYY-MM-DD) in IST/local timezone
+  const getLocalDateString = (date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  // Get date range for current month (used for Top Performer - always shows current month)
+  const getCurrentMonthDateRange = () => {
+    const today = new Date()
+    const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1)
+    return {
+      start_date: getLocalDateString(currentMonthStart),
+      end_date: getLocalDateString(today),
+    }
+  }
 
   const getDateRange = () => {
     const today = new Date()
@@ -97,39 +144,39 @@ const Dashboard = () => {
     switch (filter) {
       case 'today':
         return {
-          start_date: today.toISOString().split('T')[0],
-          end_date: today.toISOString().split('T')[0],
+          start_date: getLocalDateString(today),
+          end_date: getLocalDateString(today),
         }
       case 'yesterday':
         return {
-          start_date: yesterday.toISOString().split('T')[0],
-          end_date: yesterday.toISOString().split('T')[0],
+          start_date: getLocalDateString(yesterday),
+          end_date: getLocalDateString(yesterday),
         }
       case 'week':
         return {
-          start_date: weekStart.toISOString().split('T')[0],
-          end_date: today.toISOString().split('T')[0],
+          start_date: getLocalDateString(weekStart),
+          end_date: getLocalDateString(today),
         }
       case 'month':
         // If selected month/year is current month/year, use today as end date
         // Otherwise, use the last day of the selected month
         const isCurrentMonth = selectedYear === today.getFullYear() && selectedMonth === today.getMonth() + 1
         return {
-          start_date: monthStart.toISOString().split('T')[0],
-          end_date: isCurrentMonth ? today.toISOString().split('T')[0] : monthEnd.toISOString().split('T')[0],
+          start_date: getLocalDateString(monthStart),
+          end_date: isCurrentMonth ? getLocalDateString(today) : getLocalDateString(monthEnd),
         }
       case 'year':
         // If selected year is current year, use today as end date
         // Otherwise, use the last day of the selected year
         const isCurrentYear = selectedYear === today.getFullYear()
         return {
-          start_date: yearStart.toISOString().split('T')[0],
-          end_date: isCurrentYear ? today.toISOString().split('T')[0] : yearEnd.toISOString().split('T')[0],
+          start_date: getLocalDateString(yearStart),
+          end_date: isCurrentYear ? getLocalDateString(today) : getLocalDateString(yearEnd),
         }
       default:
         return {
-          start_date: yesterday.toISOString().split('T')[0],
-          end_date: yesterday.toISOString().split('T')[0],
+          start_date: getLocalDateString(yesterday),
+          end_date: getLocalDateString(yesterday),
         }
     }
   }
@@ -192,57 +239,104 @@ const Dashboard = () => {
       })
 
       if (activeTab === 'sales') {
-        // Fetch top customers
-        const customersRes = await apiGet(`/api/dashboard/top-customers?${params}&limit=10`)
-        if (customersRes.ok) {
-          const customersData = await customersRes.json()
-          setTopCustomers(customersData || [])
-        }
+        // Fetch all sales data in parallel for better performance
+        const salesDataPromises = [
+          // Fetch top customers
+          apiGet(`/api/dashboard/top-customers?${params}&limit=10`)
+            .then(res => res.ok ? res.json() : [])
+            .then(data => setTopCustomers(Array.isArray(data) ? data : []))
+            .catch(err => {
+              console.error('Error fetching top customers:', err)
+              setTopCustomers([])
+            }),
 
-        // Fetch top offerings
-        const offeringsRes = await apiGet(`/api/dashboard/top-offerings?${params}&limit=10`)
-        if (offeringsRes.ok) {
-          const offeringsData = await offeringsRes.json()
-          setTopOfferings(offeringsData || [])
-        }
+          // Fetch top offerings
+          apiGet(`/api/dashboard/top-offerings?${params}&limit=10`)
+            .then(res => res.ok ? res.json() : [])
+            .then(data => {
+              console.log('Top offerings data:', data)
+              setTopOfferings(Array.isArray(data) ? data : [])
+            })
+            .catch(err => {
+              console.error('Error fetching top offerings:', err)
+              setTopOfferings([])
+            }),
 
-        // Fetch revenue breakdown
-        const revenueRes = await apiGet(`/api/dashboard/revenue-breakdown?${params}`)
-        if (revenueRes.ok) {
-          const revenueData = await revenueRes.json()
-          setRevenueBreakdown(revenueData.breakdown || {})
-        }
+          // Fetch revenue breakdown
+          apiGet(`/api/dashboard/revenue-breakdown?${params}`)
+            .then(res => res.ok ? res.json() : { breakdown: {} })
+            .then(data => setRevenueBreakdown(data.breakdown || {}))
+            .catch(err => {
+              console.error('Error fetching revenue breakdown:', err)
+              setRevenueBreakdown({})
+            }),
 
-        // Fetch payment distribution
-        const paymentRes = await apiGet(`/api/dashboard/payment-distribution?${params}`)
-        if (paymentRes.ok) {
-          const paymentData = await paymentRes.json()
-          setPaymentDistribution(paymentData.distribution || [])
-        }
+          // Fetch payment distribution
+          apiGet(`/api/dashboard/payment-distribution?${params}`)
+            .then(res => res.ok ? res.json() : { distribution: [] })
+            .then(data => setPaymentDistribution(data.distribution || []))
+            .catch(err => {
+              console.error('Error fetching payment distribution:', err)
+              setPaymentDistribution([])
+            }),
 
-        // Fetch client funnel
-        const funnelRes = await apiGet(`/api/dashboard/client-funnel?${params}`)
-        if (funnelRes.ok) {
-          const funnelData = await funnelRes.json()
-          setClientFunnel({
-            newClients: funnelData.customers?.new || 0,
-            returningClients: funnelData.customers?.returning || 0,
-            totalLeads: funnelData.leads?.total || 0,
-            contacted: 0, // Need to fetch from leads API
-            followups: 0, // Need to fetch from leads API
-            completed: funnelData.leads?.converted || 0,
-            lost: 0, // Need to fetch from leads API
-          })
-        }
+          // Fetch client funnel
+          apiGet(`/api/dashboard/client-funnel?${params}`)
+            .then(res => res.ok ? res.json() : { customers: {}, leads: {} })
+            .then(data => setClientFunnel({
+              newClients: data.customers?.new || 0,
+              returningClients: data.customers?.returning || 0,
+              totalLeads: data.leads?.total || 0,
+              contacted: 0, // Need to fetch from leads API
+              followups: 0, // Need to fetch from leads API
+              completed: data.leads?.converted || 0,
+              lost: 0, // Need to fetch from leads API
+            }))
+            .catch(err => {
+              console.error('Error fetching client funnel:', err)
+              setClientFunnel({
+                newClients: 0,
+                returningClients: 0,
+                totalLeads: 0,
+                contacted: 0,
+                followups: 0,
+                completed: 0,
+                lost: 0,
+              })
+            }),
 
-        // Fetch alerts
-        const alertsRes = await apiGet('/api/dashboard/alerts')
-        if (alertsRes.ok) {
-          const alertsData = await alertsRes.json()
-          setAlerts(alertsData || [])
-        }
+          // Fetch top moving items
+          apiGet(`/api/dashboard/top-moving-items?${params}`)
+            .then(res => res.ok ? res.json() : { services: [], packages: [], products: [] })
+            .then(data => setTopMovingItems(data || { services: [], packages: [], products: [] }))
+            .catch(err => {
+              console.error('Error fetching top moving items:', err)
+              setTopMovingItems({ services: [], packages: [], products: [] })
+            }),
+
+          // Fetch client source
+          apiGet(`/api/dashboard/client-source?${params}`)
+            .then(res => res.ok ? res.json() : { distribution: [] })
+            .then(data => setClientSource(data.distribution || []))
+            .catch(err => {
+              console.error('Error fetching client source:', err)
+              setClientSource([])
+            }),
+
+          // Fetch alerts
+          apiGet('/api/dashboard/alerts')
+            .then(res => res.ok ? res.json() : [])
+            .then(data => setAlerts(Array.isArray(data) ? data : []))
+            .catch(err => {
+              console.error('Error fetching alerts:', err)
+              setAlerts([])
+            }),
+        ]
+
+        // Wait for all sales data to load
+        await Promise.all(salesDataPromises)
       } else {
-        // Fetch staff performance (branch-specific)
+        // Fetch staff performance (branch-specific) - uses filtered date range
         const staffRes = await apiGet(`/api/dashboard/staff-performance?${params}`)
         if (staffRes.ok) {
           const staffData = await staffRes.json()
@@ -253,8 +347,11 @@ const Dashboard = () => {
           setStaffPerformance([])
         }
         
-        // Fetch top performer (company-wide, not branch-specific)
-        const topPerformerRes = await apiGet(`/api/dashboard/top-performer?${params}`)
+        // Fetch top performer (company-wide, not branch-specific) - always uses current month
+        const currentMonthRange = getCurrentMonthDateRange()
+        const topPerformerParams = new URLSearchParams(currentMonthRange)
+        topPerformerParams.append('_t', Date.now())
+        const topPerformerRes = await apiGet(`/api/dashboard/top-performer?${topPerformerParams}`)
         if (topPerformerRes.ok) {
           const performerData = await topPerformerRes.json()
           console.log('[Dashboard] Top Performer Data (Company-Wide):', performerData)
@@ -292,11 +389,11 @@ const Dashboard = () => {
         setTopCustomers([])
         setTopOfferings([])
         setRevenueBreakdown({
-          service: 0,
-          product: 0,
-          package: 0,
-          prepaid: 0,
-          membership: 0,
+          service: { amount: 0, percentage: 0 },
+          product: { amount: 0, percentage: 0 },
+          package: { amount: 0, percentage: 0 },
+          prepaid: { amount: 0, percentage: 0 },
+          membership: { amount: 0, percentage: 0 },
         })
         setPaymentDistribution([])
         setClientFunnel({
@@ -308,6 +405,7 @@ const Dashboard = () => {
           completed: 0,
           lost: 0,
         })
+        setClientSource([])
         setAlerts([{
           type: 'server_error',
           severity: 'error',
@@ -318,6 +416,49 @@ const Dashboard = () => {
       }
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleViewOfferingClients = async (offering) => {
+    setSelectedOffering(offering)
+    setShowOfferingModal(true)
+    setLoadingOfferingClients(true)
+    setOfferingClients([])
+
+    try {
+      const dateRange = getDateRange()
+      const params = new URLSearchParams({
+        name: offering.name,
+        type: offering.type,
+        start_date: dateRange.start_date,
+        end_date: dateRange.end_date
+      })
+      
+      const response = await apiGet(`/api/dashboard/offering-clients?${params}`)
+      if (response.ok) {
+        const data = await response.json()
+        setOfferingClients(data.clients || [])
+      } else {
+        console.error('Failed to fetch offering clients')
+      }
+    } catch (error) {
+      console.error('Error fetching offering clients:', error)
+    } finally {
+      setLoadingOfferingClients(false)
+    }
+  }
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A'
+    try {
+      const date = new Date(dateString)
+      return date.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      })
+    } catch (e) {
+      return dateString
     }
   }
 
@@ -339,27 +480,47 @@ const Dashboard = () => {
 
   // Prepare chart data
   const revenueChartData = [
-    { name: 'Service', value: revenueBreakdown.service, color: COLORS.primary },
-    { name: 'Product', value: revenueBreakdown.product, color: COLORS.success },
-    { name: 'Package', value: revenueBreakdown.package, color: COLORS.warning },
-    { name: 'Prepaid', value: revenueBreakdown.prepaid, color: COLORS.info },
-    { name: 'Membership', value: revenueBreakdown.membership, color: COLORS.purple },
+    { name: 'Service', value: revenueBreakdown.service?.amount || 0, color: COLORS.primary },
+    { name: 'Product', value: revenueBreakdown.product?.amount || 0, color: COLORS.success },
+    { name: 'Package', value: revenueBreakdown.package?.amount || 0, color: COLORS.warning },
+    { name: 'Prepaid', value: revenueBreakdown.prepaid?.amount || 0, color: COLORS.info },
+    { name: 'Membership', value: revenueBreakdown.membership?.amount || 0, color: COLORS.purple },
   ].filter(item => item.value > 0)
 
   const staffChartData = staffPerformance.slice(0, 10).map(staff => ({
     name: staff.staff_name.length > 15 ? staff.staff_name.substring(0, 15) + '...' : staff.staff_name,
     revenue: staff.total_revenue,
     services: staff.total_services,
+    appointments: staff.completed_appointments || 0,
   }))
 
-  const paymentChartData = paymentDistribution.map(payment => ({
-    name: payment.method,
-    value: payment.amount,
-    color: payment.method === 'Cash' ? COLORS.success :
-           payment.method === 'Card' ? COLORS.primary :
-           payment.method === 'UPI' ? COLORS.info :
-           COLORS.teal,
-  })).filter(item => item.value > 0)
+  // Prepare top performer bar chart data (normalized to 0-100 for visual consistency, but show actual values in tooltips)
+  const topPerformerBarData = topPerformer ? (() => {
+    // Find max values for normalization (use reasonable max values for better visualization)
+    const maxRevenue = Math.max(...staffPerformance.map(s => s.total_revenue), topPerformer.revenue) || 1
+    const maxServices = Math.max(...staffPerformance.map(s => s.total_services), topPerformer.service_count) || 1
+    const maxAppointments = Math.max(...staffPerformance.map(s => s.completed_appointments || 0), topPerformer.completed_appointments) || 1
+    
+    return [
+      { metric: 'Revenue', value: Math.min((topPerformer.revenue / maxRevenue) * 100, 100), formatted: formatCurrency(topPerformer.revenue), color: '#10b981' },
+      { metric: 'Services', value: Math.min((topPerformer.service_count / maxServices) * 100, 100), formatted: topPerformer.service_count, color: '#3b82f6' },
+      { metric: 'Rating', value: (topPerformer.avg_rating / 5) * 100, formatted: `${topPerformer.avg_rating}/5`, color: '#d97706' },
+      { metric: 'Appointments', value: Math.min((topPerformer.completed_appointments / maxAppointments) * 100, 100), formatted: topPerformer.completed_appointments, color: '#8b5cf6' },
+      { metric: 'Score', value: topPerformer.performance_score, formatted: `${topPerformer.performance_score}/100`, color: '#6366f1' },
+    ]
+  })() : []
+
+  const paymentChartData = paymentDistribution.map(payment => {
+    const mode = (payment.payment_mode || 'cash').toLowerCase()
+    return {
+      name: payment.payment_mode || 'Cash',
+      value: payment.amount,
+      color: mode === 'cash' ? COLORS.success :
+             mode === 'card' ? COLORS.primary :
+             mode === 'upi' ? COLORS.info :
+             COLORS.teal,
+    }
+  }).filter(item => item.value > 0)
 
   const funnelChartData = [
     { name: 'Leads', value: clientFunnel.totalLeads, color: COLORS.info },
@@ -367,6 +528,26 @@ const Dashboard = () => {
     { name: 'Completed', value: clientFunnel.completed, color: COLORS.success },
     { name: 'Lost', value: clientFunnel.lost, color: COLORS.danger },
   ].filter(item => item.value > 0)
+
+  const clientSourceChartData = clientSource.map((item, index) => {
+    const colors = [
+      COLORS.primary,
+      COLORS.success,
+      COLORS.warning,
+      COLORS.info,
+      COLORS.purple,
+      COLORS.pink,
+      COLORS.teal,
+      COLORS.danger
+    ]
+    return {
+      name: item.source,
+      value: item.count,
+      revenue: item.revenue,
+      percentage: item.percentage,
+      color: colors[index % colors.length]
+    }
+  }).filter(item => item.value > 0)
 
   // Custom tooltip for currency formatting
   const CustomTooltip = ({ active, payload }) => {
@@ -387,15 +568,6 @@ const Dashboard = () => {
     }
     return null
   }
-
-  const displayStats = [
-    { label: 'Total Tax Collected', value: formatCurrency(stats.totalTax), color: 'blue' },
-    { label: 'Gross Revenue', value: formatCurrency(stats.grossRevenue), color: 'green' },
-    { label: 'Avg. Bill Value', value: formatCurrency(stats.avgBillValue), color: 'yellow' },
-    { label: 'Transactions', value: stats.transactions.toString(), color: 'gray' },
-    { label: 'Expenses', value: formatCurrency(stats.expenses), color: 'red' },
-    { label: 'Deleted Bills', value: `${stats.deletedBills} (${formatCurrency(stats.deletedBillsAmount)})`, color: 'dark-red' },
-  ]
 
   return (
     <PageTransition>
@@ -421,6 +593,7 @@ const Dashboard = () => {
           </div>
           <div className="filter-section">
             <label className="filter-label">Filter:</label>
+            <div className="filter-dropdown-wrapper">
             <select
               className="filter-dropdown"
               value={filter}
@@ -432,6 +605,12 @@ const Dashboard = () => {
               <option value="month">This Month</option>
               <option value="year">This Year</option>
             </select>
+              <div className="filter-dropdown-icon">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -444,34 +623,67 @@ const Dashboard = () => {
               <div className="panel-header">Staff Performance (Branch)</div>
               <div className="panel-content">
                 {loading ? (
-                  <p className="no-data-message">Loading...</p>
+                  <ChartSkeleton height={400} />
                 ) : staffPerformance.length === 0 ? (
-                  <p className="no-data-message">No staff performance data available</p>
-                ) : (
-                  <div className="performance-grid">
-                    {staffPerformance.slice(0, 5).map((staff, index) => (
-                      <div key={staff.staff_id} className="performance-item">
-                        <div className="performance-rank">#{index + 1}</div>
-                        <div className="performance-details">
-                          <h4>{staff.staff_name}</h4>
-                          <div className="performance-metrics">
-                            <span className="metric">
-                              <span className="metric-label">Revenue:</span>
-                              <span className="metric-value">{formatCurrency(staff.total_revenue)}</span>
-                            </span>
-                            <span className="metric">
-                              <span className="metric-label">Services:</span>
-                              <span className="metric-value">{staff.total_services}</span>
-                            </span>
-                            <span className="metric">
-                              <span className="metric-label">Appointments:</span>
-                              <span className="metric-value">{staff.completed_appointments}</span>
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                  <div style={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <p className="no-data-message">No staff performance data available</p>
                   </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={500}>
+                    <BarChart data={staffChartData.slice(0, 8)} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis 
+                        dataKey="name" 
+                        angle={-45}
+                        textAnchor="end"
+                        height={100}
+                        tick={{ fontSize: 11, fill: '#6b7280' }}
+                        stroke="#9ca3af"
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 11, fill: '#6b7280' }}
+                        stroke="#9ca3af"
+                        tickFormatter={(value) => value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value}
+                      />
+                      <Tooltip 
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          padding: '12px',
+                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+                        }}
+                        formatter={(value, name) => {
+                          if (name === 'Revenue') return [formatCurrency(value), name]
+                          return [value, name]
+                        }}
+                        labelStyle={{ fontWeight: 600, marginBottom: '8px' }}
+                        cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
+                      />
+                      <Legend 
+                        wrapperStyle={{ paddingTop: '20px' }}
+                        iconType="square"
+                      />
+                      <Bar 
+                        dataKey="revenue" 
+                        fill="#10b981" 
+                        name="Revenue"
+                        radius={[4, 4, 0, 0]}
+                      />
+                      <Bar 
+                        dataKey="services" 
+                        fill="#3b82f6" 
+                        name="Services"
+                        radius={[4, 4, 0, 0]}
+                      />
+                      <Bar 
+                        dataKey="appointments" 
+                        fill="#8b5cf6" 
+                        name="Appointments"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
                 )}
               </div>
             </div>
@@ -481,40 +693,166 @@ const Dashboard = () => {
               <div className="panel-header">Top Performer (Company-Wide)</div>
               <div className="panel-content">
                 {loading ? (
-                  <p className="no-data-message">Loading...</p>
+                  <ChartSkeleton height={400} />
                 ) : topPerformer ? (
-                  <div className="top-performer-card">
-                    <div className="performer-avatar">
-                      {topPerformer.staff_name.charAt(0)}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0px', height: '100%' }}>
+                    {/* Top Performer Info Header */}
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between',
+                      padding: '4px 8px',
+                      background: 'linear-gradient(135deg, #f0fdfa 0%, #ffffff 100%)',
+                      borderRadius: '12px',
+                      border: '1px solid #0F766E20',
+                      marginTop: '-12px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div style={{
+                          width: '50px',
+                          height: '50px',
+                          borderRadius: '50%',
+                          background: '#0F766E',
+                          color: 'white',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '20px',
+                          fontWeight: '700',
+                          position: 'relative'
+                        }}>
+                          {topPerformer.staff_name.charAt(0)}
+                          <div style={{
+                            position: 'absolute',
+                            top: '-4px',
+                            right: '-4px',
+                            width: '20px',
+                            height: '20px',
+                            background: '#0F766E',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '2px solid white',
+                            fontSize: '10px'
+                          }}>
+                            <FaCrown />
+                          </div>
+                        </div>
+                        <div>
+                          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>
+                            {topPerformer.staff_name}
+                          </h3>
+                          <div style={{
+                            display: 'inline-block',
+                            padding: '2px 6px',
+                            background: '#0F766E',
+                            color: 'white',
+                            borderRadius: '6px',
+                            fontSize: '9px',
+                            fontWeight: '600',
+                            marginTop: '2px'
+                          }}>
+                            TOP PERFORMER
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '20px', fontWeight: '700', color: '#0F766E' }}>
+                          {topPerformer.performance_score}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#6b7280' }}>/100 Score</div>
+                      </div>
                     </div>
-                    <h3 className="performer-name">{topPerformer.staff_name}</h3>
-                    <div className="performance-score">
-                      <span className="score-value">{topPerformer.performance_score}</span>
-                      <span className="score-label">/100</span>
+
+                    {/* Horizontal Bar Chart */}
+                    <div style={{ flex: 1, minHeight: 0, marginTop: '8px', marginBottom: '12px' }}>
+                      <ResponsiveContainer width="100%" height={350}>
+                        <BarChart 
+                          data={topPerformerBarData} 
+                          layout="vertical"
+                          margin={{ top: 20, right: 30, bottom: 30, left: 90 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                          <XAxis 
+                            type="number" 
+                            domain={[0, 100]}
+                            tick={{ fontSize: 11, fill: '#6b7280' }} 
+                            stroke="#9ca3af"
+                            tickFormatter={(value) => `${value}%`}
+                          />
+                          <YAxis 
+                            type="category" 
+                            dataKey="metric" 
+                            tick={{ fontSize: 12, fill: '#6b7280' }}
+                            stroke="#9ca3af"
+                            width={80}
+                          />
+                          <Tooltip 
+                            contentStyle={{
+                              backgroundColor: 'white',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '8px',
+                              padding: '12px',
+                              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+                            }}
+                            formatter={(value, name, props) => {
+                              return [props.payload.formatted, props.payload.metric]
+                            }}
+                            labelStyle={{ fontWeight: 600, marginBottom: '8px' }}
+                            cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
+                          />
+                          <Bar 
+                            dataKey="value" 
+                            radius={[0, 4, 4, 0]}
+                          >
+                            {topPerformerBarData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
                     </div>
-                    <div className="performer-stats">
-                      <div className="stat-item">
-                        <span className="stat-label">Revenue</span>
-                        <span className="stat-value">{formatCurrency(topPerformer.revenue)}</span>
+
+                    {/* Performance Metrics Summary */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(4, 1fr)',
+                      gap: '12px',
+                      padding: '16px',
+                      background: '#f9fafb',
+                      borderRadius: '12px'
+                    }}>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '20px', fontWeight: '700', color: '#10b981', marginBottom: '4px' }}>
+                          {formatCurrency(topPerformer.revenue)}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#6b7280', textTransform: 'uppercase' }}>Revenue</div>
                       </div>
-                      <div className="stat-item">
-                        <span className="stat-label">Services</span>
-                        <span className="stat-value">{topPerformer.service_count}</span>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '20px', fontWeight: '700', color: '#3b82f6', marginBottom: '4px' }}>
+                          {topPerformer.service_count}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#6b7280', textTransform: 'uppercase' }}>Services</div>
                       </div>
-                      <div className="stat-item">
-                        <span className="stat-label">Rating</span>
-                        <span className="stat-value" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          {topPerformer.avg_rating}/5 <FaStar size={14} color="#fbbf24" />
-                        </span>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '20px', fontWeight: '700', color: '#d97706', marginBottom: '4px' }}>
+                          {topPerformer.avg_rating}/5
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#6b7280', textTransform: 'uppercase' }}>Rating</div>
                       </div>
-                      <div className="stat-item">
-                        <span className="stat-label">Appointments</span>
-                        <span className="stat-value">{topPerformer.completed_appointments}</span>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '20px', fontWeight: '700', color: '#8b5cf6', marginBottom: '4px' }}>
+                          {topPerformer.completed_appointments}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#6b7280', textTransform: 'uppercase' }}>Appointments</div>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <p className="no-data-message">No data available</p>
+                  <div style={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <p className="no-data-message">No data available</p>
+                  </div>
                 )}
               </div>
             </div>
@@ -527,17 +865,70 @@ const Dashboard = () => {
                   <table className="employee-table">
                     <thead>
                       <tr>
-                        <th>#</th>
-                        <th>Staff Name</th>
-                        <th>Item Count</th>
-                        <th>Service</th>
-                        <th>Package</th>
-                        <th>Product</th>
-                        <th>Prepaid</th>
-                        <th>Membership</th>
-                        <th>Total</th>
-                        <th>Avg. Bill (₹)</th>
-                        <th>Info</th>
+                        <th>
+                          <span className="th-content">
+                            <span>#</span>
+                          </span>
+                        </th>
+                        <th>
+                          <span className="th-content">
+                            <FaUser className="th-icon" />
+                            <span>Staff Name</span>
+                          </span>
+                        </th>
+                        <th>
+                          <span className="th-content">
+                            <FaClipboardList className="th-icon" />
+                            <span>Item Count</span>
+                          </span>
+                        </th>
+                        <th>
+                          <span className="th-content">
+                            <FaCut className="th-icon" />
+                            <span>Service</span>
+                          </span>
+                        </th>
+                        <th>
+                          <span className="th-content">
+                            <FaBox className="th-icon" />
+                            <span>Package</span>
+                          </span>
+                        </th>
+                        <th>
+                          <span className="th-content">
+                            <FaShoppingBag className="th-icon" />
+                            <span>Product</span>
+                          </span>
+                        </th>
+                        <th>
+                          <span className="th-content">
+                            <FaCreditCard className="th-icon" />
+                            <span>Prepaid</span>
+                          </span>
+                        </th>
+                        <th>
+                          <span className="th-content">
+                            <FaCrown className="th-icon" />
+                            <span>Membership</span>
+                          </span>
+                        </th>
+                        <th>
+                          <span className="th-content">
+                            <FaDollarSign className="th-icon" />
+                            <span>Total</span>
+                          </span>
+                        </th>
+                        <th>
+                          <span className="th-content">
+                            <FaChartLine className="th-icon" />
+                            <span>Avg. Bill (₹)</span>
+                          </span>
+                        </th>
+                        <th>
+                          <span className="th-content">
+                            <span>Info</span>
+                          </span>
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -550,23 +941,43 @@ const Dashboard = () => {
                           <td colSpan="11" className="empty-row">No data available</td>
                         </tr>
                       ) : (
-                        staffPerformance.map((staff, index) => (
-                          <tr key={staff.staff_id}>
-                            <td>{index + 1}</td>
-                            <td>{staff.staff_name}</td>
-                            <td>{staff.total_services}</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>{formatCurrency(staff.total_revenue)}</td>
-                            <td>{formatCurrency(staff.total_revenue / (staff.total_services || 1))}</td>
-                            <td>
-                              <button className="info-btn">Info</button>
-                            </td>
+                        staffPerformance.map((staff, index) => {
+                          const isTopThree = index < 3
+                          const rowClass = index === 0 ? 'row-gold' : index === 1 ? 'row-silver' : index === 2 ? 'row-bronze' : ''
+                          return (
+                            <tr key={staff.staff_id} className={rowClass}>
+                              <td>
+                                <span className="rank-badge-table">{index + 1}</span>
+                              </td>
+                              <td>
+                                <div className="staff-name-cell">
+                                  <FaUser className="staff-icon" />
+                                  <span>{staff.staff_name}</span>
+                                </div>
+                              </td>
+                              <td>{staff.total_services.toLocaleString()}</td>
+                              <td>{staff.service_count ? staff.service_count.toLocaleString() : '-'}</td>
+                              <td>{staff.package_count ? staff.package_count.toLocaleString() : '-'}</td>
+                              <td>{staff.product_count ? staff.product_count.toLocaleString() : '-'}</td>
+                              <td>{staff.prepaid_count ? staff.prepaid_count.toLocaleString() : '-'}</td>
+                              <td>{staff.membership_count ? staff.membership_count.toLocaleString() : '-'}</td>
+                              <td className="amount-cell">{formatCurrency(staff.total_revenue)}</td>
+                              <td className="amount-cell">{formatCurrency(staff.total_revenue / (staff.total_services || 1))}</td>
+                              <td>
+                                <button 
+                                  className="info-btn"
+                                  onClick={() => {
+                                    setSelectedStaff(staff)
+                                    setShowStaffModal(true)
+                                  }}
+                                >
+                                  <FaInfoCircle className="info-icon" />
+                                  <span>Info</span>
+                                </button>
+                              </td>
                           </tr>
-                        ))
+                          )
+                        })
                       )}
                     </tbody>
                   </table>
@@ -578,22 +989,18 @@ const Dashboard = () => {
           <>
             <div className="dashboard-main">
             {/* Statistics Cards */}
-            {loading ? (
-              <StatSkeleton count={6} />
-            ) : (
-              <StaggerContainer className="stats-grid">
-                {displayStats.map((stat, index) => (
-                  <StaggerItem key={index}>
-                    <HoverScale>
-                      <div className={`stat-card stat-${stat.color}`}>
-                        <div className="stat-label">{stat.label}</div>
-                        <div className="stat-value">{stat.value}</div>
-                      </div>
-                    </HoverScale>
-                  </StaggerItem>
-                ))}
-              </StaggerContainer>
-            )}
+            <DashboardStatsCards 
+              stats={stats}
+              loading={loading}
+              formatCurrency={formatCurrency}
+            />
+
+            {/* Top Moving Items Section */}
+            <TopMovingItems 
+              data={topMovingItems}
+              loading={loading}
+              formatCurrency={formatCurrency}
+            />
 
           {/* Professional Charts Section */}
           <div className="charts-grid" style={{
@@ -640,214 +1047,82 @@ const Dashboard = () => {
               )}
             </div>
 
-            {/* Staff Performance Bar Chart */}
+            {/* Payment Distribution */}
             <div className="chart-card" style={{
               backgroundColor: 'white',
               padding: '20px',
               borderRadius: '12px',
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
             }}>
-              <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '16px', fontWeight: '600' }}>
-                Staff Performance (Top 10)
-              </h3>
-              {loading ? (
-                <ChartSkeleton height={300} />
-              ) : staffChartData.length === 0 ? (
-                <EmptyTable title="No Staff Data" message="Staff performance data will appear here once staff complete services." />
-              ) : (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={staffChartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-                    <YAxis />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend />
-                    <Bar dataKey="revenue" fill={COLORS.primary} name="Revenue (₹)" />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-
-            {/* Payment Distribution Pie Chart */}
-            <div className="chart-card" style={{
-              backgroundColor: 'white',
-              padding: '20px',
-              borderRadius: '12px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            }}>
-              <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '16px', fontWeight: '600' }}>
+              <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '16px', fontWeight: '600' }}>
                 Payment Distribution
               </h3>
               {loading ? (
-                <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  Loading...
-                </div>
-              ) : paymentChartData.length === 0 ? (
-                <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  No payment data available
-                </div>
+                <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af' }}>Loading...</div>
+              ) : paymentDistribution.length === 0 ? (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af' }}>No payment data available</div>
               ) : (
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={paymentChartData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {paymentChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-
-            {/* Client Funnel Bar Chart */}
-            <div className="chart-card" style={{
-              backgroundColor: 'white',
-              padding: '20px',
-              borderRadius: '12px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {paymentDistribution.map((payment, index) => {
+                    const paymentIcons = {
+                      'upi': <FaMobileAlt size={20} />,
+                      'card': <FaCreditCard size={20} />,
+                      'cash': <FaMoneyBillWave size={20} />
+                    }
+                    const paymentColors = {
+                      'upi': '#6366f1',
+                      'card': '#3b82f6',
+                      'cash': '#10b981'
+                    }
+                    const mode = payment.payment_mode?.toLowerCase() || 'cash'
+                    const icon = paymentIcons[mode] || <FaCreditCard size={20} />
+                    const color = paymentColors[mode] || '#3b82f6'
+                    
+                    return (
+                      <div key={index} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '14px 16px',
+                        background: '#f9fafb',
+                        borderRadius: '8px',
+                        border: `1px solid ${color}20`
             }}>
-              <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '16px', fontWeight: '600' }}>
-                Client Funnel
-              </h3>
-              {loading ? (
-                <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  Loading...
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          {icon}
+                          <span style={{
+                            fontSize: '14px',
+                            color: '#374151',
+                            fontWeight: '600',
+                            textTransform: 'capitalize'
+                          }}>{payment.payment_mode}</span>
                 </div>
-              ) : funnelChartData.length === 0 ? (
-                <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  No funnel data available
+                        <span style={{
+                          fontSize: '15px',
+                          fontWeight: '700',
+                          color: color
+                        }}>
+                          {formatCurrency(payment.amount)}
+                        </span>
                 </div>
-              ) : (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={funnelChartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="value" name="Count">
-                      {funnelChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                    )
+                  })}
+                </div>
               )}
-            </div>
           </div>
 
-          {/* Staff Leaderboard Table */}
-          <div className="table-section">
-            <h2 className="section-title">Staff Leaderboard</h2>
-            <div className="table-container">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Rank</th>
-                    <th>Staff Name</th>
-                    <th>Score</th>
-                    <th>Revenue</th>
-                    <th>Services</th>
-                    <th>Avg Rating</th>
-                    <th>Feedback</th>
-                    <th>Appointments</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan="8" className="empty-row">Loading...</td>
-                    </tr>
-                  ) : staffLeaderboard.length === 0 ? (
-                    <tr>
-                      <td colSpan="8" className="empty-row">No data available</td>
-                    </tr>
-                  ) : (
-                    staffLeaderboard.map((staff, index) => (
-                      <tr key={staff.staff_id}>
-                        <td><strong>{index + 1}</strong></td>
-                        <td>{staff.staff_name}</td>
-                        <td><strong>{staff.performance_score}</strong></td>
-                        <td>{formatCurrency(staff.revenue)}</td>
-                        <td>{staff.service_count}</td>
-                        <td style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          {staff.avg_rating} <FaStar size={14} color="#fbbf24" />
-                        </td>
-                        <td>{staff.feedback_count}</td>
-                        <td>{staff.completed_appointments}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
           </div>
 
           {/* Top 10 Customer */}
-          <div className="table-section">
-            <div className="section-header">
-              <h2 className="section-title">Top 10 Customer</h2>
-              <button 
-                className="export-link" 
-                onClick={(e) => {
-                  e.preventDefault()
-                  // TODO: Implement export functionality
-                }}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', textDecoration: 'underline' }}
-              >
-                Export Full Report
-              </button>
-            </div>
-            <div className="table-container">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Mobile</th>
-                    <th>Customer</th>
-                    <th>Count</th>
-                    <th>Revenue</th>
-                    <th>View Details</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan="6" className="empty-row">Loading...</td>
-                    </tr>
-                  ) : topCustomers.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="empty-row">No data available</td>
-                    </tr>
-                  ) : (
-                    topCustomers.map((customer, index) => (
-                      <tr key={customer.customer_id}>
-                        <td>{index + 1}</td>
-                        <td>{customer.mobile}</td>
-                        <td>{customer.customer_name}</td>
-                        <td>{customer.visit_count}</td>
-                        <td>{formatCurrency(customer.total_spent)}</td>
-                        <td>
-                          <button className="view-link">View</button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <Top10Customers 
+            customers={topCustomers}
+            loading={loading}
+            formatCurrency={formatCurrency}
+            onExport={() => {
+              // TODO: Implement export functionality
+              console.log('Export Full Report clicked')
+            }}
+          />
 
           {/* Top 10 Offerings */}
           <div className="table-section">
@@ -892,7 +1167,12 @@ const Dashboard = () => {
                         <td>{offering.quantity}</td>
                         <td>{formatCurrency(offering.revenue)}</td>
                         <td>
-                          <button className="view-link">View</button>
+                          <button 
+                            className="view-link"
+                            onClick={() => handleViewOfferingClients(offering)}
+                          >
+                            View
+                          </button>
                         </td>
                       </tr>
                     ))
@@ -983,83 +1263,6 @@ const Dashboard = () => {
                     ))}
                   </div>
                 </div>
-
-                {/* Payment Distribution */}
-                <div className="payment-section">
-                  <h4 style={{
-                    fontSize: '12px',
-                    fontWeight: '600',
-                    color: '#6b7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    marginBottom: '16px',
-                    marginTop: 0
-                  }}>Payment Distribution</h4>
-                  {loading ? (
-                    <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af' }}>Loading...</div>
-                  ) : paymentDistribution.length === 0 ? (
-                    <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af' }}>No payment data</div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      {paymentDistribution.map((payment, index) => {
-                        const paymentIcons = {
-                          'upi': <FaMobileAlt size={20} />,
-                          'card': <FaCreditCard size={20} />,
-                          'cash': <FaMoneyBillWave size={20} />,
-                          'wallet': <FaWallet size={20} />
-                        }
-                        const paymentColors = {
-                          'upi': '#6366f1',
-                          'card': '#3b82f6',
-                          'cash': '#10b981',
-                          'wallet': '#f59e0b'
-                        }
-                        const mode = payment.payment_mode?.toLowerCase() || 'cash'
-                        const icon = paymentIcons[mode] || <FaCreditCard size={20} />
-                        const color = paymentColors[mode] || '#3b82f6'
-                        
-                        return (
-                          <div key={index} style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '14px 16px',
-                            background: '#f9fafb',
-                            borderRadius: '8px',
-                            border: `1px solid ${color}20`,
-                            transition: 'all 0.2s'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = `${color}08`
-                            e.currentTarget.style.transform = 'translateX(4px)'
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = '#f9fafb'
-                            e.currentTarget.style.transform = 'translateX(0)'
-                          }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                              {icon}
-                              <span style={{
-                                fontSize: '14px',
-                                color: '#374151',
-                                fontWeight: '600',
-                                textTransform: 'capitalize'
-                              }}>{payment.payment_mode}</span>
-                            </div>
-                            <span style={{
-                              fontSize: '15px',
-                              fontWeight: '700',
-                              color: color
-                            }}>
-                              {formatCurrency(payment.amount)}
-                            </span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
               </div>
 
               {/* Client Source */}
@@ -1078,38 +1281,129 @@ const Dashboard = () => {
                   borderBottom: '2px solid #e5e7eb',
                   paddingBottom: '12px'
                 }}>Client Source</h3>
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '40px 20px',
-                  textAlign: 'center'
-                }}>
+                {loading ? (
+                  <ChartSkeleton height={250} />
+                ) : clientSourceChartData.length === 0 ? (
                   <div style={{
-                    width: '64px',
-                    height: '64px',
-                    borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)',
                     display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    marginBottom: '16px'
+                    padding: '40px 20px',
+                    textAlign: 'center'
                   }}>
-                    <FaChartBar size={32} color="#9ca3af" />
+                    <div style={{
+                      width: '64px',
+                      height: '64px',
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: '16px'
+                    }}>
+                      <FaChartBar size={32} color="#9ca3af" />
+                    </div>
+                    <p style={{
+                      fontSize: '14px',
+                      color: '#6b7280',
+                      margin: 0,
+                      fontWeight: '500'
+                    }}>No data available</p>
+                    <p style={{
+                      fontSize: '12px',
+                      color: '#9ca3af',
+                      margin: '8px 0 0 0'
+                    }}>Client source data will appear here</p>
                   </div>
-                  <p style={{
-                    fontSize: '14px',
-                    color: '#6b7280',
-                    margin: 0,
-                    fontWeight: '500'
-                  }}>No data available</p>
-                  <p style={{
-                    fontSize: '12px',
-                    color: '#9ca3af',
-                    margin: '8px 0 0 0'
-                  }}>Client source data will appear here</p>
-                </div>
+                ) : (
+                  <div>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <PieChart>
+                        <Pie
+                          data={clientSourceChartData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percentage }) => `${name}: ${percentage}%`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {clientSourceChartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload
+                              return (
+                                <div style={{
+                                  backgroundColor: 'white',
+                                  padding: '10px',
+                                  border: '1px solid #ccc',
+                                  borderRadius: '4px',
+                                }}>
+                                  <p style={{ margin: 0, fontWeight: 'bold' }}>{data.name}</p>
+                                  <p style={{ margin: '4px 0 0 0', color: '#6b7280' }}>
+                                    Customers: {data.value}
+                                  </p>
+                                  <p style={{ margin: '4px 0 0 0', color: data.color }}>
+                                    Revenue: {formatCurrency(data.revenue)}
+                                  </p>
+                                  <p style={{ margin: '4px 0 0 0', color: '#6b7280' }}>
+                                    {data.percentage}% of total
+                                  </p>
+                                </div>
+                              )
+                            }
+                            return null
+                          }}
+                        />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      marginTop: '16px',
+                      paddingTop: '16px',
+                      borderTop: '1px solid #e5e7eb'
+                    }}>
+                      {clientSourceChartData.slice(0, 5).map((item, index) => (
+                        <div key={index} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '8px 12px',
+                          background: '#f9fafb',
+                          borderRadius: '6px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{
+                              width: '12px',
+                              height: '12px',
+                              borderRadius: '2px',
+                              background: item.color
+                            }}></div>
+                            <span style={{
+                              fontSize: '13px',
+                              color: '#374151',
+                              fontWeight: '500'
+                            }}>{item.name}</span>
+                          </div>
+                          <span style={{
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            color: '#6b7280'
+                          }}>{item.value} ({item.percentage}%)</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Client & Lead Funnel */}
@@ -1392,6 +1686,233 @@ const Dashboard = () => {
         )}
       </div>
     </div>
+
+    {/* Staff Detail Modal */}
+    {showStaffModal && selectedStaff && (
+      <div className="staff-modal-overlay" onClick={() => setShowStaffModal(false)}>
+        <div className="staff-modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="staff-modal-header">
+            <div className="staff-modal-title-section">
+              <div className="staff-modal-avatar">
+                {selectedStaff.staff_name.charAt(0)}
+              </div>
+              <div>
+                <h2 className="staff-modal-title">{selectedStaff.staff_name}</h2>
+                <p className="staff-modal-subtitle">Performance Details</p>
+              </div>
+            </div>
+            <button 
+              className="staff-modal-close"
+              onClick={() => setShowStaffModal(false)}
+            >
+              <FaTimes />
+            </button>
+          </div>
+
+          <div className="staff-modal-body">
+            <div className="staff-modal-grid">
+              <div className="staff-modal-card">
+                <div className="staff-modal-card-header">
+                  <FaDollarSign className="staff-modal-card-icon" />
+                  <h3>Revenue</h3>
+                </div>
+                <div className="staff-modal-card-value">
+                  {formatCurrency(selectedStaff.total_revenue)}
+                </div>
+                {selectedStaff.commission_earned && (
+                  <div className="staff-modal-card-subvalue">
+                    Commission: {formatCurrency(selectedStaff.commission_earned)}
+                  </div>
+                )}
+              </div>
+
+              <div className="staff-modal-card">
+                <div className="staff-modal-card-header">
+                  <FaCut className="staff-modal-card-icon" />
+                  <h3>Services</h3>
+                </div>
+                <div className="staff-modal-card-value">
+                  {selectedStaff.total_services}
+                </div>
+                <div className="staff-modal-card-subvalue">
+                  Total services completed
+                </div>
+              </div>
+
+              <div className="staff-modal-card">
+                <div className="staff-modal-card-header">
+                  <FaCalendar className="staff-modal-card-icon" />
+                  <h3>Appointments</h3>
+                </div>
+                <div className="staff-modal-card-value">
+                  {selectedStaff.completed_appointments}
+                </div>
+                <div className="staff-modal-card-subvalue">
+                  Completed appointments
+                </div>
+              </div>
+
+              <div className="staff-modal-card">
+                <div className="staff-modal-card-header">
+                  <FaChartLine className="staff-modal-card-icon" />
+                  <h3>Average Bill</h3>
+                </div>
+                <div className="staff-modal-card-value">
+                  {formatCurrency(selectedStaff.total_revenue / (selectedStaff.total_services || 1))}
+                </div>
+                <div className="staff-modal-card-subvalue">
+                  Per service
+                </div>
+              </div>
+            </div>
+
+            <div className="staff-modal-section">
+              <h3 className="staff-modal-section-title">Performance Summary</h3>
+              <div className="staff-modal-summary">
+                <div className="staff-modal-summary-item">
+                  <span className="summary-label">Staff ID:</span>
+                  <span className="summary-value">{selectedStaff.staff_id}</span>
+                </div>
+                <div className="staff-modal-summary-item">
+                  <span className="summary-label">Total Revenue:</span>
+                  <span className="summary-value">{formatCurrency(selectedStaff.total_revenue)}</span>
+                </div>
+                <div className="staff-modal-summary-item">
+                  <span className="summary-label">Total Services:</span>
+                  <span className="summary-value">{selectedStaff.total_services}</span>
+                </div>
+                <div className="staff-modal-summary-item">
+                  <span className="summary-label">Completed Appointments:</span>
+                  <span className="summary-value">{selectedStaff.completed_appointments}</span>
+                </div>
+                {selectedStaff.commission_earned && (
+                  <div className="staff-modal-summary-item">
+                    <span className="summary-label">Commission Earned:</span>
+                    <span className="summary-value">{formatCurrency(selectedStaff.commission_earned)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Offering Clients Modal */}
+    {showOfferingModal && selectedOffering && (
+      <div className="customer-modal-overlay" onClick={() => setShowOfferingModal(false)}>
+        <div className="customer-modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="customer-modal-header">
+            <h2>Clients for {selectedOffering.name}</h2>
+            <button className="customer-modal-close" onClick={() => setShowOfferingModal(false)}>
+              <FaTimes />
+            </button>
+          </div>
+
+          <div className="customer-modal-body">
+            {loadingOfferingClients ? (
+              <div className="customer-modal-loading">Loading client details...</div>
+            ) : offeringClients.length === 0 ? (
+              <div className="customer-modal-error">No clients found for this offering</div>
+            ) : (
+              <>
+                {/* Offering Statistics */}
+                <div className="customer-details-section">
+                  <h3>Offering Information</h3>
+                  <div className="customer-details-grid">
+                    <div className="customer-detail-item">
+                      <span className="detail-label">Name:</span>
+                      <span className="detail-value">{selectedOffering.name}</span>
+                    </div>
+                    <div className="customer-detail-item">
+                      <span className="detail-label">Type:</span>
+                      <span className="detail-value" style={{ textTransform: 'capitalize' }}>
+                        {selectedOffering.type}
+                      </span>
+                    </div>
+                    <div className="customer-detail-item">
+                      <span className="detail-label">Total Quantity Sold:</span>
+                      <span className="detail-value">{selectedOffering.quantity}</span>
+                    </div>
+                    <div className="customer-detail-item">
+                      <span className="detail-label">Total Revenue:</span>
+                      <span className="detail-value" style={{ color: '#10b981', fontWeight: '600' }}>
+                        {formatCurrency(selectedOffering.revenue)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Top Statistics */}
+                <div className="customer-details-section">
+                  <h3>Client Statistics</h3>
+                  <div className="customer-stats-grid">
+                    <div className="customer-stat-card">
+                      <div className="stat-label">Total Clients</div>
+                      <div className="stat-value">
+                        {offeringClients.length}
+                      </div>
+                      <div className="stat-description">Customers who purchased</div>
+                    </div>
+                    <div className="customer-stat-card">
+                      <div className="stat-label">Total Purchases</div>
+                      <div className="stat-value">
+                        {offeringClients.reduce((sum, client) => sum + (client.purchase_count || 0), 0)}
+                      </div>
+                      <div className="stat-description">Total times purchased</div>
+                    </div>
+                    <div className="customer-stat-card">
+                      <div className="stat-label">Average per Client</div>
+                      <div className="stat-value revenue-stat">
+                        {formatCurrency(
+                          offeringClients.length > 0
+                            ? offeringClients.reduce((sum, client) => sum + (client.total_spent || 0), 0) / offeringClients.length
+                            : 0
+                        )}
+                      </div>
+                      <div className="stat-description">Average spending per client</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Clients List */}
+                <div className="customer-details-section">
+                  <h3>Clients List ({offeringClients.length})</h3>
+                  <div className="table-container" style={{ marginTop: '1rem' }}>
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th className="text-left col-number">#</th>
+                          <th className="text-left">Customer Name</th>
+                          <th className="text-left">Mobile</th>
+                          <th className="text-left col-count">Purchases</th>
+                          <th className="text-left col-revenue">Total Spent</th>
+                          <th className="text-left">Last Purchase</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {offeringClients.map((client, index) => (
+                          <tr key={client.customer_id || index}>
+                            <td className="text-left col-number">{index + 1}</td>
+                            <td className="text-left">{client.customer_name || '-'}</td>
+                            <td className="text-left">{client.mobile || '-'}</td>
+                            <td className="text-left col-count">{client.purchase_count || 0}</td>
+                            <td className="text-left col-revenue">
+                              {formatCurrency(client.total_spent || 0)}
+                            </td>
+                            <td className="text-left">{formatDate(client.last_purchase_date)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
     </PageTransition>
   )
 }

@@ -1,9 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import {
-  FaBars,
-  FaBell,
-  FaUser,
-} from 'react-icons/fa'
 import './ReferralProgram.css'
 import { API_BASE_URL } from '../config'
 
@@ -86,27 +81,6 @@ const ReferralProgram = () => {
 
   return (
     <div className="referral-program-page">
-      {/* Header */}
-      <header className="referral-program-header">
-        <div className="header-left">
-          <button className="menu-icon">
-            <FaBars />
-          </button>
-          <h1 className="header-title">Referral Program Settings</h1>
-        </div>
-        <div className="header-right">
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-          <button className="header-icon bell-icon">
-            <FaBell />
-          </button>
-          <button className="header-icon user-icon">
-            <FaUser />
-          </button>
-        </div>
-      </header>
-
       <div className="referral-program-container">
         {/* Settings Card */}
         <div className="referral-program-card">

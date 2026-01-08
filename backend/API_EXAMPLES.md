@@ -1,4 +1,4 @@
-# Salon Management API - Request Examples
+# Saloon Management API - Request Examples
 
 Complete examples for testing all API endpoints using curl or Postman.
 

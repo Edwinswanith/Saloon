@@ -6,7 +6,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.backend
-    container_name: salon-backend
+    container_name: saloon-backend
     ports:
       - "5000:5000"
     environment:
@@ -17,7 +17,7 @@ services:
       - ./backend:/app
       - ./backend/instance:/app/instance
     networks:
-      - salon-network
+      - saloon-network
     restart: unless-stopped
 
   # Frontend Service
@@ -25,7 +25,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.frontend
-    container_name: salon-frontend
+    container_name: saloon-frontend
     ports:
       - "5173:5173"
     environment:
@@ -36,10 +36,10 @@ services:
     depends_on:
       - backend
     networks:
-      - salon-network
+      - saloon-network
     restart: unless-stopped
 
 networks:
-  salon-network:
+  saloon-network:
     driver: bridge
 

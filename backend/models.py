@@ -34,6 +34,7 @@ class Branch(Document):
     city = StringField(max_length=50, default='Chennai')
     phone = StringField(max_length=15)
     email = StringField(max_length=100)
+    gstin = StringField(max_length=20)  # GST Identification Number for invoices
     is_active = BooleanField(default=True)
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
@@ -50,9 +51,7 @@ class Customer(Document):
     gender = StringField(max_length=10)
     dob = DateField()
     dob_range = StringField(max_length=20)  # Young, Mid, Old
-    loyalty_points = IntField(default=0)
     referral_code = StringField(max_length=50, unique=True, sparse=True)
-    wallet_balance = FloatField(default=0.0)
     whatsapp_consent = BooleanField(default=False)  # Phase 4: WhatsApp consent
     last_visit_date = DateField()  # Phase 4: Computed from bills
     total_visits = IntField(default=0)  # Phase 4: Computed
@@ -207,11 +206,15 @@ class BillItemEmbedded(EmbeddedDocument):
 
 # Bill Model
 class Bill(Document):
-    meta = {'collection': 'bills'}
+    meta = {
+        'collection': 'bills',
+        'strict': False  # Allow legacy/unknown fields in existing documents
+    }
     
     bill_number = StringField(required=True, unique=True, max_length=50)
     customer = ReferenceField('Customer')
     branch = ReferenceField('Branch')  # Multi-branch: Bill's branch
+    appointment = ReferenceField('Appointment')  # Link bill to appointment for consolidation
     bill_date = DateTimeField(required=True, default=datetime.utcnow)
     subtotal = FloatField(default=0.0)
     discount_amount = FloatField(default=0.0)
@@ -219,7 +222,7 @@ class Bill(Document):
     tax_amount = FloatField(default=0.0)
     tax_rate = FloatField(default=0.0)
     final_amount = FloatField(required=True)
-    payment_mode = StringField(max_length=20)  # cash, upi, card, wallet
+    payment_mode = StringField(max_length=20)  # cash, upi, card
     booking_status = StringField(max_length=20, default='service-completed')  # service-completed, confirmed, pending, cancelled
     booking_note = StringField()
     is_deleted = BooleanField(default=False)
@@ -228,9 +231,6 @@ class Bill(Document):
     discount_requested_by = ReferenceField('Staff')  # Phase 5: Who requested discount
     discount_approval_status = StringField(max_length=20, choices=['none', 'pending', 'approved', 'rejected'], default='none')  # Phase 5
     discount_approval_request = ReferenceField('DiscountApprovalRequest')  # Phase 5
-    points_used = IntField(default=0)  # Number of loyalty points redeemed
-    points_discount = FloatField(default=0.0)  # Discount amount from points redemption
-    points_earned = IntField(default=0)  # Points earned on this bill
     items = ListField(EmbeddedDocumentField(BillItemEmbedded), default=list)
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
@@ -384,45 +384,13 @@ class CashTransaction(Document):
     transaction_time = StringField(required=True)  # Store as string in HH:MM:SS format
     created_at = DateTimeField(default=datetime.utcnow)
 
-# Loyalty Program Settings Model
-class LoyaltyProgramSettings(Document):
-    meta = {'collection': 'loyalty_program_settings'}
-    
-    enabled = BooleanField(default=False)
-    earning_rate = FloatField(default=100.0)  # Amount customer must spend to earn 1 point
-    redemption_rate = FloatField(default=1.0)  # Number of points needed to redeem for ₹1
-    minimum_points_to_redeem = IntField(default=10)  # Minimum points required to redeem
-    created_at = DateTimeField(default=datetime.utcnow)
-    updated_at = DateTimeField(default=datetime.utcnow)
-    
-    @classmethod
-    def get_settings(cls):
-        """Get or create default settings"""
-        settings = cls.objects.first()
-        if not settings:
-            settings = cls(enabled=False, earning_rate=100.0, redemption_rate=1.0, minimum_points_to_redeem=10)
-            settings.save()
-        return settings
-
-# Loyalty Points Transaction Model
-class LoyaltyPointsTransaction(Document):
-    meta = {'collection': 'loyalty_points_transactions'}
-    
-    customer = ReferenceField('Customer', required=True)
-    bill = ReferenceField('Bill')  # Optional - for earned/redeemed transactions
-    transaction_type = StringField(required=True, choices=['earned', 'redeemed'])  # earned or redeemed
-    points = IntField(required=True)  # Positive for earned, negative for redeemed
-    balance_after = IntField(required=True)  # Customer's point balance after this transaction
-    description = StringField()  # e.g., "Earned from Bill #123" or "Redeemed 50 points"
-    created_at = DateTimeField(default=datetime.utcnow)
-
 # Referral Program Settings Model
 class ReferralProgramSettings(Document):
     meta = {'collection': 'referral_program_settings'}
     
     enabled = BooleanField(default=False)
     reward_type = StringField(max_length=20, default='percentage')  # percentage, fixed
-    referrer_reward_percentage = FloatField(default=5.0)  # Bonus credited to existing customer's wallet
+    referrer_reward_percentage = FloatField(default=5.0)  # Bonus credited to existing customer
     referee_reward_percentage = FloatField(default=5.0)  # Discount applied to new customer's first bill
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
@@ -487,7 +455,7 @@ class Manager(Document):
     last_name = StringField(max_length=100)
     email = StringField(required=True, unique=True, max_length=100)
     mobile = StringField(required=True, unique=True, max_length=15)
-    salon = StringField(max_length=200)  # Salon name or account
+    salon = StringField(max_length=200)  # Saloon name or account
     password_hash = StringField(max_length=255)  # Hashed password using bcrypt
     role = StringField(max_length=20, default='manager')  # manager only (owners are in separate collection)
     permissions = ListField(StringField())  # Optional custom permissions
@@ -505,7 +473,7 @@ class Owner(Document):
     last_name = StringField(max_length=100)
     email = StringField(required=True, unique=True, max_length=100)
     mobile = StringField(required=True, unique=True, max_length=15)
-    salon = StringField(max_length=200)  # Salon name or account
+    salon = StringField(max_length=200)  # Saloon name or account
     password_hash = StringField(max_length=255)  # Hashed password using bcrypt
     permissions = ListField(StringField())  # Optional custom permissions
     is_active = BooleanField(default=True)  # For login access control

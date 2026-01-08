@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import {
-  FaBars,
-  FaBell,
-  FaUser,
   FaArrowLeft,
   FaList,
   FaTimes,
@@ -166,27 +163,6 @@ const StaffCombinedReport = ({ setActivePage }) => {
 
   return (
     <div className="staff-combined-report-page">
-      {/* Header */}
-      <header className="staff-combined-report-header">
-        <div className="header-left">
-          <button className="menu-icon">
-            <FaBars />
-          </button>
-          <h1 className="header-title">Staff Combined Report</h1>
-        </div>
-        <div className="header-right">
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-          <button className="header-icon bell-icon">
-            <FaBell />
-          </button>
-          <button className="header-icon user-icon">
-            <FaUser />
-          </button>
-        </div>
-      </header>
-
       <div className="staff-combined-report-container">
         {/* Back Button */}
         <button className="back-button" onClick={handleBackToReports}>

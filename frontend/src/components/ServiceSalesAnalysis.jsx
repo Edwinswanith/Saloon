@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import {
-  FaBars,
-  FaBell,
-  FaUser,
   FaArrowLeft,
   FaCloudDownloadAlt,
   FaChevronDown,
@@ -35,36 +32,38 @@ const ServiceSalesAnalysis = ({ setActivePage }) => {
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
     const yearStart = new Date(today.getFullYear(), 0, 1)
 
+    const formatForAPI = (date) => date.toLocaleDateString('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-')
+
     switch (dateRangeFilter) {
       case 'today':
         return {
-          start_date: today.toISOString().split('T')[0],
-          end_date: today.toISOString().split('T')[0],
+          start_date: formatForAPI(today),
+          end_date: formatForAPI(today),
         }
       case 'yesterday':
         return {
-          start_date: yesterday.toISOString().split('T')[0],
-          end_date: yesterday.toISOString().split('T')[0],
+          start_date: formatForAPI(yesterday),
+          end_date: formatForAPI(yesterday),
         }
       case 'week':
         return {
-          start_date: weekStart.toISOString().split('T')[0],
-          end_date: today.toISOString().split('T')[0],
+          start_date: formatForAPI(weekStart),
+          end_date: formatForAPI(today),
         }
       case 'month':
         return {
-          start_date: monthStart.toISOString().split('T')[0],
-          end_date: today.toISOString().split('T')[0],
+          start_date: formatForAPI(monthStart),
+          end_date: formatForAPI(today),
         }
       case 'year':
         return {
-          start_date: yearStart.toISOString().split('T')[0],
-          end_date: today.toISOString().split('T')[0],
+          start_date: formatForAPI(yearStart),
+          end_date: formatForAPI(today),
         }
       default:
         return {
-          start_date: yesterday.toISOString().split('T')[0],
-          end_date: today.toISOString().split('T')[0],
+          start_date: formatForAPI(yesterday),
+          end_date: formatForAPI(today),
         }
     }
   }
@@ -107,6 +106,11 @@ const ServiceSalesAnalysis = ({ setActivePage }) => {
       const dateRange = getDateRange()
       const params = new URLSearchParams(dateRange)
       
+      // Add service group filter to API request if not 'all'
+      if (categoryFilter !== 'all') {
+        params.append('service_group', categoryFilter)
+      }
+      
       const response = await apiGet(`/api/reports/service-sales-analysis?${params}`)
       
       if (!response.ok) {
@@ -115,20 +119,11 @@ const ServiceSalesAnalysis = ({ setActivePage }) => {
       
       const data = await response.json()
       
-      let filteredData = data || []
-      
-      // Filter by category if not 'all'
-      if (categoryFilter !== 'all') {
-        filteredData = filteredData.filter(item => 
-          item.service_group && item.service_group.toLowerCase().includes(categoryFilter.toLowerCase())
-        )
-      }
-      
       // Calculate totals for contribution percentage
-      const totalRevenue = filteredData.reduce((sum, item) => sum + (item.revenue || 0), 0)
+      const totalRevenue = (data || []).reduce((sum, item) => sum + (item.revenue || 0), 0)
       
       // Add calculated fields
-      const enrichedData = filteredData.map(item => ({
+      const enrichedData = (data || []).map(item => ({
         ...item,
         netAmount: item.revenue || 0,
         tax: (item.revenue || 0) * 0.18, // Assuming 18% tax
@@ -170,27 +165,6 @@ const ServiceSalesAnalysis = ({ setActivePage }) => {
 
   return (
     <div className="service-sales-analysis-page">
-      {/* Header */}
-      <header className="service-sales-header">
-        <div className="header-left">
-          <button className="menu-icon">
-            <FaBars />
-          </button>
-          <h1 className="header-title">Service Sales Analysis</h1>
-        </div>
-        <div className="header-right">
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-          <button className="header-icon bell-icon">
-            <FaBell />
-          </button>
-          <button className="header-icon user-icon">
-            <FaUser />
-          </button>
-        </div>
-      </header>
-
       <div className="service-sales-container">
         {/* Main Report Card */}
         <div className="report-card">

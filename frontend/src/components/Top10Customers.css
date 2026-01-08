@@ -1,0 +1,600 @@
+/**
+ * Top 10 Customers Component Styles
+ * 
+ * Complete CSS styles for the Top 10 Customers component.
+ * Includes responsive design for all screen sizes.
+ */
+
+/* ============================================================================
+   SECTION CONTAINER
+   ============================================================================ */
+
+.top-customers-section {
+  margin-bottom: 2rem;
+  margin-top: 1.5rem;
+  width: 100%;
+  background: #ffffff;
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  min-height: 200px;
+}
+
+/* ============================================================================
+   SECTION HEADER
+   ============================================================================ */
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  position: relative;
+}
+
+.section-title {
+  text-align: left;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0px;
+  flex: 0 0 auto;
+  border: none !important;
+  border-left: none !important;
+  padding-left: 0 !important;
+  padding-bottom: 0px;
+  position: relative;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ============================================================================
+   EXPORT LINK
+   ============================================================================ */
+
+.export-link {
+  margin-left: auto;
+  padding: 4px 8px;
+  margin-top: 0;
+  margin-bottom: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  text-decoration: underline;
+  font-size: 14px;
+  color: #6b7280;
+  transition: color 0.2s ease;
+}
+
+.export-link:hover {
+  color: #4f46e5;
+  text-decoration: underline;
+}
+
+.export-link:active {
+  color: #4338ca;
+}
+
+/* ============================================================================
+   TABLE CONTAINER
+   ============================================================================ */
+
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 1rem;
+}
+
+/* ============================================================================
+   DATA TABLE
+   ============================================================================ */
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.data-table thead {
+  background: #f9fafb;
+}
+
+.data-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.data-table th.text-left {
+  text-align: left;
+}
+
+.data-table th.text-right {
+  text-align: right;
+}
+
+.data-table th.text-center {
+  text-align: center;
+}
+
+.data-table td {
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.data-table td.text-left {
+  text-align: left;
+}
+
+.data-table td.text-right {
+  text-align: right;
+}
+
+.data-table td.text-center {
+  text-align: center;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tbody tr:hover {
+  background: transparent !important;
+  transform: none !important;
+}
+
+/* ============================================================================
+   EMPTY ROW
+   ============================================================================ */
+
+.data-table .empty-row {
+  text-align: center;
+  padding: 20px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* ============================================================================
+   FIXED COLUMN WIDTHS
+   ============================================================================ */
+
+.data-table th.col-number,
+.data-table td.col-number {
+  width: 50px;
+  min-width: 50px;
+}
+
+.data-table th.col-count,
+.data-table td.col-count {
+  width: 100px;
+  min-width: 100px;
+}
+
+.data-table th.col-revenue,
+.data-table td.col-revenue {
+  width: 150px;
+  min-width: 150px;
+}
+
+/* ============================================================================
+   VIEW LINK BUTTON
+   ============================================================================ */
+
+.view-link {
+  padding: 6px 16px;
+  height: 32px;
+  max-height: 32px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  background: transparent;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 70px;
+  min-height: 32px;
+}
+
+.view-link:hover {
+  background: rgba(15, 118, 110, 0.08);
+  border-color: #0F766E;
+  color: #0F766E;
+}
+
+.view-link:active,
+.view-link.active {
+  background: #0F766E;
+  border-color: #0F766E;
+  color: white;
+  font-weight: 600;
+}
+
+/* ============================================================================
+   RESPONSIVE DESIGN
+   ============================================================================ */
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .top-customers-section {
+    padding: 1.25rem;
+  }
+  
+  .section-title {
+    font-size: 1rem;
+  }
+  
+  .export-link {
+    font-size: 13px;
+    padding: 4px 6px;
+  }
+  
+  .data-table th,
+  .data-table td {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  
+  .data-table th {
+    font-size: 12px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .top-customers-section {
+    padding: 1rem;
+    border-radius: 8px;
+  }
+  
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .section-title {
+    font-size: 1rem;
+  }
+  
+  .export-link {
+    margin-left: 0;
+    font-size: 13px;
+  }
+  
+  .table-container {
+    overflow-x: scroll;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .data-table {
+    min-width: 700px;
+  }
+  
+  .data-table th,
+  .data-table td {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  
+  .data-table th {
+    font-size: 11px;
+  }
+  
+  .view-link {
+    padding: 3px 10px;
+    height: 26px;
+    font-size: 11px;
+    min-width: 55px;
+  }
+}
+
+/* Small Mobile */
+@media (max-width: 480px) {
+  .top-customers-section {
+    padding: 0.875rem;
+  }
+  
+  .section-title {
+    font-size: 0.9375rem;
+  }
+  
+  .export-link {
+    font-size: 12px;
+  }
+  
+  .data-table {
+    min-width: 600px;
+  }
+  
+  .data-table th,
+  .data-table td {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+  
+  .data-table th {
+    font-size: 10px;
+  }
+  
+  .view-link {
+    padding: 2px 8px;
+    height: 24px;
+    font-size: 10px;
+    min-width: 50px;
+  }
+}
+
+/* ============================================================================
+   CUSTOMER DETAILS MODAL
+   ============================================================================ */
+
+.customer-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.customer-modal-content {
+  background: #ffffff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+.customer-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  background: #ffffff;
+  z-index: 10;
+  min-height: 56px;
+  box-sizing: border-box;
+}
+
+.customer-modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  flex: 1;
+  line-height: 1.4;
+}
+
+.customer-modal-close {
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  font-size: 16px;
+  color: #6b7280;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 12px;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.customer-modal-close:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.1);
+  color: #374151;
+}
+
+.customer-modal-close:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.customer-modal-close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.customer-modal-body {
+  padding: 1.5rem;
+}
+
+.customer-modal-loading,
+.customer-modal-error {
+  text-align: center;
+  padding: 3rem;
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+.customer-modal-error {
+  color: #ef4444;
+}
+
+/* Customer Details Sections */
+.customer-details-section {
+  margin-bottom: 2rem;
+}
+
+.customer-details-section:last-child {
+  margin-bottom: 0;
+}
+
+.customer-details-section h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0.5rem;
+}
+
+.customer-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.customer-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.detail-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-value {
+  font-size: 1rem;
+  color: #1f2937;
+  font-weight: 500;
+}
+
+/* Customer Stats Grid */
+.customer-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.customer-stat-card {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+}
+
+.stat-value.revenue-stat {
+  color: #10b981;
+}
+
+.stat-description {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* Responsive Modal */
+@media (max-width: 768px) {
+  .customer-modal-content {
+    max-width: 95%;
+    max-height: 95vh;
+  }
+
+  .customer-modal-header {
+    padding: 1rem;
+  }
+
+  .customer-modal-header h2 {
+    font-size: 1.25rem;
+  }
+
+  .customer-modal-body {
+    padding: 1rem;
+  }
+
+  .customer-details-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .customer-stats-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .customer-stat-card {
+    padding: 1rem;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .customer-modal-overlay {
+    padding: 10px;
+  }
+
+  .customer-modal-content {
+    max-width: 100%;
+    border-radius: 8px;
+  }
+
+  .customer-modal-header {
+    padding: 0.875rem;
+  }
+
+  .customer-modal-header h2 {
+    font-size: 1.125rem;
+  }
+
+  .customer-modal-body {
+    padding: 0.875rem;
+  }
+
+  .customer-details-section h3 {
+    font-size: 1rem;
+  }
+
+  .stat-value {
+    font-size: 1.125rem;
+  }
+}
+

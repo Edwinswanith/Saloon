@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { FaBell, FaUser, FaSignOutAlt } from 'react-icons/fa';
+import { FaBell, FaUser, FaSignOutAlt, FaBars } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import Profile from './Profile';
 import BranchSelector from './BranchSelector';
 import './GlobalHeader.css';
 
-const GlobalHeader = () => {
+const GlobalHeader = ({ onMobileMenuToggle }) => {
   const { user, logout } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -27,6 +27,16 @@ const GlobalHeader = () => {
     <>
       <header className="global-header">
         <div className="global-header-content">
+          {/* Mobile hamburger menu button */}
+          {onMobileMenuToggle && (
+            <button
+              className="mobile-menu-btn"
+              onClick={onMobileMenuToggle}
+              aria-label="Toggle menu"
+            >
+              <FaBars size={20} />
+            </button>
+          )}
           <div className="global-header-right">
             <BranchSelector />
             <button 

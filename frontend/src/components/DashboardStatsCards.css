@@ -1,0 +1,241 @@
+/**
+ * Dashboard Statistics Cards Styles
+ * 
+ * Complete CSS styles for the Dashboard Statistics Cards component.
+ * Includes responsive design for all screen sizes.
+ */
+
+/* ============================================================================
+   CONTAINER
+   ============================================================================ */
+
+.stats-cards-container {
+  width: 100%;
+  margin-bottom: 2rem;
+}
+
+/* ============================================================================
+   STATS GRID LAYOUT
+   ============================================================================ */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+  background: transparent;
+  padding: 0;
+  align-items: stretch;
+}
+
+/* ============================================================================
+   STAT CARD BASE STYLES
+   ============================================================================ */
+
+.stat-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 12px 16px;
+  border: 1px solid #e5e7eb;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 90px;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 0;
+  transition: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card:hover {
+  transform: none !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ============================================================================
+   STAT CARD COLOR VARIANTS
+   ============================================================================ */
+
+/* Blue Card - Total Tax Collected */
+.stat-card.stat-blue {
+  background: #e0f2fe;
+  border: 1px solid #bae6fd;
+}
+
+/* Green Card - Gross Revenue */
+.stat-card.stat-green {
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+}
+
+/* Yellow Card - Avg. Bill Value */
+.stat-card.stat-yellow {
+  background: #fef9c3;
+  border: 1px solid #fef08a;
+}
+
+/* Gray Card - Transactions */
+.stat-card.stat-gray {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+}
+
+/* Red Card - Expenses */
+.stat-card.stat-red {
+  background: #fce7f3;
+  border: 1px solid #fbcfe8;
+}
+
+/* Dark Red Card - Deleted Bills */
+.stat-card.stat-dark-red {
+  background: #fce7f3;
+  border: 1px solid #fbcfe8;
+}
+
+/* Loading State */
+.stat-card.stat-loading {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* ============================================================================
+   STAT VALUE (Number Display)
+   ============================================================================ */
+
+.stat-card .stat-value {
+  font-size: clamp(1rem, 1.2vw, 1.25rem);
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 4px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* ============================================================================
+   STAT LABEL (Text Display)
+   ============================================================================ */
+
+.stat-card .stat-label {
+  font-size: clamp(0.75rem, 0.8vw, 0.8125rem);
+  color: #6b7280;
+  font-weight: 500;
+  margin-top: 0;
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  line-height: 18px;
+  white-space: nowrap;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============================================================================
+   RESPONSIVE DESIGN
+   ============================================================================ */
+
+/* Tablet - 3 columns */
+@media (max-width: 1280px) {
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+  }
+}
+
+/* Mobile - 2 columns */
+@media (max-width: 1024px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+}
+
+/* Small Mobile - 1 column */
+@media (max-width: 768px) {
+  .stats-cards-container {
+    margin-bottom: 1.5rem;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  
+  .stat-card {
+    min-height: 90px;
+    padding: 12px 14px;
+    overflow: hidden;
+  }
+  
+  .stat-card .stat-value {
+    font-size: 15px !important;
+    line-height: 17px;
+    white-space: nowrap;
+    margin-bottom: 0;
+  }
+  
+  .stat-card .stat-label {
+    font-size: clamp(0.75rem, 0.75vw, 0.8125rem);
+    line-height: 18px;
+    margin-top: 0;
+    white-space: nowrap;
+    overflow: visible;
+    display: block;
+    padding: 0;
+    box-sizing: border-box;
+    text-transform: none;
+  }
+}
+
+/* Extra Small Mobile */
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  
+  .stat-card {
+    min-height: 90px;
+    padding: 12px 14px;
+    overflow: hidden;
+  }
+  
+  .stat-card .stat-value {
+    font-size: 14px !important;
+    line-height: 16px;
+    white-space: nowrap;
+    margin-bottom: 0;
+  }
+  
+  .stat-card .stat-label {
+    font-size: clamp(0.75rem, 0.7vw, 0.8125rem);
+    line-height: 18px;
+    margin-top: 0;
+    white-space: nowrap;
+    overflow: visible;
+    display: block;
+    padding: 0;
+    box-sizing: border-box;
+    text-transform: none;
+  }
+}
+

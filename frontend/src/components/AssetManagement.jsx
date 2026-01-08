@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import {
-  FaBars,
-  FaBell,
-  FaUser,
   FaCloudUploadAlt,
   FaPlus,
   FaCloudDownloadAlt,
@@ -340,27 +337,6 @@ const AssetManagement = () => {
 
   return (
     <div className="asset-management-page">
-      {/* Header */}
-      <header className="asset-management-header">
-        <div className="header-left">
-          <button className="menu-icon">
-            <FaBars />
-          </button>
-          <h1 className="header-title">Asset Management</h1>
-        </div>
-        <div className="header-right">
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-          <button className="header-icon bell-icon">
-            <FaBell />
-          </button>
-          <button className="header-icon user-icon">
-            <FaUser />
-          </button>
-        </div>
-      </header>
-
       <div className="asset-management-container">
         {/* Asset Management Card */}
         <div className="asset-management-card">

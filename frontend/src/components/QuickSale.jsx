@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { FaBars, FaBell, FaUser, FaCalendar, FaBoxes, FaTrash, FaChevronDown, FaClock, FaTimes, FaWallet, FaGift, FaExclamationTriangle, FaClipboardList, FaTimesCircle } from 'react-icons/fa'
+import { FaBars, FaBell, FaUser, FaCalendar, FaBoxes, FaTrash, FaChevronDown, FaClock, FaTimes, FaExclamationTriangle, FaClipboardList, FaTimesCircle, FaGift } from 'react-icons/fa'
 import './QuickSale.css'
 import { API_BASE_URL } from '../config'
 import { useAuth } from '../contexts/AuthContext'
@@ -8,8 +8,10 @@ import { showSuccess, showError, showWarning, showInfo } from '../utils/toast.js
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import { celebrateBig } from '../utils/confetti'
+import { formatLocalDate } from '../utils/dateUtils'
 import { PageTransition } from './shared/PageTransition'
 import { EmptyList } from './shared/EmptyStates'
+import InvoicePreview from './InvoicePreview'
 
 const QuickSale = () => {
   const { user, getMaxDiscountPercent, currentBranch } = useAuth()
@@ -28,10 +30,15 @@ const QuickSale = () => {
   const [bookingNote, setBookingNote] = useState('')
   const [discountAmount, setDiscountAmount] = useState(0)
   const [membershipInfo, setMembershipInfo] = useState(null)
-  const [pointsToUse, setPointsToUse] = useState(0)
-  const [loyaltySettings, setLoyaltySettings] = useState(null)
-  const [pointsDiscount, setPointsDiscount] = useState(0)
   const appointmentCreatedRef = useRef(false)
+
+  // Helper function to get current time in HH:MM format
+  const getCurrentTime = () => {
+    const now = new Date()
+    const hours = String(now.getHours()).padStart(2, '0')
+    const minutes = String(now.getMinutes()).padStart(2, '0')
+    return `${hours}:${minutes}`
+  }
 
   // Data from backend
   const [customers, setCustomers] = useState([])
@@ -68,17 +75,25 @@ const QuickSale = () => {
   const [showMembershipModal, setShowMembershipModal] = useState(false)
   const [selectedQuantity, setSelectedQuantity] = useState(1)
 
-  const [services, setServices] = useState([
-    {
-      id: 1,
-      service_id: '',
-      staff_id: '',
-      startTime: '',
-      price: 0,
-      discount: 0,
-      total: 0,
-    },
-  ])
+  const [services, setServices] = useState(() => {
+    const currentTime = (() => {
+      const now = new Date()
+      const hours = String(now.getHours()).padStart(2, '0')
+      const minutes = String(now.getMinutes()).padStart(2, '0')
+      return `${hours}:${minutes}`
+    })()
+    return [
+      {
+        id: 1,
+        service_id: '',
+        staff_id: '',
+        startTime: currentTime,
+        price: 0,
+        discount: 0,
+        total: 0,
+      },
+    ]
+  })
   const [packages, setPackages] = useState([])
   const [products, setProducts] = useState([])
   const [prepaidPackages, setPrepaidPackages] = useState([])
@@ -91,6 +106,12 @@ const QuickSale = () => {
   // State for editing appointment
   const [editingAppointmentId, setEditingAppointmentId] = useState(null)
 
+  // State for invoice modal
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false)
+  const [invoiceData, setInvoiceData] = useState(null)
+  const [currentBillId, setCurrentBillId] = useState(null)
+  const [loadingInvoice, setLoadingInvoice] = useState(false)
+
   // Fetch data on component mount
   useEffect(() => {
     fetchCustomers()
@@ -100,25 +121,7 @@ const QuickSale = () => {
     fetchProducts()
     fetchPrepaidPackages()
     fetchMembershipPlans()
-    fetchLoyaltySettings()
   }, [])
-
-  // Fetch loyalty program settings
-  const fetchLoyaltySettings = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/loyalty-program/settings`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setLoyaltySettings(data)
-      }
-    } catch (error) {
-      console.error('Error fetching loyalty settings:', error)
-    }
-  }
 
   // Pre-fill appointment data after data arrays are loaded
   useEffect(() => {
@@ -147,6 +150,21 @@ const QuickSale = () => {
     }
   }, [customers, availableServices, staffMembers])
 
+  // Fetch customer details and membership in background when customer is selected
+  useEffect(() => {
+    if (selectedCustomer?.id) {
+      // Fetch in background without blocking UI
+      fetchCustomerDetails(selectedCustomer.id)
+      checkCustomerMembership(selectedCustomer.id)
+    } else {
+      // Clear customer details when no customer is selected
+      setCustomerDetails(null)
+      setMembershipInfo(null)
+      setDiscountAmount(0)
+      setDiscountType('fix')
+    }
+  }, [selectedCustomer])
+
   // Pre-fill form with appointment data
   const prefillAppointmentData = async (appointmentData) => {
     try {
@@ -167,9 +185,7 @@ const QuickSale = () => {
                 mobile: customerData.mobile || '',
                 firstName: customerData.firstName || customerData.first_name || '',
                 lastName: customerData.lastName || customerData.last_name || '',
-                email: customerData.email || '',
-                wallet_balance: customerData.wallet || customerData.wallet_balance || 0,
-                loyalty_points: customerData.loyaltyPoints || customerData.loyalty_points || 0
+                email: customerData.email || ''
               }
             }
           } catch (fetchError) {
@@ -178,7 +194,8 @@ const QuickSale = () => {
         }
         
         if (customer) {
-          await selectCustomer(customer)
+          selectCustomer(customer)
+          // Customer details will be fetched in background via useEffect
         }
       }
 
@@ -315,9 +332,7 @@ const QuickSale = () => {
         mobile: customer.mobile || '',
         firstName: customer.firstName || customer.first_name || '',
         lastName: customer.lastName || customer.last_name || '',
-        email: customer.email || '',
-        wallet_balance: customer.wallet || customer.wallet_balance || 0,
-        loyalty_points: customer.loyaltyPoints || customer.loyalty_points || 0
+        email: customer.email || ''
       }))
       setCustomers(customersList)
     } catch (error) {
@@ -403,13 +418,14 @@ const QuickSale = () => {
   }
 
   const addService = () => {
+    const currentTime = getCurrentTime()
     setServices([
       ...services,
       {
         id: Date.now(),
         service_id: '',
         staff_id: '',
-        startTime: '',
+        startTime: currentTime,
         price: 0,
         discount: 0,
         total: 0,
@@ -576,6 +592,11 @@ const QuickSale = () => {
           }
         }
 
+        // Ensure startTime is preserved as string
+        if (field === 'startTime' && value) {
+          updatedService.startTime = String(value).trim()
+        }
+
         // Calculate total
         const price = parseFloat(updatedService.price) || 0
         const discount = parseFloat(updatedService.discount) || 0
@@ -588,22 +609,11 @@ const QuickSale = () => {
     setServices(updated)
   }
 
-  const selectCustomer = async (customer) => {
+  const selectCustomer = (customer) => {
     setSelectedCustomer(customer)
     setSearchQuery(`${customer.firstName || ''} ${customer.lastName || ''} - ${customer.mobile}`.trim())
     setShowCustomerDropdown(false)
-    
-    // Fetch detailed customer information
-    await fetchCustomerDetails(customer.id)
-    
-    // Check for active membership when customer is selected
-    if (customer && customer.id) {
-      await checkCustomerMembership(customer.id)
-    } else {
-      setMembershipInfo(null)
-      setDiscountAmount(0)
-      setDiscountType('fix')
-    }
+    // Customer details and membership will be fetched in background via useEffect
   }
 
   // Check customer's active membership
@@ -654,26 +664,67 @@ const QuickSale = () => {
       }
 
       // Get first service with staff and time
-      const firstService = services.find(s => s.service_id && s.staff_id && s.startTime)
+      const firstService = services.find(s => 
+        s.service_id && 
+        s.staff_id && 
+        s.startTime && 
+        s.startTime.trim() !== ''
+      )
       if (!firstService) {
-        showError('Please add at least one service with staff and time assigned')
+        // Provide more specific error message
+        const hasService = services.some(s => s.service_id)
+        const hasStaff = services.some(s => s.staff_id)
+        const hasTime = services.some(s => s.startTime && s.startTime.trim() !== '')
+        
+        if (!hasService) {
+          showError('Please add at least one service')
+        } else if (!hasStaff) {
+          showError('Please assign staff to at least one service')
+        } else if (!hasTime) {
+          showError('Please set start time for at least one service')
+        } else {
+          showError('Please add at least one service with staff and time assigned')
+        }
         return false
       }
 
       // Format date for API (YYYY-MM-DD)
-      const appointmentDate = selectedDate.toISOString().split('T')[0]
+      const appointmentDate = formatLocalDate(selectedDate)
       
       // Format time (HH:MM:SS)
-      let startTime = firstService.startTime
-      if (!startTime.includes(':')) {
+      let startTime = firstService.startTime.trim()
+      if (!startTime || !startTime.includes(':')) {
         showError('Please provide a valid time for the service')
-        return
+        return false
       }
       // Ensure time is in HH:MM:SS format
       if (startTime.split(':').length === 2) {
         startTime = `${startTime}:00`
       }
 
+      // If editing an existing appointment, update it instead of creating new one
+      if (editingAppointmentId) {
+        const updateResponse = await apiPut(`/api/appointments/${editingAppointmentId}`, {
+          customer_id: selectedCustomer.id,
+          staff_id: firstService.staff_id,
+          service_id: firstService.service_id,
+          appointment_date: appointmentDate,
+          start_time: startTime,
+          status: 'confirmed',
+          notes: bookingNote || undefined
+        })
+
+        if (!updateResponse.ok) {
+          const errorData = await updateResponse.json().catch(() => ({ error: 'Failed to update appointment' }))
+          showError(errorData.error || 'Failed to update appointment')
+          return false
+        }
+
+        showSuccess('Booking updated! Appointment saved to Upcoming Appointments.')
+        return true
+      }
+
+      // Create new appointment
       const response = await apiPost('/api/appointments', {
         customer_id: selectedCustomer.id,
         staff_id: firstService.staff_id,
@@ -722,8 +773,6 @@ const QuickSale = () => {
         lastVisit: data.last_visit || null,
         totalVisits: data.total_visits || 0,
         totalRevenue: data.total_revenue || 0,
-        walletBalance: data.wallet_balance || 0,
-        loyaltyPoints: data.loyalty_points || 0,
         notes: data.notes || 'N/A'
       })
     } catch (error) {
@@ -735,7 +784,16 @@ const QuickSale = () => {
   }
 
   const handleCustomerInputFocus = () => {
-    if (!selectedCustomer) {
+    // If a customer is selected, clear selection and allow searching again
+    if (selectedCustomer) {
+      setSelectedCustomer(null)
+      setSearchQuery('')
+      setFilteredCustomers(customers.slice(0, 10))
+      setShowCustomerDropdown(true)
+      return
+    }
+    
+    // If no customer is selected, show dropdown
       if (searchQuery.length > 0) {
         // If there's a search query, filter customers
         const query = searchQuery.toLowerCase()
@@ -751,7 +809,6 @@ const QuickSale = () => {
         // Show first 10 customers when field is focused but empty
         setFilteredCustomers(customers.slice(0, 10))
         setShowCustomerDropdown(true)
-      }
     }
   }
 
@@ -802,9 +859,7 @@ const QuickSale = () => {
         mobile: cleanMobile,
         firstName: firstName,
         lastName: lastName,
-        email: '',
-        wallet_balance: 0,
-        loyalty_points: 0
+        email: ''
       }
 
       // Add to customers list
@@ -896,7 +951,7 @@ const QuickSale = () => {
   }
 
   const calculateNet = () => {
-    return calculateSubtotal() - calculateDiscount() - pointsDiscount
+    return calculateSubtotal() - calculateDiscount()
   }
 
   const calculateTax = () => {
@@ -905,30 +960,7 @@ const QuickSale = () => {
   }
 
   const calculateFinalAmount = () => {
-    const totalBeforeWallet = calculateNet() + calculateTax()
-    
-    // If wallet payment is selected and customer has wallet balance, deduct it
-    if (paymentMode === 'wallet' && selectedCustomer && selectedCustomer.wallet_balance) {
-      const walletBalance = parseFloat(selectedCustomer.wallet_balance) || 0
-      const amountAfterWallet = totalBeforeWallet - walletBalance
-      
-      // Return 0 if wallet covers everything, otherwise return remaining amount
-      return Math.max(0, amountAfterWallet)
-    }
-    
-    return totalBeforeWallet
-  }
-
-  const getWalletDeduction = () => {
-    // Calculate how much wallet balance will be used
-    if (paymentMode === 'wallet' && selectedCustomer && selectedCustomer.wallet_balance) {
-      const totalBeforeWallet = calculateNet() + calculateTax()
-      const walletBalance = parseFloat(selectedCustomer.wallet_balance) || 0
-      
-      // Use either full wallet balance or only what's needed
-      return Math.min(walletBalance, totalBeforeWallet)
-    }
-    return 0
+    return calculateNet() + calculateTax()
   }
 
   const handleShowBillActivity = async () => {
@@ -968,11 +1000,12 @@ const QuickSale = () => {
   }
 
   const handleReset = () => {
+    const currentTime = getCurrentTime()
     setServices([{
       id: 1,
       service_id: '',
       staff_id: '',
-      startTime: '',
+      startTime: currentTime,
       price: 0,
       discount: 0,
       total: 0,
@@ -988,56 +1021,8 @@ const QuickSale = () => {
     setMembershipInfo(null)
     setBookingNote('')
     setBookingStatus('confirmed')
-    setPointsToUse(0)
-    setPointsDiscount(0)
     appointmentCreatedRef.current = false
     setEditingAppointmentId(null)
-  }
-
-  // Calculate points discount preview
-  const calculatePointsDiscount = async (points) => {
-    if (!selectedCustomer || !loyaltySettings || !loyaltySettings.enabled || points <= 0) {
-      setPointsDiscount(0)
-      return
-    }
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/loyalty-program/redeem`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify({
-          customer_id: selectedCustomer.id,
-          points_to_use: points
-        })
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setPointsDiscount(data.discount_amount)
-      } else {
-        const error = await response.json()
-        showError(error.error || 'Failed to calculate points discount')
-        setPointsToUse(0)
-        setPointsDiscount(0)
-      }
-    } catch (error) {
-      console.error('Error calculating points discount:', error)
-      setPointsDiscount(0)
-    }
-  }
-
-  // Handle points input change
-  const handlePointsChange = (value) => {
-    const points = parseInt(value) || 0
-    setPointsToUse(points)
-    if (points > 0) {
-      calculatePointsDiscount(points)
-    } else {
-      setPointsDiscount(0)
-    }
   }
 
   const handleCheckout = async () => {
@@ -1066,16 +1051,22 @@ const QuickSale = () => {
         return
       }
 
-      // Create bill
-      const billResponse = await fetch(`${API_BASE_URL}/api/bills`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customer_id: selectedCustomer.id,
-          booking_status: bookingStatus,
-          booking_note: bookingNote,
-        }),
-      })
+      // Create bill with selected date
+      // If editing appointment, include appointment_id to check for existing unchecked-out bill
+      const billDate = formatLocalDate(selectedDate) // Format as YYYY-MM-DD
+      const billPayload = {
+        customer_id: selectedCustomer.id,
+        bill_date: billDate, // Send selected date to backend
+        booking_status: bookingStatus,
+        booking_note: bookingNote,
+      }
+      
+      // Include appointment_id if editing an appointment
+      if (editingAppointmentId) {
+        billPayload.appointment_id = editingAppointmentId
+      }
+      
+      const billResponse = await apiPost('/api/bills', billPayload)
 
       if (!billResponse.ok) {
         let errorMessage = 'Failed to create bill'
@@ -1096,19 +1087,15 @@ const QuickSale = () => {
       for (const service of validServices) {
         if (service.service_id && service.price > 0) {
           try {
-            const itemResponse = await fetch(`${API_BASE_URL}/api/bills/${billId}/items`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                item_type: 'service',
-                service_id: service.service_id,  // MongoDB ObjectId as string
-                staff_id: service.staff_id || null,  // MongoDB ObjectId as string
-                start_time: service.startTime ? `${service.startTime}:00` : null,
-                price: parseFloat(service.price) || 0,
-                discount: parseFloat(service.discount) || 0,
-                quantity: 1,
-                total: parseFloat(service.total) || parseFloat(service.price) || 0,
-              }),
+            const itemResponse = await apiPost(`/api/bills/${billId}/items`, {
+              item_type: 'service',
+              service_id: service.service_id,  // MongoDB ObjectId as string
+              staff_id: service.staff_id || null,  // MongoDB ObjectId as string
+              start_time: service.startTime ? `${service.startTime}:00` : null,
+              price: parseFloat(service.price) || 0,
+              discount: parseFloat(service.discount) || 0,
+              quantity: 1,
+              total: parseFloat(service.total) || parseFloat(service.price) || 0,
             })
 
             if (!itemResponse.ok) {
@@ -1132,17 +1119,13 @@ const QuickSale = () => {
       for (const pkg of packages) {
         if (pkg.package_id) {
           try {
-            const itemResponse = await fetch(`${API_BASE_URL}/api/bills/${billId}/items`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                item_type: 'package',
-                package_id: pkg.package_id,  // MongoDB ObjectId as string
-                price: parseFloat(pkg.price) || 0,
-                discount: parseFloat(pkg.discount) || 0,
-                quantity: 1,
-                total: parseFloat(pkg.total) || parseFloat(pkg.price) || 0,
-              }),
+            const itemResponse = await apiPost(`/api/bills/${billId}/items`, {
+              item_type: 'package',
+              package_id: pkg.package_id,  // MongoDB ObjectId as string
+              price: parseFloat(pkg.price) || 0,
+              discount: parseFloat(pkg.discount) || 0,
+              quantity: 1,
+              total: parseFloat(pkg.total) || parseFloat(pkg.price) || 0,
             })
 
             if (!itemResponse.ok) {
@@ -1160,17 +1143,13 @@ const QuickSale = () => {
       for (const product of products) {
         if (product.product_id) {
           try {
-            const itemResponse = await fetch(`${API_BASE_URL}/api/bills/${billId}/items`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                item_type: 'product',
-                product_id: product.product_id,  // MongoDB ObjectId as string
-                price: parseFloat(product.price) || 0,
-                discount: parseFloat(product.discount) || 0,
-                quantity: parseInt(product.quantity) || 1,  // Quantity is a number, keep parseInt
-                total: parseFloat(product.total) || parseFloat(product.price) * (parseInt(product.quantity) || 1) || 0,
-              }),
+            const itemResponse = await apiPost(`/api/bills/${billId}/items`, {
+              item_type: 'product',
+              product_id: product.product_id,  // MongoDB ObjectId as string
+              price: parseFloat(product.price) || 0,
+              discount: parseFloat(product.discount) || 0,
+              quantity: parseInt(product.quantity) || 1,  // Quantity is a number, keep parseInt
+              total: parseFloat(product.total) || parseFloat(product.price) * (parseInt(product.quantity) || 1) || 0,
             })
 
             if (!itemResponse.ok) {
@@ -1188,17 +1167,13 @@ const QuickSale = () => {
       for (const membership of memberships) {
         if (membership.membership_id) {
           try {
-            const itemResponse = await fetch(`${API_BASE_URL}/api/bills/${billId}/items`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                item_type: 'membership',
-                membership_id: membership.membership_id,  // MongoDB ObjectId as string
-                price: parseFloat(membership.price) || 0,
-                discount: 0,
-                quantity: 1,
-                total: parseFloat(membership.price) || 0,
-              }),
+            const itemResponse = await apiPost(`/api/bills/${billId}/items`, {
+              item_type: 'membership',
+              membership_id: membership.membership_id,  // MongoDB ObjectId as string
+              price: parseFloat(membership.price) || 0,
+              discount: 0,
+              quantity: 1,
+              total: parseFloat(membership.price) || 0,
             })
 
             if (!itemResponse.ok) {
@@ -1256,36 +1231,38 @@ const QuickSale = () => {
         finalDiscountType = 'fix'
       }
 
-      // Checkout
-      const checkoutResponse = await fetch(`${API_BASE_URL}/api/bills/${billId}/checkout`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify({
-          discount_amount: membershipInfo && membershipInfo.plan && discountType === 'membership' 
-            ? membershipInfo.plan.allocated_discount 
-            : parseFloat(discountAmount) || 0,
-          discount_type: discountType === 'membership' ? 'membership' : (discountType === '%' ? 'percentage' : 'fix'),
-          discount_reason: approvalReason || undefined, // Phase 5: Include reason
-          tax_rate: 18.0, // GST rate - ensure it's a float
-          payment_mode: paymentMode,
-          booking_status: bookingStatus,
-          prepaid_package_id: prepaidPackageId,
-          points_to_use: pointsToUse || 0,
-        }),
+      // Checkout with selected date
+      const checkoutBillDate = formatLocalDate(selectedDate) // Format as YYYY-MM-DD
+      const checkoutResponse = await apiPost(`/api/bills/${billId}/checkout`, {
+        bill_date: checkoutBillDate, // Send selected date to update bill_date during checkout
+        discount_amount: membershipInfo && membershipInfo.plan && discountType === 'membership' 
+          ? membershipInfo.plan.allocated_discount 
+          : parseFloat(discountAmount) || 0,
+        discount_type: discountType === 'membership' ? 'membership' : (discountType === '%' ? 'percentage' : 'fix'),
+        discount_reason: approvalReason || undefined, // Phase 5: Include reason
+        tax_rate: 18.0, // GST rate - ensure it's a float
+        payment_mode: paymentMode,
+        booking_status: bookingStatus,
+        prepaid_package_id: prepaidPackageId,
       })
 
       if (checkoutResponse.ok) {
         const checkoutData = await checkoutResponse.json()
         
+        // Use the billId that was used in the checkout call (already available)
+        // The checkout response doesn't include the bill ID, but we already have it
+        
         // Update appointment if we're editing one
         if (editingAppointmentId) {
           try {
-            const firstService = services.find(s => s.service_id && s.staff_id && s.startTime)
+            const firstService = services.find(s => 
+              s.service_id && 
+              s.staff_id && 
+              s.startTime && 
+              s.startTime.trim() !== ''
+            )
             if (firstService) {
-              const appointmentDate = selectedDate.toISOString().split('T')[0]
+              const appointmentDate = formatLocalDate(selectedDate)
               let startTime = firstService.startTime
               if (startTime.split(':').length === 2) {
                 startTime = `${startTime}:00`
@@ -1302,51 +1279,32 @@ const QuickSale = () => {
               })
 
               if (updateResponse.ok) {
-                let successMessage = `Appointment updated and bill created successfully! Bill Number: ${checkoutData.bill_number} | Final Amount: ₹${checkoutData.final_amount.toFixed(2)}`
-                if (checkoutData.points_earned && checkoutData.points_earned > 0) {
-                  successMessage += ` | Points Earned: ${checkoutData.points_earned}`
-                }
-                showSuccess(successMessage)
+                showSuccess(`Appointment updated and bill created successfully! Bill Number: ${checkoutData.bill_number} | Final Amount: ₹${checkoutData.final_amount.toFixed(2)}`)
               } else {
-                let successMessage = `Bill created successfully! Bill Number: ${checkoutData.bill_number} | Final Amount: ₹${checkoutData.final_amount.toFixed(2)}`
-                if (checkoutData.points_earned && checkoutData.points_earned > 0) {
-                  successMessage += ` | Points Earned: ${checkoutData.points_earned}`
-                }
-                showSuccess(successMessage)
+                showSuccess(`Bill created successfully! Bill Number: ${checkoutData.bill_number} | Final Amount: ₹${checkoutData.final_amount.toFixed(2)}`)
                 showWarning('Appointment update failed, but bill was created')
               }
             } else {
-              let successMessage = `Bill created successfully! Bill Number: ${checkoutData.bill_number} | Final Amount: ₹${checkoutData.final_amount.toFixed(2)}`
-              if (checkoutData.points_earned && checkoutData.points_earned > 0) {
-                successMessage += ` | Points Earned: ${checkoutData.points_earned}`
-              }
-              showSuccess(successMessage)
+              showSuccess(`Bill created successfully! Bill Number: ${checkoutData.bill_number} | Final Amount: ₹${checkoutData.final_amount.toFixed(2)}`)
             }
           } catch (error) {
             console.error('Error updating appointment:', error)
-            let successMessage = `Bill created successfully! Bill Number: ${checkoutData.bill_number} | Final Amount: ₹${checkoutData.final_amount.toFixed(2)}`
-            if (checkoutData.points_earned && checkoutData.points_earned > 0) {
-              successMessage += ` | Points Earned: ${checkoutData.points_earned}`
-            }
-            showSuccess(successMessage)
+            showSuccess(`Bill created successfully! Bill Number: ${checkoutData.bill_number} | Final Amount: ₹${checkoutData.final_amount.toFixed(2)}`)
             showWarning('Appointment update failed, but bill was created')
           }
           setEditingAppointmentId(null)
         } else {
-          let successMessage = `Bill created successfully! Bill Number: ${checkoutData.bill_number} | Final Amount: ₹${checkoutData.final_amount.toFixed(2)}`
-          if (checkoutData.points_earned && checkoutData.points_earned > 0) {
-            successMessage += ` | Points Earned: ${checkoutData.points_earned}`
-          }
-          showSuccess(successMessage)
+          showSuccess(`Bill created successfully! Bill Number: ${checkoutData.bill_number} | Final Amount: ₹${checkoutData.final_amount.toFixed(2)}`)
         }
         
         // Celebrate with confetti!
         celebrateBig()
         
-        handleReset()
-        setPendingApproval(null)
-        setShowApprovalForm(false)
-        setApprovalReason('')
+        // Set bill ID and fetch invoice data, then show modal
+        // billId is already available from the checkout call
+        setCurrentBillId(billId)
+        await fetchInvoiceData(billId)
+        setShowInvoiceModal(true)
       } else {
         let errorMessage = 'Failed to complete checkout. Please try again.'
         try {
@@ -1374,8 +1332,12 @@ const QuickSale = () => {
     }
   }
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString)
+  const formatDate = (dateInput) => {
+    // Handle both Date objects and date strings
+    const date = dateInput instanceof Date ? dateInput : new Date(dateInput)
+    if (isNaN(date.getTime())) {
+      return ''
+    }
     const day = String(date.getDate()).padStart(2, '0')
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const year = date.getFullYear()
@@ -1390,93 +1352,253 @@ const QuickSale = () => {
     return `${hour12}:${minutes} ${ampm}`
   }
 
+  const fetchInvoiceData = async (billId) => {
+    try {
+      setLoadingInvoice(true)
+      const response = await apiGet(`/api/bills/${billId}/invoice`)
+      if (response.ok) {
+        const data = await response.json()
+        setInvoiceData(data)
+      } else {
+        showError('Failed to load invoice data')
+      }
+    } catch (error) {
+      console.error('Error fetching invoice data:', error)
+      showError('Error loading invoice data')
+    } finally {
+      setLoadingInvoice(false)
+    }
+  }
+
+  const handleDownloadInvoice = async () => {
+    if (!currentBillId) {
+      showError('No bill found')
+      return
+    }
+
+    try {
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('token')
+      let branchId = currentBranch?.id
+      if (!branchId) {
+        const storedBranch = localStorage.getItem('current_branch')
+        if (storedBranch) {
+          try {
+            const branch = JSON.parse(storedBranch)
+            branchId = branch?.id
+          } catch (e) {
+            console.error('Error parsing stored branch:', e)
+          }
+        }
+      }
+      
+      if (!token) {
+        showError('Authentication token not found. Please log in again.')
+        return
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/api/bills/${currentBillId}/invoice/pdf`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'X-Branch-Id': branchId || ''
+        }
+      })
+
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `invoice_${invoiceData?.bill_number || invoiceData?.invoice_number || currentBillId}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+        showSuccess('Invoice downloaded successfully')
+      } else {
+        const errorText = await response.text().catch(() => 'Failed to download invoice')
+        console.error('Failed to download invoice:', response.status, errorText)
+        if (response.status === 401) {
+          showError('Unauthorized. Please log in again.')
+        } else {
+          showError(`Failed to download invoice: ${errorText}`)
+        }
+      }
+    } catch (error) {
+      console.error('Error downloading invoice:', error)
+      showError('Error downloading invoice')
+    }
+  }
+
+  const handleCloseInvoiceModal = () => {
+    setShowInvoiceModal(false)
+    setInvoiceData(null)
+    setCurrentBillId(null)
+    handleReset()
+  }
+
+  const handleReviewUs = () => {
+    showWarning('Review functionality coming soon')
+  }
+
   return (
     <PageTransition>
       <div className="quick-sale-page">
       <div className="quick-sale-container">
         <div className="quick-sale-card">
           <h1 className="card-title">New Booking</h1>
+          <div className="title-separator"></div>
 
           {/* Top Row: Search, Date, Customer Info */}
           <div className="top-row">
-            <div className="search-container search-container-flex">
-              <label className={`field-label ${selectedCustomer ? 'customer-label-selected' : 'customer-label-unselected'}`}>
-                Customer * {selectedCustomer && <span className="customer-selected-badge">✓ Selected: {selectedCustomer.firstName || ''} {selectedCustomer.lastName || ''}</span>}
+            <div className="search-container" style={{ position: 'relative' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px', width: '100%' }}>
+                <label 
+                  className="field-label" 
+                  style={{ color: selectedCustomer ? '#4CAF50' : '#374151', margin: 0, cursor: 'pointer' }}
+                  onClick={() => {
+                    // When label is clicked, clear selection if customer is selected and focus the input
+                    if (selectedCustomer) {
+                      setSelectedCustomer(null)
+                      setSearchQuery('')
+                      setFilteredCustomers(customers.slice(0, 10))
+                      setShowCustomerDropdown(true)
+                    }
+                    // Focus the input to trigger the focus handler
+                    const input = document.querySelector('.search-input')
+                    if (input) {
+                      input.focus()
+                    }
+                  }}
+                >
+                <span className="customer-label-text">Customer</span> {selectedCustomer && <span style={{ color: '#4CAF50', fontSize: '12px', marginLeft: '8px' }}>✓ Selected: {selectedCustomer.firstName || ''} {selectedCustomer.lastName || ''}</span>}
               </label>
-              <input
-                type="text"
-                placeholder={selectedCustomer ? `${selectedCustomer.firstName || ''} ${selectedCustomer.lastName || ''} - ${selectedCustomer.mobile}` : "Search by Mobile Number or Name"}
-                value={searchQuery}
-                onChange={handleCustomerInputChange}
-                onFocus={handleCustomerInputFocus}
-                className={selectedCustomer ? 'search-input search-input-selected' : (showCustomerDropdown ? 'search-input search-input-focused' : 'search-input')}
-              />
-              <span className="dropdown-arrow"><FaChevronDown /></span>
-              {showCustomerDropdown && (
-                <div className="customer-dropdown">
-                  {filteredCustomers.length === 0 && searchQuery.length > 0 ? (
-                    <div className="no-customer-section">
-                      <div className="no-customer-message">
-                        No customers found for "{searchQuery}"
-                      </div>
-                      <button
-                        className="add-new-customer-btn add-new-customer-btn-inline"
-                        onClick={() => {
-                          setShowNewCustomerForm(true)
-                          setShowCustomerDropdown(false)
-                          setNewCustomerData({ 
-                            mobile: searchQuery.match(/^\d+$/) ? searchQuery : '', 
-                            name: '', 
-                            gender: '',
-                            source: 'Walk-in',
-                            dobRange: ''
-                          })
-                        }}
-                      >
-                        + Add New Customer
-                      </button>
-                    </div>
-                  ) : filteredCustomers.length === 0 && searchQuery.length === 0 ? (
-                    <div className="no-customer-message">
-                      Start typing to search for customers...
-                    </div>
-                  ) : (
-                    <>
-                      {filteredCustomers.map(customer => (
-                        <div
-                          key={customer.id}
-                          className="customer-dropdown-item"
-                          onClick={() => selectCustomer(customer)}
+                {!selectedCustomer && (
+                        <button
+                    className="add-new-customer-btn-header"
+                          onClick={() => {
+                            setShowNewCustomerForm(true)
+                            setShowCustomerDropdown(false)
+                            setNewCustomerData({ 
+                              mobile: searchQuery.match(/^\d+$/) ? searchQuery : '', 
+                              name: '', 
+                              gender: '',
+                              source: 'Walk-in',
+                              dobRange: ''
+                            })
+                          }}
+                          style={{
+                      padding: '6px 14px',
+                            background: '#0F766E',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                      fontSize: '13px',
+                            fontWeight: '600',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#0d9488'
+                      e.currentTarget.style.transform = 'translateY(-1px)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = '#0F766E'
+                      e.currentTarget.style.transform = 'translateY(0)'
+                          }}
                         >
-                          <div className="customer-dropdown-item-name">
-                            {customer.firstName || ''} {customer.lastName || ''}
-                          </div>
-                          <div className="customer-dropdown-item-mobile">
-                            {customer.mobile}
-                          </div>
+                    <span>+</span> Add New Customer
+                        </button>
+                )}
+              </div>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <input
+                  type="text"
+                  className="search-input"
+                  placeholder={selectedCustomer ? `${selectedCustomer.firstName || ''} ${selectedCustomer.lastName || ''} - ${selectedCustomer.mobile}` : "Search by Mobile Number or Name"}
+                  value={selectedCustomer ? `${selectedCustomer.firstName || ''} ${selectedCustomer.lastName || ''} - ${selectedCustomer.mobile}` : searchQuery}
+                  onChange={handleCustomerInputChange}
+                  onFocus={handleCustomerInputFocus}
+                  onClick={() => {
+                    // When input is clicked with a selected customer, clear selection and reopen dropdown
+                    if (selectedCustomer) {
+                      setSelectedCustomer(null)
+                      setSearchQuery('')
+                      setFilteredCustomers(customers.slice(0, 10))
+                      setShowCustomerDropdown(true)
+                    }
+                  }}
+                  readOnly={selectedCustomer ? true : false}
+                  style={{
+                    borderColor: selectedCustomer ? '#4CAF50' : (showCustomerDropdown ? '#0F766E' : '#d1d5db'),
+                    borderWidth: selectedCustomer ? '2px' : '1px',
+                    backgroundColor: selectedCustomer ? '#f0fdf4' : 'white',
+                    cursor: selectedCustomer ? 'pointer' : 'text'
+                  }}
+                />
+                {showCustomerDropdown && (
+                  <div className="customer-dropdown">
+                    {filteredCustomers.length === 0 && searchQuery.length > 0 ? (
+                      <div className="no-customer-section">
+                        <div style={{ padding: '12px', color: '#6b7280', textAlign: 'center' }}>
+                          No customers found for "{searchQuery}"
                         </div>
-                      ))}
-                      {filteredCustomers.length >= 10 && searchQuery.length === 0 && (
-                        <div className="dropdown-hint">
-                          Showing first 10 customers. Type to search more...
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-              {!selectedCustomer && (
-                <div className="customer-error-message">
-                  <FaExclamationTriangle size={14} /> Please select a customer to proceed
-                </div>
-              )}
+                      </div>
+                    ) : filteredCustomers.length === 0 && searchQuery.length === 0 ? (
+                      <div style={{ padding: '12px', color: '#6b7280', textAlign: 'center' }}>
+                        Start typing to search for customers...
+                      </div>
+                    ) : (
+                      <>
+                        {filteredCustomers.map(customer => (
+                          <div
+                            key={customer.id}
+                            className="customer-dropdown-item"
+                            onClick={() => selectCustomer(customer)}
+                          >
+                            <div className="customer-dropdown-item-name">
+                              {customer.firstName || ''} {customer.lastName || ''}
+                            </div>
+                            <div className="customer-dropdown-item-mobile">
+                              {customer.mobile}
+                            </div>
+                          </div>
+                        ))}
+                        {filteredCustomers.length >= 10 && searchQuery.length === 0 && (
+                          <div style={{ padding: '8px 16px', fontSize: '12px', color: '#6b7280', textAlign: 'center', borderTop: '1px solid #f0f0f0' }}>
+                            Showing first 10 customers. Type to search more...
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="date-container">
-              <label className="date-label">Date *</label>
-              <div className="date-input-wrapper">
+              <label className="date-label">Date</label>
+              <div 
+                className="date-input-wrapper"
+                onClick={(e) => {
+                  // Find and click the DatePicker input
+                  const input = e.currentTarget.querySelector('.react-datepicker__input-container input')
+                  if (input) {
+                    input.focus()
+                    input.click()
+                  }
+                }}
+              >
                 <DatePicker
                   selected={selectedDate}
-                  onChange={(date) => setSelectedDate(date)}
+                  onChange={(date) => {
+                    if (date) {
+                      setSelectedDate(date)
+                    }
+                  }}
                   dateFormat="dd/MM/yyyy"
                   className="date-picker"
                   placeholderText="Select date"
@@ -1485,148 +1607,171 @@ const QuickSale = () => {
                 <span className="calendar-icon"><FaCalendar /></span>
               </div>
             </div>
-
-            {/* Customer Details Card - Show when customer is selected */}
-            {selectedCustomer && customerDetails && (
-              <div className="customer-info-card">
-                <div className="customer-info-table">
-                  <div className="customer-info-header">
-                    <div className="customer-info-header-cell">Membership</div>
-                    <div className="customer-info-header-cell">Last Visit</div>
-                    <div className="customer-info-header-cell">Total Visits</div>
-                    <div className="customer-info-header-cell">Total Revenue</div>
-                  </div>
-                  <div className="customer-info-row">
-                    <div className="customer-info-cell">{customerDetails.membership}</div>
-                    <div className="customer-info-cell">{customerDetails.lastVisit ? formatDate(customerDetails.lastVisit) : 'N/A'}</div>
-                    <div className="customer-info-cell">{customerDetails.totalVisits}</div>
-                    <div className="customer-info-cell">₹{customerDetails.totalRevenue.toFixed(2)}</div>
-                  </div>
-                  <div className="customer-note-row">
-                    <span className="customer-note-label">Customer Note:</span>
-                    <span className="customer-note-value">{customerDetails.notes}</span>
-                  </div>
-                </div>
-                <div className="customer-info-sidebar">
-                  <div className="customer-info-badge">
-                    <span className="badge-label">Wallet Balance</span>
-                    <FaWallet className="badge-icon" />
-                    <span className="badge-value">₹ {customerDetails.walletBalance}</span>
-                  </div>
-                  <div className="customer-info-badge">
-                    <span className="badge-label">Loyalty Points:</span>
-                    <span className="badge-value badge-value-loyalty">
-                      {customerDetails.loyaltyPoints || 0} pts
-                      {loyaltySettings && loyaltySettings.enabled && loyaltySettings.redemptionRate && (
-                        <span className="badge-hint">
-                          (₹{(customerDetails.loyaltyPoints || 0) / loyaltySettings.redemptionRate} value)
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                  <button className="bill-activity-btn" onClick={handleShowBillActivity}>
-                    Bill Activity
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* Service Rows */}
-          {services.map((service) => (
-            <div key={service.id} className="service-row">
-              <div className="form-field">
-                <label className="field-label">Service</label>
-                <select
-                  className="form-select"
-                  value={service.service_id}
-                  onChange={(e) => updateService(service.id, 'service_id', e.target.value)}
-                >
-                  <option value="">Choose service</option>
-                  {availableServices.map(svc => (
-                    <option key={svc.id} value={svc.id}>
-                      {svc.name} - ₹{svc.price}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-field">
-                <label className="field-label">Staff</label>
-                <select
-                  className="form-select"
-                  value={service.staff_id}
-                  onChange={(e) => updateService(service.id, 'staff_id', e.target.value)}
-                >
-                  <option value="">Choose staff</option>
-                  {staffMembers.map(staff => (
-                    <option key={staff.id} value={staff.id}>
-                      {staff.firstName} {staff.lastName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-field">
-                <label className="field-label">Start time</label>
-                <div className="time-input-wrapper">
-                  <input
-                    type="time"
-                    className="time-input"
-                    value={service.startTime}
-                    onChange={(e) => updateService(service.id, 'startTime', e.target.value)}
-                  />
-                  <span className="time-display">
-                    {service.startTime ? formatTime(service.startTime) : ''}
-                  </span>
-                  <span className="clock-icon"><FaClock /></span>
+          {/* Customer Details Card - Show when customer is selected */}
+          {selectedCustomer && (
+            <div className="customer-info-card">
+              {loadingCustomerDetails ? (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>
+                  Loading customer details...
+                </div>
+              ) : customerDetails ? (
+                <>
+              <div className="customer-info-table">
+                <div className="customer-info-header">
+                  <div className="customer-info-header-cell">Membership</div>
+                  <div className="customer-info-header-cell">Last Visit</div>
+                  <div className="customer-info-header-cell">Total Visits</div>
+                  <div className="customer-info-header-cell">Total Revenue</div>
+                </div>
+                <div className="customer-info-row">
+                  <div className="customer-info-cell">{customerDetails.membership}</div>
+                  <div className="customer-info-cell">{customerDetails.lastVisit ? formatDate(customerDetails.lastVisit) : 'N/A'}</div>
+                  <div className="customer-info-cell">{customerDetails.totalVisits}</div>
+                  <div className="customer-info-cell">₹{customerDetails.totalRevenue.toFixed(2)}</div>
+                </div>
+                <div className="customer-note-row">
+                  <span className="customer-note-label">Customer Note:</span>
+                  <span className="customer-note-value">{customerDetails.notes}</span>
                 </div>
               </div>
-              <div className="form-field">
-                <label className="field-label">Price (₹)</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  placeholder="0"
-                  value={service.price}
-                  onChange={(e) => updateService(service.id, 'price', e.target.value)}
-                />
-              </div>
-              <div className="form-field">
-                <label className="field-label">Discount (%)</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  placeholder="0"
-                  value={service.discount}
-                  onChange={(e) => updateService(service.id, 'discount', e.target.value)}
-                />
-              </div>
-              <div className="form-field">
-                <label className="field-label">Total (₹)</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  placeholder="0"
-                  value={service.total.toFixed(2)}
-                  readOnly
-                />
-              </div>
-              <div className="service-actions">
-                <button
-                  className="detail-button"
-                  title="View Related Inventory"
-                  onClick={() => handleShowInventory(service)}
-                >
-                  <FaBoxes />
-                </button>
-                <button
-                  className="trash-button"
-                  onClick={() => removeService(service.id)}
-                >
-                  <FaTrash />
+              <div className="customer-info-sidebar">
+                <button className="bill-activity-btn" onClick={handleShowBillActivity}>
+                  Bill Activity
                 </button>
               </div>
+                </>
+              ) : (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>
+                  No details available
+                </div>
+              )}
             </div>
-          ))}
+          )}
+
+          {/* Service Table */}
+          <div className="service-table-container">
+            <table className="service-table">
+              <thead>
+                <tr>
+                  <th>Service</th>
+                  <th>Staff</th>
+                  <th>Start Time</th>
+                  <th>Price</th>
+                  <th>Discount</th>
+                  <th>Total</th>
+                  <th>Remove</th>
+                </tr>
+              </thead>
+              <tbody>
+                {services.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className="empty-table-message">
+                      No services added. Click "Add Service" below to add services.
+                    </td>
+                  </tr>
+                ) : (
+                  services.map((service) => (
+                    <tr key={service.id} className="service-table-row">
+                      <td>
+                        <select
+                          className="table-select"
+                          value={service.service_id}
+                          onChange={(e) => updateService(service.id, 'service_id', e.target.value)}
+                        >
+                          <option value="">Choose service</option>
+                          {availableServices.map(svc => (
+                            <option key={svc.id} value={svc.id}>
+                              {svc.name} - ₹{svc.price}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <select
+                          className="table-select"
+                          value={service.staff_id}
+                          onChange={(e) => updateService(service.id, 'staff_id', e.target.value)}
+                        >
+                          <option value="">Choose staff</option>
+                          {staffMembers.map(staff => (
+                            <option key={staff.id} value={staff.id}>
+                              {staff.firstName} {staff.lastName}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <input
+                          type="time"
+                          className="table-time-input"
+                          value={service.startTime || ''}
+                          onChange={(e) => {
+                            const timeValue = e.target.value
+                            if (timeValue) {
+                              updateService(service.id, 'startTime', timeValue)
+                            }
+                          }}
+                          onInput={(e) => {
+                            const timeValue = e.target.value
+                            if (timeValue) {
+                              updateService(service.id, 'startTime', timeValue)
+                            }
+                          }}
+                          onBlur={(e) => {
+                            const timeValue = e.target.value
+                            if (timeValue && timeValue !== service.startTime) {
+                              updateService(service.id, 'startTime', timeValue)
+                            }
+                          }}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          className="table-input"
+                          placeholder="0"
+                          value={service.price}
+                          onChange={(e) => updateService(service.id, 'price', e.target.value)}
+                        />
+                      </td>
+                      <td>
+                        <div className="discount-input-wrapper">
+                          <input
+                            type="number"
+                            className="table-input"
+                            placeholder="0"
+                            value={service.discount}
+                            onChange={(e) => updateService(service.id, 'discount', e.target.value)}
+                          />
+                          <span className="discount-percent">%</span>
+                        </div>
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          className="table-input"
+                          placeholder="0"
+                          value={service.total.toFixed(2)}
+                          readOnly
+                        />
+                      </td>
+                      <td>
+                        <button
+                          className="table-remove-btn"
+                          onClick={() => removeService(service.id)}
+                          title="Remove service"
+                        >
+                          <FaTrash />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
         {/* Pill Buttons Row */}
         <div className="pill-buttons-row">
@@ -1704,285 +1849,210 @@ const QuickSale = () => {
           </div>
         )}
 
-          {/* Booking Status and Note Row */}
-          <div className="booking-row">
-            <div className="booking-status-container">
-              <label className="form-label">Booking Status</label>
-              <select
-                className="form-select"
-                value={bookingStatus}
-                onChange={(e) => {
-                  const newStatus = e.target.value
-                  setBookingStatus(newStatus)
-                  
-                  // Reset appointment created flag when changing status
-                  if (newStatus === 'service-completed') {
-                    appointmentCreatedRef.current = false
-                  } else if (newStatus === 'confirmed') {
-                    appointmentCreatedRef.current = false
-                  }
-                }}
-              >
-                <option value="confirmed">Confirmed</option>
-                <option value="service-completed">Service Completed</option>
-              </select>
-              {bookingStatus === 'confirmed' && (
-                <button
-                  className="booking-confirm-button"
-                  onClick={async () => {
-                    if (!appointmentCreatedRef.current) {
-                      const success = await handleCreateAppointment()
-                      if (success) {
-                        appointmentCreatedRef.current = true
-                      }
-                    } else {
-                      showInfo('Appointment already created for this booking')
+          {/* Bottom Section: Three Columns Layout */}
+          <div className="bottom-section-grid">
+            {/* Left Column: Booking Details */}
+            <div className="bottom-column booking-column">
+              <div className="booking-status-container">
+                <label className="form-label">Booking Status</label>
+                <select
+                  className="form-select"
+                  value={bookingStatus}
+                  onChange={(e) => {
+                    const newStatus = e.target.value
+                    setBookingStatus(newStatus)
+                    
+                    // Reset appointment created flag when changing status
+                    if (newStatus === 'service-completed') {
+                      appointmentCreatedRef.current = false
+                    } else if (newStatus === 'confirmed') {
+                      appointmentCreatedRef.current = false
                     }
                   }}
-                  disabled={appointmentCreatedRef.current}
                 >
-                  {appointmentCreatedRef.current ? '✓ Saved' : 'Confirm Booking'}
-                </button>
-              )}
-            </div>
-            <div className="booking-note-container">
-              <label className="form-label">Booking Note</label>
-              <textarea
-                className="form-textarea"
-                placeholder="Add any notes here..."
-                rows="3"
-                value={bookingNote}
-                onChange={(e) => setBookingNote(e.target.value)}
-              />
-            </div>
-          </div>
-
-        {/* Discount Section */}
-        {membershipInfo && membershipInfo.plan ? (
-          // Membership discount active - show info badge
-          <div className="discount-section">
-            <div className="membership-info-badge">
-              <div className="membership-info-header">
-                <FaGift size={16} />
-                <strong>Active Membership: {membershipInfo.plan.name}</strong>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="service-completed">Service Completed</option>
+                </select>
               </div>
-              <div className="membership-info-detail">
-                {membershipInfo.plan.allocated_discount}% discount will be applied automatically
-              </div>
-              {membershipInfo.expiry_date && (
-                <div className="membership-info-expiry">
-                  Expires: {new Date(membershipInfo.expiry_date).toLocaleDateString()}
+              
+              {/* Mode of Payment */}
+              <div className="payment-section">
+                <label className="form-label">Payment Mode</label>
+                <div className="payment-pills">
+                  <button
+                    className={`payment-pill ${paymentMode === 'cash' ? 'active' : ''}`}
+                    onClick={() => setPaymentMode('cash')}
+                  >
+                    Cash
+                  </button>
+                  <button
+                    className={`payment-pill ${paymentMode === 'upi' ? 'active' : ''}`}
+                    onClick={() => setPaymentMode('upi')}
+                  >
+                    UPI
+                  </button>
+                  <button
+                    className={`payment-pill ${paymentMode === 'card' ? 'active' : ''}`}
+                    onClick={() => setPaymentMode('card')}
+                  >
+                    Card Payment
+                  </button>
                 </div>
-              )}
-            </div>
-            <div className="membership-note-box">
-              Membership discount is automatic and cannot be modified
-            </div>
-          </div>
-        ) : user && user.role === 'owner' ? (
-          // Owner can apply manual discount (no membership)
-          <div className="discount-section">
-            <label className="form-label">Discount</label>
-            <div className="discount-toggle">
-              <button
-                className={`toggle-button ${discountType === 'fix' ? 'active' : ''}`}
-                onClick={() => setDiscountType('fix')}
-              >
-                Fix
-              </button>
-              <button
-                className={`toggle-button ${discountType === '%' ? 'active' : ''}`}
-                onClick={() => setDiscountType('%')}
-              >
-                %
-              </button>
-            </div>
-            <input
-              type="number"
-              className="form-input discount-input"
-              placeholder={discountType === 'fix' ? 'Discount Amount (₹)' : 'Discount Percentage (%)'}
-              value={discountAmount}
-              onChange={(e) => {
-                const value = parseFloat(e.target.value) || 0
-                setDiscountAmount(value)
-              }}
-            />
-            {discountType === '%' && (
-              <small className="discount-limit-info">
-                Owner: Unlimited discount
-              </small>
-            )}
-          </div>
-        ) : (
-          // No membership, not owner
-          <div className="discount-section no-membership-notice">
-            <small>
-              <strong>Note:</strong> Only owners can apply discounts. Contact the owner for discount requests.
-            </small>
-          </div>
-        )}
-
-          {/* Mode of Payment */}
-          <div className="payment-section">
-            <label className="form-label">Mode of payment *</label>
-            <div className="payment-pills">
-              <button
-                className={`payment-pill ${paymentMode === 'cash' ? 'active' : ''}`}
-                onClick={() => setPaymentMode('cash')}
-              >
-                Cash
-              </button>
-              <button
-                className={`payment-pill ${paymentMode === 'upi' ? 'active' : ''}`}
-                onClick={() => setPaymentMode('upi')}
-              >
-                UPI
-              </button>
-              <button
-                className={`payment-pill ${paymentMode === 'card' ? 'active' : ''}`}
-                onClick={() => setPaymentMode('card')}
-              >
-                Card Payment
-              </button>
-              <button
-                className={`payment-pill ${paymentMode === 'wallet' ? 'active' : ''} ${selectedCustomer && selectedCustomer.wallet_balance > 0 ? 'wallet-available' : ''}`}
-                onClick={() => setPaymentMode('wallet')}
-                title={selectedCustomer && selectedCustomer.wallet_balance > 0 
-                  ? `Wallet Balance: ₹${selectedCustomer.wallet_balance.toFixed(2)}` 
-                  : 'No wallet balance'}
-              >
-                <FaWallet style={{ marginRight: '6px' }} />
-                Wallet
-                {selectedCustomer && selectedCustomer.wallet_balance > 0 && (
-                  <span className="wallet-badge-inline">
-                    ₹{selectedCustomer.wallet_balance.toFixed(0)}
-                  </span>
+              </div>
+              
+              <div className="booking-note-membership-wrapper">
+                <div className="booking-note-container">
+                  <h3 className="booking-note-title">Booking Note</h3>
+                  <textarea
+                    className="form-textarea"
+                    placeholder="Add any notes here..."
+                    rows="3"
+                    value={bookingNote}
+                    onChange={(e) => setBookingNote(e.target.value)}
+                  />
+                </div>
+                
+                {membershipInfo && membershipInfo.plan && (
+                  <div className="membership-box-container">
+                    <div className="membership-box">
+                      <div style={{ 
+                        padding: '12px', 
+                        background: '#dbeafe', 
+                        borderRadius: '8px',
+                        border: '1px solid #3b82f6',
+                        color: '#1e40af',
+                        marginBottom: '12px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                          <FaGift size={16} />
+                          <strong>Active Membership: {membershipInfo.plan.name}</strong>
+                        </div>
+                        <div className="membership-info-text">
+                          {membershipInfo.plan.allocated_discount}% discount will be applied automatically
+                        </div>
+                        {membershipInfo.expiry_date && (
+                          <div className="membership-expiry-text">
+                            Expires: {new Date(membershipInfo.expiry_date).toLocaleDateString()}
+                          </div>
+                        )}
+                      </div>
+                      <div className="membership-note-text">
+                        Membership discount is automatic and cannot be modified
+                      </div>
+                    </div>
+                  </div>
                 )}
-              </button>
+              </div>
             </div>
-          </div>
 
-          {/* Summary Section */}
-          <div className="summary-section">
-            <div className="summary-values">
-              <div className="summary-row">
-                <span className="summary-label">Available Wallet:</span>
-                <span className="summary-value text-money-wallet-inline">
-                  ₹ {selectedCustomer ? (selectedCustomer.wallet_balance || 0).toFixed(2) : '0.00'}
-                </span>
-              </div>
-              <div className="summary-row">
-                <span className="summary-label">Subtotal:</span>
-                <span className="summary-value">₹ {calculateSubtotal().toFixed(2)}</span>
-              </div>
-              {membershipInfo && membershipInfo.plan && discountType === 'membership' && calculateDiscount() > 0 && (
-                <div className="summary-row membership-discount-row">
-                  <span className="summary-label membership-discount-label">
-                    <FaGift style={{ fontSize: '14px' }} />
-                    Membership Discount ({membershipInfo.plan.allocated_discount}%):
-                  </span>
-                  <span className="summary-value membership-discount-value">
-                    - ₹ {calculateDiscount().toFixed(2)}
-                  </span>
-                </div>
-              )}
-              {loyaltySettings && loyaltySettings.enabled && selectedCustomer && selectedCustomer.loyalty_points > 0 && (
-                <div className="summary-row loyalty-points-container">
-                  <div className="loyalty-points-header">
-                    <span className="summary-label loyalty-points-label">
-                      <FaGift style={{ fontSize: '14px' }} />
-                      Use Loyalty Points:
-                    </span>
-                    <span className="summary-value loyalty-points-value">
-                      Available: {selectedCustomer.loyalty_points || 0} pts
-                    </span>
-                  </div>
-                  <div className="loyalty-points-input-wrapper">
-                    <input
-                      type="number"
-                      min="0"
-                      max={selectedCustomer.loyalty_points || 0}
-                      value={pointsToUse || ''}
-                      onChange={(e) => handlePointsChange(e.target.value)}
-                      placeholder="Enter points to use"
-                      className="loyalty-points-input"
-                    />
-                    {pointsDiscount > 0 && (
-                      <span className="loyalty-discount-preview">
-                        = ₹{pointsDiscount.toFixed(2)} discount
-                      </span>
-                    )}
-                  </div>
-                  {loyaltySettings.minimumPointsToRedeem > 0 && (
-                    <small className="loyalty-minimum-hint">
-                      Minimum {loyaltySettings.minimumPointsToRedeem} points required
+            {/* Middle Column: Discount */}
+            <div className="bottom-column discount-payment-column">
+              {/* Discount Section */}
+              {membershipInfo && membershipInfo.plan ? null : user && user.role === 'owner' ? (
+                <div className="discount-section">
+                  <label className="form-label">Discount</label>
+                  <input
+                    type="number"
+                    className="form-input discount-input"
+                    placeholder="Discount Amount (₹)"
+                    value={discountAmount}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value) || 0
+                      setDiscountAmount(value)
+                    }}
+                  />
+                  {discountType === '%' && (
+                    <small className="discount-limit-info">
+                      Owner: Unlimited discount
                     </small>
                   )}
                 </div>
-              )}
-              {pointsDiscount > 0 && (
-                <div className="summary-row summary-row-loyalty">
-                  <span className="summary-label loyalty-points-label">
-                    <FaGift style={{ fontSize: '14px' }} />
-                    Points Discount:
-                  </span>
-                  <span className="summary-value text-money-loyalty-inline">
-                    - ₹ {pointsDiscount.toFixed(2)}
-                  </span>
+              ) : (
+                <div className="discount-section" style={{ 
+                  padding: '12px', 
+                  background: '#fef3c7', 
+                  borderRadius: '8px',
+                  border: '1px solid #fbbf24',
+                  color: '#92400e'
+                }}>
+                  <small>
+                    <strong>Note:</strong> Only owners can apply discounts. Contact the owner for discount requests.
+                  </small>
                 </div>
               )}
-              <div className="summary-row net-row">
-                <span className="summary-label">Net:</span>
-                <span className="summary-value net-value">₹ {calculateNet().toFixed(2)}</span>
-              </div>
-              <div className="summary-row">
-                <span className="summary-label">Tax (18%):</span>
-                <span className="summary-value">₹ {calculateTax().toFixed(2)}</span>
-              </div>
-              {paymentMode === 'wallet' && getWalletDeduction() > 0 && (
-                <div className="summary-row wallet-deduction-row">
-                  <span className="summary-label wallet-label">
-                    <FaWallet style={{ marginRight: '6px' }} />
-                    Wallet Deduction:
-                  </span>
-                  <span className="summary-value wallet-value">
-                    - ₹ {getWalletDeduction().toFixed(2)}
-                  </span>
+            </div>
+
+            {/* Right Column: Bill Summary */}
+            <div className="bottom-column summary-column">
+              <div className="summary-section">
+                <h3 className="summary-title">Bill Summary</h3>
+                <div className="summary-title-separator"></div>
+                <div className="summary-values">
+                  <div className="summary-row">
+                    <span className="summary-label">Subtotal:</span>
+                    <span className="summary-value">₹ {calculateSubtotal().toFixed(2)}</span>
+                  </div>
+                  {membershipInfo && membershipInfo.plan && discountType === 'membership' && calculateDiscount() > 0 && (
+                    <div className="summary-row membership-discount-row">
+                      <span className="summary-label" style={{ color: '#0F766E', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <FaGift style={{ fontSize: '14px' }} />
+                        Membership Discount ({membershipInfo.plan.allocated_discount}%):
+                      </span>
+                      <span className="summary-value" style={{ color: '#0F766E', fontWeight: '600' }}>
+                        - ₹ {calculateDiscount().toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="summary-row net-row">
+                    <span className="summary-label">Net:</span>
+                    <span className="summary-value net-value">₹ {calculateNet().toFixed(2)}</span>
+                  </div>
+                  <div className="summary-row">
+                    <span className="summary-label">Tax:</span>
+                    <span className="summary-value">₹ {calculateTax().toFixed(2)}</span>
+                  </div>
+                  <div className="summary-row final">
+                    <span className="summary-label">Final Amount:</span>
+                    <span className="summary-value final-value">₹ {calculateFinalAmount().toFixed(2)}</span>
+                  </div>
                 </div>
-              )}
-              <div className="summary-row final">
-                <span className="summary-label">
-                  {paymentMode === 'wallet' && getWalletDeduction() > 0 
-                    ? 'Amount to Pay:' 
-                    : 'Final Amount:'}
-                </span>
-                <span className="summary-value final-value">₹ {calculateFinalAmount().toFixed(2)}</span>
               </div>
-              {paymentMode === 'wallet' && calculateFinalAmount() === 0 && (
-                <div className="wallet-fully-paid">
-                  ✓ Fully paid by wallet balance
-                </div>
-              )}
             </div>
           </div>
 
           {/* Bottom Buttons */}
           <div className="action-buttons">
             <button className="reset-button" onClick={handleReset}>Reset</button>
-            <button 
-              className="checkout-button" 
-              onClick={handleCheckout}
-              disabled={
-                bookingStatus === 'confirmed' || 
-                (pendingApproval && pendingApproval.approval_status === 'pending')
-              }
-            >
-              {pendingApproval && pendingApproval.approval_status === 'pending' 
-                ? 'Approval Pending...' 
-                : bookingStatus === 'confirmed'
-                ? 'Booking Confirmed'
-                : 'Checkout'}
-            </button>
+            {bookingStatus === 'confirmed' ? (
+              <button
+                className="checkout-button"
+                onClick={async () => {
+                  if (!appointmentCreatedRef.current) {
+                    const success = await handleCreateAppointment()
+                    if (success) {
+                      appointmentCreatedRef.current = true
+                    }
+                  } else {
+                    showInfo('Appointment already created for this booking')
+                  }
+                }}
+                disabled={appointmentCreatedRef.current}
+              >
+                {appointmentCreatedRef.current ? '✓ Saved' : 'Confirm Booking'}
+              </button>
+            ) : (
+              <button 
+                className="checkout-button" 
+                onClick={handleCheckout}
+                disabled={
+                  (pendingApproval && pendingApproval.approval_status === 'pending')
+                }
+              >
+                {pendingApproval && pendingApproval.approval_status === 'pending' 
+                  ? 'Approval Pending...' 
+                  : 'Checkout'}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -2408,7 +2478,7 @@ const QuickSale = () => {
                           <span className="selection-price">₹{product.price}</span>
                         </div>
                         <div className="selection-item-details">
-                          <p className={`stock-info ${isOutOfStock ? 'stock-out' : isLowStock ? 'stock-low' : 'stock-ok'} stock-info-flex`}>
+                          <p className={`stock-info ${isOutOfStock ? 'stock-out' : isLowStock ? 'stock-low' : 'stock-ok'}`} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             Stock: {stock} units
                             {isLowStock && !isOutOfStock && (
                               <>
@@ -2536,10 +2606,44 @@ const QuickSale = () => {
           </div>
         </div>
       )}
+
+      {/* Invoice Modal */}
+      {showInvoiceModal && (
+        <div className="invoice-modal-overlay" onClick={handleCloseInvoiceModal}>
+          <div className="invoice-modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="invoice-modal-header">
+              <h2>Invoice</h2>
+              <button className="invoice-modal-close-btn" onClick={handleCloseInvoiceModal}>
+                <FaTimes />
+              </button>
+            </div>
+            
+            {loadingInvoice ? (
+              <div className="invoice-loading-state">
+                <p>Loading invoice data...</p>
+              </div>
+            ) : invoiceData ? (
+              <div className="invoice-preview-wrapper">
+                <InvoicePreview 
+                  invoiceData={invoiceData}
+                  onDownload={handleDownloadInvoice}
+                  onReview={handleReviewUs}
+                />
+              </div>
+            ) : (
+              <div className="invoice-no-data">
+                <p>No invoice data available.</p>
+                <button className="invoice-action-btn" onClick={handleCloseInvoiceModal}>
+                  Close
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
     </PageTransition>
   )
 }
 
 export default QuickSale
-

@@ -143,7 +143,7 @@ def add_managers_for_branches():
                     last_name=manager_name['last'],
                     email=email,
                     mobile=mobile,
-                    salon=f"Salon - {branch.name}",
+                    salon=f"Saloon - {branch.name}",
                     password_hash=hash_password('manager123'),  # Default password: manager123
                     role='manager',
                     permissions=[],

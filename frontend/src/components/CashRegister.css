@@ -105,12 +105,14 @@
 }
 
 .toggle-btn.active {
-  background: var(--status-info);
-  color: var(--text-inverse);
+  background: #0F766E;
+  color: white;
+  font-weight: var(--font-semibold);
 }
 
 .toggle-btn:hover:not(.active) {
-  background: var(--surface-secondary);
+  background: rgba(15, 118, 110, 0.08);
+  color: #0F766E;
 }
 
 .date-filter {
@@ -369,6 +371,13 @@
 
   .toggle-btn {
     flex: 1;
+    min-height: 44px;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .toggle-btn.active {
+    background: #0F766E;
+    color: white;
   }
 
   .date-filter {

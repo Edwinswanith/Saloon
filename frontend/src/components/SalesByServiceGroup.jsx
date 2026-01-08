@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import {
-  FaBars,
-  FaBell,
-  FaUser,
   FaArrowLeft,
   FaCloudDownloadAlt,
 } from 'react-icons/fa'
@@ -138,27 +135,6 @@ const SalesByServiceGroup = ({ setActivePage }) => {
 
   return (
     <div className="sales-by-service-group-page">
-      {/* Header */}
-      <header className="sales-by-service-group-header">
-        <div className="header-left">
-          <button className="menu-icon">
-            <FaBars />
-          </button>
-          <h1 className="header-title">Sales by Service Group</h1>
-        </div>
-        <div className="header-right">
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-          <button className="header-icon bell-icon">
-            <FaBell />
-          </button>
-          <button className="header-icon user-icon">
-            <FaUser />
-          </button>
-        </div>
-      </header>
-
       <div className="sales-by-service-group-container">
         {/* Main Report Card */}
         <div className="report-card">

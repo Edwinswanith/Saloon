@@ -994,5 +994,48 @@ textarea {
   .search-box {
     width: 100%;
   }
+
+  /* Ensure minimum touch target sizes on mobile */
+  button,
+  .btn,
+  .icon-btn,
+  .nav-btn,
+  .tab,
+  input[type="checkbox"],
+  input[type="radio"],
+  select,
+  a.button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Form inputs should be larger on mobile */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="date"],
+  input[type="time"],
+  textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
+    min-height: 44px;
+    padding: var(--space-3) var(--space-4);
+  }
+}
+
+/* Small Mobile */
+@media (max-width: 480px) {
+  .modal {
+    margin: var(--space-4);
+    max-width: calc(100% - var(--space-8));
+  }
+
+  /* Further ensure touch targets */
+  button,
+  .btn {
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-base);
+  }
 }
 

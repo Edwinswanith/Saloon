@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { FaBars, FaClipboard, FaEdit, FaTrash } from 'react-icons/fa'
+import { FaClipboard, FaEdit, FaTrash } from 'react-icons/fa'
 import './CustomerList.css'
 import { API_BASE_URL } from '../config'
 import { useAuth } from '../contexts/AuthContext'
@@ -73,9 +73,7 @@ const CustomerList = () => {
         gender: customer.gender || '',
         dob: customer.dob || '',
         dobRange: customer.dobRange || customer.dob_range || '',
-        loyaltyPoints: customer.loyaltyPoints || customer.loyalty_points || 0,
-        referralCode: customer.referralCode || customer.referral_code || '',
-        wallet: customer.wallet || customer.wallet_balance || 0,
+        referralCode: customer.referralCode || customer.referral_code || ''
       }))
       setCustomers(mappedCustomers)
       setTotalPages(data.pages || 1)
@@ -100,7 +98,7 @@ const CustomerList = () => {
   const handleDownloadClients = () => {
     // Create CSV content
     const csvContent = [
-      ['No.', 'Mobile', 'First Name', 'Last Name', 'Source', 'Gender', 'DOB Range', 'Loyalty Points', 'Referral Code', 'Wallet'],
+      ['No.', 'Mobile', 'First Name', 'Last Name', 'Source', 'Gender', 'DOB Range', 'Referral Code'],
       ...customers.map((customer, index) => [
         (currentPage - 1) * 10 + index + 1,
         `+91 ${customer.mobile}`,
@@ -109,9 +107,7 @@ const CustomerList = () => {
         customer.source || 'Walk-in',
         customer.gender || '',
         customer.dobRange || '',
-        customer.loyaltyPoints || 0,
-        customer.referralCode || '',
-        customer.wallet || 0,
+        customer.referralCode || ''
       ])
     ].map(row => row.join(',')).join('\n')
     
@@ -166,7 +162,7 @@ const CustomerList = () => {
   const handleViewCustomer = (customer) => {
     setViewingCustomer(customer)
     // Show customer details in a toast
-    showInfo(`${customer.firstName} ${customer.lastName} | Mobile: +91 ${customer.mobile} | Loyalty: ${customer.loyaltyPoints || 0} pts | Wallet: ₹${customer.wallet || 0}`)
+    showInfo(`${customer.firstName} ${customer.lastName} | Mobile: +91 ${customer.mobile}`)
   }
 
   const handleSaveCustomer = async () => {
@@ -335,19 +331,6 @@ const CustomerList = () => {
   return (
     <PageTransition>
       <div className="customer-list-page">
-        {/* Header */}
-      <header className="customer-list-header">
-        <div className="header-left">
-          <button className="menu-icon"><FaBars /></button>
-          <h1 className="header-title">Customers</h1>
-        </div>
-        <div className="header-right">
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-        </div>
-      </header>
-
       <div className="customer-list-container">
         {/* Customer List Card */}
         <div className="customer-list-card">
@@ -386,22 +369,20 @@ const CustomerList = () => {
                   <th>Source</th>
                   <th>Gender</th>
                   <th>DOB Range</th>
-                  <th>Loyalty Points</th>
                   <th>Referral Code</th>
-                  <th>Wallet</th>
                   <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="11" style={{ padding: 0, border: 'none' }}>
-                      <TableSkeleton rows={10} columns={11} />
+                    <td colSpan="9" style={{ padding: 0, border: 'none' }}>
+                      <TableSkeleton rows={10} columns={9} />
                     </td>
                   </tr>
                 ) : customers.length === 0 ? (
                   <tr>
-                    <td colSpan="11" style={{ padding: 0, border: 'none' }}>
+                    <td colSpan="9" style={{ padding: 0, border: 'none' }}>
                       {searchQuery ? (
                         <EmptySearch searchQuery={searchQuery} message="Try adjusting your search query." />
                       ) : (
@@ -421,7 +402,6 @@ const CustomerList = () => {
                       </td>
                       <td>{customer.gender || '-'}</td>
                       <td>{customer.dobRange || '-'}</td>
-                      <td>{customer.loyaltyPoints || 0}</td>
                       <td>
                         <div className="referral-code-cell">
                           <span>{customer.referralCode || '-'}</span>
@@ -435,7 +415,6 @@ const CustomerList = () => {
                           )}
                         </div>
                       </td>
-                      <td>₹{(customer.wallet || 0).toLocaleString()}</td>
                       <td>
                         <div className="action-icons">
                           <button 

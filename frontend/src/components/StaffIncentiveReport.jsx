@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import {
-  FaBars,
-  FaBell,
-  FaUser,
   FaArrowLeft,
   FaCloudDownloadAlt,
   FaList,
@@ -17,6 +14,8 @@ const StaffIncentiveReport = ({ setActivePage }) => {
   const [dateFilter, setDateFilter] = useState('last-30-days')
   const [staffPerformance, setStaffPerformance] = useState([])
   const [loading, setLoading] = useState(true)
+  const [showModal, setShowModal] = useState(false)
+  const [selectedStaff, setSelectedStaff] = useState(null)
 
   const handleBackToReports = () => {
     if (setActivePage) {
@@ -111,6 +110,7 @@ const StaffIncentiveReport = ({ setActivePage }) => {
         membership: staff.membership || 0,
         total: staff.total || staff.total_revenue || 0,
         avgBill: staff.avg_bill || 0,
+        rawData: staff, // Store raw data for modal
       }))
       
       setStaffPerformance(mappedData)
@@ -148,29 +148,17 @@ const StaffIncentiveReport = ({ setActivePage }) => {
     window.URL.revokeObjectURL(url)
   }
 
+  const handleViewDetails = (staff) => {
+    setSelectedStaff(staff)
+    setShowModal(true)
+  }
+
+  const formatCurrency = (amount) => {
+    return `₹${amount?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`
+  }
+
   return (
     <div className="staff-incentive-report-page">
-      {/* Header */}
-      <header className="staff-incentive-report-header">
-        <div className="header-left">
-          <button className="menu-icon">
-            <FaBars />
-          </button>
-          <h1 className="header-title">Staff Incentive Report</h1>
-        </div>
-        <div className="header-right">
-          <div className="logo-box">
-            <span className="logo-text">HAIR STUDIO</span>
-          </div>
-          <button className="header-icon bell-icon">
-            <FaBell />
-          </button>
-          <button className="header-icon user-icon">
-            <FaUser />
-          </button>
-        </div>
-      </header>
-
       <div className="staff-incentive-report-container">
         {/* Main Report Card */}
         <div className="report-card">
@@ -268,6 +256,135 @@ const StaffIncentiveReport = ({ setActivePage }) => {
           </div>
         </div>
       </div>
+
+      {/* Staff Performance Details Modal */}
+      {showModal && selectedStaff && (
+        <div className="customer-modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="customer-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="customer-modal-header">
+              <h2>Staff Performance Details</h2>
+              <button className="customer-modal-close" onClick={() => setShowModal(false)}>
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="customer-modal-body">
+              <>
+                {/* Staff Information */}
+                <div className="customer-details-section">
+                  <h3>Staff Information</h3>
+                  <div className="customer-details-grid">
+                    <div className="customer-detail-item">
+                      <span className="detail-label">Staff Name:</span>
+                      <span className="detail-value">{selectedStaff.staffName || 'N/A'}</span>
+                    </div>
+                    <div className="customer-detail-item">
+                      <span className="detail-label">Item Count:</span>
+                      <span className="detail-value">{selectedStaff.itemCount || 0}</span>
+                    </div>
+                    {selectedStaff.rawData?.commission_rate !== undefined && (
+                      <div className="customer-detail-item">
+                        <span className="detail-label">Commission Rate:</span>
+                        <span className="detail-value">{selectedStaff.rawData.commission_rate || 0}%</span>
+                      </div>
+                    )}
+                    {selectedStaff.rawData?.salary !== undefined && (
+                      <div className="customer-detail-item">
+                        <span className="detail-label">Base Salary:</span>
+                        <span className="detail-value">{formatCurrency(selectedStaff.rawData.salary || 0)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Revenue Breakdown */}
+                <div className="customer-details-section">
+                  <h3>Revenue Breakdown</h3>
+                  <div className="customer-details-grid">
+                    <div className="customer-detail-item">
+                      <span className="detail-label">Service Revenue:</span>
+                      <span className="detail-value">{formatCurrency(selectedStaff.service || 0)}</span>
+                    </div>
+                    <div className="customer-detail-item">
+                      <span className="detail-label">Package Revenue:</span>
+                      <span className="detail-value">{formatCurrency(selectedStaff.package || 0)}</span>
+                    </div>
+                    <div className="customer-detail-item">
+                      <span className="detail-label">Product Revenue:</span>
+                      <span className="detail-value">{formatCurrency(selectedStaff.product || 0)}</span>
+                    </div>
+                    <div className="customer-detail-item">
+                      <span className="detail-label">Prepaid Revenue:</span>
+                      <span className="detail-value">{formatCurrency(selectedStaff.prepaid || 0)}</span>
+                    </div>
+                    <div className="customer-detail-item">
+                      <span className="detail-label">Membership Revenue:</span>
+                      <span className="detail-value">{formatCurrency(selectedStaff.membership || 0)}</span>
+                    </div>
+                    <div className="customer-detail-item">
+                      <span className="detail-label">Total Revenue:</span>
+                      <span className="detail-value revenue-stat">{formatCurrency(selectedStaff.total || 0)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Performance Statistics */}
+                <div className="customer-details-section">
+                  <h3>Performance Statistics</h3>
+                  <div className="customer-stats-grid">
+                    <div className="customer-stat-card">
+                      <div className="stat-label">Total Revenue</div>
+                      <div className="stat-value revenue-stat">
+                        {formatCurrency(selectedStaff.total || 0)}
+                      </div>
+                      <div className="stat-description">Total revenue generated</div>
+                    </div>
+                    <div className="customer-stat-card">
+                      <div className="stat-label">Average Bill</div>
+                      <div className="stat-value">
+                        {formatCurrency(selectedStaff.avgBill || 0)}
+                      </div>
+                      <div className="stat-description">Average per transaction</div>
+                    </div>
+                    <div className="customer-stat-card">
+                      <div className="stat-label">Items Sold</div>
+                      <div className="stat-value">
+                        {selectedStaff.itemCount || 0}
+                      </div>
+                      <div className="stat-description">Total items processed</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Earnings Breakdown */}
+                {(selectedStaff.rawData?.commission_earned !== undefined || selectedStaff.rawData?.total_earnings !== undefined) && (
+                  <div className="customer-details-section">
+                    <h3>Earnings Breakdown</h3>
+                    <div className="customer-details-grid">
+                      {selectedStaff.rawData?.commission_earned !== undefined && (
+                        <div className="customer-detail-item">
+                          <span className="detail-label">Commission Earned:</span>
+                          <span className="detail-value revenue-stat">
+                            {formatCurrency(selectedStaff.rawData.commission_earned || 0)}
+                          </span>
+                        </div>
+                      )}
+                      {selectedStaff.rawData?.total_earnings !== undefined && (
+                        <div className="customer-detail-item">
+                          <span className="detail-label">Total Earnings:</span>
+                          <span className="detail-value revenue-stat">
+                            {formatCurrency(selectedStaff.rawData.total_earnings || 0)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

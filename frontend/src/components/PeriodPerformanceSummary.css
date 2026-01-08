@@ -197,9 +197,19 @@
   color: white;
 }
 
+.metric-card.purple .metric-value,
+.metric-card.purple .metric-label {
+  color: white !important;
+}
+
 .metric-card.green {
   background: linear-gradient(135deg, #34d399 0%, #059669 100%);
   color: white;
+}
+
+.metric-card.green .metric-value,
+.metric-card.green .metric-label {
+  color: white !important;
 }
 
 .metric-card.red {
@@ -207,9 +217,19 @@
   color: white;
 }
 
+.metric-card.red .metric-value,
+.metric-card.red .metric-label {
+  color: white !important;
+}
+
 .metric-card.profit {
   background: linear-gradient(135deg, #10b981 0%, #047857 100%);
   color: white;
+}
+
+.metric-card.profit .metric-value,
+.metric-card.profit .metric-label {
+  color: white !important;
 }
 
 .metric-icon {

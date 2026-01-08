@@ -1,5 +1,5 @@
 @echo off
-echo Starting Salon Management System with Docker...
+echo Starting Saloon Management System with Docker...
 echo.
 
 REM Check if Docker is running
@@ -30,19 +30,19 @@ if "%choice%"=="1" (
 ) else if "%choice%"=="2" (
     echo.
     echo Building production container...
-    docker build -t salon-app .
+    docker build -t saloon-app .
     
     echo.
     echo Starting production container...
     echo Application will be available at: http://localhost:5000
     echo.
-    docker run -d --name salon-app -p 5000:5000 -v "%cd%\backend\instance:/app/instance" salon-app
+    docker run -d --name saloon-app -p 5000:5000 -v "%cd%\backend\instance:/app/instance" saloon-app
     
     echo.
     echo Container started successfully!
-    echo To view logs: docker logs -f salon-app
-    echo To stop: docker stop salon-app
-    echo To remove: docker rm salon-app
+    echo To view logs: docker logs -f saloon-app
+    echo To stop: docker stop saloon-app
+    echo To remove: docker rm saloon-app
 ) else (
     echo Invalid choice. Please run the script again.
     pause

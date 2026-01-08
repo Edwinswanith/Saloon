@@ -201,7 +201,7 @@ manager_data = [
         'last_name': 'Mehta',
         'email': 'arun@salon.com',
         'mobile': '9876543220',
-        'salon': 'Glamour Salon - Main Branch',
+        'salon': 'Glamour Saloon - Main Branch',
         'password_hash': hash_password('manager123'),  # Password: manager123
         'role': 'manager',
         'permissions': [],
@@ -213,7 +213,7 @@ manager_data = [
         'last_name': 'Desai',
         'email': 'kavita@salon.com',
         'mobile': '9876543221',
-        'salon': 'Glamour Salon - Main Branch',
+        'salon': 'Glamour Saloon - Main Branch',
         'password_hash': hash_password('manager456'),  # Password: manager456
         'role': 'manager',
         'permissions': [],
@@ -225,7 +225,7 @@ manager_data = [
         'last_name': 'Chopra',
         'email': 'owner@salon.com',
         'mobile': '9876543230',
-        'salon': 'Glamour Salon - All Branches',
+        'salon': 'Glamour Saloon - All Branches',
         'password_hash': hash_password('owner123'),  # Password: owner123
         'role': 'owner',
         'permissions': [],
@@ -323,7 +323,7 @@ for manager in managers:
         print(f"    Password: manager123")
     elif manager.email == 'kavita@salon.com':
         print(f"    Password: manager456")
-    print(f"    Salon: {manager.salon}\n")
+    print(f"    Saloon: {manager.salon}\n")
 
 print("\n📋 OWNER:")
 print("-" * 70)
@@ -333,7 +333,7 @@ for owner in owners:
     print(f"    Email: {owner.email}")
     print(f"    Mobile: {owner.mobile}")
     print(f"    Password: owner123")
-    print(f"    Salon: {owner.salon}\n")
+    print(f"    Saloon: {owner.salon}\n")
 
 print("=" * 70)
 print("✅ DUMMY DATA INSERTED SUCCESSFULLY!")

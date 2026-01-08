@@ -341,33 +341,53 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--border-light);
+  min-height: 56px;
+  box-sizing: border-box;
 }
 
 .modal-header h3 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 600;
   color: var(--text-primary);
+  flex: 1;
+  line-height: 1.4;
 }
 
 .modal-close {
-  background: none;
+  background: rgba(0, 0, 0, 0.05);
   border: none;
-  font-size: 1.5rem;
+  font-size: 16px;
   cursor: pointer;
   color: var(--text-muted);
   padding: 0;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  margin-left: 12px;
+  transition: all 0.2s ease;
 }
 
-.modal-close:hover {
+.modal-close:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.1);
   color: var(--text-primary);
+}
+
+.modal-close:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.modal-close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .slab-form {

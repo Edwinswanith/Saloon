@@ -63,7 +63,7 @@ def list_all_owners():
                 print(f"  Name: {owner.first_name} {owner.last_name or ''}")
                 print(f"  Email: {owner.email}")
                 print(f"  Mobile: {owner.mobile}")
-                print(f"  Salon: {owner.salon}")
+                print(f"  Saloon: {owner.salon}")
                 print(f"  Is Active: {owner.is_active}")
                 print(f"  Status: {owner.status}")
                 print(f"  Has Password: {'Yes' if owner.password_hash else 'No'}")
