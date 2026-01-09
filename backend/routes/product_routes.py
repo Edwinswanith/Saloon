@@ -4,6 +4,7 @@ from datetime import datetime
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
 from utils.auth import require_auth, require_role
+from utils.branch_filter import get_selected_branch
 
 product_bp = Blueprint('product', __name__)
 
@@ -127,8 +128,9 @@ def delete_product_category(id, current_user=None):
 # Product Routes
 
 @product_bp.route('/', methods=['GET'])
-def get_products():
-    """Get all products with optional filters"""
+@require_auth
+def get_products(current_user=None):
+    """Get all products with optional filters, filtered by branch"""
     try:
         # Query parameters
         category_id = request.args.get('category_id', type=str)
@@ -137,6 +139,13 @@ def get_products():
         low_stock = request.args.get('low_stock', type=bool)
 
         query = Product.objects
+
+        # Filter by branch
+        branch = get_selected_branch(request, current_user)
+        if branch:
+            # Include products for this branch OR products with no branch (legacy/global)
+            from mongoengine import Q
+            query = query.filter(Q(branch=branch) | Q(branch=None))
 
         # Apply filters
         if category_id and ObjectId.is_valid(category_id):
@@ -169,7 +178,8 @@ def get_products():
             'description': p.description,
             'status': p.status,
             'low_stock': (p.stock_quantity or 0) <= (p.min_stock_level or 0) if p.min_stock_level else False,
-            'created_at': p.created_at.isoformat() if p.created_at else None
+            'created_at': p.created_at.isoformat() if p.created_at else None,
+            'branch_id': str(p.branch.id) if p.branch else None
         } for p in products])
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -203,11 +213,16 @@ def get_product(id):
         return jsonify({'error': str(e)}), 500
 
 @product_bp.route('/', methods=['POST'])
-@require_role('manager', 'owner')
+@require_role('staff', 'manager', 'owner')
 def create_product(current_user=None):
-    """Create a new product (Manager and Owner only)"""
+    """Create a new product (Staff, Manager and Owner)"""
     try:
         data = request.get_json()
+
+        # Get branch for the product
+        branch = get_selected_branch(request, current_user)
+        if not branch:
+            return jsonify({'error': 'Branch is required to create a product'}), 400
 
         # Get category reference
         category = None
@@ -228,6 +243,7 @@ def create_product(current_user=None):
             min_stock_level=data.get('min_stock_level', 0),
             sku=data.get('sku'),
             description=data.get('description'),
+            branch=branch,
             status=data.get('status', 'active')
         )
         product.save()
@@ -245,7 +261,7 @@ def create_product(current_user=None):
         return jsonify({'error': str(e)}), 500
 
 @product_bp.route('/<id>', methods=['PUT'])
-@require_role('manager', 'owner')
+@require_role('staff', 'manager', 'owner')
 def update_product(id, current_user=None):
     """Update a product (Manager and Owner only)"""
     try:
@@ -308,16 +324,25 @@ def delete_product(id, current_user=None):
         return jsonify({'error': str(e)}), 500
 
 @product_bp.route('/low-stock', methods=['GET'])
-def get_low_stock_products():
-    """Get products with stock below minimum level"""
+@require_auth
+def get_low_stock_products(current_user=None):
+    """Get products with stock below minimum level, filtered by branch"""
     try:
+        query = Product.objects(status='active')
+
+        # Filter by branch
+        branch = get_selected_branch(request, current_user)
+        if branch:
+            from mongoengine import Q
+            query = query.filter(Q(branch=branch) | Q(branch=None))
+
         # Force evaluation by converting to list
-        products = list(Product.objects(status='active').order_by('stock_quantity'))
-        
+        products = list(query.order_by('stock_quantity'))
+
         # Filter for low stock in Python (MongoEngine doesn't support field comparison)
         low_stock_products = [
-            p for p in products 
-            if p.stock_quantity is not None and p.min_stock_level is not None 
+            p for p in products
+            if p.stock_quantity is not None and p.min_stock_level is not None
             and p.stock_quantity <= p.min_stock_level
         ]
 

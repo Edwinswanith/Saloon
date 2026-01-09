@@ -130,7 +130,7 @@ const Sidebar = ({
       items: [
         {
           id: 'salon-settings',
-          label: 'Salon Settings',
+          label: 'Saloon Settings',
           icon: <FaClipboardList />,
           subItems: [
             { id: 'service', label: 'Service' },

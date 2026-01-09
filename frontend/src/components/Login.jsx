@@ -242,8 +242,11 @@ const Login = ({ onLoginSuccess }) => {
       return;
     }
 
-    // Password validation is currently disabled for both managers and owners (feature paused)
-    // Password field is hidden from UI and validation is skipped in backend
+    // Password validation is required for all user types
+    if (!password.trim()) {
+      setError('Please enter your password');
+      return;
+    }
 
     setLoading(true);
 
@@ -417,6 +420,20 @@ const Login = ({ onLoginSuccess }) => {
                 )}
               </div>
 
+              <div className="form-group">
+                <label htmlFor="staff-password" className="form-label">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  id="staff-password"
+                  className="form-input"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
             </>
           )}
 
@@ -472,16 +489,13 @@ const Login = ({ onLoginSuccess }) => {
                 )}
               </div>
 
-              {/* Password field is currently hidden for managers (feature paused) */}
-              {/* Uncomment below to show password field when re-enabling password feature */}
-              {/*
               <div className="form-group">
-                <label htmlFor="password" className="form-label">
+                <label htmlFor="manager-password" className="form-label">
                   Password
                 </label>
                 <input
                   type="password"
-                  id="password"
+                  id="manager-password"
                   className="form-input"
                   placeholder="Enter your password"
                   value={password}
@@ -489,7 +503,6 @@ const Login = ({ onLoginSuccess }) => {
                   required
                 />
               </div>
-              */}
             </>
           )}
 
@@ -511,16 +524,13 @@ const Login = ({ onLoginSuccess }) => {
                 />
               </div>
 
-              {/* Password field is currently hidden for owners (feature paused) */}
-              {/* Uncomment below to show password field when re-enabling password feature */}
-              {/*
               <div className="form-group">
-                <label htmlFor="password" className="form-label">
+                <label htmlFor="owner-password" className="form-label">
                   Password
                 </label>
                 <input
                   type="password"
-                  id="password"
+                  id="owner-password"
                   className="form-input"
                   placeholder="Enter your password"
                   value={password}
@@ -528,7 +538,6 @@ const Login = ({ onLoginSuccess }) => {
                   required
                 />
               </div>
-              */}
             </>
           )}
 

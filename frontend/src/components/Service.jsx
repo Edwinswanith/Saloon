@@ -10,7 +10,7 @@ import {
   FaTimes,
 } from 'react-icons/fa'
 import './Service.css'
-import { API_BASE_URL } from '../config'
+import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
 import { useAuth } from '../contexts/AuthContext'
 import Header from './Header'
@@ -78,7 +78,7 @@ const Service = () => {
   const fetchServiceGroups = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE_URL}/api/services/groups`)
+      const response = await apiGet('/api/services/groups')
       const data = await response.json()
       setServiceGroups(data.groups || [])
     } catch (error) {
@@ -90,7 +90,7 @@ const Service = () => {
 
   const fetchServicesForGroup = async (groupId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/services?group_id=${groupId}`)
+      const response = await apiGet(`/api/services?group_id=${groupId}`)
       const data = await response.json()
       setServicesByGroup((prev) => ({
         ...prev,
@@ -113,12 +113,7 @@ const Service = () => {
       return
     }
     try {
-      const response = await fetch(`${API_BASE_URL}/api/services/groups/${groupId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-      })
+      const response = await apiDelete(`/api/services/groups/${groupId}`)
       if (response.ok) {
         fetchServiceGroups()
         showSuccess('Service group deleted successfully')
@@ -139,22 +134,14 @@ const Service = () => {
     }
 
     try {
-      const url = editingGroup 
-        ? `${API_BASE_URL}/api/services/groups/${editingGroup.id}`
-        : `${API_BASE_URL}/api/services/groups`
-      const method = editingGroup ? 'PUT' : 'POST'
+      const groupData = {
+        name: groupFormData.name.trim(),
+        displayOrder: editingGroup?.displayOrder || 0
+      }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify({
-          name: groupFormData.name.trim(),
-          displayOrder: editingGroup?.displayOrder || 0
-        }),
-      })
+      const response = editingGroup
+        ? await apiPut(`/api/services/groups/${editingGroup.id}`, groupData)
+        : await apiPost('/api/services/groups', groupData)
 
       if (response.ok) {
         const data = await response.json()
@@ -188,26 +175,18 @@ const Service = () => {
     }
 
     try {
-      const url = editingService 
-        ? `${API_BASE_URL}/api/services/${editingService.id}`
-        : `${API_BASE_URL}/api/services`
-      const method = editingService ? 'PUT' : 'POST'
+      const serviceData = {
+        name: serviceFormData.name.trim(),
+        groupId: serviceFormData.groupId,
+        price: parseFloat(serviceFormData.price) || 0,
+        duration: serviceFormData.duration || null,
+        description: serviceFormData.description || '',
+        status: 'active'
+      }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify({
-          name: serviceFormData.name.trim(),
-          groupId: serviceFormData.groupId,  // MongoDB ObjectId as string
-          price: parseFloat(serviceFormData.price) || 0,
-          duration: serviceFormData.duration || null,
-          description: serviceFormData.description || '',
-          status: 'active'
-        }),
-      })
+      const response = editingService
+        ? await apiPut(`/api/services/${editingService.id}`, serviceData)
+        : await apiPost('/api/services', serviceData)
 
       if (response.ok) {
         const data = await response.json()
@@ -283,14 +262,7 @@ const Service = () => {
             } else {
               // Create new group
               try {
-                const groupResponse = await fetch(`${API_BASE_URL}/api/services/groups`, {
-                  method: 'POST',
-                  headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-                  },
-                  body: JSON.stringify({ name: groupName }),
-                })
+                const groupResponse = await apiPost('/api/services/groups', { name: groupName })
                 if (groupResponse.ok) {
                   const groupData = await groupResponse.json()
                   serviceData.groupId = groupData.id
@@ -303,14 +275,7 @@ const Service = () => {
 
           if (serviceData.name && serviceData.price) {
             try {
-              const response = await fetch(`${API_BASE_URL}/api/services`, {
-                method: 'POST',
-                headers: { 
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-                },
-                body: JSON.stringify(serviceData),
-              })
+              const response = await apiPost('/api/services', serviceData)
               if (response.ok) {
                 successCount++
               } else {
@@ -481,19 +446,14 @@ const Service = () => {
                               <FaEdit />
                             </button>
                             <button 
-                              className="icon-btn delete-btn" 
+                              className="icon-btn delete-btn"
                               title="Delete"
                               onClick={async () => {
                                 if (!window.confirm('Are you sure you want to delete this service?')) {
                                   return
                                 }
                                 try {
-                                  const response = await fetch(`${API_BASE_URL}/api/services/${service.id}`, {
-                                    method: 'DELETE',
-                                    headers: {
-                                      'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-                                    },
-                                  })
+                                  const response = await apiDelete(`/api/services/${service.id}`)
                                   if (response.ok) {
                                     fetchServicesForGroup(group.id)
                                     fetchServiceGroups()

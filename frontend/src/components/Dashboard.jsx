@@ -872,55 +872,46 @@ const Dashboard = () => {
                         </th>
                         <th>
                           <span className="th-content">
-                            <FaUser className="th-icon" />
                             <span>Staff Name</span>
                           </span>
                         </th>
                         <th>
                           <span className="th-content">
-                            <FaClipboardList className="th-icon" />
                             <span>Item Count</span>
                           </span>
                         </th>
                         <th>
                           <span className="th-content">
-                            <FaCut className="th-icon" />
                             <span>Service</span>
                           </span>
                         </th>
                         <th>
                           <span className="th-content">
-                            <FaBox className="th-icon" />
                             <span>Package</span>
                           </span>
                         </th>
                         <th>
                           <span className="th-content">
-                            <FaShoppingBag className="th-icon" />
                             <span>Product</span>
                           </span>
                         </th>
                         <th>
                           <span className="th-content">
-                            <FaCreditCard className="th-icon" />
                             <span>Prepaid</span>
                           </span>
                         </th>
                         <th>
                           <span className="th-content">
-                            <FaCrown className="th-icon" />
                             <span>Membership</span>
                           </span>
                         </th>
                         <th>
                           <span className="th-content">
-                            <FaDollarSign className="th-icon" />
                             <span>Total</span>
                           </span>
                         </th>
                         <th>
                           <span className="th-content">
-                            <FaChartLine className="th-icon" />
                             <span>Avg. Bill (₹)</span>
                           </span>
                         </th>

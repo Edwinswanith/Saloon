@@ -37,6 +37,14 @@ const GlobalHeader = ({ onMobileMenuToggle }) => {
               <FaBars size={20} />
             </button>
           )}
+          
+          {/* Center Banner */}
+          <div className="global-header-center">
+            <div className="banner-text">
+              <span className="banner-main">Priyanka Nature Cure</span>
+            </div>
+          </div>
+          
           <div className="global-header-right">
             <BranchSelector />
             <button 

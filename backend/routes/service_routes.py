@@ -4,6 +4,7 @@ from datetime import datetime
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
 from utils.auth import require_auth, require_role
+from utils.branch_filter import get_selected_branch
 
 service_bp = Blueprint('services', __name__)
 
@@ -90,13 +91,21 @@ def delete_service_group(group_id, current_user=None):
 
 # Service Routes
 @service_bp.route('/', methods=['GET'])
-def get_services():
-    """Get all services, optionally filtered by group"""
+@require_auth
+def get_services(current_user=None):
+    """Get all services, optionally filtered by group and branch"""
     group_id = request.args.get('group_id', type=str)
     search = request.args.get('search', '')
-    
+
     query = Service.objects(status='active')
-    
+
+    # Filter by branch
+    branch = get_selected_branch(request, current_user)
+    if branch:
+        # Include services for this branch OR services with no branch (legacy/global)
+        from mongoengine import Q
+        query = query.filter(Q(branch=branch) | Q(branch=None))
+
     if group_id:
         if ObjectId.is_valid(group_id):
             try:
@@ -104,13 +113,13 @@ def get_services():
                 query = query.filter(group=group)
             except (DoesNotExist, ValidationError):
                 pass
-    
+
     if search:
         query = query.filter(name__icontains=search)
-    
+
     # Force evaluation by converting to list
     services = list(query)
-    
+
     response = jsonify({
         'services': [{
             'id': str(s.id),
@@ -119,7 +128,8 @@ def get_services():
             'groupName': s.group.name if s.group else None,
             'price': s.price,
             'duration': s.duration,
-            'description': s.description
+            'description': s.description,
+            'branchId': str(s.branch.id) if s.branch else None
         } for s in services]
     })
     response.headers.add('Access-Control-Allow-Origin', '*')
@@ -149,11 +159,16 @@ def get_service(service_id):
     return response
 
 @service_bp.route('/', methods=['POST'])
-@require_role('manager', 'owner')
+@require_role('staff', 'manager', 'owner')
 def create_service(current_user=None):
-    """Create new service (Manager and Owner only)"""
+    """Create new service (Staff, Manager and Owner)"""
     data = request.json
-    
+
+    # Get branch for the service
+    branch = get_selected_branch(request, current_user)
+    if not branch:
+        return jsonify({'error': 'Branch is required to create a service'}), 400
+
     # Get group reference
     group = None
     if data.get('groupId'):
@@ -165,25 +180,26 @@ def create_service(current_user=None):
             return jsonify({'error': 'Service group not found'}), 400
         except ValidationError:
             return jsonify({'error': 'Invalid group ID format'}), 400
-    
+
     service = Service(
         name=data.get('name', ''),
         group=group,
         price=data.get('price', 0.0),
         duration=data.get('duration'),
         description=data.get('description', ''),
+        branch=branch,
         status=data.get('status', 'active')
     )
     service.save()
-    
+
     response = jsonify({'id': str(service.id), 'message': 'Service created successfully'})
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response, 201
 
 @service_bp.route('/<service_id>', methods=['PUT'])
-@require_role('manager', 'owner')
+@require_role('staff', 'manager', 'owner')
 def update_service(service_id, current_user=None):
-    """Update service (Manager and Owner only)"""
+    """Update service (Staff, Manager and Owner)"""
     try:
         if not ObjectId.is_valid(service_id):
             return jsonify({'error': 'Invalid service ID format'}), 400

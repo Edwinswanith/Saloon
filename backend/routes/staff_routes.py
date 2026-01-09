@@ -19,9 +19,9 @@ def handle_preflight():
         return response
 
 @staff_bp.route('/', methods=['GET'])
-@require_role('manager', 'owner')
+@require_role('staff', 'manager', 'owner')
 def get_staffs(current_user=None):
-    """Get all staff members including temp-assigned staff (Manager and Owner only)"""
+    """Get all staff members including temp-assigned staff"""
     try:
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)

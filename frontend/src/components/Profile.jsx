@@ -5,7 +5,7 @@ import { FaUser, FaTimes, FaEdit, FaSave, FaEnvelope, FaPhone, FaBuilding, FaShi
 import './Profile.css';
 
 const Profile = ({ isOpen, onClose }) => {
-  const { user, token, updateUser, logout } = useAuth();
+  const { user, token, updateUser, logout, currentBranch } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -230,6 +230,11 @@ const Profile = ({ isOpen, onClose }) => {
                 <p className="profile-subtitle">
                   {profileData.first_name} {profileData.last_name}
                 </p>
+                {currentBranch && (
+                  <p className="profile-branch-name">
+                    {currentBranch.name}
+                  </p>
+                )}
               </div>
             </div>
             <div className="profile-header-right">

@@ -123,6 +123,23 @@ const QuickSale = () => {
     fetchMembershipPlans()
   }, [])
 
+  // Auto-select logged-in staff when staff members are loaded
+  useEffect(() => {
+    if (staffMembers.length > 0 && user && user.id) {
+      // Check if user is a staff member (not manager/owner accessing the system)
+      const loggedInStaff = staffMembers.find(s => s.id === user.id)
+      if (loggedInStaff) {
+        // Auto-select this staff for existing services that don't have staff selected
+        setServices(prevServices =>
+          prevServices.map(service => ({
+            ...service,
+            staff_id: service.staff_id || user.id
+          }))
+        )
+      }
+    }
+  }, [staffMembers, user])
+
   // Pre-fill appointment data after data arrays are loaded
   useEffect(() => {
     // Only proceed if we have appointment data to pre-fill
@@ -223,7 +240,7 @@ const QuickSale = () => {
         // If not found, try fetching
         if (!service && appointmentData.service_id) {
           try {
-            const response = await fetch(`${API_BASE_URL}/api/services`)
+            const response = await apiGet('/api/services')
             const data = await response.json()
             service = (data.services || []).find(s => s.id === appointmentData.service_id)
           } catch (error) {
@@ -353,7 +370,7 @@ const QuickSale = () => {
 
   const fetchServices = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/services`)
+      const response = await apiGet('/api/services')
       const data = await response.json()
       setAvailableServices(data.services || [])
     } catch (error) {
@@ -363,7 +380,7 @@ const QuickSale = () => {
 
   const fetchPackages = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/packages`)
+      const response = await apiGet('/api/packages')
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -377,7 +394,7 @@ const QuickSale = () => {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/products`)
+      const response = await apiGet('/api/products')
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -419,12 +436,14 @@ const QuickSale = () => {
 
   const addService = () => {
     const currentTime = getCurrentTime()
+    // Auto-select logged-in staff if they are in the staff list
+    const loggedInStaffId = (user && staffMembers.find(s => s.id === user.id)) ? user.id : ''
     setServices([
       ...services,
       {
         id: Date.now(),
         service_id: '',
-        staff_id: '',
+        staff_id: loggedInStaffId,
         startTime: currentTime,
         price: 0,
         discount: 0,
@@ -1988,32 +2007,70 @@ const QuickSale = () => {
                 <h3 className="summary-title">Bill Summary</h3>
                 <div className="summary-title-separator"></div>
                 <div className="summary-values">
-                  <div className="summary-row">
-                    <span className="summary-label">Subtotal:</span>
-                    <span className="summary-value">₹ {calculateSubtotal().toFixed(2)}</span>
-                  </div>
-                  {membershipInfo && membershipInfo.plan && discountType === 'membership' && calculateDiscount() > 0 && (
-                    <div className="summary-row membership-discount-row">
-                      <span className="summary-label" style={{ color: '#0F766E', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <FaGift style={{ fontSize: '14px' }} />
-                        Membership Discount ({membershipInfo.plan.allocated_discount}%):
-                      </span>
-                      <span className="summary-value" style={{ color: '#0F766E', fontWeight: '600' }}>
-                        - ₹ {calculateDiscount().toFixed(2)}
-                      </span>
+                  {/* Subtotal Group */}
+                  <div className="summary-group">
+                    <div className="summary-row">
+                      <span className="summary-label">Subtotal:</span>
+                      <span className="summary-value">₹ {calculateSubtotal().toFixed(2)}</span>
                     </div>
-                  )}
-                  <div className="summary-row net-row">
-                    <span className="summary-label">Net:</span>
-                    <span className="summary-value net-value">₹ {calculateNet().toFixed(2)}</span>
                   </div>
-                  <div className="summary-row">
-                    <span className="summary-label">Tax:</span>
-                    <span className="summary-value">₹ {calculateTax().toFixed(2)}</span>
+
+                  {/* Discounts Group */}
+                  {(membershipInfo && membershipInfo.plan && discountType === 'membership' && calculateDiscount() > 0) ||
+                   (discountType !== 'membership' && discountAmount > 0) ? (
+                    <>
+                      <div className="summary-divider"></div>
+                      <div className="summary-group">
+                        {membershipInfo && membershipInfo.plan && discountType === 'membership' && calculateDiscount() > 0 && (
+                          <div className="summary-row membership-discount-row">
+                            <span className="summary-label discount-label">
+                              <FaGift style={{ fontSize: '14px', marginRight: '6px' }} />
+                              Membership Discount ({membershipInfo.plan.allocated_discount}%):
+                            </span>
+                            <span className="summary-value discount-value">
+                              - ₹ {calculateDiscount().toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                        {discountType !== 'membership' && discountAmount > 0 && (
+                          <div className="summary-row manual-discount-row">
+                            <span className="summary-label discount-label">
+                              Discount{discountType === '%' ? ` (${discountAmount}%)` : ''}:
+                            </span>
+                            <span className="summary-value discount-value">
+                              - ₹ {calculateDiscount().toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : null}
+
+                  {/* Net Amount */}
+                  <div className="summary-divider"></div>
+                  <div className="summary-group">
+                    <div className="summary-row net-row">
+                      <span className="summary-label">Net:</span>
+                      <span className="summary-value net-value">₹ {calculateNet().toFixed(2)}</span>
+                    </div>
                   </div>
-                  <div className="summary-row final">
-                    <span className="summary-label">Final Amount:</span>
-                    <span className="summary-value final-value">₹ {calculateFinalAmount().toFixed(2)}</span>
+
+                  {/* Tax Group */}
+                  <div className="summary-divider"></div>
+                  <div className="summary-group">
+                    <div className="summary-row">
+                      <span className="summary-label">Tax (18%):</span>
+                      <span className="summary-value">₹ {calculateTax().toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  {/* Final Amount */}
+                  <div className="summary-divider summary-divider-final"></div>
+                  <div className="summary-group summary-group-final">
+                    <div className="summary-row final">
+                      <span className="summary-label">Final Amount:</span>
+                      <span className="summary-value final-value">₹ {calculateFinalAmount().toFixed(2)}</span>
+                    </div>
                   </div>
                 </div>
               </div>

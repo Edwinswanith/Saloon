@@ -89,12 +89,13 @@ class ServiceGroup(Document):
 # Service Model
 class Service(Document):
     meta = {'collection': 'services'}
-    
+
     name = StringField(required=True, max_length=100)
     group = ReferenceField('ServiceGroup', required=True)
     price = FloatField(required=True)
     duration = IntField()  # Duration in minutes
     description = StringField()
+    branch = ReferenceField('Branch')  # Multi-branch: Service's branch
     status = StringField(max_length=20, default='active')
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
@@ -110,7 +111,7 @@ class ProductCategory(Document):
 # Product Model
 class Product(Document):
     meta = {'collection': 'products'}
-    
+
     name = StringField(required=True, max_length=100)
     category = ReferenceField('ProductCategory', required=True)
     price = FloatField(required=True)
@@ -119,6 +120,7 @@ class Product(Document):
     min_stock_level = IntField(default=0)
     sku = StringField(max_length=50)
     description = StringField()
+    branch = ReferenceField('Branch')  # Multi-branch: Product's branch
     status = StringField(max_length=20, default='active')
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
@@ -126,11 +128,12 @@ class Product(Document):
 # Package Model
 class Package(Document):
     meta = {'collection': 'packages'}
-    
+
     name = StringField(required=True, max_length=100)
     price = FloatField(required=True)
     description = StringField()
     services = StringField()  # JSON string of service IDs
+    branch = ReferenceField('Branch')  # Multi-branch: Package's branch
     status = StringField(max_length=20, default='active')
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)

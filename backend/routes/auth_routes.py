@@ -16,7 +16,7 @@ import os
 
 auth_bp = Blueprint('auth', __name__)
 
-# Password functionality removed for managers and owners - they can log in without password
+# Password authentication is required for all user types (staff, manager, owner)
 
 
 @auth_bp.before_request
@@ -39,8 +39,8 @@ def login():
     {
         "user_type": "staff" or "manager",
         "identifier": "mobile or email",
-        "role": "staff" (optional for staff without password),
-        "password": "password" (not used for manager/owner - password functionality removed),
+        "role": "staff|manager|owner",
+        "password": "password" (required for all user types),
         "branch_id": "branch_id" (optional, validates user access to branch)
     }
 
@@ -117,55 +117,55 @@ def login():
                 response.headers.add('Access-Control-Allow-Origin', '*')
                 return response, 403
 
-            # If staff has a password set (manager/owner role), verify it
-            if staff.password_hash:
-                if not password:
-                    try:
-                        LoginHistory(
-                            user_id=str(staff.id),
-                            user_type='staff',
-                            role=staff.role,
-                            login_method='password',
-                            ip_address=request.remote_addr,
-                            user_agent=request.headers.get('User-Agent', ''),
-                            login_status='failed',
-                            failure_reason='Password required but not provided'
-                        ).save()
-                    except:
-                        pass
-                    response = jsonify({'error': 'Password is required for this user'})
-                    response.headers.add('Access-Control-Allow-Origin', '*')
-                    return response, 400
+            # Password validation for staff - required for all staff
+            if not password:
+                try:
+                    LoginHistory(
+                        user_id=str(staff.id),
+                        user_type='staff',
+                        role=staff.role or 'staff',
+                        login_method='password',
+                        ip_address=request.remote_addr,
+                        user_agent=request.headers.get('User-Agent', ''),
+                        login_status='failed',
+                        failure_reason='Password required but not provided'
+                    ).save()
+                except:
+                    pass
+                response = jsonify({'error': 'Password is required'})
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response, 400
 
-                if not verify_password(password, staff.password_hash):
-                    try:
-                        LoginHistory(
-                            user_id=str(staff.id),
-                            user_type='staff',
-                            role=staff.role,
-                            login_method='password',
-                            ip_address=request.remote_addr,
-                            user_agent=request.headers.get('User-Agent', ''),
-                            login_status='failed',
-                            failure_reason='Invalid password'
-                        ).save()
-                    except:
-                        pass
-                    response = jsonify({'error': 'Invalid password'})
-                    response.headers.add('Access-Control-Allow-Origin', '*')
-                    return response, 401
-            else:
-                # Staff without password - use role selection
-                # Update staff role if provided
-                if role in ['staff', 'manager', 'owner']:
-                    staff.role = role
-                    staff.save()
+            if not staff.password_hash:
+                response = jsonify({'error': 'Password not set for this account. Please contact administrator.'})
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response, 400
+
+            if not verify_password(password, staff.password_hash):
+                try:
+                    LoginHistory(
+                        user_id=str(staff.id),
+                        user_type='staff',
+                        role=staff.role or 'staff',
+                        login_method='password',
+                        ip_address=request.remote_addr,
+                        user_agent=request.headers.get('User-Agent', ''),
+                        login_status='failed',
+                        failure_reason='Invalid password'
+                    ).save()
+                except:
+                    pass
+                response = jsonify({'error': 'Invalid password'})
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response, 401
 
             # Generate JWT token
             full_name = f"{staff.first_name} {staff.last_name or ''}".strip()
+            # Ensure role has a valid value (fallback to 'staff' if None)
+            staff_role = staff.role or 'staff'
             token = generate_jwt_token(
                 user_id=str(staff.id),
-                role=staff.role,
+                role=staff_role,
                 user_type='staff',
                 name=full_name
             )
@@ -229,12 +229,12 @@ def login():
                     'first_name': staff.first_name,
                     'last_name': staff.last_name,
                     'email': staff.email,
-                    'role': staff.role,
+                    'role': staff_role,
                     'user_type': 'staff',
                     'branch_id': str(selected_branch.id) if selected_branch else None,
                     'branch': branch_info
                 },
-                'role': staff.role,
+                'role': staff_role,
                 'branch_id': str(selected_branch.id) if selected_branch else None,
                 'branch': branch_info,
                 'message': 'Login successful'
@@ -293,7 +293,48 @@ def login():
                     response.headers.add('Access-Control-Allow-Origin', '*')
                     return response, 403
 
-                # Password functionality removed - owners can log in without password
+                # Password validation for owners
+                if not password:
+                    try:
+                        LoginHistory(
+                            user_id=str(owner.id),
+                            user_type='manager',
+                            role='owner',
+                            login_method='password',
+                            ip_address=request.remote_addr,
+                            user_agent=request.headers.get('User-Agent', ''),
+                            login_status='failed',
+                            failure_reason='Password required but not provided'
+                        ).save()
+                    except:
+                        pass
+                    response = jsonify({'error': 'Password is required'})
+                    response.headers.add('Access-Control-Allow-Origin', '*')
+                    return response, 400
+
+                if not owner.password_hash:
+                    response = jsonify({'error': 'Password not set for this account. Please contact administrator.'})
+                    response.headers.add('Access-Control-Allow-Origin', '*')
+                    return response, 400
+
+                if not verify_password(password, owner.password_hash):
+                    try:
+                        LoginHistory(
+                            user_id=str(owner.id),
+                            user_type='manager',
+                            role='owner',
+                            login_method='password',
+                            ip_address=request.remote_addr,
+                            user_agent=request.headers.get('User-Agent', ''),
+                            login_status='failed',
+                            failure_reason='Invalid password'
+                        ).save()
+                    except:
+                        pass
+                    response = jsonify({'error': 'Invalid password'})
+                    response.headers.add('Access-Control-Allow-Origin', '*')
+                    return response, 401
+
                 # Generate JWT token
                 full_name = f"{owner.first_name} {owner.last_name or ''}".strip()
                 token = generate_jwt_token(
@@ -424,8 +465,47 @@ def login():
                 response.headers.add('Access-Control-Allow-Origin', '*')
                 return response, 403
 
-            # Password functionality removed - managers can log in without password
-            # Generate JWT token
+            # Password validation for managers
+            if not password:
+                try:
+                    LoginHistory(
+                        user_id=str(manager.id),
+                        user_type='manager',
+                        role=manager.role or 'manager',
+                        login_method='password',
+                        ip_address=request.remote_addr,
+                        user_agent=request.headers.get('User-Agent', ''),
+                        login_status='failed',
+                        failure_reason='Password required but not provided'
+                    ).save()
+                except:
+                    pass
+                response = jsonify({'error': 'Password is required'})
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response, 400
+
+            if not manager.password_hash:
+                response = jsonify({'error': 'Password not set for this account. Please contact administrator.'})
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response, 400
+
+            if not verify_password(password, manager.password_hash):
+                try:
+                    LoginHistory(
+                        user_id=str(manager.id),
+                        user_type='manager',
+                        role=manager.role or 'manager',
+                        login_method='password',
+                        ip_address=request.remote_addr,
+                        user_agent=request.headers.get('User-Agent', ''),
+                        login_status='failed',
+                        failure_reason='Invalid password'
+                    ).save()
+                except:
+                    pass
+                response = jsonify({'error': 'Invalid password'})
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response, 401
 
             # Generate JWT token
             full_name = f"{manager.first_name} {manager.last_name or ''}".strip()

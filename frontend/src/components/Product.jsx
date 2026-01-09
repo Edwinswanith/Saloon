@@ -11,7 +11,6 @@ import {
 } from 'react-icons/fa'
 import * as XLSX from 'xlsx'
 import './Product.css'
-import { API_BASE_URL } from '../config'
 import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
 import { useAuth } from '../contexts/AuthContext'
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'

@@ -4,6 +4,7 @@ from datetime import datetime
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
 from utils.auth import require_auth, require_role
+from utils.branch_filter import get_selected_branch
 import json
 
 package_bp = Blueprint('package', __name__)
@@ -42,13 +43,21 @@ def handle_preflight():
         return response
 
 @package_bp.route('/', methods=['GET'])
-def get_packages():
-    """Get all packages with optional filters"""
+@require_auth
+def get_packages(current_user=None):
+    """Get all packages with optional filters, filtered by branch"""
     try:
         status = request.args.get('status')
         search = request.args.get('search')
 
         query = Package.objects
+
+        # Filter by branch
+        branch = get_selected_branch(request, current_user)
+        if branch:
+            # Include packages for this branch OR packages with no branch (legacy/global)
+            from mongoengine import Q
+            query = query.filter(Q(branch=branch) | Q(branch=None))
 
         # Apply filters
         if status:
@@ -68,7 +77,8 @@ def get_packages():
             'service_details': get_service_details(json.loads(p.services) if p.services else []),
             'status': p.status,
             'created_at': p.created_at.isoformat() if p.created_at else None,
-            'updated_at': p.updated_at.isoformat() if p.updated_at else None
+            'updated_at': p.updated_at.isoformat() if p.updated_at else None,
+            'branch_id': str(p.branch.id) if p.branch else None
         } for p in packages])
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
@@ -106,11 +116,16 @@ def get_package(id):
         return response, 500
 
 @package_bp.route('/', methods=['POST'])
-@require_role('manager', 'owner')
+@require_role('staff', 'manager', 'owner')
 def create_package(current_user=None):
-    """Create a new package (Manager and Owner only)"""
+    """Create a new package (Staff, Manager and Owner)"""
     try:
         data = request.get_json()
+
+        # Get branch for the package
+        branch = get_selected_branch(request, current_user)
+        if not branch:
+            return jsonify({'error': 'Branch is required to create a package'}), 400
 
         # Convert services list to JSON string
         services = data.get('services', [])
@@ -121,6 +136,7 @@ def create_package(current_user=None):
             price=data['price'],
             description=data.get('description'),
             services=services_json,
+            branch=branch,
             status=data.get('status', 'active')
         )
         package.save()
@@ -142,9 +158,9 @@ def create_package(current_user=None):
         return response, 500
 
 @package_bp.route('/<id>', methods=['PUT'])
-@require_role('manager', 'owner')
+@require_role('staff', 'manager', 'owner')
 def update_package(id, current_user=None):
-    """Update a package (Manager and Owner only)"""
+    """Update a package (Staff, Manager and Owner)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid package ID format'}), 400
@@ -202,10 +218,19 @@ def delete_package(id, current_user=None):
         return response, 500
 
 @package_bp.route('/active', methods=['GET'])
-def get_active_packages():
-    """Get all active packages"""
+@require_auth
+def get_active_packages(current_user=None):
+    """Get all active packages, filtered by branch"""
     try:
-        packages = Package.objects.filter(status='active').order_by('name')
+        query = Package.objects.filter(status='active')
+
+        # Filter by branch
+        branch = get_selected_branch(request, current_user)
+        if branch:
+            from mongoengine import Q
+            query = query.filter(Q(branch=branch) | Q(branch=None))
+
+        packages = list(query.order_by('name'))
 
         response = jsonify([{
             'id': str(p.id),
@@ -213,7 +238,8 @@ def get_active_packages():
             'price': p.price,
             'description': p.description,
             'services': json.loads(p.services) if p.services else [],
-            'service_details': get_service_details(json.loads(p.services) if p.services else [])
+            'service_details': get_service_details(json.loads(p.services) if p.services else []),
+            'branch_id': str(p.branch.id) if p.branch else None
         } for p in packages])
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response

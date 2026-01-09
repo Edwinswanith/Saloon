@@ -7,7 +7,7 @@ import {
 } from 'react-icons/fa'
 import * as XLSX from 'xlsx'
 import './Package.css'
-import { API_BASE_URL } from '../config'
+import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 import { useAuth } from '../contexts/AuthContext'
 
 const Package = () => {
@@ -52,7 +52,7 @@ const Package = () => {
 
   const fetchServices = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/services`)
+      const response = await apiGet('/api/services')
       const data = await response.json()
       setAvailableServices(data.services || [])
     } catch (error) {
@@ -63,7 +63,7 @@ const Package = () => {
   const fetchPackages = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE_URL}/api/packages`)
+      const response = await apiGet('/api/packages')
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -111,23 +111,16 @@ const Package = () => {
     }
 
     try {
-      const url = editingPackage 
-        ? `${API_BASE_URL}/api/packages/${editingPackage.id}`
-        : `${API_BASE_URL}/api/packages`
-      const method = editingPackage ? 'PUT' : 'POST'
+      const packageData = {
+        name: packageFormData.name.trim(),
+        price: parseFloat(packageFormData.price) || 0,
+        description: packageFormData.description || '',
+        services: packageFormData.services
+      }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: packageFormData.name.trim(),
-          price: parseFloat(packageFormData.price) || 0,
-          description: packageFormData.description || '',
-          service_ids: packageFormData.services  // MongoDB ObjectIds as strings, don't parse
-        }),
-      })
+      const response = editingPackage
+        ? await apiPut(`/api/packages/${editingPackage.id}`, packageData)
+        : await apiPost('/api/packages', packageData)
 
       if (response.ok) {
         const data = await response.json()
@@ -156,9 +149,7 @@ const Package = () => {
       return
     }
     try {
-      const response = await fetch(`${API_BASE_URL}/api/packages/${packageId}`, {
-        method: 'DELETE',
-      })
+      const response = await apiDelete(`/api/packages/${packageId}`)
       if (response.ok) {
         fetchPackages()
         alert('Package deleted successfully')
@@ -262,24 +253,20 @@ const Package = () => {
           name: String(values[nameIdx] || '').trim(),
           price: parseFloat(values[priceIdx] || '0'),
           description: descriptionIdx >= 0 ? String(values[descriptionIdx] || '').trim() : '',
-          service_ids: []
+          services: []
         }
 
         // Handle services if provided
         if (servicesIdx >= 0 && values[servicesIdx]) {
           const serviceNames = String(values[servicesIdx]).split(',').map(s => s.trim())
-          packageData.service_ids = availableServices
+          packageData.services = availableServices
             .filter(s => serviceNames.includes(s.name))
             .map(s => s.id)
         }
 
         if (packageData.name && packageData.price > 0) {
           try {
-            const response = await fetch(`${API_BASE_URL}/api/packages`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(packageData),
-            })
+            const response = await apiPost('/api/packages', packageData)
             if (response.ok) {
               successCount++
             } else {
