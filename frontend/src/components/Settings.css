@@ -159,12 +159,62 @@
 }
 
 @media (max-width: 768px) {
+  .settings-container {
+    padding: 16px;
+  }
+
+  .settings-header {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .header-title {
+    font-size: 18px;
+  }
+
   .settings-grid {
     grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .settings-card {
+    padding: 20px;
   }
 
   .main-heading {
     font-size: 24px;
+    margin-bottom: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .settings-container {
+    padding: 12px;
+  }
+
+  .settings-header {
+    padding: 10px 12px;
+  }
+
+  .header-title {
+    font-size: 16px;
+  }
+
+  .main-heading {
+    font-size: 20px;
+  }
+
+  .settings-card {
+    padding: 16px;
+  }
+
+  .card-title {
+    font-size: 16px;
+  }
+
+  .card-description {
+    font-size: 13px;
   }
 }
 

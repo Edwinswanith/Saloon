@@ -44,6 +44,7 @@ const QuickSale = () => {
   const [customers, setCustomers] = useState([])
   const [staffMembers, setStaffMembers] = useState([])
   const [availableServices, setAvailableServices] = useState([])
+  const [loadingServices, setLoadingServices] = useState(false)
   const [filteredCustomers, setFilteredCustomers] = useState([])
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
 
@@ -73,7 +74,7 @@ const QuickSale = () => {
   const [showProductModal, setShowProductModal] = useState(false)
   const [showPrepaidModal, setShowPrepaidModal] = useState(false)
   const [showMembershipModal, setShowMembershipModal] = useState(false)
-  const [selectedQuantity, setSelectedQuantity] = useState(1)
+  const [productQuantities, setProductQuantities] = useState({}) // Map product ID to quantity
 
   const [services, setServices] = useState(() => {
     const currentTime = (() => {
@@ -140,32 +141,29 @@ const QuickSale = () => {
     }
   }, [staffMembers, user])
 
-  // Pre-fill appointment data after data arrays are loaded
+  // Pre-fill appointment data immediately from localStorage (no waiting for data arrays)
   useEffect(() => {
     // Only proceed if we have appointment data to pre-fill
     const editAppointmentData = localStorage.getItem('edit_appointment_data')
     if (!editAppointmentData) return
-    
-    // Wait for at least some data to be loaded (customers, services, or staff)
-    // This ensures we don't try to pre-fill before any data is available
-    const hasDataLoaded = customers.length > 0 || availableServices.length > 0 || staffMembers.length > 0
-    if (!hasDataLoaded) {
-      return // Data not loaded yet, wait for next render
-    }
 
     try {
       const appointmentData = JSON.parse(editAppointmentData)
+      console.log('[APPOINTMENT EDIT] Loading appointment data immediately:', appointmentData)
+      
+      // Set editing appointment ID immediately
       setEditingAppointmentId(appointmentData.appointmentId)
       
-      // Pre-fill the form with appointment data
+      // Pre-fill the form with appointment data immediately
       prefillAppointmentData(appointmentData)
+      
       // Clear the data after reading
       localStorage.removeItem('edit_appointment_data')
     } catch (error) {
       console.error('Error parsing appointment data:', error)
       localStorage.removeItem('edit_appointment_data')
     }
-  }, [customers, availableServices, staffMembers])
+  }, []) // Run only once on mount, no dependencies
 
   // Fetch customer details and membership in background when customer is selected
   useEffect(() => {
@@ -182,110 +180,173 @@ const QuickSale = () => {
     }
   }, [selectedCustomer])
 
-  // Pre-fill form with appointment data
+  // Pre-fill form with appointment data - immediate population with parallel API calls
   const prefillAppointmentData = async (appointmentData) => {
     try {
-      // Set customer
-      if (appointmentData.customer_id) {
-        // First try to find in loaded customers array
-        let customer = customers.find(c => c.id === appointmentData.customer_id)
-        
-        if (!customer) {
-          // If not found, fetch from API
-          try {
-            const response = await apiGet(`/api/customers/${appointmentData.customer_id}`)
-            if (response.ok) {
-              const customerData = await response.json()
-              // Map to match expected format
-              customer = {
-                id: customerData.id,
-                mobile: customerData.mobile || '',
-                firstName: customerData.firstName || customerData.first_name || '',
-                lastName: customerData.lastName || customerData.last_name || '',
-                email: customerData.email || ''
-              }
-            }
-          } catch (fetchError) {
-            console.error('Error fetching customer:', fetchError)
-          }
-        }
-        
-        if (customer) {
-          selectCustomer(customer)
-          // Customer details will be fetched in background via useEffect
-        }
-      }
-
-      // Set date
+      console.log('[APPOINTMENT EDIT] Pre-filling appointment data:', appointmentData)
+      
+      // IMMEDIATE STATE UPDATES - No waiting for API calls
+      // Set date immediately
       if (appointmentData.appointment_date) {
         setSelectedDate(new Date(appointmentData.appointment_date))
       }
 
-      // Set booking status
+      // Set booking status immediately
       if (appointmentData.status) {
         setBookingStatus(appointmentData.status === 'confirmed' ? 'confirmed' : 'service-completed')
       }
 
-      // Set booking note
+      // Set booking note immediately
       if (appointmentData.notes) {
-        setBookingNote(appointmentData.notes)
+        setBookingNote(appointmentData.notes || '')
       }
 
-      // Set service - try to find in loaded arrays first, then fetch if needed
+      // Create and set customer object immediately from appointment data
+      if (appointmentData.customer_id) {
+        // Parse customer name to extract first and last name
+        const customerNameParts = (appointmentData.customer_name || '').trim().split(' ')
+        const firstName = customerNameParts[0] || ''
+        const lastName = customerNameParts.slice(1).join(' ') || ''
+        
+        const customer = {
+          id: appointmentData.customer_id,
+          mobile: appointmentData.customer_mobile || '',
+          firstName: firstName,
+          lastName: lastName,
+          email: ''
+        }
+        
+        // Set customer immediately
+        setSelectedCustomer(customer)
+        setSearchQuery(`${firstName} ${lastName} - ${customer.mobile}`.trim())
+        setShowCustomerDropdown(false)
+        console.log('[APPOINTMENT EDIT] Customer set immediately:', customer)
+      }
+
+      // Create and set service entry immediately from appointment data
       if (appointmentData.service_id && appointmentData.staff_id && appointmentData.start_time) {
-        // Try to find service and staff in loaded arrays
-        let service = availableServices.find(s => s.id === appointmentData.service_id)
-        let staff = staffMembers.find(s => s.id === appointmentData.staff_id)
-        
-        // If not found, try fetching
-        if (!service && appointmentData.service_id) {
-          try {
-            const response = await apiGet('/api/services')
-            const data = await response.json()
-            service = (data.services || []).find(s => s.id === appointmentData.service_id)
-          } catch (error) {
-            console.error('Error fetching service:', error)
-          }
+        // Format time (remove seconds if present, keep HH:MM format)
+        let timeStr = appointmentData.start_time
+        if (timeStr && timeStr.includes(':')) {
+          const parts = timeStr.split(':')
+          timeStr = `${parts[0]}:${parts[1]}`
         }
-        
-        if (!staff && appointmentData.staff_id) {
-          try {
-            const response = await apiGet('/api/staffs')
-            const data = await response.json()
-            staff = (data.staffs || []).find(s => s.id === appointmentData.staff_id)
-          } catch (error) {
-            console.error('Error fetching staff:', error)
-          }
-        }
-        
-        if (service && staff) {
-          // Format time (remove seconds if present)
-          let timeStr = appointmentData.start_time
-          if (timeStr.includes(':')) {
-            const parts = timeStr.split(':')
-            timeStr = `${parts[0]}:${parts[1]}`
-          }
 
-          setServices([{
-            id: 1,
-            service_id: appointmentData.service_id,
-            staff_id: appointmentData.staff_id,
-            startTime: timeStr,
-            price: appointmentData.service_price || service.price || 0,
-            discount: 0,
-            total: appointmentData.service_price || service.price || 0,
-          }])
-        } else {
-          console.warn('Service or staff not found for appointment pre-fill', { 
-            service_id: appointmentData.service_id, 
-            staff_id: appointmentData.staff_id 
-          })
+        // Set service immediately with data from appointment
+        setServices([{
+          id: 1,
+          service_id: appointmentData.service_id,
+          staff_id: appointmentData.staff_id,
+          startTime: timeStr,
+          price: appointmentData.service_price || 0,
+          discount: 0,
+          total: appointmentData.service_price || 0,
+        }])
+        console.log('[APPOINTMENT EDIT] Service set immediately:', {
+          service_id: appointmentData.service_id,
+          staff_id: appointmentData.staff_id,
+          startTime: timeStr,
+          price: appointmentData.service_price || 0
+        })
+      }
+
+      // PARALLEL API CALLS - Fetch missing details in background (non-blocking)
+      const apiPromises = []
+      
+      // Fetch customer details if not in loaded array
+      if (appointmentData.customer_id) {
+        const customerInArray = customers.find(c => c.id === appointmentData.customer_id)
+        if (!customerInArray) {
+          apiPromises.push(
+            apiGet(`/api/customers/${appointmentData.customer_id}`)
+              .then(response => {
+                if (response.ok) {
+                  return response.json().then(customerData => {
+                    // Update customer if needed (customer details will be fetched via useEffect)
+                    console.log('[APPOINTMENT EDIT] Customer details fetched:', customerData)
+                  })
+                }
+              })
+              .catch(error => console.error('[APPOINTMENT EDIT] Error fetching customer:', error))
+          )
         }
       }
 
-      showInfo('Appointment data loaded. You can now edit and update the booking.')
+      // Fetch service details if not in loaded array
+      if (appointmentData.service_id) {
+        const serviceInArray = availableServices.find(s => s.id === appointmentData.service_id)
+        if (!serviceInArray) {
+          apiPromises.push(
+            apiGet('/api/services')
+              .then(response => {
+                if (response.ok) {
+                  return response.json().then(data => {
+                    const service = (data.services || []).find(s => s.id === appointmentData.service_id)
+                    if (service) {
+                      // Update service price if available
+                      setServices(prev => prev.map(s => 
+                        s.service_id === appointmentData.service_id
+                          ? { ...s, price: service.price || s.price, total: service.price || s.total }
+                          : s
+                      ))
+                      console.log('[APPOINTMENT EDIT] Service details fetched:', service)
+                    }
+                  })
+                }
+              })
+              .catch(error => console.error('[APPOINTMENT EDIT] Error fetching service:', error))
+          )
+        }
+      }
+
+      // Fetch staff details if not in loaded array (optional, for validation)
+      if (appointmentData.staff_id) {
+        const staffInArray = staffMembers.find(s => s.id === appointmentData.staff_id)
+        if (!staffInArray) {
+          apiPromises.push(
+            apiGet('/api/staffs')
+              .then(response => {
+                if (response.ok) {
+                  return response.json().then(data => {
+                    const staff = (data.staffs || []).find(s => s.id === appointmentData.staff_id)
+                    if (staff) {
+                      console.log('[APPOINTMENT EDIT] Staff details fetched:', staff)
+                    }
+                  })
+                }
+              })
+              .catch(error => console.error('[APPOINTMENT EDIT] Error fetching staff:', error))
+          )
+        }
+      }
+
+      // Wait for all API calls to complete, then show success message
+      Promise.all(apiPromises)
+        .then(() => {
+          // Show success message after UI updates are visible
+          setTimeout(() => {
+            showInfo('Appointment data loaded. You can now edit and update the booking.')
+            console.log('[APPOINTMENT EDIT] All data loaded successfully')
+          }, 100)
+        })
+        .catch(error => {
+          console.error('[APPOINTMENT EDIT] Error in parallel API calls:', error)
+          // Still show success since form is already populated
+          setTimeout(() => {
+            showInfo('Appointment data loaded. You can now edit and update the booking.')
+          }, 100)
+        })
+
+      // If no API calls needed, show success immediately
+      if (apiPromises.length === 0) {
+        setTimeout(() => {
+          showInfo('Appointment data loaded. You can now edit and update the booking.')
+          console.log('[APPOINTMENT EDIT] Data loaded immediately (no API calls needed)')
+        }, 100)
+      }
+
     } catch (error) {
-      console.error('Error pre-filling appointment data:', error)
+      console.error('[APPOINTMENT EDIT] Error pre-filling appointment data:', error)
       showError('Failed to load appointment data')
     }
   }
@@ -320,24 +381,73 @@ const QuickSale = () => {
     }
   }, [showCustomerDropdown])
 
-  // Filter customers based on search query
-  useEffect(() => {
-    if (searchQuery.length > 0) {
-      const query = searchQuery.toLowerCase()
-      const filtered = customers.filter(customer =>
-        customer.mobile.includes(searchQuery) ||
-        (customer.firstName && customer.firstName.toLowerCase().includes(query)) ||
-        (customer.lastName && customer.lastName.toLowerCase().includes(query)) ||
-        `${customer.firstName || ''} ${customer.lastName || ''}`.toLowerCase().includes(query)
-      )
-      setFilteredCustomers(filtered)
-      setShowCustomerDropdown(true)
-    } else {
-      // Show all customers when field is focused but empty
-      setFilteredCustomers(customers.slice(0, 10)) // Limit to first 10 for performance
-      setShowCustomerDropdown(false)
+  // Fetch initial customers for dropdown (when search is empty)
+  const fetchCustomersForDropdown = async () => {
+    try {
+      const response = await apiGet(`/api/customers?per_page=10`)
+      const data = await response.json()
+      const customersList = (data.customers || []).map(customer => ({
+        id: customer.id,
+        mobile: customer.mobile || '',
+        firstName: customer.firstName || customer.first_name || '',
+        lastName: customer.lastName || customer.last_name || '',
+        email: customer.email || ''
+      }))
+      setFilteredCustomers(customersList)
+    } catch (error) {
+      console.error('Error fetching customers for dropdown:', error)
+      setFilteredCustomers([])
     }
-  }, [searchQuery, customers])
+  }
+
+  // Search customers using server-side API (with debouncing)
+  useEffect(() => {
+    let searchTimeout
+    const searchCustomers = async () => {
+      try {
+        const params = new URLSearchParams({
+          per_page: '50', // Limit results for dropdown
+        })
+        if (searchQuery && searchQuery.trim().length > 0) {
+          params.append('search', searchQuery.trim())
+        }
+        
+        const response = await apiGet(`/api/customers?${params}`)
+        const data = await response.json()
+        
+        // Map the response to match the expected format (handle both camelCase and snake_case)
+        const customersList = (data.customers || []).map(customer => ({
+          id: customer.id,
+          mobile: customer.mobile || '',
+          firstName: customer.firstName || customer.first_name || '',
+          lastName: customer.lastName || customer.last_name || '',
+          email: customer.email || ''
+        }))
+        
+        setFilteredCustomers(customersList)
+        setShowCustomerDropdown(true)
+      } catch (error) {
+        console.error('Error searching customers:', error)
+        setFilteredCustomers([])
+      }
+    }
+
+    if (searchQuery && searchQuery.trim().length > 0) {
+      // Debounce search: wait 300ms after user stops typing
+      searchTimeout = setTimeout(() => {
+        searchCustomers()
+      }, 300)
+    } else {
+      // When search is empty, show first 10 customers
+      fetchCustomersForDropdown()
+    }
+
+    return () => {
+      if (searchTimeout) {
+        clearTimeout(searchTimeout)
+      }
+    }
+  }, [searchQuery])
 
   const fetchCustomers = async () => {
     try {
@@ -368,47 +478,122 @@ const QuickSale = () => {
     }
   }
 
-  const fetchServices = async () => {
+  const fetchServices = async (retryCount = 0) => {
+    setLoadingServices(true)
     try {
-      const response = await apiGet('/api/services')
+      // Request all services by using a high per_page limit
+      const response = await apiGet('/api/services?per_page=1000')
+      if (!response.ok) {
+        // Handle specific error codes
+        if (response.status === 401) {
+          throw new Error('Authentication failed. Please log in again.')
+        } else if (response.status === 403) {
+          throw new Error('You do not have permission to view services.')
+        } else if (response.status >= 500) {
+          throw new Error('Server error. Please try again later.')
+        } else {
+          throw new Error(`Failed to load services (${response.status}). Please try again.`)
+        }
+      }
       const data = await response.json()
-      setAvailableServices(data.services || [])
+      
+      // Handle both response formats: backend returns 'data' array, legacy format uses 'services'
+      let services = []
+      if (data.data && Array.isArray(data.data)) {
+        // Backend format: { data: [...], pagination: {...} }
+        services = data.data
+      } else if (data.services && Array.isArray(data.services)) {
+        // Legacy format: { services: [...] }
+        services = data.services
+      } else if (Array.isArray(data)) {
+        // Direct array format
+        services = data
+      }
+      
+      setAvailableServices(services)
+      console.log('[QuickSale] Services loaded:', services.length)
+      
+      if (services.length === 0) {
+        console.warn('[QuickSale] No services found. Check if services exist in the database.')
+        showInfo('No services available. Please add services in the Service management section.')
+      }
     } catch (error) {
       console.error('Error fetching services:', error)
+      
+      // Retry logic for network errors (max 2 retries)
+      if (retryCount < 2 && (error.message.includes('Failed to fetch') || error.message.includes('Network'))) {
+        console.log(`[QuickSale] Retrying service fetch (attempt ${retryCount + 1}/2)...`)
+        setTimeout(() => {
+          fetchServices(retryCount + 1)
+        }, 1000 * (retryCount + 1)) // Exponential backoff: 1s, 2s
+        return
+      }
+      
+      setAvailableServices([])
+      const errorMessage = error.message || 'Failed to load services. Please refresh the page or check your connection.'
+      showError(errorMessage)
+    } finally {
+      setLoadingServices(false)
     }
   }
 
   const fetchPackages = async () => {
     try {
+      console.log('[QuickSale] Fetching packages...')
       const response = await apiGet('/api/packages')
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
-      const data = await response.json()
-      setAvailablePackages(Array.isArray(data) ? data : (data.packages || []))
+      const responseData = await response.json()
+      console.log('[QuickSale] Packages API response:', responseData)
+      
+      // Backend returns {data: [...], pagination: {...}}
+      const packagesList = responseData.data || (Array.isArray(responseData) ? responseData : (responseData.packages || []))
+      setAvailablePackages(packagesList)
+      console.log('[QuickSale] Packages loaded:', packagesList.length, 'Branch:', currentBranch?.name || 'Not set')
+      
+      if (packagesList.length === 0) {
+        console.warn('[QuickSale] No packages found. Check:')
+        console.warn('  - Branch filtering (current branch:', currentBranch?.id || 'Not set', ')')
+        console.warn('  - Package status (should be "active")')
+        console.warn('  - X-Branch-Id header in request')
+      }
     } catch (error) {
-      console.error('Error fetching packages:', error)
+      console.error('[QuickSale] Error fetching packages:', error)
       setAvailablePackages([])
     }
   }
 
   const fetchProducts = async () => {
     try {
+      console.log('[QuickSale] Fetching products...')
       const response = await apiGet('/api/products')
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
-      const data = await response.json()
-      setAvailableProducts(Array.isArray(data) ? data : (data.products || []))
+      const responseData = await response.json()
+      console.log('[QuickSale] Products API response:', responseData)
+      
+      // Backend returns {data: [...], pagination: {...}}
+      const productsList = responseData.data || (Array.isArray(responseData) ? responseData : (responseData.products || []))
+      setAvailableProducts(productsList)
+      console.log('[QuickSale] Products loaded:', productsList.length, 'Branch:', currentBranch?.name || 'Not set')
+      
+      if (productsList.length === 0) {
+        console.warn('[QuickSale] No products found. Check:')
+        console.warn('  - Branch filtering (current branch:', currentBranch?.id || 'Not set', ')')
+        console.warn('  - Product status (should be "active")')
+        console.warn('  - X-Branch-Id header in request')
+      }
     } catch (error) {
-      console.error('Error fetching products:', error)
+      console.error('[QuickSale] Error fetching products:', error)
       setAvailableProducts([])
     }
   }
 
   const fetchPrepaidPackages = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/prepaid/packages`)
+      const response = await apiGet('/api/prepaid/packages')
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -422,7 +607,7 @@ const QuickSale = () => {
 
   const fetchMembershipPlans = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/membership-plans`)
+      const response = await apiGet('/api/membership-plans')
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -478,7 +663,12 @@ const QuickSale = () => {
       showWarning('Please select a customer first')
       return
     }
-    setSelectedQuantity(1)
+    // Initialize quantities for all products to 1 when opening modal
+    const initialQuantities = {}
+    availableProducts.forEach(product => {
+      initialQuantities[product.id] = 1
+    })
+    setProductQuantities(initialQuantities)
     setShowProductModal(true)
   }
 
@@ -492,7 +682,7 @@ const QuickSale = () => {
       return
     }
     
-    // Add to local state
+    // Add to local state (stock will only be decremented during checkout)
     setProducts([...products, {
       id: Date.now(),
       product_id: selectedProduct.id,
@@ -503,21 +693,15 @@ const QuickSale = () => {
       total: selectedProduct.price * quantity,
     }])
     
-    // Update local stock count optimistically
-    setAvailableProducts(prevProducts => 
-      prevProducts.map(p => 
-        p.id === selectedProduct.id 
-          ? { ...p, stock_quantity: (p.stock_quantity || 0) - quantity }
-          : p
-      )
-    )
-    
     setShowProductModal(false)
-    setSelectedQuantity(1)
+    // Reset quantity for this product after adding
+    setProductQuantities(prev => ({
+      ...prev,
+      [selectedProduct.id]: 1
+    }))
     showSuccess(`${selectedProduct.name} (x${quantity}) added to bill`)
     
-    // Refresh products to get actual stock from server
-    setTimeout(() => fetchProducts(), 500)
+    // Note: Stock will be updated by backend during checkout, not here
   }
 
   const addPrepaid = async () => {
@@ -525,18 +709,22 @@ const QuickSale = () => {
       showWarning('Please select a customer first')
       return
     }
-    // Fetch all available prepaid packages (not filtered by customer)
-    // These are packages available for purchase
+    // Fetch all available prepaid packages
+    // Backend already filters by status='active' and branch, so show all returned packages
     try {
-      const response = await fetch(`${API_BASE_URL}/api/prepaid/packages`)
+      const response = await apiGet('/api/prepaid/packages')
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       const data = await response.json()
       const availablePackages = Array.isArray(data) ? data : (data.packages || [])
-      // Filter to show only packages without customers (available for purchase) or with active status
-      const purchasablePackages = availablePackages.filter(p => !p.customer_id || p.status === 'active')
-      setAvailablePrepaid(purchasablePackages)
+      console.log('[QuickSale] Prepaid packages fetched:', availablePackages.length)
+      
+      // Show all packages returned by backend (already filtered by status='active' and branch)
+      // Packages can be:
+      // 1. Available for purchase (no customer_id) - can be purchased for selected customer
+      // 2. Already assigned to a customer (has customer_id) - can be used if balance > 0
+      setAvailablePrepaid(availablePackages)
       setShowPrepaidModal(true)
     } catch (error) {
       console.error('Error fetching prepaid packages:', error)
@@ -723,6 +911,17 @@ const QuickSale = () => {
 
       // If editing an existing appointment, update it instead of creating new one
       if (editingAppointmentId) {
+        console.log('[APPOINTMENT UPDATE] Sending request:', {
+          appointment_id: editingAppointmentId,
+          customer_id: selectedCustomer.id,
+          staff_id: firstService.staff_id,
+          service_id: firstService.service_id,
+          appointment_date: appointmentDate,
+          start_time: startTime,
+          status: 'confirmed',
+          notes: bookingNote || undefined
+        })
+
         const updateResponse = await apiPut(`/api/appointments/${editingAppointmentId}`, {
           customer_id: selectedCustomer.id,
           staff_id: firstService.staff_id,
@@ -733,17 +932,34 @@ const QuickSale = () => {
           notes: bookingNote || undefined
         })
 
+        console.log('[APPOINTMENT UPDATE] Response status:', updateResponse.status, updateResponse.ok)
+
         if (!updateResponse.ok) {
           const errorData = await updateResponse.json().catch(() => ({ error: 'Failed to update appointment' }))
+          console.error('[APPOINTMENT UPDATE] Error response:', errorData)
           showError(errorData.error || 'Failed to update appointment')
           return false
         }
+
+        const updateData = await updateResponse.json().catch(() => ({}))
+        console.log('[APPOINTMENT UPDATE] Response data:', updateData)
+        console.log('[APPOINTMENT UPDATE] Success: Appointment updated with ID', editingAppointmentId)
 
         showSuccess('Booking updated! Appointment saved to Upcoming Appointments.')
         return true
       }
 
       // Create new appointment
+      console.log('[APPOINTMENT CREATE] Sending request:', {
+        customer_id: selectedCustomer.id,
+        staff_id: firstService.staff_id,
+        service_id: firstService.service_id,
+        appointment_date: appointmentDate,
+        start_time: startTime,
+        status: 'confirmed',
+        notes: bookingNote || undefined
+      })
+
       const response = await apiPost('/api/appointments', {
         customer_id: selectedCustomer.id,
         staff_id: firstService.staff_id,
@@ -754,14 +970,33 @@ const QuickSale = () => {
         notes: bookingNote || undefined
       })
 
+      console.log('[APPOINTMENT CREATE] Response status:', response.status, response.ok)
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Failed to create appointment' }))
+        console.error('[APPOINTMENT CREATE] Error response:', errorData)
         showError(errorData.error || 'Failed to create appointment')
         return false
       }
 
+      // Verify response status is 201 (Created)
+      if (response.status !== 201) {
+        console.warn('[APPOINTMENT CREATE] Unexpected status code:', response.status)
+      }
+
       const data = await response.json()
+      console.log('[APPOINTMENT CREATE] Response data:', data)
+
+      // Verify response data contains appointment ID before showing success
+      if (!data || !data.id) {
+        console.error('[APPOINTMENT CREATE] Failed: No appointment ID in response', data)
+        showError('Failed to create appointment: Invalid response from server')
+        return false
+      }
+
+      // Only show success if we have a valid appointment ID
       showSuccess('Booking confirmed! Appointment saved to Upcoming Appointments.')
+      console.log('[APPOINTMENT CREATE] Success: Appointment created with ID', data.id)
       return true
     } catch (error) {
       console.error('Error creating appointment:', error)
@@ -807,27 +1042,19 @@ const QuickSale = () => {
     if (selectedCustomer) {
       setSelectedCustomer(null)
       setSearchQuery('')
-      setFilteredCustomers(customers.slice(0, 10))
+      fetchCustomersForDropdown()
       setShowCustomerDropdown(true)
       return
     }
     
     // If no customer is selected, show dropdown
-      if (searchQuery.length > 0) {
-        // If there's a search query, filter customers
-        const query = searchQuery.toLowerCase()
-        const filtered = customers.filter(customer =>
-          customer.mobile.includes(searchQuery) ||
-          (customer.firstName && customer.firstName.toLowerCase().includes(query)) ||
-          (customer.lastName && customer.lastName.toLowerCase().includes(query)) ||
-          `${customer.firstName || ''} ${customer.lastName || ''}`.toLowerCase().includes(query)
-        )
-        setFilteredCustomers(filtered)
-        setShowCustomerDropdown(true)
-      } else {
-        // Show first 10 customers when field is focused but empty
-        setFilteredCustomers(customers.slice(0, 10))
-        setShowCustomerDropdown(true)
+    if (searchQuery && searchQuery.trim().length > 0) {
+      // If there's a search query, it will be handled by the useEffect
+      setShowCustomerDropdown(true)
+    } else {
+      // Show first 10 customers when field is focused but empty
+      fetchCustomersForDropdown()
+      setShowCustomerDropdown(true)
     }
   }
 
@@ -1319,6 +1546,9 @@ const QuickSale = () => {
         // Celebrate with confetti!
         celebrateBig()
         
+        // Refresh products to show updated stock after checkout
+        fetchProducts()
+        
         // Set bill ID and fetch invoice data, then show modal
         // billId is already available from the checkout call
         setCurrentBillId(billId)
@@ -1480,7 +1710,7 @@ const QuickSale = () => {
                     if (selectedCustomer) {
                       setSelectedCustomer(null)
                       setSearchQuery('')
-                      setFilteredCustomers(customers.slice(0, 10))
+                      fetchCustomersForDropdown()
                       setShowCustomerDropdown(true)
                     }
                     // Focus the input to trigger the focus handler
@@ -1547,7 +1777,7 @@ const QuickSale = () => {
                     if (selectedCustomer) {
                       setSelectedCustomer(null)
                       setSearchQuery('')
-                      setFilteredCustomers(customers.slice(0, 10))
+                      fetchCustomersForDropdown()
                       setShowCustomerDropdown(true)
                     }
                   }}
@@ -1696,10 +1926,17 @@ const QuickSale = () => {
                       <td>
                         <select
                           className="table-select"
-                          value={service.service_id}
+                          value={service.service_id || ''}
                           onChange={(e) => updateService(service.id, 'service_id', e.target.value)}
+                          disabled={loadingServices}
                         >
-                          <option value="">Choose service</option>
+                          <option value="">
+                            {loadingServices 
+                              ? 'Loading services...' 
+                              : availableServices.length === 0 
+                                ? 'No services available' 
+                                : 'Choose service'}
+                          </option>
                           {availableServices.map(svc => (
                             <option key={svc.id} value={svc.id}>
                               {svc.name} - ₹{svc.price}
@@ -2556,8 +2793,14 @@ const QuickSale = () => {
                               type="number" 
                               min="1" 
                               max={stock || 1}
-                              value={selectedQuantity}
-                              onChange={(e) => setSelectedQuantity(parseInt(e.target.value) || 1)}
+                              value={productQuantities[product.id] || 1}
+                              onChange={(e) => {
+                                const newQuantity = parseInt(e.target.value) || 1
+                                setProductQuantities(prev => ({
+                                  ...prev,
+                                  [product.id]: newQuantity
+                                }))
+                              }}
                               onClick={(e) => e.stopPropagation()}
                               disabled={isOutOfStock}
                             />
@@ -2566,7 +2809,8 @@ const QuickSale = () => {
                             className="select-btn"
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleSelectProduct(product, selectedQuantity)
+                              const quantity = productQuantities[product.id] || 1
+                              handleSelectProduct(product, quantity)
                             }}
                             disabled={isOutOfStock}
                           >

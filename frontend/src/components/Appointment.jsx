@@ -180,11 +180,12 @@ const Appointment = ({ setActivePage }) => {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       
-      const data = await response.json()
-      console.log('Fetched appointments:', data) // Debug log
+      const responseData = await response.json()
+      console.log('Fetched appointments:', responseData) // Debug log
       
-      // Ensure data is an array and map it correctly
-      const appointmentsList = Array.isArray(data) ? data : []
+      // Backend returns {data: [...], pagination: {...}}, so extract the data array
+      const appointmentsList = responseData.data || (Array.isArray(responseData) ? responseData : [])
+      console.log('Extracted appointments list:', appointmentsList, 'Count:', appointmentsList.length)
       
       // Map appointments to ensure all fields are present
       const mappedAppointments = appointmentsList.map(apt => ({

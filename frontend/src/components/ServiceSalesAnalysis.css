@@ -263,24 +263,84 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .service-sales-container {
+    padding: 16px;
+  }
+
+  .service-sales-header {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .header-title {
+    font-size: 18px;
+  }
+
+  .back-button {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+  }
+
   .filters-section {
     flex-direction: column;
+    gap: 16px;
   }
 
   .filter-group {
     width: 100%;
+    min-width: 0;
+  }
+
+  .filter-dropdown {
+    font-size: 16px;
+    min-height: 44px;
   }
 
   .download-report-btn {
     width: 100%;
+    min-height: 44px;
+    justify-content: center;
   }
 
   .table-container {
-    overflow-x: scroll;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .sales-table {
     min-width: 800px;
+    font-size: 12px;
+  }
+
+  .sales-table th,
+  .sales-table td {
+    padding: 10px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .service-sales-container {
+    padding: 12px;
+  }
+
+  .service-sales-header {
+    padding: 10px 12px;
+  }
+
+  .header-title {
+    font-size: 16px;
+  }
+
+  .sales-table {
+    min-width: 700px;
+    font-size: 11px;
+  }
+
+  .sales-table th,
+  .sales-table td {
+    padding: 8px 10px;
   }
 }
 

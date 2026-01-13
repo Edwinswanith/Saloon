@@ -792,17 +792,25 @@
   }
 
   .table-container {
-    overflow-x: scroll;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .leaderboard-table {
     min-width: 800px;
+    font-size: 12px;
   }
 
   .leaderboard-table th,
   .leaderboard-table td {
-    padding: 12px;
-    font-size: 13px;
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .back-button,
+  .date-range-select {
+    min-height: 44px;
+    font-size: 16px;
   }
 
   .staff-avatar {

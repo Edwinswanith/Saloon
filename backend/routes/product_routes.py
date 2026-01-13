@@ -8,6 +8,18 @@ from utils.branch_filter import get_selected_branch
 
 product_bp = Blueprint('product', __name__)
 
+def verify_branch_access(item, branch, item_type='item'):
+    """Verify that an item belongs to the specified branch"""
+    if not branch:
+        return False, 'Branch is required'
+    if not item:
+        return False, f'{item_type} not found'
+    if not item.branch:
+        return False, f'{item_type} has no branch assigned (legacy data)'
+    if str(item.branch.id) != str(branch.id):
+        return False, f'{item_type} belongs to a different branch'
+    return True, None
+
 @product_bp.before_request
 def handle_preflight():
     """Handle CORS preflight requests"""
@@ -138,14 +150,13 @@ def get_products(current_user=None):
         search = request.args.get('search')
         low_stock = request.args.get('low_stock', type=bool)
 
-        query = Product.objects
+        # Filter by status='active' by default - only show active products
+        query = Product.objects(status='active')
 
-        # Filter by branch
+        # Filter by branch - strict filtering, only show products belonging to selected branch
         branch = get_selected_branch(request, current_user)
         if branch:
-            # Include products for this branch OR products with no branch (legacy/global)
-            from mongoengine import Q
-            query = query.filter(Q(branch=branch) | Q(branch=None))
+            query = query.filter(branch=branch)
 
         # Apply filters
         if category_id and ObjectId.is_valid(category_id):
@@ -154,33 +165,58 @@ def get_products(current_user=None):
                 query = query.filter(category=category)
             except DoesNotExist:
                 pass
+        # Allow status override if explicitly requested (e.g., for admin views)
         if status:
             query = query.filter(status=status)
         if search:
             query = query.filter(name__icontains=search)
 
-        products = list(query.order_by('name'))
-
-        # Apply low_stock filter in Python if needed
+        # Get pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 20, type=int), 100)
+        sort_by = request.args.get('sort_by', 'name')
+        sort_order = request.args.get('sort_order', 'asc')
+        
+        # Apply sorting
+        order_field = f"-{sort_by}" if sort_order == 'desc' else sort_by
+        query = query.order_by(order_field)
+        
+        # Get total count before pagination (for low_stock, we'll filter after)
+        total = query.count()
+        
+        # Apply pagination
+        products = list(query.skip((page - 1) * per_page).limit(per_page))
+        
+        # Apply low_stock filter in Python (complex logic requires checking each product)
         if low_stock:
             products = [p for p in products if p.stock_quantity and p.min_stock_level and p.stock_quantity <= p.min_stock_level]
+            # Update total for low_stock filter
+            total = len(products)
 
-        return jsonify([{
-            'id': str(p.id),
-            'name': p.name,
-            'category_id': str(p.category.id) if p.category else None,
-            'category_name': p.category.name if p.category else None,
-            'price': p.price,
-            'cost': p.cost,
-            'stock_quantity': p.stock_quantity,
-            'min_stock_level': p.min_stock_level,
-            'sku': p.sku,
-            'description': p.description,
-            'status': p.status,
-            'low_stock': (p.stock_quantity or 0) <= (p.min_stock_level or 0) if p.min_stock_level else False,
-            'created_at': p.created_at.isoformat() if p.created_at else None,
-            'branch_id': str(p.branch.id) if p.branch else None
-        } for p in products])
+        return jsonify({
+            'data': [{
+                'id': str(p.id),
+                'name': p.name,
+                'category_id': str(p.category.id) if p.category else None,
+                'category_name': p.category.name if p.category else None,
+                'price': p.price,
+                'cost': p.cost,
+                'stock_quantity': p.stock_quantity,
+                'min_stock_level': p.min_stock_level,
+                'sku': p.sku,
+                'description': p.description,
+                'status': p.status,
+                'low_stock': (p.stock_quantity or 0) <= (p.min_stock_level or 0) if p.min_stock_level else False,
+                'created_at': p.created_at.isoformat() if p.created_at else None,
+                'branch_id': str(p.branch.id) if p.branch else None
+            } for p in products],
+            'pagination': {
+                'total': total,
+                'page': page,
+                'per_page': per_page,
+                'pages': (total + per_page - 1) // per_page if per_page > 0 else 0
+            }
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -269,6 +305,16 @@ def update_product(id, current_user=None):
             return jsonify({'error': 'Invalid product ID format'}), 400
         
         product = Product.objects.get(id=id)
+        
+        # Verify branch access
+        branch = get_selected_branch(request, current_user)
+        if not branch:
+            return jsonify({'error': 'Branch is required'}), 400
+        
+        is_valid, error_msg = verify_branch_access(product, branch, 'Product')
+        if not is_valid:
+            return jsonify({'error': error_msg}), 403
+        
         data = request.get_json()
 
         product.name = data.get('name', product.name)
@@ -313,6 +359,16 @@ def delete_product(id, current_user=None):
             return jsonify({'error': 'Invalid product ID format'}), 400
         
         product = Product.objects.get(id=id)
+        
+        # Verify branch access
+        branch = get_selected_branch(request, current_user)
+        if not branch:
+            return jsonify({'error': 'Branch is required'}), 400
+        
+        is_valid, error_msg = verify_branch_access(product, branch, 'Product')
+        if not is_valid:
+            return jsonify({'error': error_msg}), 403
+        
         product.status = 'deleted'
         product.updated_at = datetime.utcnow()
         product.save()
@@ -330,11 +386,10 @@ def get_low_stock_products(current_user=None):
     try:
         query = Product.objects(status='active')
 
-        # Filter by branch
+        # Filter by branch - strict filtering, only show products belonging to selected branch
         branch = get_selected_branch(request, current_user)
         if branch:
-            from mongoengine import Q
-            query = query.filter(Q(branch=branch) | Q(branch=None))
+            query = query.filter(branch=branch)
 
         # Force evaluation by converting to list
         products = list(query.order_by('stock_quantity'))

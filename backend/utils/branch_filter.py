@@ -79,35 +79,58 @@ def get_selected_branch(request_obj, user):
         user: Can be either a dict (from JWT token) or a MongoEngine document (Staff/Manager)
     """
     if not user:
+        print("[BRANCH_FILTER] No user provided, returning None")
         return None
     
     # Get user role (handle both dict and document)
     user_role = None
     if isinstance(user, dict):
         user_role = user.get('role')
+        user_id = user.get('user_id', 'unknown')
     elif hasattr(user, 'role'):
         user_role = user.role
+        user_id = str(user.id) if hasattr(user, 'id') else 'unknown'
+    else:
+        user_id = 'unknown'
+    
+    print(f"[BRANCH_FILTER] User: {user_id}, Role: {user_role}")
     
     # Check for branch_id in header (Owner can switch branches)
-    branch_id_header = request_obj.headers.get('X-Branch-Id')
+    branch_id_header = request_obj.headers.get('X-Branch-Id') or request_obj.headers.get('x-branch-id')
+    print(f"[BRANCH_FILTER] X-Branch-Id header: {branch_id_header}")
+    
     if branch_id_header:
         try:
             # Validate ObjectId format
             if ObjectId.is_valid(branch_id_header):
                 branch = Branch.objects(id=branch_id_header).first()
                 if branch:
+                    print(f"[BRANCH_FILTER] Found branch from header: {branch.name} (ID: {branch.id})")
                     # Check if user is Owner (can access any branch)
                     if user_role == 'owner':
+                        print(f"[BRANCH_FILTER] Owner accessing branch: {branch.name}")
                         return branch
                     # Check if user's branch matches
                     user_branch = get_user_branch(user)
                     if user_branch and str(user_branch.id) == branch_id_header:
+                        print(f"[BRANCH_FILTER] User branch matches header: {branch.name}")
                         return branch
-        except Exception:
-            pass
+                    else:
+                        print(f"[BRANCH_FILTER] User branch mismatch. User branch: {user_branch.id if user_branch else None}, Header: {branch_id_header}")
+                else:
+                    print(f"[BRANCH_FILTER] Branch not found for ID: {branch_id_header}")
+            else:
+                print(f"[BRANCH_FILTER] Invalid ObjectId format in header: {branch_id_header}")
+        except Exception as e:
+            print(f"[BRANCH_FILTER] Error processing header branch: {e}")
     
     # Fall back to user's assigned branch
-    return get_user_branch(user)
+    user_branch = get_user_branch(user)
+    if user_branch:
+        print(f"[BRANCH_FILTER] Using user's assigned branch: {user_branch.name} (ID: {user_branch.id})")
+    else:
+        print(f"[BRANCH_FILTER] No branch found for user. Role: {user_role}")
+    return user_branch
 
 
 def filter_by_branch(query, branch):

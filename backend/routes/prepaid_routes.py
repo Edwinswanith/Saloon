@@ -3,6 +3,8 @@ from models import PrepaidPackage, PrepaidGroup, Customer
 from datetime import datetime
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
+from utils.auth import require_auth
+from utils.branch_filter import get_selected_branch
 
 prepaid_bp = Blueprint('prepaid', __name__)
 
@@ -104,14 +106,26 @@ def delete_prepaid_group(id):
 # Prepaid Package Routes
 
 @prepaid_bp.route('/packages', methods=['GET'])
-def get_prepaid_packages():
-    """Get all prepaid packages with optional filters"""
+@require_auth
+def get_prepaid_packages(current_user=None):
+    """Get all prepaid packages with optional filters, filtered by branch"""
     try:
         customer_id = request.args.get('customer_id', type=str)
         status = request.args.get('status')
         group_id = request.args.get('group_id', type=str)
 
-        query = PrepaidPackage.objects
+        # Filter by status='active' by default - only show active prepaid packages
+        query = PrepaidPackage.objects(status='active')
+        print(f"[PREPAID GET] Initial query count (active only): {query.count()}")
+
+        # Filter by branch - strict filtering, only show prepaid packages belonging to selected branch
+        branch = get_selected_branch(request, current_user)
+        if branch:
+            print(f"[PREPAID GET] Filtering by branch: {branch.name} (ID: {branch.id})")
+            query = query.filter(branch=branch)
+            print(f"[PREPAID GET] After branch filter count: {query.count()}")
+        else:
+            print(f"[PREPAID GET] WARNING: No branch found for user. Packages may be empty.")
 
         # Apply filters
         if customer_id and ObjectId.is_valid(customer_id):
@@ -120,6 +134,7 @@ def get_prepaid_packages():
                 query = query.filter(customer=customer)
             except DoesNotExist:
                 pass
+        # Allow status override if explicitly requested (e.g., for admin views)
         if status:
             query = query.filter(status=status)
         if group_id and ObjectId.is_valid(group_id):
@@ -131,6 +146,7 @@ def get_prepaid_packages():
 
         # Force evaluation by converting to list
         packages = list(query.order_by('-created_at'))
+        print(f"[PREPAID GET] Returning {len(packages)} prepaid packages")
 
         return jsonify([{
             'id': str(p.id),

@@ -644,6 +644,14 @@
   .performance-metrics {
     gap: 16px;
   }
+
+  .revenue-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .payment-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 768px) {
@@ -652,16 +660,37 @@
   }
   
   .dashboard-header {
-    padding: var(--space-4);
+    padding: var(--space-4) var(--space-4);
+    flex-wrap: wrap;
+    gap: var(--space-2);
   }
   
   .header-title {
     font-size: var(--text-xl);
   }
+
+  .header-right {
+    gap: var(--space-2);
+  }
   
   .tabs-filter-section {
     flex-direction: column;
     align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-4);
+  }
+  
+  .tabs {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+
+  .tab {
+    flex-shrink: 0;
+    font-size: var(--text-xs);
+    padding: var(--space-2) var(--space-4);
   }
   
   .stats-section {
@@ -671,6 +700,26 @@
   
   .stat-value {
     font-size: var(--text-2xl);
+  }
+
+  .data-card {
+    grid-column: span 12;
+  }
+
+  .data-section {
+    grid-template-columns: 1fr;
+  }
+
+  .revenue-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .funnel-grid {
+    grid-template-columns: 1fr;
   }
 
   .staff-dashboard {
@@ -720,8 +769,14 @@
     gap: 12px;
   }
 
+  .employee-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .employee-table {
     font-size: 12px;
+    min-width: 800px;
   }
 
   .employee-table th,
@@ -747,6 +802,21 @@
 
   .th-icon {
     font-size: 12px;
+  }
+
+  .modern-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modern-table {
+    min-width: 600px;
+    font-size: 12px;
+  }
+
+  .modern-table th,
+  .modern-table td {
+    padding: var(--space-2) var(--space-3);
   }
 }
 
@@ -1810,8 +1880,14 @@
 
 /* Responsive table */
 @media (max-width: 1200px) {
+  .employee-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .employee-table {
     font-size: var(--text-xs);
+    min-width: 900px;
   }
   
   .employee-table th,

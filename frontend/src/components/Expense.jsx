@@ -11,12 +11,15 @@ import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
 import { useAuth } from '../contexts/AuthContext'
 import {
-  PieChart,
-  Pie,
-  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
   ResponsiveContainer,
   Tooltip,
   Legend,
+  Cell,
 } from 'recharts'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
@@ -403,7 +406,7 @@ const Expense = () => {
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
         }}>
           <p style={{ margin: 0, fontWeight: '600', color: '#1f2937' }}>
-            {payload[0].name}
+            {payload[0].payload.name}
           </p>
           <p style={{ margin: '4px 0 0 0', color: '#6b7280' }}>
             {formatCurrency(payload[0].value)}
@@ -451,39 +454,47 @@ const Expense = () => {
       )
     }
 
-    // Transform data for Recharts
+    // Transform data for Recharts Bar Chart
     const chartData = expenseSummary.map((item, index) => ({
       name: item.category_name,
-      value: item.total_amount,
+      amount: item.total_amount,
       percentage: ((item.total_amount / total) * 100).toFixed(1),
       color: categoryColors[index % categoryColors.length]
     }))
 
     return (
       <ResponsiveContainer width="100%" height={300}>
-        <PieChart>
-          <Pie
-            data={chartData}
-            cx="50%"
-            cy="50%"
-            innerRadius={60}
-            outerRadius={90}
-            fill="#8884d8"
-            paddingAngle={2}
-            dataKey="value"
-            label={({ name, percentage }) => `${name}: ${percentage}%`}
-            labelLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
+        <BarChart
+          data={chartData}
+          margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <XAxis 
+            dataKey="name" 
+            angle={-45}
+            textAnchor="end"
+            height={80}
+            tick={{ fontSize: 12 }}
+            interval={0}
+          />
+          <YAxis 
+            tick={{ fontSize: 12 }}
+            tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
+          />
+          <Tooltip 
+            content={<CustomTooltip />}
+            formatter={(value) => formatCurrency(value)}
+          />
+          <Legend />
+          <Bar 
+            dataKey="amount" 
+            radius={[8, 8, 0, 0]}
           >
             {chartData.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={entry.color} />
             ))}
-          </Pie>
-          <Tooltip content={<CustomTooltip />} />
-          <Legend 
-            wrapperStyle={{ paddingTop: '10px' }}
-            iconType="circle"
-          />
-        </PieChart>
+          </Bar>
+        </BarChart>
       </ResponsiveContainer>
     )
   }

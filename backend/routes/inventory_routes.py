@@ -399,12 +399,19 @@ def delete_order(id, current_user=None):
 # Inventory Reports
 
 @inventory_bp.route('/products', methods=['GET'])
-def get_inventory_products():
-    """Get all products with stock information"""
+@require_auth
+def get_inventory_products(current_user=None):
+    """Get all products with stock information, filtered by branch"""
     try:
         low_stock = request.args.get('low_stock', '').lower() == 'true'
 
         query = Product.objects.filter(status='active')
+
+        # Filter by branch - strict filtering
+        branch = get_selected_branch(request, current_user)
+        if branch:
+            query = query.filter(branch=branch)
+
         products = list(query)
 
         if low_stock:
@@ -429,11 +436,19 @@ def get_inventory_products():
         return jsonify({'error': str(e)}), 500
 
 @inventory_bp.route('/low-stock', methods=['GET'])
-def get_low_stock_items():
-    """Get products with low stock"""
+@require_auth
+def get_low_stock_items(current_user=None):
+    """Get products with low stock, filtered by branch"""
     try:
+        query = Product.objects.filter(status='active')
+
+        # Filter by branch - strict filtering
+        branch = get_selected_branch(request, current_user)
+        if branch:
+            query = query.filter(branch=branch)
+
         # Get all active products and filter in Python
-        all_products = list(Product.objects.filter(status='active'))
+        all_products = list(query)
         products = [p for p in all_products if (p.stock_quantity or 0) <= (p.min_stock_level or 0)]
         # Sort by stock_quantity
         products.sort(key=lambda p: p.stock_quantity or 0)
@@ -451,10 +466,18 @@ def get_low_stock_items():
         return jsonify({'error': str(e)}), 500
 
 @inventory_bp.route('/summary', methods=['GET'])
-def get_inventory_summary():
-    """Get inventory summary"""
+@require_auth
+def get_inventory_summary(current_user=None):
+    """Get inventory summary, filtered by branch"""
     try:
-        products = list(Product.objects.filter(status='active'))
+        query = Product.objects.filter(status='active')
+
+        # Filter by branch - strict filtering
+        branch = get_selected_branch(request, current_user)
+        if branch:
+            query = query.filter(branch=branch)
+
+        products = list(query)
 
         total_products = len(products)
         total_stock_value = sum([(p.stock_quantity or 0) * (p.cost or 0) for p in products])

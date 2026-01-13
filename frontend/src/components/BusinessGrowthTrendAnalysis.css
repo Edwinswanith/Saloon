@@ -299,27 +299,81 @@
     padding: 16px;
   }
 
+  .business-growth-header {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .header-title {
+    font-size: 18px;
+  }
+
   .top-controls {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .back-button {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
   }
 
   .filters-section {
     width: 100%;
     flex-direction: column;
+    gap: 16px;
+  }
+
+  .filter-group {
+    width: 100%;
   }
 
   .filter-dropdown {
     width: 100%;
+    font-size: 16px;
+    min-height: 44px;
   }
 
   .kpi-cards-grid {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
 
-  .chart-container {
-    flex-direction: column;
+  .chart-card {
+    padding: 16px;
   }
 
+  .chart-title {
+    font-size: 16px;
+  }
+
+  .chart-subtitle {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .business-growth-container {
+    padding: 12px;
+  }
+
+  .business-growth-header {
+    padding: 10px 12px;
+  }
+
+  .header-title {
+    font-size: 16px;
+  }
+
+  .kpi-value {
+    font-size: 24px;
+  }
+
+  .kpi-unit {
+    font-size: 16px;
+  }
 }
 

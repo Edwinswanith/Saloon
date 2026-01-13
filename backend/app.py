@@ -3,12 +3,16 @@ from flask_cors import CORS
 from mongoengine import connect, disconnect
 from datetime import datetime, date, time
 import os
+from urllib.parse import unquote
 
 app = Flask(__name__, static_folder='static', static_url_path='')
 
 # MongoDB Configuration
 MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
-MONGODB_DB = 'Saloon'
+# for production
+MONGODB_DB = 'Saloon_prod'
+# for development
+# MONGODB_DB = 'Saloon'
 
 # Connect to MongoDB
 try:
@@ -78,10 +82,13 @@ register_routes(app)
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve(path):
-    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
-        return send_from_directory(app.static_folder, path)
-    else:
-        return send_from_directory(app.static_folder, 'index.html')
+    if path != "":
+        # Decode URL-encoded path (e.g., %20 -> space)
+        decoded_path = unquote(path)
+        file_path = os.path.join(app.static_folder, decoded_path)
+        if os.path.exists(file_path):
+            return send_from_directory(app.static_folder, decoded_path)
+    return send_from_directory(app.static_folder, 'index.html')
 
 @app.teardown_appcontext
 def close_db(error):

@@ -46,10 +46,24 @@ def get_assets(current_user=None):
         if search:
             query = query.filter(name__icontains=search)
 
-        # Force evaluation by converting to list
-        assets = list(query.order_by('-created_at'))
+        # Get pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 20, type=int), 100)
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
+        
+        # Apply sorting
+        order_field = f"-{sort_by}" if sort_order == 'desc' else sort_by
+        query = query.order_by(order_field)
+        
+        # Get total count before pagination
+        total = query.count()
+        
+        # Apply pagination
+        assets = list(query.skip((page - 1) * per_page).limit(per_page))
 
-        response = jsonify([{
+        response = jsonify({
+            'data': [{
             'id': str(a.id),
             'name': a.name,
             'category': a.category,
@@ -61,7 +75,14 @@ def get_assets(current_user=None):
             'location': a.location,
             'description': a.description,
             'created_at': a.created_at.isoformat() if a.created_at else None
-        } for a in assets])
+        } for a in assets],
+            'pagination': {
+                'total': total,
+                'page': page,
+                'per_page': per_page,
+                'pages': (total + per_page - 1) // per_page if per_page > 0 else 0
+            }
+        })
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
     except Exception as e:

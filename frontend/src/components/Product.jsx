@@ -94,9 +94,14 @@ const Product = () => {
       const categoriesWithCount = await Promise.all(
         categories.map(async (cat) => {
           const prodResponse = await apiGet(`/api/products?category_id=${cat.id}`)
+          if (!prodResponse.ok) {
+            console.error(`[Product] Error fetching products for category ${cat.id}:`, prodResponse.status)
+            return { ...cat, count: 0 }
+          }
           const prodData = await prodResponse.json()
-          // Products endpoint returns array directly
-          const products = Array.isArray(prodData) ? prodData : (prodData.products || [])
+          // Backend returns {data: [...], pagination: {...}}
+          const products = prodData.data || (Array.isArray(prodData) ? prodData : (prodData.products || []))
+          console.log(`[Product] Category ${cat.name} (${cat.id}): ${products.length} products`)
           return { ...cat, count: products.length }
         })
       )
@@ -115,15 +120,23 @@ const Product = () => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
-      const data = await response.json()
-      // Backend returns array directly
-      const products = Array.isArray(data) ? data : (data.products || [])
+      const responseData = await response.json()
+      console.log(`[Product] Products for category ${categoryId} response:`, responseData)
+      
+      // Backend returns {data: [...], pagination: {...}}
+      const productsList = responseData.data || (Array.isArray(responseData) ? responseData : (responseData.products || []))
+      console.log(`[Product] Loaded ${productsList.length} products for category ${categoryId}`)
+      
       setProductsByCategory((prev) => ({
         ...prev,
-        [categoryId]: products,
+        [categoryId]: productsList,
       }))
     } catch (error) {
-      console.error('Error fetching products:', error)
+      console.error(`[Product] Error fetching products for category ${categoryId}:`, error)
+      setProductsByCategory((prev) => ({
+        ...prev,
+        [categoryId]: [],
+      }))
     }
   }
 

@@ -8,6 +8,18 @@ from utils.branch_filter import get_selected_branch
 
 service_bp = Blueprint('services', __name__)
 
+def verify_branch_access(item, branch, item_type='item'):
+    """Verify that an item belongs to the specified branch"""
+    if not branch:
+        return False, 'Branch is required'
+    if not item:
+        return False, f'{item_type} not found'
+    if not item.branch:
+        return False, f'{item_type} has no branch assigned (legacy data)'
+    if str(item.branch.id) != str(branch.id):
+        return False, f'{item_type} belongs to a different branch'
+    return True, None
+
 @service_bp.before_request
 def handle_preflight():
     """Handle CORS preflight requests"""
@@ -20,18 +32,31 @@ def handle_preflight():
 
 # Service Group Routes
 @service_bp.route('/groups', methods=['GET'])
-def get_service_groups():
-    """Get all service groups"""
+@require_auth
+def get_service_groups(current_user=None):
+    """Get all service groups with counts filtered by branch"""
+    # Get branch for filtering
+    branch = get_selected_branch(request, current_user)
+    
     # Force evaluation by converting to list
     groups = list(ServiceGroup.objects.order_by('display_order'))
     
-    response = jsonify({
-        'groups': [{
+    # Calculate counts per group, filtered by branch if branch is set
+    groups_with_counts = []
+    for g in groups:
+        query = Service.objects(group=g, status='active')
+        if branch:
+            query = query.filter(branch=branch)
+        count = query.count()
+        groups_with_counts.append({
             'id': str(g.id),
             'name': g.name,
-            'count': Service.objects(group=g).count(),
+            'count': count,
             'displayOrder': g.display_order
-        } for g in groups]
+        })
+    
+    response = jsonify({
+        'groups': groups_with_counts
     })
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
@@ -98,13 +123,16 @@ def get_services(current_user=None):
     search = request.args.get('search', '')
 
     query = Service.objects(status='active')
+    print(f"[SERVICE GET] Initial query count (active only): {query.count()}")
 
-    # Filter by branch
+    # Filter by branch - strict filtering, only show services belonging to selected branch
     branch = get_selected_branch(request, current_user)
     if branch:
-        # Include services for this branch OR services with no branch (legacy/global)
-        from mongoengine import Q
-        query = query.filter(Q(branch=branch) | Q(branch=None))
+        print(f"[SERVICE GET] Filtering by branch: {branch.name} (ID: {branch.id})")
+        query = query.filter(branch=branch)
+        print(f"[SERVICE GET] After branch filter count: {query.count()}")
+    else:
+        print(f"[SERVICE GET] WARNING: No branch found for user. Services may be empty.")
 
     if group_id:
         if ObjectId.is_valid(group_id):
@@ -117,11 +145,26 @@ def get_services(current_user=None):
     if search:
         query = query.filter(name__icontains=search)
 
-    # Force evaluation by converting to list
-    services = list(query)
+    # Get pagination parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = min(request.args.get('per_page', 20, type=int), 100)
+    sort_by = request.args.get('sort_by', 'name')
+    sort_order = request.args.get('sort_order', 'asc')
+    
+    # Apply sorting
+    order_field = f"-{sort_by}" if sort_order == 'desc' else sort_by
+    query = query.order_by(order_field)
+    
+    # Get total count before pagination
+    total = query.count()
+    print(f"[SERVICE GET] Total services found: {total}")
+    
+    # Apply pagination
+    services = list(query.skip((page - 1) * per_page).limit(per_page))
+    print(f"[SERVICE GET] Returning {len(services)} services (page {page}, per_page {per_page})")
 
     response = jsonify({
-        'services': [{
+        'data': [{
             'id': str(s.id),
             'name': s.name,
             'groupId': str(s.group.id) if s.group else None,
@@ -130,7 +173,13 @@ def get_services(current_user=None):
             'duration': s.duration,
             'description': s.description,
             'branchId': str(s.branch.id) if s.branch else None
-        } for s in services]
+        } for s in services],
+        'pagination': {
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'pages': (total + per_page - 1) // per_page if per_page > 0 else 0
+        }
     })
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
@@ -207,6 +256,19 @@ def update_service(service_id, current_user=None):
     except DoesNotExist:
         return jsonify({'error': 'Service not found'}), 404
     
+    # Verify branch access
+    branch = get_selected_branch(request, current_user)
+    if not branch:
+        response = jsonify({'error': 'Branch is required'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 400
+    
+    is_valid, error_msg = verify_branch_access(service, branch, 'Service')
+    if not is_valid:
+        response = jsonify({'error': error_msg})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 403
+    
     data = request.json
     
     service.name = data.get('name', service.name)
@@ -243,6 +305,19 @@ def delete_service(service_id, current_user=None):
         service = Service.objects.get(id=service_id)
     except DoesNotExist:
         return jsonify({'error': 'Service not found'}), 404
+    
+    # Verify branch access
+    branch = get_selected_branch(request, current_user)
+    if not branch:
+        response = jsonify({'error': 'Branch is required'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 400
+    
+    is_valid, error_msg = verify_branch_access(service, branch, 'Service')
+    if not is_valid:
+        response = jsonify({'error': error_msg})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 403
     
     service.status = 'inactive'
     service.updated_at = datetime.utcnow()

@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from mongoengine import Q
+from mongoengine.errors import DoesNotExist
 from datetime import datetime, timedelta
 from models import DiscountApprovalRequest, ApprovalCode, Bill, Staff, Manager
 from utils.auth import require_auth, require_role, get_current_user
@@ -36,14 +37,43 @@ def list_approvals(current_user=None):
         
         result = []
         for approval in approvals:
-            data = to_dict(approval)
-            if approval.requested_by:
-                data['requested_by_name'] = f"{approval.requested_by.first_name} {approval.requested_by.last_name or ''}".strip()
-            if approval.approved_by:
-                data['approved_by_name'] = f"{approval.approved_by.first_name} {approval.approved_by.last_name or ''}".strip()
-            if approval.bill:
-                data['bill_number'] = approval.bill.bill_number
-            result.append(data)
+            try:
+                data = to_dict(approval)
+                
+                # Safely get requested_by name
+                if approval.requested_by:
+                    try:
+                        if hasattr(approval.requested_by, 'reload'):
+                            approval.requested_by.reload()
+                        if hasattr(approval.requested_by, 'first_name'):
+                            data['requested_by_name'] = f"{approval.requested_by.first_name or ''} {approval.requested_by.last_name or ''}".strip() or None
+                    except (DoesNotExist, AttributeError, Exception):
+                        data['requested_by_name'] = None
+                
+                # Safely get approved_by name
+                if approval.approved_by:
+                    try:
+                        if hasattr(approval.approved_by, 'reload'):
+                            approval.approved_by.reload()
+                        if hasattr(approval.approved_by, 'first_name'):
+                            data['approved_by_name'] = f"{approval.approved_by.first_name or ''} {approval.approved_by.last_name or ''}".strip() or None
+                    except (DoesNotExist, AttributeError, Exception):
+                        data['approved_by_name'] = None
+                
+                # Safely get bill number
+                if approval.bill:
+                    try:
+                        if hasattr(approval.bill, 'reload'):
+                            approval.bill.reload()
+                        data['bill_number'] = getattr(approval.bill, 'bill_number', None)
+                    except (DoesNotExist, AttributeError, Exception):
+                        data['bill_number'] = None
+                
+                result.append(data)
+            except Exception as e:
+                # Skip approval entries that can't be processed
+                print(f"Error processing approval {approval.id}: {e}")
+                continue
         
         response = jsonify({'approvals': result, 'count': len(result)})
         response.headers.add('Access-Control-Allow-Origin', '*')

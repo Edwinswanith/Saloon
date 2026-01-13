@@ -52,8 +52,24 @@ def get_appointments(current_user=None):
             # Note: appointment_date is a DateField, so we can't set time, but the filter will include the full day
             query = query.filter(appointment_date__lte=end)
 
-        # Force evaluation by converting to list
-        appointments = list(query.order_by('-appointment_date', '-start_time'))
+        # Get pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 20, type=int), 100)
+        sort_by = request.args.get('sort_by', 'appointment_date')
+        sort_order = request.args.get('sort_order', 'desc')
+        
+        # Apply sorting
+        if sort_by == 'appointment_date':
+            order_field = f"-{sort_by},-start_time" if sort_order == 'desc' else f"{sort_by},start_time"
+        else:
+            order_field = f"-{sort_by}" if sort_order == 'desc' else sort_by
+        query = query.order_by(order_field)
+        
+        # Get total count before pagination
+        total = query.count()
+        
+        # Apply pagination
+        appointments = list(query.skip((page - 1) * per_page).limit(per_page))
 
         result = []
         for a in appointments:
@@ -83,7 +99,15 @@ def get_appointments(current_user=None):
                 print(f"Error processing appointment {a.id}: {str(e)}")
                 continue
         
-        return jsonify(result)
+        return jsonify({
+            'data': result,
+            'pagination': {
+                'total': total,
+                'page': page,
+                'per_page': per_page,
+                'pages': (total + per_page - 1) // per_page if per_page > 0 else 0
+            }
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -136,34 +160,85 @@ def create_appointment(current_user=None):
     try:
         data = request.get_json()
         
+        # Debug logging
+        print(f"[APPOINTMENT CREATE] Data received: {data}")
+        print(f"[APPOINTMENT CREATE] Current user: {current_user}")
+        print(f"[APPOINTMENT CREATE] X-Branch-Id header: {request.headers.get('X-Branch-Id')}")
+        
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         if not branch:
-            return jsonify({'error': 'Branch is required'}), 400
+            error_msg = 'Branch is required. Please ensure you have selected a branch or your user has a branch assigned.'
+            print(f"[APPOINTMENT CREATE] Error: {error_msg}")
+            response = jsonify({'error': error_msg})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
+        
+        print(f"[APPOINTMENT CREATE] Branch found: {branch.id} - {branch.name}")
         
         # Validate required fields
-        if not data.get('customer_id') or not data.get('staff_id') or not data.get('appointment_date') or not data.get('start_time'):
-            return jsonify({'error': 'Missing required fields: customer_id, staff_id, appointment_date, and start_time are required'}), 400
+        missing_fields = []
+        if not data.get('customer_id'):
+            missing_fields.append('customer_id')
+        if not data.get('staff_id'):
+            missing_fields.append('staff_id')
+        if not data.get('appointment_date'):
+            missing_fields.append('appointment_date')
+        if not data.get('start_time'):
+            missing_fields.append('start_time')
+        
+        if missing_fields:
+            error_msg = f'Missing required fields: {", ".join(missing_fields)}'
+            print(f"[APPOINTMENT CREATE] Error: {error_msg}")
+            response = jsonify({'error': error_msg})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
 
         # Validate and get customer and staff references
         if not ObjectId.is_valid(data['customer_id']):
-            return jsonify({'error': f"Invalid customer ID format: {data['customer_id']}"}), 400
+            error_msg = f"Invalid customer ID format: {data['customer_id']}"
+            print(f"[APPOINTMENT CREATE] Error: {error_msg}")
+            response = jsonify({'error': error_msg})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
         if not ObjectId.is_valid(data['staff_id']):
-            return jsonify({'error': f"Invalid staff ID format: {data['staff_id']}"}), 400
+            error_msg = f"Invalid staff ID format: {data['staff_id']}"
+            print(f"[APPOINTMENT CREATE] Error: {error_msg}")
+            response = jsonify({'error': error_msg})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
         
         try:
             customer = Customer.objects.get(id=data['customer_id'])
+            print(f"[APPOINTMENT CREATE] Customer found: {customer.id} - {customer.first_name}")
         except DoesNotExist:
-            return jsonify({'error': 'Customer not found'}), 400
+            error_msg = f'Customer not found with ID: {data["customer_id"]}'
+            print(f"[APPOINTMENT CREATE] Error: {error_msg}")
+            response = jsonify({'error': error_msg})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
         except ValidationError:
-            return jsonify({'error': 'Invalid customer ID format'}), 400
+            error_msg = f'Invalid customer ID format: {data["customer_id"]}'
+            print(f"[APPOINTMENT CREATE] Error: {error_msg}")
+            response = jsonify({'error': error_msg})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
         
         try:
             staff = Staff.objects.get(id=data['staff_id'])
+            print(f"[APPOINTMENT CREATE] Staff found: {staff.id} - {staff.first_name}")
         except DoesNotExist:
-            return jsonify({'error': 'Staff not found'}), 400
+            error_msg = f'Staff not found with ID: {data["staff_id"]}'
+            print(f"[APPOINTMENT CREATE] Error: {error_msg}")
+            response = jsonify({'error': error_msg})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
         except ValidationError:
-            return jsonify({'error': 'Invalid staff ID format'}), 400
+            error_msg = f'Invalid staff ID format: {data["staff_id"]}'
+            print(f"[APPOINTMENT CREATE] Error: {error_msg}")
+            response = jsonify({'error': error_msg})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
 
         # Parse date and time - handle both HH:MM and HH:MM:SS formats
         appointment_date = datetime.strptime(data['appointment_date'], '%Y-%m-%d').date()
@@ -214,7 +289,11 @@ def create_appointment(current_user=None):
         )
         
         if conflicts.count() > 0:
-            return jsonify({'error': 'This time slot is already booked for the selected staff'}), 400
+            error_msg = 'This time slot is already booked for the selected staff'
+            print(f"[APPOINTMENT CREATE] Error: {error_msg}")
+            response = jsonify({'error': error_msg})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
 
         appointment = Appointment(
             customer=customer,
@@ -227,12 +306,31 @@ def create_appointment(current_user=None):
             status=data.get('status', 'confirmed'),
             notes=data.get('notes')
         )
-        appointment.save()
+        
+        # Save appointment and verify it was actually persisted
+        try:
+            appointment.save()
+            print(f"[APPOINTMENT CREATE] Appointment saved, ID: {appointment.id}")
+            
+            # Verify appointment was actually saved by reloading it
+            saved_appointment = Appointment.objects.get(id=appointment.id)
+            if not saved_appointment:
+                raise Exception("Appointment save verification failed: Appointment not found after save")
+            
+            print(f"[APPOINTMENT CREATE] Appointment verification successful: {saved_appointment.id}")
+        except Exception as save_error:
+            error_msg = f'Failed to save appointment: {str(save_error)}'
+            print(f"[APPOINTMENT CREATE] Error: {error_msg}")
+            import traceback
+            traceback.print_exc()
+            response = jsonify({'error': error_msg})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 500
         
         # Get service name safely
         service_name = service.name if service else None
 
-        return jsonify({
+        response = jsonify({
             'id': str(appointment.id),
             'message': 'Appointment created successfully',
             'customer_id': str(appointment.customer.id) if appointment.customer else None,
@@ -246,11 +344,24 @@ def create_appointment(current_user=None):
             'end_time': appointment.end_time,  # Already a string
             'status': appointment.status,
             'notes': appointment.notes
-        }), 201
+        })
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        print(f"[APPOINTMENT CREATE] Success: Appointment created with ID {appointment.id}")
+        return response, 201
     except ValueError as e:
-        return jsonify({'error': f'Invalid date or time format: {str(e)}'}), 400
+        error_msg = f'Invalid date or time format: {str(e)}'
+        print(f"[APPOINTMENT CREATE] Error: {error_msg}")
+        response = jsonify({'error': error_msg})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 400
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        error_msg = str(e)
+        print(f"[APPOINTMENT CREATE] Unexpected error: {error_msg}")
+        import traceback
+        traceback.print_exc()
+        response = jsonify({'error': error_msg})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
 
 @appointment_bp.route('/appointments/<id>', methods=['PUT'])
 @require_auth

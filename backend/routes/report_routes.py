@@ -9,6 +9,32 @@ from utils.date_utils import get_ist_date_range
 
 report_bp = Blueprint('report', __name__)
 
+def get_safe_customer_info(customer_ref):
+    """Safely extract customer info, handling deleted references"""
+    if not customer_ref:
+        return {'name': 'Walk-in', 'mobile': None, 'id': None}
+    
+    try:
+        # Try to reload if it's a DBRef
+        if hasattr(customer_ref, 'reload'):
+            try:
+                customer_ref.reload()
+            except:
+                # Customer deleted, return default
+                return {'name': 'Walk-in', 'mobile': None, 'id': None}
+        
+        # Check if customer has required attributes
+        if hasattr(customer_ref, 'first_name'):
+            return {
+                'name': f"{customer_ref.first_name or ''} {customer_ref.last_name or ''}".strip() or 'Walk-in',
+                'mobile': getattr(customer_ref, 'mobile', None),
+                'id': str(customer_ref.id) if hasattr(customer_ref, 'id') else None
+            }
+    except Exception:
+        pass
+    
+    return {'name': 'Walk-in', 'mobile': None, 'id': None}
+
 @report_bp.before_request
 def handle_preflight():
     """Handle CORS preflight requests"""
@@ -129,12 +155,13 @@ def list_of_bills(current_user=None):
             try:
                 # Format bill_date to show local date correctly
                 bill_date_iso = b.bill_date.isoformat() if b.bill_date else None
+                customer_info = get_safe_customer_info(b.customer)
                 result.append({
                     'bill_number': b.bill_number,
                     'bill_date': bill_date_iso,
-                    'customer_name': f"{b.customer.first_name} {b.customer.last_name}" if b.customer else 'Walk-in',
-                    'customer_mobile': b.customer.mobile if b.customer else None,
-                    'customer_id': str(b.customer.id) if b.customer else None,
+                    'customer_name': customer_info['name'],
+                    'customer_mobile': customer_info['mobile'],
+                    'customer_id': customer_info['id'],
                     'id': str(b.id),
                     'subtotal': b.subtotal,
                     'discount': b.discount_amount,
@@ -181,14 +208,23 @@ def deleted_bills_report(current_user=None):
         # Force evaluation by converting to list
         bills = list(query.order_by('-deleted_at'))
 
-        response = jsonify([{
-            'bill_number': b.bill_number,
-            'bill_date': b.bill_date.isoformat() if b.bill_date else None,
-            'deleted_at': b.deleted_at.isoformat() if b.deleted_at else None,
-            'customer_name': f"{b.customer.first_name} {b.customer.last_name}" if b.customer else 'Walk-in',
-            'final_amount': b.final_amount,
-            'deletion_reason': b.deletion_reason
-        } for b in bills])
+        result = []
+        for b in bills:
+            try:
+                customer_info = get_safe_customer_info(b.customer)
+                result.append({
+                    'bill_number': b.bill_number,
+                    'bill_date': b.bill_date.isoformat() if b.bill_date else None,
+                    'deleted_at': b.deleted_at.isoformat() if b.deleted_at else None,
+                    'customer_name': customer_info['name'],
+                    'final_amount': b.final_amount,
+                    'deletion_reason': b.deletion_reason
+                })
+            except Exception as e:
+                print(f"Error processing deleted bill {b.id}: {e}")
+                continue
+        
+        response = jsonify(result)
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
     except Exception as e:

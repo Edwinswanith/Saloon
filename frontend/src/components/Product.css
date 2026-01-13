@@ -678,6 +678,12 @@
   .action-btn {
     width: 100%;
     justify-content: center;
+    min-height: 44px;
+  }
+
+  .search-input {
+    font-size: 16px;
+    min-height: 44px;
   }
 
   .product-category-row {

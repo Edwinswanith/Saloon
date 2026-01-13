@@ -381,6 +381,7 @@
 @media (max-width: 1024px) {
   .expense-layout {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
 
   .expense-filters-panel {
@@ -390,36 +391,107 @@
   .expense-summary-panel {
     order: 1;
   }
+
+  .chart-container {
+    padding: var(--space-4);
+  }
+
+  .donut-chart {
+    width: 180px;
+    height: 180px;
+  }
 }
 
 @media (max-width: 768px) {
+  .expense-container {
+    padding: 16px;
+  }
+
+  .expense-header {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .header-title {
+    font-size: 18px;
+  }
+
+  .header-right {
+    gap: 8px;
+  }
+
+  .expense-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .expense-filters-panel {
+    order: 2;
+    padding: 16px;
+  }
+
+  .expense-summary-panel {
+    order: 1;
+    padding: 16px;
+  }
+
   .summary-actions {
     flex-direction: column;
+    gap: 12px;
   }
 
   .action-btn {
     width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .chart-container {
+    padding: var(--space-3);
+  }
+
+  .donut-chart {
+    width: 160px;
+    height: 160px;
+  }
+
+  .chart-amount {
+    font-size: 24px;
+  }
+
+  .chart-label {
+    font-size: 14px;
+  }
+
+  .chart-legend {
+    width: 100%;
+  }
+
+  .expense-table-section {
+    padding: 16px;
   }
 
   .table-container {
-    overflow-x: scroll;
-  }
-
-  .expense-table {
-    min-width: 800px;
-  }
-
-  .table-container {
+    overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
 
   .expense-table {
+    min-width: 800px;
     font-size: var(--text-xs);
   }
 
   .expense-table th,
   .expense-table td {
     padding: var(--space-2) var(--space-3);
+  }
+
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
   }
 
   .modal-content {
@@ -442,10 +514,45 @@
 
 /* Small Mobile */
 @media (max-width: 480px) {
+  .expense-container {
+    padding: 12px;
+  }
+
+  .expense-header {
+    padding: 10px 12px;
+  }
+
+  .header-title {
+    font-size: 16px;
+  }
+
+  .expense-filters-panel,
+  .expense-summary-panel,
+  .expense-table-section {
+    padding: 12px;
+  }
+
+  .panel-title {
+    font-size: 16px;
+  }
+
   .action-btn {
     padding: var(--space-3) var(--space-4);
     font-size: var(--text-sm);
     min-height: 44px;
+  }
+
+  .donut-chart {
+    width: 140px;
+    height: 140px;
+  }
+
+  .chart-amount {
+    font-size: 20px;
+  }
+
+  .chart-label {
+    font-size: 12px;
   }
 
   .expense-table {
@@ -463,6 +570,7 @@
     width: 100%;
     padding: var(--space-3);
     border-radius: 16px 16px 0 0;
+    max-height: 95vh;
   }
 
   .modal-content h2 {

@@ -57,22 +57,93 @@ def get_feedback(current_user=None):
             if end:
                 query = query.filter(created_at__lte=end)
 
-        # Force evaluation by converting to list
-        feedbacks = list(query.order_by('-created_at'))
+        # Get pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 20, type=int), 100)
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
+        
+        # Apply sorting
+        order_field = f"-{sort_by}" if sort_order == 'desc' else sort_by
+        query = query.order_by(order_field)
+        
+        # Get total count before pagination
+        total = query.count()
+        
+        # Apply pagination
+        feedbacks = list(query.skip((page - 1) * per_page).limit(per_page))
 
-        response = jsonify([{
-            'id': str(f.id),
-            'customer_id': str(f.customer.id) if f.customer else None,
-            'customer_name': f"{f.customer.first_name} {f.customer.last_name}" if f.customer else None,
-            'customer_mobile': f.customer.mobile if f.customer else None,
-            'bill_id': str(f.bill.id) if f.bill else None,
-            'bill_number': f.bill.bill_number if f.bill else None,
-            'staff_id': str(f.staff.id) if f.staff else None,
-            'staff_name': f"{f.staff.first_name} {f.staff.last_name}" if f.staff else None,
-            'rating': f.rating,
-            'comment': f.comment,
-            'created_at': f.created_at.isoformat() if f.created_at else None
-        } for f in feedbacks])
+        # Safely extract feedback data with error handling for deleted references
+        feedback_data = []
+        for f in feedbacks:
+            try:
+                # Safely get customer info
+                customer_id = None
+                customer_name = None
+                customer_mobile = None
+                if f.customer:
+                    try:
+                        if hasattr(f.customer, 'reload'):
+                            f.customer.reload()
+                        customer_id = str(f.customer.id) if hasattr(f.customer, 'id') else None
+                        if hasattr(f.customer, 'first_name'):
+                            customer_name = f"{f.customer.first_name or ''} {f.customer.last_name or ''}".strip() or None
+                            customer_mobile = getattr(f.customer, 'mobile', None)
+                    except (DoesNotExist, AttributeError, Exception):
+                        pass
+                
+                # Safely get bill info
+                bill_id = None
+                bill_number = None
+                if f.bill:
+                    try:
+                        if hasattr(f.bill, 'reload'):
+                            f.bill.reload()
+                        bill_id = str(f.bill.id) if hasattr(f.bill, 'id') else None
+                        bill_number = getattr(f.bill, 'bill_number', None)
+                    except (DoesNotExist, AttributeError, Exception):
+                        pass
+                
+                # Safely get staff info
+                staff_id = None
+                staff_name = None
+                if f.staff:
+                    try:
+                        if hasattr(f.staff, 'reload'):
+                            f.staff.reload()
+                        staff_id = str(f.staff.id) if hasattr(f.staff, 'id') else None
+                        if hasattr(f.staff, 'first_name'):
+                            staff_name = f"{f.staff.first_name or ''} {f.staff.last_name or ''}".strip() or None
+                    except (DoesNotExist, AttributeError, Exception):
+                        pass
+                
+                feedback_data.append({
+                    'id': str(f.id),
+                    'customer_id': customer_id,
+                    'customer_name': customer_name,
+                    'customer_mobile': customer_mobile,
+                    'bill_id': bill_id,
+                    'bill_number': bill_number,
+                    'staff_id': staff_id,
+                    'staff_name': staff_name,
+                    'rating': f.rating,
+                    'comment': f.comment,
+                    'created_at': f.created_at.isoformat() if f.created_at else None
+                })
+            except Exception as e:
+                # Skip feedback entries that can't be processed
+                print(f"Error processing feedback {f.id}: {e}")
+                continue
+        
+        response = jsonify({
+            'data': feedback_data,
+            'pagination': {
+                'total': total,
+                'page': page,
+                'per_page': per_page,
+                'pages': (total + per_page - 1) // per_page if per_page > 0 else 0
+            }
+        })
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
     except Exception as e:

@@ -272,6 +272,7 @@
   .main-content {
     margin-left: 0;
     margin-top: 72px;
+    padding: 0;
   }
   
   .app.sidebar-collapsed .main-content {
@@ -288,6 +289,18 @@
   
   .page-title {
     font-size: var(--text-2xl);
+  }
+
+  .btn {
+    min-height: 44px;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .form-input,
+  .form-select,
+  .form-textarea {
+    font-size: 16px;
+    min-height: 44px;
   }
 }
 

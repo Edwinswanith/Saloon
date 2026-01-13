@@ -32,6 +32,18 @@ def get_service_details(service_ids):
     
     return services
 
+def verify_branch_access(item, branch, item_type='item'):
+    """Verify that an item belongs to the specified branch"""
+    if not branch:
+        return False, 'Branch is required'
+    if not item:
+        return False, f'{item_type} not found'
+    if not item.branch:
+        return False, f'{item_type} has no branch assigned (legacy data)'
+    if str(item.branch.id) != str(branch.id):
+        return False, f'{item_type} belongs to a different branch'
+    return True, None
+
 @package_bp.before_request
 def handle_preflight():
     """Handle CORS preflight requests"""
@@ -50,36 +62,65 @@ def get_packages(current_user=None):
         status = request.args.get('status')
         search = request.args.get('search')
 
-        query = Package.objects
+        # Filter by status='active' by default - only show active packages
+        query = Package.objects(status='active')
+        
+        print(f"[PACKAGE GET] Initial query count (active only): {query.count()}")
 
-        # Filter by branch
+        # Filter by branch - strict filtering, only show packages belonging to selected branch
         branch = get_selected_branch(request, current_user)
         if branch:
-            # Include packages for this branch OR packages with no branch (legacy/global)
-            from mongoengine import Q
-            query = query.filter(Q(branch=branch) | Q(branch=None))
+            print(f"[PACKAGE GET] Filtering by branch: {branch.name} (ID: {branch.id})")
+            query = query.filter(branch=branch)
+            print(f"[PACKAGE GET] After branch filter count: {query.count()}")
+        else:
+            print(f"[PACKAGE GET] WARNING: No branch found for user. Packages may be empty.")
 
         # Apply filters
+        # Allow status override if explicitly requested (e.g., for admin views)
         if status:
             query = query.filter(status=status)
         if search:
             query = query.filter(name__icontains=search)
 
-        # Force evaluation by converting to list
-        packages = list(query.order_by('name'))
+        # Get pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 20, type=int), 100)
+        sort_by = request.args.get('sort_by', 'name')
+        sort_order = request.args.get('sort_order', 'asc')
+        
+        # Apply sorting
+        order_field = f"-{sort_by}" if sort_order == 'desc' else sort_by
+        query = query.order_by(order_field)
+        
+        # Get total count before pagination
+        total = query.count()
+        print(f"[PACKAGE GET] Total packages found: {total}")
+        
+        # Apply pagination
+        packages = list(query.skip((page - 1) * per_page).limit(per_page))
+        print(f"[PACKAGE GET] Returning {len(packages)} packages (page {page}, per_page {per_page})")
 
-        response = jsonify([{
-            'id': str(p.id),
-            'name': p.name,
-            'price': p.price,
-            'description': p.description,
-            'services': json.loads(p.services) if p.services else [],
-            'service_details': get_service_details(json.loads(p.services) if p.services else []),
-            'status': p.status,
-            'created_at': p.created_at.isoformat() if p.created_at else None,
-            'updated_at': p.updated_at.isoformat() if p.updated_at else None,
-            'branch_id': str(p.branch.id) if p.branch else None
-        } for p in packages])
+        response = jsonify({
+            'data': [{
+                'id': str(p.id),
+                'name': p.name,
+                'price': p.price,
+                'description': p.description,
+                'services': json.loads(p.services) if p.services else [],
+                'service_details': get_service_details(json.loads(p.services) if p.services else []),
+                'status': p.status,
+                'created_at': p.created_at.isoformat() if p.created_at else None,
+                'updated_at': p.updated_at.isoformat() if p.updated_at else None,
+                'branch_id': str(p.branch.id) if p.branch else None
+            } for p in packages],
+            'pagination': {
+                'total': total,
+                'page': page,
+                'per_page': per_page,
+                'pages': (total + per_page - 1) // per_page if per_page > 0 else 0
+            }
+        })
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
     except Exception as e:
@@ -166,6 +207,20 @@ def update_package(id, current_user=None):
             return jsonify({'error': 'Invalid package ID format'}), 400
         
         package = Package.objects.get(id=id)
+        
+        # Verify branch access
+        branch = get_selected_branch(request, current_user)
+        if not branch:
+            response = jsonify({'error': 'Branch is required'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
+        
+        is_valid, error_msg = verify_branch_access(package, branch, 'Package')
+        if not is_valid:
+            response = jsonify({'error': error_msg})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 403
+        
         data = request.get_json()
 
         package.name = data.get('name', package.name)
@@ -203,6 +258,20 @@ def delete_package(id, current_user=None):
             return jsonify({'error': 'Invalid package ID format'}), 400
         
         package = Package.objects.get(id=id)
+        
+        # Verify branch access
+        branch = get_selected_branch(request, current_user)
+        if not branch:
+            response = jsonify({'error': 'Branch is required'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
+        
+        is_valid, error_msg = verify_branch_access(package, branch, 'Package')
+        if not is_valid:
+            response = jsonify({'error': error_msg})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 403
+        
         package.status = 'deleted'
         package.updated_at = datetime.utcnow()
         package.save()
@@ -224,11 +293,10 @@ def get_active_packages(current_user=None):
     try:
         query = Package.objects.filter(status='active')
 
-        # Filter by branch
+        # Filter by branch - strict filtering, only show packages belonging to selected branch
         branch = get_selected_branch(request, current_user)
         if branch:
-            from mongoengine import Q
-            query = query.filter(Q(branch=branch) | Q(branch=None))
+            query = query.filter(branch=branch)
 
         packages = list(query.order_by('name'))
 

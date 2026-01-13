@@ -110,6 +110,49 @@ const Dashboard = () => {
   const [offeringClients, setOfferingClients] = useState([])
   const [loadingOfferingClients, setLoadingOfferingClients] = useState(false)
 
+  // Data cache with timestamp and params tracking
+  const [dataCache, setDataCache] = useState({
+    stats: null,
+    sales: null,
+    staff: null,
+  })
+
+  // Cache expiration time (5 minutes)
+  const CACHE_EXPIRY_MS = 5 * 60 * 1000
+
+  // Helper function to check if cache is valid
+  const isCacheValid = (cacheEntry, currentParams) => {
+    if (!cacheEntry) return false
+    
+    // Check if cache has expired
+    const now = Date.now()
+    if (now - cacheEntry.timestamp > CACHE_EXPIRY_MS) {
+      return false
+    }
+    
+    // Check if params match
+    if (cacheEntry.params) {
+      const cacheParams = cacheEntry.params
+      const currentParamsStr = JSON.stringify(currentParams)
+      const cacheParamsStr = JSON.stringify(cacheParams)
+      if (currentParamsStr !== cacheParamsStr) {
+        return false
+      }
+    }
+    
+    return true
+  }
+
+  // Helper function to get cache key params
+  const getCacheParams = () => {
+    return {
+      filter,
+      selectedYear,
+      selectedMonth,
+      branchId: currentBranch?.id || null,
+    }
+  }
+
   // Helper function to get local date string (YYYY-MM-DD) in IST/local timezone
   const getLocalDateString = (date) => {
     const year = date.getFullYear()
@@ -181,30 +224,8 @@ const Dashboard = () => {
     }
   }
 
-  useEffect(() => {
-    console.log('[Dashboard] Fetching data - filter:', filter, 'year:', selectedYear, 'month:', selectedMonth, 'activeTab:', activeTab, 'currentBranch:', currentBranch?.id || currentBranch)
-    fetchDashboardData()
-  }, [filter, selectedYear, selectedMonth, activeTab, currentBranch])
-
-  // Listen for branch changes
-  useEffect(() => {
-    const handleBranchChange = () => {
-      console.log('[Dashboard] Branch changed, refreshing data...', currentBranch)
-      fetchDashboardData()
-    }
-    
-    window.addEventListener('branchChanged', handleBranchChange)
-    return () => window.removeEventListener('branchChanged', handleBranchChange)
-  }, [currentBranch])
-
-  const fetchDashboardData = async () => {
-    setLoading(true)
-    const dateRange = getDateRange()
-    const params = new URLSearchParams(dateRange)
-    
-    // Add timestamp to prevent caching
-    params.append('_t', Date.now())
-
+  // Fetch stats data (only needed for sales tab)
+  const fetchStatsData = async (params, dateRange) => {
     try {
       // Fetch stats
       const statsRes = await apiGet(`/api/dashboard/stats?${params}`)
@@ -228,7 +249,7 @@ const Dashboard = () => {
       const deletedBillsCount = deletedBills.length
       const deletedBillsAmount = deletedBills.reduce((sum, b) => sum + (b.final_amount || 0), 0)
 
-      setStats({
+      const statsResult = {
         totalTax: totalTax,
         grossRevenue: statsData.revenue?.total || 0,
         avgBillValue: statsData.revenue?.average_per_transaction || 0,
@@ -236,188 +257,345 @@ const Dashboard = () => {
         expenses: statsData.expenses?.total || 0,
         deletedBills: deletedBillsCount,
         deletedBillsAmount: deletedBillsAmount,
-      })
-
-      if (activeTab === 'sales') {
-        // Fetch all sales data in parallel for better performance
-        const salesDataPromises = [
-          // Fetch top customers
-          apiGet(`/api/dashboard/top-customers?${params}&limit=10`)
-            .then(res => res.ok ? res.json() : [])
-            .then(data => setTopCustomers(Array.isArray(data) ? data : []))
-            .catch(err => {
-              console.error('Error fetching top customers:', err)
-              setTopCustomers([])
-            }),
-
-          // Fetch top offerings
-          apiGet(`/api/dashboard/top-offerings?${params}&limit=10`)
-            .then(res => res.ok ? res.json() : [])
-            .then(data => {
-              console.log('Top offerings data:', data)
-              setTopOfferings(Array.isArray(data) ? data : [])
-            })
-            .catch(err => {
-              console.error('Error fetching top offerings:', err)
-              setTopOfferings([])
-            }),
-
-          // Fetch revenue breakdown
-          apiGet(`/api/dashboard/revenue-breakdown?${params}`)
-            .then(res => res.ok ? res.json() : { breakdown: {} })
-            .then(data => setRevenueBreakdown(data.breakdown || {}))
-            .catch(err => {
-              console.error('Error fetching revenue breakdown:', err)
-              setRevenueBreakdown({})
-            }),
-
-          // Fetch payment distribution
-          apiGet(`/api/dashboard/payment-distribution?${params}`)
-            .then(res => res.ok ? res.json() : { distribution: [] })
-            .then(data => setPaymentDistribution(data.distribution || []))
-            .catch(err => {
-              console.error('Error fetching payment distribution:', err)
-              setPaymentDistribution([])
-            }),
-
-          // Fetch client funnel
-          apiGet(`/api/dashboard/client-funnel?${params}`)
-            .then(res => res.ok ? res.json() : { customers: {}, leads: {} })
-            .then(data => setClientFunnel({
-              newClients: data.customers?.new || 0,
-              returningClients: data.customers?.returning || 0,
-              totalLeads: data.leads?.total || 0,
-              contacted: 0, // Need to fetch from leads API
-              followups: 0, // Need to fetch from leads API
-              completed: data.leads?.converted || 0,
-              lost: 0, // Need to fetch from leads API
-            }))
-            .catch(err => {
-              console.error('Error fetching client funnel:', err)
-              setClientFunnel({
-                newClients: 0,
-                returningClients: 0,
-                totalLeads: 0,
-                contacted: 0,
-                followups: 0,
-                completed: 0,
-                lost: 0,
-              })
-            }),
-
-          // Fetch top moving items
-          apiGet(`/api/dashboard/top-moving-items?${params}`)
-            .then(res => res.ok ? res.json() : { services: [], packages: [], products: [] })
-            .then(data => setTopMovingItems(data || { services: [], packages: [], products: [] }))
-            .catch(err => {
-              console.error('Error fetching top moving items:', err)
-              setTopMovingItems({ services: [], packages: [], products: [] })
-            }),
-
-          // Fetch client source
-          apiGet(`/api/dashboard/client-source?${params}`)
-            .then(res => res.ok ? res.json() : { distribution: [] })
-            .then(data => setClientSource(data.distribution || []))
-            .catch(err => {
-              console.error('Error fetching client source:', err)
-              setClientSource([])
-            }),
-
-          // Fetch alerts
-          apiGet('/api/dashboard/alerts')
-            .then(res => res.ok ? res.json() : [])
-            .then(data => setAlerts(Array.isArray(data) ? data : []))
-            .catch(err => {
-              console.error('Error fetching alerts:', err)
-              setAlerts([])
-            }),
-        ]
-
-        // Wait for all sales data to load
-        await Promise.all(salesDataPromises)
-      } else {
-        // Fetch staff performance (branch-specific) - uses filtered date range
-        const staffRes = await apiGet(`/api/dashboard/staff-performance?${params}`)
-        if (staffRes.ok) {
-          const staffData = await staffRes.json()
-          console.log('[Dashboard] Staff Performance Data (Branch):', staffData)
-          setStaffPerformance(staffData || [])
-        } else {
-          console.error('[Dashboard] Failed to fetch staff performance:', staffRes.status)
-          setStaffPerformance([])
-        }
-        
-        // Fetch top performer (company-wide, not branch-specific) - always uses current month
-        const currentMonthRange = getCurrentMonthDateRange()
-        const topPerformerParams = new URLSearchParams(currentMonthRange)
-        topPerformerParams.append('_t', Date.now())
-        const topPerformerRes = await apiGet(`/api/dashboard/top-performer?${topPerformerParams}`)
-        if (topPerformerRes.ok) {
-          const performerData = await topPerformerRes.json()
-          console.log('[Dashboard] Top Performer Data (Company-Wide):', performerData)
-          setTopPerformer(performerData.top_performer)
-          setStaffLeaderboard(performerData.leaderboard || [])
-        } else {
-          console.error('[Dashboard] Failed to fetch top performer:', topPerformerRes.status)
-          setTopPerformer(null)
-          setStaffLeaderboard([])
-        }
       }
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error)
-      console.error('Error details:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      })
+
+      setStats(statsResult)
       
-      if (error.message && error.message.includes('Failed to fetch')) {
-        console.error(`Cannot connect to backend server at ${API_BASE_URL}. Please ensure the server is running.`)
-        // Set default values to prevent UI from breaking
-        setStats({
-          totalTax: 0,
-          grossRevenue: 0,
-          avgBillValue: 0,
-          transactions: 0,
-          expenses: 0,
-          deletedBills: 0,
-          deletedBillsAmount: 0,
-        })
-        setStaffPerformance([])
-        setTopPerformer(null)
-        setStaffLeaderboard([])
-        setTopCustomers([])
-        setTopOfferings([])
-        setRevenueBreakdown({
-          service: { amount: 0, percentage: 0 },
-          product: { amount: 0, percentage: 0 },
-          package: { amount: 0, percentage: 0 },
-          prepaid: { amount: 0, percentage: 0 },
-          membership: { amount: 0, percentage: 0 },
-        })
-        setPaymentDistribution([])
-        setClientFunnel({
-          newClients: 0,
-          returningClients: 0,
-          totalLeads: 0,
-          contacted: 0,
-          followups: 0,
-          completed: 0,
-          lost: 0,
-        })
-        setClientSource([])
-        setAlerts([{
-          type: 'server_error',
-          severity: 'error',
-          message: `Cannot connect to backend server. Please ensure the server is running at ${API_BASE_URL}`,
-        }])
-      } else if (error.message && error.message.includes('Unexpected token')) {
-        console.error('Server returned HTML instead of JSON. Make sure the backend server is running and routes are correct.')
-      }
-    } finally {
-      setLoading(false)
+      // Cache the stats data
+      setDataCache(prev => ({
+        ...prev,
+        stats: {
+          data: statsResult,
+          timestamp: Date.now(),
+          params: getCacheParams(),
+        }
+      }))
+
+      return statsResult
+    } catch (error) {
+      console.error('Error fetching stats data:', error)
+      throw error
     }
   }
+
+  // Fetch sales data (only when on sales tab)
+  const fetchSalesData = async (params) => {
+    try {
+      // Fetch all sales data in parallel for better performance
+      const [
+        topCustomersRes,
+        topOfferingsRes,
+        revenueBreakdownRes,
+        paymentDistributionRes,
+        clientFunnelRes,
+        topMovingItemsRes,
+        clientSourceRes,
+        alertsRes
+      ] = await Promise.allSettled([
+        apiGet(`/api/dashboard/top-customers?${params}&limit=10`),
+        apiGet(`/api/dashboard/top-offerings?${params}&limit=10`),
+        apiGet(`/api/dashboard/revenue-breakdown?${params}`),
+        apiGet(`/api/dashboard/payment-distribution?${params}`),
+        apiGet(`/api/dashboard/client-funnel?${params}`),
+        apiGet(`/api/dashboard/top-moving-items?${params}`),
+        apiGet(`/api/dashboard/client-source?${params}`),
+        apiGet('/api/dashboard/alerts')
+      ])
+
+      // Process top customers
+      let topCustomersData = []
+      if (topCustomersRes.status === 'fulfilled' && topCustomersRes.value.ok) {
+        const data = await topCustomersRes.value.json()
+        topCustomersData = Array.isArray(data) ? data : []
+      }
+      setTopCustomers(topCustomersData)
+
+      // Process top offerings
+      let topOfferingsData = []
+      if (topOfferingsRes.status === 'fulfilled' && topOfferingsRes.value.ok) {
+        const data = await topOfferingsRes.value.json()
+        topOfferingsData = Array.isArray(data) ? data : []
+      }
+      setTopOfferings(topOfferingsData)
+
+      // Process revenue breakdown
+      let revenueBreakdownData = {}
+      if (revenueBreakdownRes.status === 'fulfilled' && revenueBreakdownRes.value.ok) {
+        const data = await revenueBreakdownRes.value.json()
+        revenueBreakdownData = data.breakdown || {}
+      }
+      setRevenueBreakdown(revenueBreakdownData)
+
+      // Process payment distribution
+      let paymentDistributionData = []
+      if (paymentDistributionRes.status === 'fulfilled' && paymentDistributionRes.value.ok) {
+        const data = await paymentDistributionRes.value.json()
+        paymentDistributionData = data.distribution || []
+      }
+      setPaymentDistribution(paymentDistributionData)
+
+      // Process client funnel
+      let clientFunnelData = {
+        newClients: 0,
+        returningClients: 0,
+        totalLeads: 0,
+        contacted: 0,
+        followups: 0,
+        completed: 0,
+        lost: 0,
+      }
+      if (clientFunnelRes.status === 'fulfilled' && clientFunnelRes.value.ok) {
+        const data = await clientFunnelRes.value.json()
+        clientFunnelData = {
+          newClients: data.customers?.new || 0,
+          returningClients: data.customers?.returning || 0,
+          totalLeads: data.leads?.total || 0,
+          contacted: 0,
+          followups: 0,
+          completed: data.leads?.converted || 0,
+          lost: 0,
+        }
+      }
+      setClientFunnel(clientFunnelData)
+
+      // Process top moving items
+      let topMovingItemsData = { services: [], packages: [], products: [] }
+      if (topMovingItemsRes.status === 'fulfilled' && topMovingItemsRes.value.ok) {
+        const data = await topMovingItemsRes.value.json()
+        topMovingItemsData = data || { services: [], packages: [], products: [] }
+      }
+      setTopMovingItems(topMovingItemsData)
+
+      // Process client source
+      let clientSourceData = []
+      if (clientSourceRes.status === 'fulfilled' && clientSourceRes.value.ok) {
+        const data = await clientSourceRes.value.json()
+        clientSourceData = data.distribution || []
+      }
+      setClientSource(clientSourceData)
+
+      // Process alerts
+      let alertsData = []
+      if (alertsRes.status === 'fulfilled' && alertsRes.value.ok) {
+        const data = await alertsRes.value.json()
+        alertsData = Array.isArray(data) ? data : []
+      }
+      setAlerts(alertsData)
+
+      // Cache the sales data
+      setDataCache(prev => ({
+        ...prev,
+        sales: {
+          data: {
+            topCustomers: topCustomersData,
+            topOfferings: topOfferingsData,
+            revenueBreakdown: revenueBreakdownData,
+            paymentDistribution: paymentDistributionData,
+            clientFunnel: clientFunnelData,
+            topMovingItems: topMovingItemsData,
+            clientSource: clientSourceData,
+            alerts: alertsData,
+          },
+          timestamp: Date.now(),
+          params: getCacheParams(),
+        }
+      }))
+    } catch (error) {
+      console.error('Error fetching sales data:', error)
+      throw error
+    }
+  }
+
+  // Fetch staff data (only when on staff tab)
+  const fetchStaffData = async (params) => {
+    try {
+      // Fetch staff performance (branch-specific) - uses filtered date range
+      let staffPerformanceData = []
+      const staffRes = await apiGet(`/api/dashboard/staff-performance?${params}`)
+      if (staffRes.ok) {
+        staffPerformanceData = await staffRes.json() || []
+        console.log('[Dashboard] Staff Performance Data (Branch):', staffPerformanceData)
+      } else {
+        console.error('[Dashboard] Failed to fetch staff performance:', staffRes.status)
+      }
+      setStaffPerformance(staffPerformanceData)
+      
+      // Fetch top performer (company-wide, not branch-specific) - always uses current month
+      const currentMonthRange = getCurrentMonthDateRange()
+      const topPerformerParams = new URLSearchParams(currentMonthRange)
+      topPerformerParams.append('_t', Date.now())
+      
+      let topPerformerData = null
+      let staffLeaderboardData = []
+      const topPerformerRes = await apiGet(`/api/dashboard/top-performer?${topPerformerParams}`)
+      if (topPerformerRes.ok) {
+        const performerData = await topPerformerRes.json()
+        console.log('[Dashboard] Top Performer Data (Company-Wide):', performerData)
+        topPerformerData = performerData.top_performer
+        staffLeaderboardData = performerData.leaderboard || []
+      } else {
+        console.error('[Dashboard] Failed to fetch top performer:', topPerformerRes.status)
+      }
+      setTopPerformer(topPerformerData)
+      setStaffLeaderboard(staffLeaderboardData)
+
+      // Cache the staff data
+      setDataCache(prev => ({
+        ...prev,
+        staff: {
+          data: {
+            staffPerformance: staffPerformanceData,
+            topPerformer: topPerformerData,
+            staffLeaderboard: staffLeaderboardData,
+          },
+          timestamp: Date.now(),
+          params: getCacheParams(),
+        }
+      }))
+    } catch (error) {
+      console.error('Error fetching staff data:', error)
+      throw error
+    }
+  }
+
+  // Load data from cache
+  const loadFromCache = (cacheKey, cacheEntry) => {
+    if (!cacheEntry || !cacheEntry.data) {
+      return false
+    }
+
+    if (cacheKey === 'stats') {
+      setStats(cacheEntry.data)
+      return true
+    } else if (cacheKey === 'sales') {
+      const salesData = cacheEntry.data
+      if (salesData.topCustomers !== undefined) setTopCustomers(salesData.topCustomers)
+      if (salesData.topOfferings !== undefined) setTopOfferings(salesData.topOfferings)
+      if (salesData.revenueBreakdown !== undefined) setRevenueBreakdown(salesData.revenueBreakdown)
+      if (salesData.paymentDistribution !== undefined) setPaymentDistribution(salesData.paymentDistribution)
+      if (salesData.clientFunnel !== undefined) setClientFunnel(salesData.clientFunnel)
+      if (salesData.topMovingItems !== undefined) setTopMovingItems(salesData.topMovingItems)
+      if (salesData.clientSource !== undefined) setClientSource(salesData.clientSource)
+      if (salesData.alerts !== undefined) setAlerts(salesData.alerts)
+      return true
+    } else if (cacheKey === 'staff') {
+      const staffData = cacheEntry.data
+      if (staffData.staffPerformance !== undefined) setStaffPerformance(staffData.staffPerformance)
+      if (staffData.topPerformer !== undefined) setTopPerformer(staffData.topPerformer)
+      if (staffData.staffLeaderboard !== undefined) setStaffLeaderboard(staffData.staffLeaderboard)
+      return true
+    }
+    return false
+  }
+
+  // Effect for sales tab data
+  useEffect(() => {
+    if (activeTab !== 'sales') return
+
+    const loadSalesData = async () => {
+      setLoading(true)
+      const dateRange = getDateRange()
+      const params = new URLSearchParams(dateRange)
+      params.append('_t', Date.now())
+      const cacheParams = getCacheParams()
+
+      try {
+        // Check cache first
+        const cacheEntry = dataCache.sales
+        if (isCacheValid(cacheEntry, cacheParams)) {
+          console.log('[Dashboard] Using cached sales data')
+          loadFromCache('sales', cacheEntry)
+          // Also check for cached stats
+          const statsCacheEntry = dataCache.stats
+          if (isCacheValid(statsCacheEntry, cacheParams)) {
+            loadFromCache('stats', statsCacheEntry)
+          } else {
+            await fetchStatsData(params, dateRange)
+          }
+          setLoading(false)
+          return
+        }
+
+        console.log('[Dashboard] Fetching sales data - filter:', filter, 'year:', selectedYear, 'month:', selectedMonth, 'currentBranch:', currentBranch?.id || currentBranch)
+        
+        // Fetch stats and sales data
+        await fetchStatsData(params, dateRange)
+        await fetchSalesData(params)
+      } catch (error) {
+        console.error('Error loading sales data:', error)
+        if (error.message && error.message.includes('Failed to fetch')) {
+          console.error(`Cannot connect to backend server at ${API_BASE_URL}. Please ensure the server is running.`)
+          setAlerts([{
+            type: 'server_error',
+            severity: 'error',
+            message: `Cannot connect to backend server. Please ensure the server is running at ${API_BASE_URL}`,
+          }])
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadSalesData()
+  }, [filter, selectedYear, selectedMonth, activeTab, currentBranch])
+
+  // Effect for staff tab data
+  useEffect(() => {
+    if (activeTab !== 'staff') return
+
+    const loadStaffData = async () => {
+      setLoading(true)
+      const dateRange = getDateRange()
+      const params = new URLSearchParams(dateRange)
+      params.append('_t', Date.now())
+      const cacheParams = getCacheParams()
+
+      try {
+        // Check cache first
+        const cacheEntry = dataCache.staff
+        if (isCacheValid(cacheEntry, cacheParams)) {
+          console.log('[Dashboard] Using cached staff data')
+          loadFromCache('staff', cacheEntry)
+          setLoading(false)
+          return
+        }
+
+        console.log('[Dashboard] Fetching staff data - filter:', filter, 'year:', selectedYear, 'month:', selectedMonth, 'currentBranch:', currentBranch?.id || currentBranch)
+        
+        // Only fetch staff data (no stats/bills needed for staff tab)
+        await fetchStaffData(params)
+      } catch (error) {
+        console.error('Error loading staff data:', error)
+        if (error.message && error.message.includes('Failed to fetch')) {
+          console.error(`Cannot connect to backend server at ${API_BASE_URL}. Please ensure the server is running.`)
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadStaffData()
+  }, [filter, selectedYear, selectedMonth, activeTab, currentBranch])
+
+  // Listen for branch changes - invalidate cache and refetch
+  useEffect(() => {
+    const handleBranchChange = () => {
+      console.log('[Dashboard] Branch changed, invalidating cache and refreshing data...', currentBranch)
+      // Invalidate all cache
+      setDataCache({
+        stats: null,
+        sales: null,
+        staff: null,
+      })
+      // Trigger refetch by changing a dependency (activeTab will trigger the appropriate effect)
+      // Force a refetch by toggling activeTab temporarily (but this might cause flicker)
+      // Instead, we'll let the existing effects handle it since currentBranch is in their deps
+    }
+    
+    window.addEventListener('branchChanged', handleBranchChange)
+    return () => window.removeEventListener('branchChanged', handleBranchChange)
+  }, [currentBranch])
+
 
   const handleViewOfferingClients = async (offering) => {
     setSelectedOffering(offering)

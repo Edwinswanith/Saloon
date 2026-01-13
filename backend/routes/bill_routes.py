@@ -17,6 +17,32 @@ DISCOUNT_LIMITS = {
 
 bill_bp = Blueprint('bill', __name__)
 
+def get_safe_customer_info(customer_ref):
+    """Safely extract customer info, handling deleted references"""
+    if not customer_ref:
+        return {'name': 'Walk-in', 'mobile': None, 'id': None}
+    
+    try:
+        # Try to reload if it's a DBRef
+        if hasattr(customer_ref, 'reload'):
+            try:
+                customer_ref.reload()
+            except:
+                # Customer deleted, return default
+                return {'name': 'Walk-in', 'mobile': None, 'id': None}
+        
+        # Check if customer has required attributes
+        if hasattr(customer_ref, 'first_name'):
+            return {
+                'name': f"{customer_ref.first_name or ''} {customer_ref.last_name or ''}".strip() or 'Walk-in',
+                'mobile': getattr(customer_ref, 'mobile', None),
+                'id': str(customer_ref.id) if hasattr(customer_ref, 'id') else None
+            }
+    except Exception:
+        pass
+    
+    return {'name': 'Walk-in', 'mobile': None, 'id': None}
+
 def generate_bill_number():
     """Generate unique bill number"""
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
@@ -45,25 +71,33 @@ def generate_invoice_number():
         return f"INV-{timestamp[:6]}"
 
 def resolve_bill_branch(current_user=None, appointment=None, customer=None):
-    """Best-effort branch resolution for bills."""
-    if appointment and getattr(appointment, 'branch', None):
-        return appointment.branch
-    if customer and getattr(customer, 'branch', None):
-        return customer.branch
-
+    """Best-effort branch resolution for bills.
+    
+    Priority:
+    1. User's explicitly selected branch (from X-Branch-Id header or get_selected_branch)
+    2. Appointment branch (if no explicit branch selected)
+    3. Customer branch (if no explicit branch selected)
+    4. None (should not happen for authenticated users)
+    """
+    # PRIORITY 1: User's explicitly selected branch (from headers or user assignment)
     branch = None
     if current_user:
         branch = get_selected_branch(request, current_user)
-    if not branch:
-        branch_id_header = request.headers.get('X-Branch-Id')
-        if branch_id_header and ObjectId.is_valid(branch_id_header):
-            branch = Branch.objects(id=branch_id_header).first()
+    
+    # If no explicit branch selected, try appointment branch
+    if not branch and appointment and getattr(appointment, 'branch', None):
+        branch = appointment.branch
+    
+    # If still no branch, try customer branch
+    if not branch and customer and getattr(customer, 'branch', None):
+        branch = customer.branch
+    
     return branch
 
 @bill_bp.route('/bills', methods=['GET'])
 @require_auth
 def get_bills(current_user=None):
-    """Get all bills with optional filters"""
+    """Get bills with optional filters - OPTIMIZED with pagination"""
     try:
         # Query parameters
         customer_id = request.args.get('customer_id')
@@ -72,6 +106,10 @@ def get_bills(current_user=None):
         payment_mode = request.args.get('payment_mode')
         booking_status = request.args.get('booking_status')
         include_deleted = request.args.get('include_deleted', type=bool, default=False)
+
+        # OPTIMIZED: Add pagination parameters with sensible defaults
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 50, type=int), 100)  # Max 100 per page
 
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
@@ -99,24 +137,18 @@ def get_bills(current_user=None):
         if booking_status:
             query = query.filter(booking_status=booking_status)
 
-        # Force evaluation by converting to list
-        bills = list(query.order_by('-bill_date'))
+        # OPTIMIZED: Get count first, then paginate
+        total = query.count()
+        bills = list(query.order_by('-bill_date').skip((page - 1) * per_page).limit(per_page))
 
         result = []
         for b in bills:
             try:
-                customer_name = 'Walk-in'
-                customer_mobile = None
-                customer_obj_id = None
-                if b.customer:
-                    try:
-                        b.customer.reload()  # Ensure customer is fetched
-                    except:
-                        pass  # Customer might be deleted, continue with cached data
-                    customer_name = f"{b.customer.first_name} {b.customer.last_name}"
-                    customer_mobile = b.customer.mobile
-                    customer_obj_id = str(b.customer.id)
-                
+                customer_info = get_safe_customer_info(b.customer)
+                customer_name = customer_info['name']
+                customer_mobile = customer_info['mobile']
+                customer_obj_id = customer_info['id']
+
                 result.append({
                     'id': str(b.id),
                     'bill_number': b.bill_number,
@@ -139,7 +171,14 @@ def get_bills(current_user=None):
                 print(f"Error processing bill {b.id}: {e}")
                 continue
 
-        return jsonify(result)
+        # Return with pagination metadata
+        return jsonify({
+            'bills': result,
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'pages': (total + per_page - 1) // per_page if per_page > 0 else 0
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -149,17 +188,10 @@ def get_bill(id):
     try:
         bill = Bill.objects.get(id=id)
         
-        customer_name = 'Walk-in'
-        customer_mobile = None
-        customer_obj_id = None
-        if bill.customer:
-            try:
-                bill.customer.reload()
-            except:
-                pass  # Continue with cached customer data
-            customer_name = f"{bill.customer.first_name} {bill.customer.last_name}"
-            customer_mobile = bill.customer.mobile
-            customer_obj_id = str(bill.customer.id)
+        customer_info = get_safe_customer_info(bill.customer)
+        customer_name = customer_info['name']
+        customer_mobile = customer_info['mobile']
+        customer_obj_id = customer_info['id']
 
         items = []
         for idx, item in enumerate(bill.items):
@@ -356,21 +388,52 @@ def add_bill_item(id):
         staff = None
 
         from models import Service, Package, PrepaidPackage as Prepaid, Membership, Staff as StaffModel
+        
+        # Ensure bill has a branch assigned
+        if not bill.branch:
+            current_user = get_current_user()
+            appointment = None
+            if bill.appointment:
+                try:
+                    bill.appointment.reload()
+                    appointment = bill.appointment
+                except Exception:
+                    appointment = bill.appointment
+            branch = resolve_bill_branch(
+                current_user=current_user,
+                appointment=appointment,
+                customer=bill.customer
+            )
+            if branch:
+                bill.branch = branch
+                bill.save()
+            else:
+                return jsonify({'error': 'Bill must have a branch assigned before adding items'}), 400
+        
         if data.get('service_id'):
             try:
                 service = Service.objects.get(id=data['service_id'])
-            except:
-                pass
+                # Validate: reject if service belongs to a DIFFERENT branch (allow legacy items with no branch)
+                if bill.branch and service.branch and str(service.branch.id) != str(bill.branch.id):
+                    return jsonify({'error': 'Service does not belong to this branch'}), 400
+            except Service.DoesNotExist:
+                return jsonify({'error': 'Service not found'}), 404
         if data.get('package_id'):
             try:
                 package = Package.objects.get(id=data['package_id'])
-            except:
-                pass
+                # Validate: reject if package belongs to a DIFFERENT branch (allow legacy items with no branch)
+                if bill.branch and package.branch and str(package.branch.id) != str(bill.branch.id):
+                    return jsonify({'error': 'Package does not belong to this branch'}), 400
+            except Package.DoesNotExist:
+                return jsonify({'error': 'Package not found'}), 404
         if data.get('product_id'):
             try:
                 product = Product.objects.get(id=data['product_id'])
-            except:
-                pass
+                # Validate: reject if product belongs to a DIFFERENT branch (allow legacy items with no branch)
+                if bill.branch and product.branch and str(product.branch.id) != str(bill.branch.id):
+                    return jsonify({'error': 'Product does not belong to this branch'}), 400
+            except Product.DoesNotExist:
+                return jsonify({'error': 'Product not found'}), 404
         if data.get('prepaid_id'):
             try:
                 prepaid = Prepaid.objects.get(id=data['prepaid_id'])
@@ -450,6 +513,17 @@ def checkout_bill(id):
     try:
         bill = Bill.objects.get(id=id)
         data = request.get_json()
+        
+        # Validate required fields
+        if not data:
+            print(f"[CHECKOUT] Error: Request body is missing for bill {id}")
+            return jsonify({'error': 'Request body is required'}), 400
+        
+        if 'payment_mode' not in data or not data.get('payment_mode'):
+            print(f"[CHECKOUT] Error: payment_mode is missing for bill {id}. Data: {data}")
+            return jsonify({'error': 'payment_mode is required'}), 400
+
+        print(f"[CHECKOUT] Processing checkout for bill {id}, payment_mode: {data.get('payment_mode')}")
 
         # Check if bill is already checked out to prevent double stock reduction
         is_already_checked_out = (bill.booking_status == 'service-completed' and bill.payment_mode)
@@ -458,9 +532,16 @@ def checkout_bill(id):
         current_user = get_current_user()
         user_role = current_user.get('role') if current_user else 'staff'
         
+        # Validate bill has items
+        if not bill.items or len(bill.items) == 0:
+            print(f"[CHECKOUT] Error: Bill {id} has no items")
+            return jsonify({'error': 'Bill must have at least one item before checkout'}), 400
+
         # Calculate subtotal from items
         subtotal = sum([float(item.total) if item.total else 0.0 for item in bill.items])
         subtotal = float(subtotal) if subtotal else 0.0
+        
+        print(f"[CHECKOUT] Bill {id} subtotal: {subtotal}, items count: {len(bill.items)}")
 
         # Check for active membership discount first (automatic, cannot be overridden)
         membership_discount_applied = False
@@ -567,7 +648,9 @@ def checkout_bill(id):
             try:
                 prepaid_package = PrepaidPackage.objects.get(id=data['prepaid_package_id'])
                 if prepaid_package.remaining_balance < final_amount:
-                    return jsonify({'error': 'Insufficient prepaid balance'}), 400
+                    error_msg = f'Insufficient prepaid balance. Available: {prepaid_package.remaining_balance}, Required: {final_amount}'
+                    print(f"[CHECKOUT] Error: {error_msg}")
+                    return jsonify({'error': error_msg}), 400
                 prepaid_package.remaining_balance -= final_amount
                 if prepaid_package.remaining_balance <= 0:
                     prepaid_package.status = 'used'
@@ -584,20 +667,26 @@ def checkout_bill(id):
                     # Reload product to get latest stock count (handles concurrent checkouts)
                     item.product.reload()
                     quantity_needed = int(item.quantity) if item.quantity else 1
-                    
+
+                    # Validate: reject if product belongs to a DIFFERENT branch (allow legacy items with no branch)
+                    if bill.branch and item.product.branch and str(item.product.branch.id) != str(bill.branch.id):
+                        error_msg = f'Product {item.product.name} does not belong to this branch'
+                        print(f"[CHECKOUT] Error: {error_msg} (Bill branch: {bill.branch.id if bill.branch else None}, Product branch: {item.product.branch.id if item.product.branch else None})")
+                        return jsonify({'error': error_msg}), 400
+
                     # Validate stock availability before reducing
                     if item.product.stock_quantity is not None:
                         if item.product.stock_quantity < quantity_needed:
-                            return jsonify({
-                                'error': f'Insufficient stock for product: {item.product.name}. Available: {item.product.stock_quantity}, Required: {quantity_needed}'
-                            }), 400
-                        
+                            error_msg = f'Insufficient stock for product: {item.product.name}. Available: {item.product.stock_quantity}, Required: {quantity_needed}'
+                            print(f"[CHECKOUT] Error: {error_msg}")
+                            return jsonify({'error': error_msg}), 400
+
                         # Store product and quantity for batch update
                         products_to_update.append({
                             'product': item.product,
                             'quantity': quantity_needed
                         })
-            
+
             # Reduce stock for all products (atomic operation - all or nothing)
             for product_update in products_to_update:
                 product_update['product'].stock_quantity -= product_update['quantity']
@@ -607,15 +696,21 @@ def checkout_bill(id):
 
         bill.save()
 
+        print(f"[CHECKOUT] Success: Bill {id} checked out successfully. Final amount: {bill.final_amount}")
         return jsonify({
             'message': 'Checkout completed successfully',
             'bill_number': bill.bill_number,
             'final_amount': bill.final_amount
         })
     except Bill.DoesNotExist:
+        print(f"[CHECKOUT] Error: Bill {id} not found")
         return jsonify({'error': 'Bill not found'}), 404
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        error_msg = str(e)
+        print(f"[CHECKOUT] Error: Exception during checkout for bill {id}: {error_msg}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': error_msg}), 500
 
 @bill_bp.route('/bills/<id>', methods=['PUT'])
 def update_bill(id):
@@ -662,12 +757,20 @@ def delete_bill(id):
         bill.deletion_reason = data.get('deletion_reason', '')
         bill.updated_at = datetime.utcnow()
 
-        # Restore product stock
-        for item in bill.items:
-            if item.item_type == 'product' and item.product:
-                item.product.reload()
-                item.product.stock_quantity += item.quantity
-                item.product.save()
+        # Restore product stock - only for products from bill's branch
+        if bill.branch:
+            for item in bill.items:
+                if item.item_type == 'product' and item.product:
+                    try:
+                        item.product.reload()
+                        # Verify product belongs to bill's branch before restoring stock
+                        if item.product.branch and str(item.product.branch.id) == str(bill.branch.id):
+                            item.product.stock_quantity += item.quantity
+                            item.product.save()
+                    except Exception as e:
+                        # Skip products that can't be restored (deleted, etc.)
+                        print(f"Warning: Could not restore stock for product {getattr(item.product, 'id', 'unknown')}: {e}")
+                        continue
 
         bill.save()
 

@@ -28,16 +28,23 @@ def generate_referral_code(first_name):
 @customer_bp.route('/', methods=['GET'])
 @require_auth
 def get_customers(current_user=None):
-    """Get all customers with optional search"""
+    """Get all customers with optional search and branch filtering"""
     search = request.args.get('search', '')
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
     
     # Get branch for filtering
+    # If branch is selected (via X-Branch-Id header), filter by that branch
+    # If no branch is selected (Owner without branch selection), show all customers
     branch = get_selected_branch(request, current_user)
     query = Customer.objects
+    
+    # Only filter by branch if a branch is explicitly selected
+    # This allows Owners to see all customers when no branch is selected
     if branch:
         query = query.filter(branch=branch)
+    # If no branch is selected, show all customers (for Owners viewing all branches)
+    # Note: This is intentional - Owners can see all customers when no branch filter is applied
     
     if search:
         query = query.filter(
@@ -45,6 +52,9 @@ def get_customers(current_user=None):
             Q(first_name__icontains=search) |
             Q(last_name__icontains=search)
         )
+    
+    # Apply sorting for consistent pagination
+    query = query.order_by('-created_at')
     
     total = query.count()
     # Force evaluation by converting to list
@@ -151,6 +161,11 @@ def create_customer(current_user=None):
     try:
         data = request.json
         
+        # Debug logging
+        print(f"[CUSTOMER CREATE] Data received: {data}")
+        print(f"[CUSTOMER CREATE] Current user: {current_user}")
+        print(f"[CUSTOMER CREATE] X-Branch-Id header: {request.headers.get('X-Branch-Id')}")
+        
         if not data:
             response = jsonify({'error': 'No data provided'})
             response.headers.add('Access-Control-Allow-Origin', '*')
@@ -160,23 +175,31 @@ def create_customer(current_user=None):
         if not data.get('mobile'):
             response = jsonify({'error': 'Mobile number is required'})
             response.headers.add('Access-Control-Allow-Origin', '*')
+            print(f"[CUSTOMER CREATE] Error: Mobile number is required")
             return response, 400
         if not data.get('firstName'):
             response = jsonify({'error': 'First name is required'})
             response.headers.add('Access-Control-Allow-Origin', '*')
+            print(f"[CUSTOMER CREATE] Error: First name is required")
             return response, 400
         
         # Get branch for assignment
         branch = get_selected_branch(request, current_user)
         if not branch:
-            response = jsonify({'error': 'Branch is required'})
+            error_msg = 'Branch is required. Please ensure you have selected a branch or your user has a branch assigned.'
+            response = jsonify({'error': error_msg})
             response.headers.add('Access-Control-Allow-Origin', '*')
+            print(f"[CUSTOMER CREATE] Error: {error_msg}")
             return response, 400
+        
+        print(f"[CUSTOMER CREATE] Branch found: {branch.id} - {branch.name}")
         
         # Check if mobile already exists in this branch
         existing = Customer.objects(mobile=data.get('mobile'), branch=branch).first()
         if existing:
-            response = jsonify({'error': 'Customer with this mobile number already exists in this branch'})
+            error_msg = f'Customer with mobile number {data.get("mobile")} already exists in this branch (Customer: {existing.first_name} {existing.last_name})'
+            print(f"[CUSTOMER CREATE] Error: {error_msg}")
+            response = jsonify({'error': error_msg})
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 400
         
@@ -204,11 +227,16 @@ def create_customer(current_user=None):
         )
         customer.save()
         
+        print(f"[CUSTOMER CREATE] Success: Customer created with ID {customer.id} - {customer.first_name} {customer.last_name}")
         response = jsonify({'id': str(customer.id), 'message': 'Customer created successfully'})
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 201
     except Exception as e:
-        response = jsonify({'error': str(e)})
+        error_msg = str(e)
+        print(f"[CUSTOMER CREATE] Unexpected error: {error_msg}")
+        import traceback
+        traceback.print_exc()
+        response = jsonify({'error': error_msg})
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 500
 

@@ -41,7 +41,21 @@ def get_staffs(current_user=None):
             from mongoengine import Q
             query = query.filter(Q(status='active') | Q(status__exists=False))
         
-        permanent_staffs = list(query.order_by('first_name', 'last_name'))
+        # Get pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 20, type=int), 100)
+        sort_by = request.args.get('sort_by', 'first_name')
+        sort_order = request.args.get('sort_order', 'asc')
+        
+        # Apply sorting to permanent staff query
+        if sort_by in ['first_name', 'last_name']:
+            order_field = f"{sort_by},{'last_name' if sort_by == 'first_name' else 'first_name'}"
+            if sort_order == 'desc':
+                order_field = f"-{order_field}"
+        else:
+            order_field = f"-{sort_by}" if sort_order == 'desc' else sort_by
+        
+        permanent_staffs = list(query.order_by(order_field))
         
         # Get temp-assigned staff for this branch (currently active) - force evaluation
         temp_assigned_staffs = []
@@ -102,8 +116,20 @@ def get_staffs(current_user=None):
                 'assignmentId': item['assignment_id']
             })
         
+        # Apply pagination to combined list
+        total = len(staff_list)
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_staff_list = staff_list[start_idx:end_idx]
+        
         response = jsonify({
-            'staffs': staff_list
+            'staffs': paginated_staff_list,
+            'pagination': {
+                'total': total,
+                'page': page,
+                'per_page': per_page,
+                'pages': (total + per_page - 1) // per_page if per_page > 0 else 0
+            }
         })
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response

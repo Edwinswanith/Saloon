@@ -309,6 +309,8 @@
 
   .search-input {
     max-width: 100%;
+    font-size: 16px;
+    min-height: 44px;
   }
 
   .add-supplier-btn {

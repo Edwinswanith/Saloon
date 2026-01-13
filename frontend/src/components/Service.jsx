@@ -79,10 +79,19 @@ const Service = () => {
     try {
       setLoading(true)
       const response = await apiGet('/api/services/groups')
-      const data = await response.json()
-      setServiceGroups(data.groups || [])
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const responseData = await response.json()
+      console.log('[Service] Service groups API response:', responseData)
+      
+      // Backend returns {groups: [...]} format
+      const groupsList = responseData.groups || (Array.isArray(responseData) ? responseData : [])
+      setServiceGroups(groupsList)
+      console.log('[Service] Service groups loaded:', groupsList.length)
     } catch (error) {
-      console.error('Error fetching service groups:', error)
+      console.error('[Service] Error fetching service groups:', error)
+      setServiceGroups([])
     } finally {
       setLoading(false)
     }
@@ -91,13 +100,26 @@ const Service = () => {
   const fetchServicesForGroup = async (groupId) => {
     try {
       const response = await apiGet(`/api/services?group_id=${groupId}`)
-      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const responseData = await response.json()
+      console.log(`[Service] Services for group ${groupId} response:`, responseData)
+      
+      // Backend returns {data: [...], pagination: {...}}
+      const servicesList = responseData.data || (Array.isArray(responseData) ? responseData : (responseData.services || []))
+      console.log(`[Service] Loaded ${servicesList.length} services for group ${groupId}`)
+      
       setServicesByGroup((prev) => ({
         ...prev,
-        [groupId]: data.services || [],
+        [groupId]: servicesList,
       }))
     } catch (error) {
-      console.error('Error fetching services:', error)
+      console.error(`[Service] Error fetching services for group ${groupId}:`, error)
+      setServicesByGroup((prev) => ({
+        ...prev,
+        [groupId]: [],
+      }))
     }
   }
 

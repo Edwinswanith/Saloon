@@ -259,11 +259,41 @@
   }
 
   .table-container {
-    overflow-x: scroll;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .staff-summary-table {
-    min-width: 600px;
+    min-width: 800px;
+    font-size: 12px;
+  }
+
+  .staff-summary-table th,
+  .staff-summary-table td {
+    padding: 10px 12px;
+  }
+
+  .back-button,
+  .filter-dropdown {
+    width: 100%;
+    min-height: 44px;
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .staff-combined-report-container {
+    padding: 12px;
+  }
+
+  .staff-summary-table {
+    min-width: 700px;
+    font-size: 11px;
+  }
+
+  .staff-summary-table th,
+  .staff-summary-table td {
+    padding: 8px 10px;
   }
 }
 

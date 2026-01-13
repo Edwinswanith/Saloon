@@ -3,7 +3,7 @@ PROJECT_ID=legel-assistent-466812
 REPOSITORY_NAME=saloon
 REGION=europe-west2
 IMAGE_NAME=saloon-management-system
-IMAGE_TAG=v04
+IMAGE_TAG=v05
 SERVICE_NAME=saloon-management-system
 
 # Authenticate with Google Cloud

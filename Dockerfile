@@ -38,6 +38,9 @@ COPY backend/ ./
 # Copy built frontend from stage 1
 COPY --from=frontend-build /app/frontend/dist ./static
 
+# Copy logo directory to static folder so it's accessible at /logo/
+COPY --from=frontend-build /app/frontend/logo ./static/logo
+
 # Create instance directory for SQLite database
 RUN mkdir -p instance
 

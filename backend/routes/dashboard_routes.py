@@ -3,9 +3,13 @@ from models import Bill, Customer, Staff, Expense, Product, Appointment, Lead, F
 from datetime import datetime, timedelta, date
 from mongoengine import Q
 from mongoengine.errors import DoesNotExist
+from bson import ObjectId
+import traceback
 from utils.auth import require_auth
 from utils.branch_filter import get_selected_branch, filter_by_branch
 from utils.date_utils import get_ist_date_range, ist_to_utc_start, ist_to_utc_end, get_ist_today
+from utils.cache import cache_response
+from utils.performance import log_performance
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
@@ -22,10 +26,40 @@ def _safe_int(value, default=0):
     except (TypeError, ValueError):
         return default
 
+def get_safe_customer_info(customer_ref):
+    """Safely extract customer info, handling deleted references"""
+    if not customer_ref:
+        return {'name': 'Walk-in', 'mobile': None, 'id': None, 'source': None, 'email': None}
+    
+    try:
+        # Try to reload if it's a DBRef
+        if hasattr(customer_ref, 'reload'):
+            try:
+                customer_ref.reload()
+            except:
+                # Customer deleted, return default
+                return {'name': 'Walk-in', 'mobile': None, 'id': None, 'source': None, 'email': None}
+        
+        # Check if customer has required attributes
+        if hasattr(customer_ref, 'first_name'):
+            return {
+                'name': f"{customer_ref.first_name or ''} {customer_ref.last_name or ''}".strip() or 'Walk-in',
+                'mobile': getattr(customer_ref, 'mobile', None),
+                'id': str(customer_ref.id) if hasattr(customer_ref, 'id') else None,
+                'source': getattr(customer_ref, 'source', None),
+                'email': getattr(customer_ref, 'email', None)
+            }
+    except Exception:
+        pass
+    
+    return {'name': 'Walk-in', 'mobile': None, 'id': None, 'source': None, 'email': None}
+
 @dashboard_bp.route('/stats', methods=['GET'])
 @require_auth
+@cache_response(ttl=300)  # Cache for 5 minutes
+@log_performance
 def get_dashboard_stats(current_user=None):
-    """Get overall dashboard statistics"""
+    """Get overall dashboard statistics - OPTIMIZED with MongoDB aggregation"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
@@ -43,48 +77,97 @@ def get_dashboard_stats(current_user=None):
 
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
-        
-        # Total revenue from bills - force evaluation by converting to list
-        bills_query = Bill.objects(
-            is_deleted=False,
-            bill_date__gte=start,
-            bill_date__lte=end
-        )
-        if branch:
-            bills_query = bills_query.filter(branch=branch)
-        bills = list(bills_query)  # Force evaluation
-        total_revenue = sum([float(b.final_amount) for b in bills]) if bills else 0.0
 
-        # Total transactions (bills)
-        total_transactions = len(bills)
+        # OPTIMIZED: Use MongoDB aggregation for bills stats instead of loading all into memory
+        try:
+            match_stage = {
+                "is_deleted": False,
+                "bill_date": {"$gte": start, "$lte": end}
+            }
+            if branch:
+                # Convert branch.id to ObjectId for MongoDB aggregation
+                match_stage["branch"] = ObjectId(str(branch.id))
 
-        # Total expenses - force evaluation by converting to list
-        # Note: expense_date is a DateField, so we use IST dates directly
-        # Convert IST date strings to date objects for DateField filtering
+            bills_pipeline = [
+                {"$match": match_stage},
+                {"$group": {
+                    "_id": None,
+                    "total_revenue": {"$sum": "$final_amount"},
+                    "total_transactions": {"$sum": 1},
+                    "total_tax": {"$sum": {"$ifNull": ["$tax_amount", 0]}},
+                    "deleted_count": {"$sum": {"$cond": ["$is_deleted", 1, 0]}},
+                    "deleted_amount": {"$sum": {"$cond": ["$is_deleted", "$final_amount", 0]}}
+                }}
+            ]
+
+            bills_result = list(Bill.objects.aggregate(bills_pipeline))
+            if bills_result:
+                total_revenue = bills_result[0].get('total_revenue', 0) or 0
+                total_transactions = bills_result[0].get('total_transactions', 0)
+                total_tax = bills_result[0].get('total_tax', 0) or 0
+                deleted_bills_count = bills_result[0].get('deleted_count', 0) or 0
+                deleted_bills_amount = bills_result[0].get('deleted_amount', 0) or 0
+            else:
+                total_revenue = 0
+                total_transactions = 0
+                total_tax = 0
+                deleted_bills_count = 0
+                deleted_bills_amount = 0
+        except Exception as e:
+            print(f"[DASHBOARD STATS] Error in bills aggregation: {str(e)}")
+            print(f"[DASHBOARD STATS] Traceback: {traceback.format_exc()}")
+            # Set defaults on error
+            total_revenue = 0
+            total_transactions = 0
+            total_tax = 0
+            deleted_bills_count = 0
+            deleted_bills_amount = 0
+
+        avg_bill_value = float(total_revenue) / int(total_transactions) if total_transactions > 0 else 0.0
+
+        # Convert dates for use in queries (date objects for MongoEngine queries, datetime for aggregation)
         ist_start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
         ist_end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
-        expenses_query = Expense.objects(
-            expense_date__gte=ist_start_date,
-            expense_date__lte=ist_end_date
-        )
-        if branch:
-            expenses_query = expenses_query.filter(branch=branch)
-        expenses = list(expenses_query)  # Force evaluation
-        total_expenses = sum([float(e.amount) for e in expenses]) if expenses else 0.0
+
+        # OPTIMIZED: Use aggregation for expenses
+        try:
+            # Convert to datetime (not date) for MongoDB aggregation
+            ist_start_datetime = datetime.strptime(start_date, '%Y-%m-%d')
+            ist_end_datetime = datetime.strptime(end_date, '%Y-%m-%d')
+            # Set end datetime to end of day
+            ist_end_datetime = ist_end_datetime.replace(hour=23, minute=59, second=59)
+
+            expenses_match = {
+                "expense_date": {"$gte": ist_start_datetime, "$lte": ist_end_datetime}
+            }
+            if branch:
+                # Convert branch.id to ObjectId for MongoDB aggregation
+                expenses_match["branch"] = ObjectId(str(branch.id))
+
+            expenses_pipeline = [
+                {"$match": expenses_match},
+                {"$group": {
+                    "_id": None,
+                    "total_expenses": {"$sum": "$amount"}
+                }}
+            ]
+
+            expenses_result = list(Expense.objects.aggregate(expenses_pipeline))
+            total_expenses = expenses_result[0].get('total_expenses', 0) if expenses_result else 0
+        except Exception as e:
+            print(f"[DASHBOARD STATS] Error in expenses aggregation: {str(e)}")
+            print(f"[DASHBOARD STATS] Traceback: {traceback.format_exc()}")
+            total_expenses = 0
 
         # Net profit
         net_profit = float(total_revenue) - float(total_expenses)
 
-        # Average bill value
-        avg_bill_value = float(total_revenue) / int(total_transactions) if total_transactions > 0 else 0.0
-
-        # Total customers
+        # Use .count() for other stats (efficient with indexes)
         customers_query = Customer.objects
         if branch:
             customers_query = customers_query.filter(branch=branch)
         total_customers = customers_query.count()
 
-        # New customers in period - ensure end includes full day
         new_customers_query = Customer.objects(
             created_at__gte=start,
             created_at__lte=end
@@ -93,24 +176,28 @@ def get_dashboard_stats(current_user=None):
             new_customers_query = new_customers_query.filter(branch=branch)
         new_customers = new_customers_query.count()
 
-        # Total staff
         staff_query = Staff.objects(status='active')
         if branch:
             staff_query = staff_query.filter(branch=branch)
         active_staff = staff_query.count()
 
-        # Appointments stats
-        # Note: appointment_date is a DateField, so we use IST dates directly
-        total_appointments = Appointment.objects(
+        # Appointments stats with branch filter
+        appt_query = Appointment.objects(
             appointment_date__gte=ist_start_date,
             appointment_date__lte=ist_end_date
-        ).count()
+        )
+        if branch:
+            appt_query = appt_query.filter(branch=branch)
+        total_appointments = appt_query.count()
 
-        completed_appointments = Appointment.objects(
+        completed_appt_query = Appointment.objects(
             appointment_date__gte=ist_start_date,
             appointment_date__lte=ist_end_date,
             status='completed'
-        ).count()
+        )
+        if branch:
+            completed_appt_query = completed_appt_query.filter(branch=branch)
+        completed_appointments = completed_appt_query.count()
 
         return jsonify({
             'date_range': {
@@ -123,6 +210,13 @@ def get_dashboard_stats(current_user=None):
             },
             'transactions': {
                 'total': total_transactions
+            },
+            'tax': {
+                'total': round(total_tax, 2)
+            },
+            'deleted_bills': {
+                'count': deleted_bills_count,
+                'amount': round(deleted_bills_amount, 2)
             },
             'expenses': {
                 'total': round(total_expenses, 2)
@@ -145,12 +239,17 @@ def get_dashboard_stats(current_user=None):
             }
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        error_trace = traceback.format_exc()
+        print(f"[DASHBOARD STATS] Error in get_dashboard_stats: {str(e)}")
+        print(f"[DASHBOARD STATS] Traceback: {error_trace}")
+        return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/staff-performance', methods=['GET'])
 @require_auth
+@cache_response(ttl=300)  # Cache for 5 minutes
+@log_performance
 def get_staff_performance(current_user=None):
-    """Get staff performance metrics (filtered by selected branch)"""
+    """Get staff performance metrics - OPTIMIZED with single aggregation"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
@@ -164,144 +263,235 @@ def get_staff_performance(current_user=None):
 
         start = datetime.strptime(start_date, '%Y-%m-%d')
         end = datetime.strptime(end_date, '%Y-%m-%d')
-        # Set end to end of day to include all data from the end date
         end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
 
-        # Get branch for filtering
         branch = get_selected_branch(request, current_user)
-        
-        # Get staff filtered by branch - force evaluation
-        staff_list = list(filter_by_branch(Staff.objects(status='active'), branch))
 
+        # OPTIMIZED: Single aggregation for all staff performance
+        match_stage = {
+            "is_deleted": False,
+            "bill_date": {"$gte": start, "$lte": end}
+        }
+        if branch:
+            # Convert branch.id to ObjectId for MongoDB aggregation
+            match_stage["branch"] = ObjectId(str(branch.id))
+
+        pipeline = [
+            {"$match": match_stage},
+            {"$unwind": "$items"},
+            {"$match": {"items.staff": {"$ne": None}}},
+            {"$group": {
+                "_id": "$items.staff",
+                "total_revenue": {"$sum": {"$ifNull": ["$items.total", 0]}},
+                "total_services": {"$sum": {"$ifNull": ["$items.quantity", 1]}},
+                "service_count": {
+                    "$sum": {"$cond": [
+                        {"$eq": [{"$ifNull": ["$items.item_type", "service"]}, "service"]},
+                        {"$ifNull": ["$items.quantity", 1]}, 0
+                    ]}
+                },
+                "package_count": {
+                    "$sum": {"$cond": [
+                        {"$eq": ["$items.item_type", "package"]},
+                        {"$ifNull": ["$items.quantity", 1]}, 0
+                    ]}
+                },
+                "product_count": {
+                    "$sum": {"$cond": [
+                        {"$eq": ["$items.item_type", "product"]},
+                        {"$ifNull": ["$items.quantity", 1]}, 0
+                    ]}
+                },
+                "prepaid_count": {
+                    "$sum": {"$cond": [
+                        {"$eq": ["$items.item_type", "prepaid"]},
+                        {"$ifNull": ["$items.quantity", 1]}, 0
+                    ]}
+                },
+                "membership_count": {
+                    "$sum": {"$cond": [
+                        {"$eq": ["$items.item_type", "membership"]},
+                        {"$ifNull": ["$items.quantity", 1]}, 0
+                    ]}
+                }
+            }},
+            {"$lookup": {
+                "from": "staffs",
+                "localField": "_id",
+                "foreignField": "_id",
+                "as": "staff_doc"
+            }},
+            {"$unwind": {"path": "$staff_doc", "preserveNullAndEmptyArrays": True}},
+            {"$match": {"staff_doc.status": "active"}},
+            {"$project": {
+                "staff_id": {"$toString": "$_id"},
+                "staff_name": {
+                    "$concat": [
+                        {"$ifNull": ["$staff_doc.first_name", ""]},
+                        " ",
+                        {"$ifNull": ["$staff_doc.last_name", ""]}
+                    ]
+                },
+                "total_revenue": {"$round": ["$total_revenue", 2]},
+                "total_services": 1,
+                "service_count": 1,
+                "package_count": 1,
+                "product_count": 1,
+                "prepaid_count": 1,
+                "membership_count": 1,
+                "commission_rate": {"$ifNull": ["$staff_doc.commission_rate", 0]}
+            }},
+            {"$addFields": {
+                "commission_earned": {
+                    "$round": [{"$multiply": ["$total_revenue", {"$divide": ["$commission_rate", 100]}]}, 2]
+                }
+            }},
+            {"$sort": {"total_revenue": -1}},
+            {"$limit": 50}
+        ]
+
+        performance_results = list(Bill.objects.aggregate(pipeline))
+
+        # Get staff IDs from aggregation results for appointment counts
+        staff_ids = [r.get('_id') for r in performance_results if r.get('_id')]
+
+        # Batch fetch appointment counts for all staff
+        appt_counts = {}
+        if staff_ids:
+            # Convert to datetime for MongoDB aggregation (even though appointment_date is a DateField)
+            # MongoDB aggregation cannot encode Python date objects
+            appt_start_datetime = start.replace(hour=0, minute=0, second=0, microsecond=0)
+            appt_end_datetime = end.replace(hour=23, minute=59, second=59, microsecond=999999)
+            appt_pipeline = [
+                {"$match": {
+                    "staff": {"$in": staff_ids},
+                    "appointment_date": {"$gte": appt_start_datetime, "$lte": appt_end_datetime},
+                    "status": "completed"
+                }},
+                {"$group": {
+                    "_id": "$staff",
+                    "count": {"$sum": 1}
+                }}
+            ]
+            appt_results = list(Appointment.objects.aggregate(appt_pipeline))
+            appt_counts = {str(r['_id']): r['count'] for r in appt_results}
+
+        # Format final response
         performance = []
-        for staff in staff_list:
-            # Get bills with items served by this staff (filtered by branch) - force evaluation
-            bills = list(filter_by_branch(Bill.objects(
-                is_deleted=False,
-                bill_date__gte=start,
-                bill_date__lte=end
-            ), branch))
-            
-            total_revenue = 0.0
-            total_services = 0
-            service_count = 0
-            package_count = 0
-            product_count = 0
-            prepaid_count = 0
-            membership_count = 0
-            
-            for bill in bills:
-                for item in bill.items:
-                    if item.staff and str(item.staff.id) == str(staff.id):
-                        item_type = item.item_type or 'service'
-                        quantity = item.quantity if item.quantity else 1
-                        total_revenue += float(item.total) if item.total else 0.0
-                        total_services += quantity
-                        
-                        # Count by item type
-                        if item_type == 'service':
-                            service_count += quantity
-                        elif item_type == 'package':
-                            package_count += quantity
-                        elif item_type == 'product':
-                            product_count += quantity
-                        elif item_type == 'prepaid':
-                            prepaid_count += quantity
-                        elif item_type == 'membership':
-                            membership_count += quantity
-
-            # Calculate commission
-            commission = total_revenue * (staff.commission_rate / 100) if staff.commission_rate else 0
-
-            # Get appointments completed
-            completed_appointments = Appointment.objects(
-                staff=staff,
-                appointment_date__gte=start.date(),
-                appointment_date__lte=end.date(),
-                status='completed'
-            ).count()
-
+        for r in performance_results:
+            staff_id = r.get('staff_id', '')
             performance.append({
-                'staff_id': str(staff.id),
-                'staff_name': f"{staff.first_name} {staff.last_name}",
-                'total_revenue': round(total_revenue, 2),
-                'total_services': total_services,
-                'service_count': service_count,
-                'package_count': package_count,
-                'product_count': product_count,
-                'prepaid_count': prepaid_count,
-                'membership_count': membership_count,
-                'commission_earned': round(commission, 2),
-                'completed_appointments': completed_appointments
+                'staff_id': staff_id,
+                'staff_name': r.get('staff_name', '').strip(),
+                'total_revenue': r.get('total_revenue', 0),
+                'total_services': r.get('total_services', 0),
+                'service_count': r.get('service_count', 0),
+                'package_count': r.get('package_count', 0),
+                'product_count': r.get('product_count', 0),
+                'prepaid_count': r.get('prepaid_count', 0),
+                'membership_count': r.get('membership_count', 0),
+                'commission_earned': r.get('commission_earned', 0),
+                'completed_appointments': appt_counts.get(staff_id, 0)
             })
-
-        # Sort by revenue
-        performance.sort(key=lambda x: x['total_revenue'], reverse=True)
 
         return jsonify(performance)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        error_trace = traceback.format_exc()
+        print(f"[DASHBOARD STATS] Error in get_staff_performance: {str(e)}")
+        print(f"[DASHBOARD STATS] Traceback: {error_trace}")
+        return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/top-customers', methods=['GET'])
 @require_auth
+@cache_response(ttl=300)  # Cache for 5 minutes
+@log_performance
 def get_top_customers(current_user=None):
-    """Get top 10 customers by revenue"""
+    """Get top customers by revenue - OPTIMIZED with aggregation"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         limit = request.args.get('limit', 10, type=int)
 
-        # Get branch for filtering
         branch = get_selected_branch(request, current_user)
-        
-        # Get bills in date range - convert IST dates to UTC for filtering
-        bills_query = Bill.objects(is_deleted=False)
+
+        # Build match stage
+        match_stage = {"is_deleted": False, "customer": {"$ne": None}}
         if start_date or end_date:
             start, end = get_ist_date_range(start_date, end_date)
             if start:
-                bills_query = bills_query.filter(bill_date__gte=start)
+                match_stage["bill_date"] = {"$gte": start}
             if end:
-                bills_query = bills_query.filter(bill_date__lte=end)
-        
-        # Apply branch filter
+                match_stage.setdefault("bill_date", {})["$lte"] = end
         if branch:
-            bills_query = bills_query.filter(branch=branch)
-        
-        # Force evaluation by converting to list
-        bills = list(bills_query)
-        
-        # Group by customer
-        customer_stats = {}
-        for bill in bills:
-            if bill.customer:
-                customer_id = str(bill.customer.id)
-                if customer_id not in customer_stats:
-                    customer_stats[customer_id] = {
-                        'customer': bill.customer,
-                        'total_spent': 0.0,
-                        'visit_count': 0
+            # Convert branch.id to ObjectId for MongoDB aggregation
+            match_stage["branch"] = ObjectId(str(branch.id))
+
+        # OPTIMIZED: Single aggregation pipeline
+        pipeline = [
+            {"$match": match_stage},
+            {"$group": {
+                "_id": "$customer",
+                "total_spent": {"$sum": {"$ifNull": ["$final_amount", 0]}},
+                "visit_count": {"$sum": 1}
+            }},
+            {"$lookup": {
+                "from": "customers",
+                "localField": "_id",
+                "foreignField": "_id",
+                "as": "customer_doc"
+            }},
+            {"$unwind": "$customer_doc"},
+            {"$project": {
+                "customer_id": {"$toString": "$_id"},
+                "customer_name": {
+                    "$trim": {
+                        "input": {
+                            "$concat": [
+                                {"$ifNull": ["$customer_doc.first_name", ""]},
+                                " ",
+                                {"$ifNull": ["$customer_doc.last_name", ""]}
+                            ]
+                        }
                     }
-                customer_stats[customer_id]['total_spent'] += float(bill.final_amount) if bill.final_amount else 0.0
-                customer_stats[customer_id]['visit_count'] += 1
-        
-        # Convert to list and sort
-        results = sorted(customer_stats.values(), key=lambda x: x['total_spent'], reverse=True)[:limit]
-        
-        return jsonify([{
-            'customer_id': str(r['customer'].id),
-            'customer_name': f"{r['customer'].first_name} {r['customer'].last_name}",
-            'mobile': r['customer'].mobile,
-            'total_spent': round(r['total_spent'], 2),
-            'visit_count': r['visit_count'],
-            'average_per_visit': round(r['total_spent'] / r['visit_count'], 2) if r['visit_count'] > 0 else 0
-        } for r in results])
+                },
+                "mobile": "$customer_doc.mobile",
+                "total_spent": {"$round": ["$total_spent", 2]},
+                "visit_count": 1,
+                "average_per_visit": {
+                    "$round": [{"$divide": ["$total_spent", "$visit_count"]}, 2]
+                }
+            }},
+            {"$sort": {"total_spent": -1}},
+            {"$limit": limit}
+        ]
+
+        results = list(Bill.objects.aggregate(pipeline))
+
+        # Format response
+        formatted_results = []
+        for r in results:
+            formatted_results.append({
+                'customer_id': r.get('customer_id', ''),
+                'customer_name': r.get('customer_name', 'Walk-in').strip() or 'Walk-in',
+                'mobile': r.get('mobile'),
+                'total_spent': r.get('total_spent', 0),
+                'visit_count': r.get('visit_count', 0),
+                'average_per_visit': r.get('average_per_visit', 0)
+            })
+
+        return jsonify(formatted_results)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        error_trace = traceback.format_exc()
+        print(f"[DASHBOARD STATS] Error in get_staff_performance: {str(e)}")
+        print(f"[DASHBOARD STATS] Traceback: {error_trace}")
+        return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/top-offerings', methods=['GET'])
 @require_auth
+@cache_response(ttl=300)  # Cache for 5 minutes
+@log_performance
 def get_top_offerings(current_user=None):
-    """Get top 10 services/products by revenue"""
+    """Get top services/products/packages by revenue - OPTIMIZED with aggregation"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
@@ -310,175 +500,105 @@ def get_top_offerings(current_user=None):
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         
-        # Get bills in date range - convert IST dates to UTC for filtering
-        bills_query = Bill.objects(is_deleted=False)
+        # Build match stage
+        match_stage = {"is_deleted": False}
         if start_date or end_date:
             start, end = get_ist_date_range(start_date, end_date)
             if start:
-                bills_query = bills_query.filter(bill_date__gte=start)
+                match_stage["bill_date"] = {"$gte": start}
             if end:
-                bills_query = bills_query.filter(bill_date__lte=end)
-        
-        # Apply branch filter
+                match_stage.setdefault("bill_date", {})["$lte"] = end
         if branch:
-            bills_query = bills_query.filter(branch=branch)
+            # Convert branch.id to ObjectId for MongoDB aggregation
+            match_stage["branch"] = ObjectId(str(branch.id))
         
-        # Force evaluation by converting to list
-        bills = list(bills_query)
-
-        # Group by service/product/package
-        offerings = {}
-        from models import Service, Product, Package
-        
-        for bill in bills:
-            for item in (bill.items or []):
-                try:
-                    item_type = getattr(item, 'item_type', None)
-                    if not item_type or item_type not in ['service', 'product', 'package']:
-                        continue
-                    
-                    key = None
-                    name = None
-                    item_id = None
-
-                    if item_type == 'service' and hasattr(item, 'service') and item.service:
-                        try:
-                            # Get service ID first
-                            service_ref = item.service
-                            if hasattr(service_ref, 'id'):
-                                item_id = str(service_ref.id)
-                            elif isinstance(service_ref, str):
-                                item_id = service_ref
-                            else:
-                                continue
-                            
-                            # Try to reload if it's a DBRef
-                            if hasattr(service_ref, 'reload'):
-                                try:
-                                    service_ref.reload()
-                                    name = getattr(service_ref, 'name', None)
-                                except:
-                                    pass
-                            
-                            # If name not found, query Service collection directly
-                            if not name:
-                                try:
-                                    service_obj = Service.objects(id=item_id).first()
-                                    if service_obj:
-                                        name = getattr(service_obj, 'name', 'Service')
-                                    else:
-                                        continue
-                                except:
-                                    continue
-                            
-                            key = f"service_{item_id}"
-                        except (DoesNotExist, AttributeError, TypeError, ValueError) as e:
-                            print(f"Error accessing service {item_id}: {e}")
-                            continue
-                            
-                    elif item_type == 'product' and hasattr(item, 'product') and item.product:
-                        try:
-                            product_ref = item.product
-                            if hasattr(product_ref, 'id'):
-                                item_id = str(product_ref.id)
-                            elif isinstance(product_ref, str):
-                                item_id = product_ref
-                            else:
-                                continue
-                            
-                            if hasattr(product_ref, 'reload'):
-                                try:
-                                    product_ref.reload()
-                                    name = getattr(product_ref, 'name', None)
-                                except:
-                                    pass
-                            
-                            if not name:
-                                try:
-                                    product_obj = Product.objects(id=item_id).first()
-                                    if product_obj:
-                                        name = getattr(product_obj, 'name', 'Product')
-                                    else:
-                                        continue
-                                except:
-                                    continue
-                            
-                            key = f"product_{item_id}"
-                        except (DoesNotExist, AttributeError, TypeError, ValueError) as e:
-                            print(f"Error accessing product {item_id}: {e}")
-                            continue
-                            
-                    elif item_type == 'package' and hasattr(item, 'package') and item.package:
-                        try:
-                            package_ref = item.package
-                            if hasattr(package_ref, 'id'):
-                                item_id = str(package_ref.id)
-                            elif isinstance(package_ref, str):
-                                item_id = package_ref
-                            else:
-                                continue
-                            
-                            if hasattr(package_ref, 'reload'):
-                                try:
-                                    package_ref.reload()
-                                    name = getattr(package_ref, 'name', None)
-                                except:
-                                    pass
-                            
-                            if not name:
-                                try:
-                                    package_obj = Package.objects(id=item_id).first()
-                                    if package_obj:
-                                        name = getattr(package_obj, 'name', 'Package')
-                                    else:
-                                        continue
-                                except:
-                                    continue
-                            
-                            key = f"package_{item_id}"
-                        except (DoesNotExist, AttributeError, TypeError, ValueError) as e:
-                            print(f"Error accessing package {item_id}: {e}")
-                            continue
-
-                    if key and name:
-                        if key not in offerings:
-                            offerings[key] = {
-                                'name': name,
-                                'type': item_type,
-                                'revenue': 0.0,
-                                'quantity': 0
+        # OPTIMIZED: Use aggregation pipeline instead of loading all bills
+        pipeline = [
+            {"$match": match_stage},
+            {"$unwind": "$items"},
+            {"$match": {
+                "items.item_type": {"$in": ["service", "product", "package"]}
+            }},
+            {"$group": {
+                "_id": {
+                    "item_type": "$items.item_type",
+                    "item_id": {
+                        "$cond": [
+                            {"$eq": ["$items.item_type", "service"]},
+                            "$items.service",
+                            {
+                                "$cond": [
+                                    {"$eq": ["$items.item_type", "product"]},
+                                    "$items.product",
+                                    "$items.package"
+                                ]
                             }
-
-                        offerings[key]['revenue'] += _safe_float(item.total)
-                        offerings[key]['quantity'] += _safe_int(item.quantity)
-                except (DoesNotExist, AttributeError, TypeError, ValueError) as e:
-                    print(f"Error processing bill item: {e}")
-                    continue
-
-        # Convert to list and sort
-        top_offerings = sorted(offerings.values(), key=lambda x: x['revenue'], reverse=True)[:limit]
-
-        # Include offering IDs for client lookup
+                        ]
+                    }
+                },
+                "revenue": {"$sum": {"$ifNull": ["$items.total", 0]}},
+                "quantity": {"$sum": {"$ifNull": ["$items.quantity", 1]}}
+            }},
+            {"$lookup": {
+                "from": "services",
+                "localField": "_id.item_id",
+                "foreignField": "_id",
+                "as": "service_doc"
+            }},
+            {"$lookup": {
+                "from": "products",
+                "localField": "_id.item_id",
+                "foreignField": "_id",
+                "as": "product_doc"
+            }},
+            {"$lookup": {
+                "from": "packages",
+                "localField": "_id.item_id",
+                "foreignField": "_id",
+                "as": "package_doc"
+            }},
+            {"$project": {
+                "item_type": "$_id.item_type",
+                "name": {
+                    "$cond": [
+                        {"$eq": ["$_id.item_type", "service"]},
+                        {"$arrayElemAt": ["$service_doc.name", 0]},
+                        {
+                            "$cond": [
+                                {"$eq": ["$_id.item_type", "product"]},
+                                {"$arrayElemAt": ["$product_doc.name", 0]},
+                                {"$arrayElemAt": ["$package_doc.name", 0]}
+                            ]
+                        }
+                    ]
+                },
+                "revenue": {"$round": ["$revenue", 2]},
+                "quantity": 1
+            }},
+            {"$match": {"name": {"$ne": None}}},
+            {"$sort": {"revenue": -1}},
+            {"$limit": limit}
+        ]
+        
+        results = list(Bill.objects.aggregate(pipeline))
+        
+        # Format results
         result = []
-        for o in top_offerings:
-            # Find the offering ID from the original offerings dict
-            offering_key = None
-            for key, value in offerings.items():
-                if value['name'] == o['name'] and value['type'] == o['type']:
-                    offering_key = key
-                    break
-            
+        for r in results:
             result.append({
-                'name': o['name'],
-                'type': o['type'],
-                'revenue': round(o['revenue'], 2),
-                'quantity': o['quantity'],
-                'key': offering_key  # Store key for client lookup
+                'name': r.get('name', 'Unknown'),
+                'type': r.get('item_type', 'unknown'),
+                'revenue': r.get('revenue', 0),
+                'quantity': r.get('quantity', 0),
+                'key': f"{r.get('item_type', 'unknown')}_{r.get('_id', {}).get('item_id', '')}"
             })
         
         return jsonify(result)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        error_trace = traceback.format_exc()
+        print(f"[DASHBOARD STATS] Error in get_staff_performance: {str(e)}")
+        print(f"[DASHBOARD STATS] Traceback: {error_trace}")
+        return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/offering-clients', methods=['GET'])
 @require_auth
@@ -535,11 +655,12 @@ def get_offering_clients(current_user=None):
         customer_purchases = {}
         
         for bill in bills:
-            if not bill.customer:
+            customer_info = get_safe_customer_info(bill.customer)
+            if not customer_info['id']:
                 continue
                 
-            customer_id = str(bill.customer.id)
-            customer_name = f"{bill.customer.first_name or ''} {bill.customer.last_name or ''}".strip()
+            customer_id = customer_info['id']
+            customer_name = customer_info['name']
             
             for item in (bill.items or []):
                 try:
@@ -560,8 +681,8 @@ def get_offering_clients(current_user=None):
                             customer_purchases[customer_id] = {
                                 'customer_id': customer_id,
                                 'customer_name': customer_name or 'Unknown',
-                                'mobile': bill.customer.mobile or '-',
-                                'email': bill.customer.email or '-',
+                                'mobile': customer_info['mobile'] or '-',
+                                'email': customer_info['email'] or '-',
                                 'purchase_count': 0,
                                 'total_spent': 0.0,
                                 'last_purchase_date': None
@@ -600,7 +721,10 @@ def get_offering_clients(current_user=None):
             'total_clients': len(clients)
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        error_trace = traceback.format_exc()
+        print(f"[DASHBOARD STATS] Error in get_staff_performance: {str(e)}")
+        print(f"[DASHBOARD STATS] Traceback: {error_trace}")
+        return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/revenue-breakdown', methods=['GET'])
 @require_auth
@@ -662,7 +786,10 @@ def get_revenue_breakdown(current_user=None):
             'total': round(total, 2)
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        error_trace = traceback.format_exc()
+        print(f"[DASHBOARD STATS] Error in get_staff_performance: {str(e)}")
+        print(f"[DASHBOARD STATS] Traceback: {error_trace}")
+        return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/payment-distribution', methods=['GET'])
 @require_auth
@@ -720,7 +847,10 @@ def get_payment_distribution(current_user=None):
             'total': round(total, 2)
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        error_trace = traceback.format_exc()
+        print(f"[DASHBOARD STATS] Error in get_staff_performance: {str(e)}")
+        print(f"[DASHBOARD STATS] Traceback: {error_trace}")
+        return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/top-moving-items', methods=['GET'])
 @require_auth
@@ -933,7 +1063,10 @@ def get_top_moving_items(current_user=None):
             'products': products_list
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        error_trace = traceback.format_exc()
+        print(f"[DASHBOARD STATS] Error in get_staff_performance: {str(e)}")
+        print(f"[DASHBOARD STATS] Traceback: {error_trace}")
+        return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/client-funnel', methods=['GET'])
 @require_auth
@@ -990,8 +1123,9 @@ def get_client_funnel(current_user=None):
         bills_in_period = list(bills_query)
         customer_bill_count = {}
         for bill in bills_in_period:
-            if bill.customer:
-                customer_id = str(bill.customer.id)
+            customer_info = get_safe_customer_info(bill.customer)
+            if customer_info['id']:
+                customer_id = customer_info['id']
                 customer_bill_count[customer_id] = customer_bill_count.get(customer_id, 0) + 1
         returning_customers = len([cid for cid, count in customer_bill_count.items() if count > 1])
 
@@ -1013,7 +1147,10 @@ def get_client_funnel(current_user=None):
             }
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        error_trace = traceback.format_exc()
+        print(f"[DASHBOARD STATS] Error in get_staff_performance: {str(e)}")
+        print(f"[DASHBOARD STATS] Traceback: {error_trace}")
+        return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/client-source', methods=['GET'])
 @require_auth
@@ -1075,8 +1212,9 @@ def get_client_source(current_user=None):
         
         bills = list(bills_query)
         for bill in bills:
-            if bill.customer and bill.customer.source:
-                source = bill.customer.source
+            customer_info = get_safe_customer_info(bill.customer)
+            if customer_info['source']:
+                source = customer_info['source']
                 if source in source_stats:
                     source_stats[source]['revenue'] += float(bill.final_amount) if bill.final_amount else 0.0
         
@@ -1102,7 +1240,10 @@ def get_client_source(current_user=None):
             'total_revenue': round(total_revenue, 2)
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        error_trace = traceback.format_exc()
+        print(f"[DASHBOARD STATS] Error in get_staff_performance: {str(e)}")
+        print(f"[DASHBOARD STATS] Traceback: {error_trace}")
+        return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/alerts', methods=['GET'])
 @require_auth
@@ -1178,7 +1319,10 @@ def get_operational_alerts(current_user=None):
 
         return jsonify(alerts)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        error_trace = traceback.format_exc()
+        print(f"[DASHBOARD STATS] Error in get_staff_performance: {str(e)}")
+        print(f"[DASHBOARD STATS] Traceback: {error_trace}")
+        return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/top-performer', methods=['GET'])
 @require_auth
@@ -1356,8 +1500,9 @@ def get_top_performer(current_user=None):
                 customer_visits = {}
                 for bill in bills:
                     try:
-                        if bill.customer and hasattr(bill.customer, 'id'):
-                            customer_id = str(bill.customer.id)
+                        customer_info = get_safe_customer_info(bill.customer)
+                        if customer_info['id']:
+                            customer_id = customer_info['id']
                             # Check if this bill has items from this staff
                             has_staff_item = False
                             for item in (bill.items or []):
@@ -1411,6 +1556,187 @@ def get_top_performer(current_user=None):
     except Exception as e:
         import traceback
         error_trace = traceback.format_exc()
-        print(f"Error in get_top_performer: {str(e)}")
-        print(f"Traceback: {error_trace}")
+        print(f"[DASHBOARD] Error in get_top_performer: {str(e)}")
+        print(f"[DASHBOARD] Traceback: {error_trace}")
+        return jsonify({'error': str(e), 'traceback': error_trace}), 500
+
+@dashboard_bp.route('/staff-leaderboard', methods=['GET'])
+@require_auth
+@cache_response(ttl=300)  # Cache for 5 minutes
+@log_performance
+def get_staff_leaderboard(current_user=None):
+    """Get staff leaderboard (company-wide) - returns leaderboard using same logic as top-performer"""
+    try:
+        # Use same date range logic as top-performer
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+
+        if not start_date:
+            today_ist = get_ist_today()
+            start_date_obj = datetime.strptime(today_ist, '%Y-%m-%d') - timedelta(days=30)
+            start_date = start_date_obj.strftime('%Y-%m-%d')
+        if not end_date:
+            end_date = get_ist_today()
+
+        start = datetime.strptime(start_date, '%Y-%m-%d')
+        end = datetime.strptime(end_date, '%Y-%m-%d')
+        end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+        # Get ALL active staff (company-wide, not filtered by branch)
+        staff_list = list(Staff.objects(status='active'))
+        
+        if not staff_list:
+            return jsonify({'leaderboard': []})
+        
+        # Get ALL bills in date range (company-wide, not filtered by branch)
+        bills = list(Bill.objects(
+            is_deleted=False,
+            bill_date__gte=start,
+            bill_date__lte=end
+        ))
+        
+        def safe_get_staff_id(item_staff):
+            """Safely get staff ID from a staff reference"""
+            if not item_staff:
+                return None
+            try:
+                if hasattr(item_staff, 'id'):
+                    try:
+                        return str(item_staff.id)
+                    except (AttributeError, DoesNotExist):
+                        if hasattr(item_staff, 'pk'):
+                            return str(item_staff.pk)
+                        return None
+                elif isinstance(item_staff, str):
+                    return item_staff
+                elif hasattr(item_staff, '__str__'):
+                    try:
+                        return str(item_staff)
+                    except:
+                        return None
+            except (AttributeError, DoesNotExist, TypeError, ValueError):
+                return None
+            return None
+        
+        # Calculate max values for normalization (same as top-performer)
+        max_revenue = 0
+        max_services = 0
+        max_appts = 0
+        
+        for staff in staff_list:
+            try:
+                staff_id = str(staff.id)
+                revenue = 0
+                service_count = 0
+                for bill in bills:
+                    for item in (bill.items or []):
+                        try:
+                            item_staff_id = safe_get_staff_id(item.staff)
+                            if item_staff_id and item_staff_id == staff_id:
+                                revenue += float(item.total) if item.total else 0.0
+                                service_count += int(item.quantity) if item.quantity else 1
+                        except (AttributeError, TypeError, ValueError, DoesNotExist):
+                            continue
+                
+                appointments = Appointment.objects(
+                    staff=staff,
+                    appointment_date__gte=start.date(),
+                    appointment_date__lte=end.date(),
+                    status='completed'
+                ).count()
+                
+                max_revenue = max(max_revenue, revenue)
+                max_services = max(max_services, service_count)
+                max_appts = max(max_appts, appointments)
+            except Exception:
+                continue
+        
+        max_revenue = max_revenue if max_revenue > 0 else 1
+        max_services = max_services if max_services > 0 else 1
+        max_appts = max_appts if max_appts > 0 else 1
+        
+        scores = []
+        
+        for staff in staff_list:
+            try:
+                staff_id = str(staff.id)
+                
+                # Calculate revenue and service count
+                revenue = 0
+                service_count = 0
+                customer_visits = {}
+                
+                for bill in bills:
+                    for item in (bill.items or []):
+                        try:
+                            item_staff_id = safe_get_staff_id(item.staff)
+                            if item_staff_id and item_staff_id == staff_id:
+                                revenue += float(item.total) if item.total else 0.0
+                                service_count += int(item.quantity) if item.quantity else 1
+                                
+                                customer_info = get_safe_customer_info(bill.customer)
+                                if customer_info['id']:
+                                    customer_id = customer_info['id']
+                                    if customer_id not in customer_visits:
+                                        customer_visits[customer_id] = 0
+                                    customer_visits[customer_id] += 1
+                        except (AttributeError, TypeError, ValueError, DoesNotExist):
+                            continue
+                
+                revenue_score = (revenue / max_revenue) * 40
+                service_score = (service_count / max_services) * 20
+                
+                appointments = Appointment.objects(
+                    staff=staff,
+                    appointment_date__gte=start.date(),
+                    appointment_date__lte=end.date(),
+                    status='completed'
+                ).count()
+                appt_score = (appointments / max_appts) * 15
+                
+                feedbacks = list(Feedback.objects(
+                    staff=staff,
+                    created_at__gte=start,
+                    created_at__lte=end
+                ))
+                feedback_count = len(feedbacks)
+                if feedback_count > 0:
+                    total_rating = sum(float(f.rating) for f in feedbacks if f.rating is not None)
+                    avg_rating = total_rating / feedback_count if feedback_count > 0 else 0.0
+                    rating_score = (avg_rating / 5.0) * 15 if avg_rating > 0 else 0.0
+                else:
+                    avg_rating = 0.0
+                    rating_score = 0.0
+                
+                total_customers = len(customer_visits)
+                repeat_customers = sum(1 for visits in customer_visits.values() if visits >= 2)
+                retention_rate = (repeat_customers / total_customers) if total_customers > 0 else 0
+                retention_score = retention_rate * 10
+                
+                total_score = revenue_score + service_score + appt_score + rating_score + retention_score
+                
+                scores.append({
+                    'staff_id': staff_id,
+                    'staff_name': f"{staff.first_name or ''} {staff.last_name or ''}".strip(),
+                    'performance_score': round(float(total_score), 1),
+                    'revenue': round(float(revenue), 2),
+                    'service_count': int(service_count),
+                    'completed_appointments': int(appointments),
+                    'avg_rating': round(float(avg_rating), 2),
+                    'feedback_count': int(feedback_count),
+                    'retention_rate': round(float(retention_rate) * 100, 1)
+                })
+            except Exception as staff_error:
+                print(f"Warning: Failed to compute score for staff {getattr(staff, 'id', 'unknown')}: {staff_error}")
+                continue
+        
+        scores.sort(key=lambda x: x['performance_score'], reverse=True)
+        
+        return jsonify({
+            'leaderboard': scores
+        })
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        print(f"[DASHBOARD] Error in get_staff_leaderboard: {str(e)}")
+        print(f"[DASHBOARD] Traceback: {error_trace}")
         return jsonify({'error': str(e), 'traceback': error_trace}), 500

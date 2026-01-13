@@ -303,8 +303,29 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .list-of-bills-container {
+    padding: 16px;
+  }
+
+  .list-of-bills-header {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .header-title {
+    font-size: 18px;
+  }
+
+  .back-button {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+  }
+
   .summary-cards {
     flex-direction: column;
+    gap: 16px;
   }
 
   .summary-card {
@@ -313,11 +334,23 @@
 
   .filters-actions-section {
     flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
   }
 
   .filter-group,
   .download-report-btn {
     width: 100%;
+  }
+
+  .date-filter-dropdown {
+    font-size: 16px;
+    min-height: 44px;
+  }
+
+  .download-report-btn {
+    min-height: 44px;
+    justify-content: center;
   }
 
   .table-container {
@@ -333,6 +366,11 @@
   .bills-table th,
   .bills-table td {
     padding: var(--space-2) var(--space-3);
+  }
+
+  .view-btn {
+    min-height: 36px;
+    padding: 6px 12px;
   }
 }
 
