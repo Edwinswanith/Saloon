@@ -74,6 +74,14 @@ CORS(app, resources={
     }
 })
 
+# Initialize Redis cache (if available)
+try:
+    from utils.redis_cache import init_redis
+    init_redis()
+except Exception as e:
+    print(f"Warning: Redis initialization failed: {e}")
+    print("App will continue with in-memory cache fallback.")
+
 # Import and register routes (after MongoDB connection)
 from routes import register_routes
 register_routes(app)

@@ -33,17 +33,34 @@ def handle_preflight():
 # Product Category Routes
 
 @product_bp.route('/categories', methods=['GET'])
-def get_product_categories():
-    """Get all product categories"""
+@require_auth
+def get_product_categories(current_user=None):
+    """Get all product categories with product counts"""
     try:
+        # Get branch for filtering product counts
+        branch = get_selected_branch(request, current_user)
+
         # Force evaluation by converting to list
         categories = list(ProductCategory.objects.order_by('display_order'))
-        response = jsonify([{
-            'id': str(cat.id),
-            'name': cat.name,
-            'display_order': cat.display_order,
-            'created_at': cat.created_at.isoformat() if cat.created_at else None
-        } for cat in categories])
+
+        # Build response with product counts for each category
+        result = []
+        for cat in categories:
+            # Count active products in this category, filtered by branch
+            query = Product.objects(category=cat, status='active')
+            if branch:
+                query = query.filter(branch=branch)
+            count = query.count()
+
+            result.append({
+                'id': str(cat.id),
+                'name': cat.name,
+                'display_order': cat.display_order,
+                'count': count,
+                'created_at': cat.created_at.isoformat() if cat.created_at else None
+            })
+
+        response = jsonify(result)
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
     except Exception as e:

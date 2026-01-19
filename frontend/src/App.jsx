@@ -1,57 +1,75 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense, lazy } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { ConfigProvider } from 'antd'
 import { antdTheme } from './config/antd-theme'
 import { AuthProvider, useAuth, RequireRole } from './contexts/AuthContext'
 import { AnimatePresence } from 'framer-motion'
+
+// Keep Login, Sidebar, GlobalHeader eager (needed immediately)
 import Login from './components/Login'
 import Sidebar from './components/Sidebar'
-import QuickSale from './components/QuickSale'
-import Dashboard from './components/Dashboard'
-import CashRegister from './components/CashRegister'
-import Appointment from './components/Appointment'
-import CustomerList from './components/CustomerList'
-import LeadManagement from './components/LeadManagement'
-import MissedEnquiries from './components/MissedEnquiries'
-import CustomerLifecycleReport from './components/CustomerLifecycleReport'
-import Feedback from './components/Feedback'
-import ServiceRecovery from './components/ServiceRecovery'
-import DiscountApprovals from './components/DiscountApprovals'
-import ApprovalCodes from './components/ApprovalCodes'
-import Inventory from './components/Inventory'
-import ReportsAnalytics from './components/ReportsAnalytics'
-import Service from './components/Service'
-import Package from './components/Package'
-import Product from './components/Product'
-import Prepaid from './components/Prepaid'
-import Settings from './components/Settings'
-import Membership from './components/Membership'
-import ReferralProgram from './components/ReferralProgram'
-import Tax from './components/Tax'
-import Manager from './components/Manager'
-import OwnerSettings from './components/OwnerSettings'
-import Staffs from './components/Staffs'
-import StaffAttendance from './components/StaffAttendance'
-import StaffTempAssignment from './components/StaffTempAssignment'
-import AssetManagement from './components/AssetManagement'
-import Expense from './components/Expense'
-import ServiceSalesAnalysis from './components/ServiceSalesAnalysis'
-import ListOfBills from './components/ListOfBills'
-import ListOfDeletedBills from './components/ListOfDeletedBills'
-import SalesByServiceGroup from './components/SalesByServiceGroup'
-import PrepaidPackageClients from './components/PrepaidPackageClients'
-import MembershipClients from './components/MembershipClients'
-import StaffIncentiveReport from './components/StaffIncentiveReport'
-import ExpenseReport from './components/ExpenseReport'
-import InventoryReport from './components/InventoryReport'
-import StaffCombinedReport from './components/StaffCombinedReport'
-import BusinessGrowthTrendAnalysis from './components/BusinessGrowthTrendAnalysis'
-import StaffPerformanceAnalysis from './components/StaffPerformanceAnalysis'
-import PeriodPerformanceSummary from './components/PeriodPerformanceSummary'
-import ClientValueLoyaltyReport from './components/ClientValueLoyaltyReport'
-import ServiceProductPerformance from './components/ServiceProductPerformance'
 import GlobalHeader from './components/GlobalHeader'
 import './App.css'
+
+// PERFORMANCE OPTIMIZATION: Lazy load all page components
+// These will be loaded on-demand when the user navigates to them
+const Dashboard = lazy(() => import('./components/Dashboard'))
+const QuickSale = lazy(() => import('./components/QuickSale'))
+const CashRegister = lazy(() => import('./components/CashRegister'))
+const Appointment = lazy(() => import('./components/Appointment'))
+const CustomerList = lazy(() => import('./components/CustomerList'))
+const LeadManagement = lazy(() => import('./components/LeadManagement'))
+const MissedEnquiries = lazy(() => import('./components/MissedEnquiries'))
+const CustomerLifecycleReport = lazy(() => import('./components/CustomerLifecycleReport'))
+const Feedback = lazy(() => import('./components/Feedback'))
+const ServiceRecovery = lazy(() => import('./components/ServiceRecovery'))
+const DiscountApprovals = lazy(() => import('./components/DiscountApprovals'))
+const ApprovalCodes = lazy(() => import('./components/ApprovalCodes'))
+const Inventory = lazy(() => import('./components/Inventory'))
+const ReportsAnalytics = lazy(() => import('./components/ReportsAnalytics'))
+const Service = lazy(() => import('./components/Service'))
+const Package = lazy(() => import('./components/Package'))
+const Product = lazy(() => import('./components/Product'))
+const Prepaid = lazy(() => import('./components/Prepaid'))
+const Settings = lazy(() => import('./components/Settings'))
+const Membership = lazy(() => import('./components/Membership'))
+const ReferralProgram = lazy(() => import('./components/ReferralProgram'))
+const Tax = lazy(() => import('./components/Tax'))
+const Manager = lazy(() => import('./components/Manager'))
+const OwnerSettings = lazy(() => import('./components/OwnerSettings'))
+const Staffs = lazy(() => import('./components/Staffs'))
+const StaffAttendance = lazy(() => import('./components/StaffAttendance'))
+const StaffTempAssignment = lazy(() => import('./components/StaffTempAssignment'))
+const AssetManagement = lazy(() => import('./components/AssetManagement'))
+const Expense = lazy(() => import('./components/Expense'))
+const ServiceSalesAnalysis = lazy(() => import('./components/ServiceSalesAnalysis'))
+const ListOfBills = lazy(() => import('./components/ListOfBills'))
+const ListOfDeletedBills = lazy(() => import('./components/ListOfDeletedBills'))
+const SalesByServiceGroup = lazy(() => import('./components/SalesByServiceGroup'))
+const PrepaidPackageClients = lazy(() => import('./components/PrepaidPackageClients'))
+const MembershipClients = lazy(() => import('./components/MembershipClients'))
+const StaffIncentiveReport = lazy(() => import('./components/StaffIncentiveReport'))
+const ExpenseReport = lazy(() => import('./components/ExpenseReport'))
+const InventoryReport = lazy(() => import('./components/InventoryReport'))
+const StaffCombinedReport = lazy(() => import('./components/StaffCombinedReport'))
+const BusinessGrowthTrendAnalysis = lazy(() => import('./components/BusinessGrowthTrendAnalysis'))
+const StaffPerformanceAnalysis = lazy(() => import('./components/StaffPerformanceAnalysis'))
+const PeriodPerformanceSummary = lazy(() => import('./components/PeriodPerformanceSummary'))
+const ClientValueLoyaltyReport = lazy(() => import('./components/ClientValueLoyaltyReport'))
+const ServiceProductPerformance = lazy(() => import('./components/ServiceProductPerformance'))
+
+// Loading fallback component for lazy-loaded pages
+const PageLoader = () => (
+  <div className="page-loading" style={{
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100%',
+    minHeight: '400px'
+  }}>
+    <div className="loading-spinner-large"></div>
+  </div>
+)
 
 // Main application content (protected - requires authentication)
 function AppContent() {
@@ -139,186 +157,189 @@ function AppContent() {
       />
       <GlobalHeader onMobileMenuToggle={toggleMobileSidebar} />
       <main className="main-content">
-        <AnimatePresence mode="wait">
-          {activePage === 'dashboard' && <Dashboard key="dashboard" />}
-          {activePage === 'quick-sale' && <QuickSale key="quick-sale" />}
-        {activePage === 'cash-register' && <CashRegister />}
-        {activePage === 'appointment' && <Appointment setActivePage={setActivePage} />}
-        {activePage === 'customer-list' && <CustomerList />}
-        {activePage === 'lead-management' && <LeadManagement />}
-        {activePage === 'missed-enquiries' && <MissedEnquiries />}
-        {activePage === 'customer-lifecycle' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <CustomerLifecycleReport />
-          </RequireRole>
-        )}
-        {activePage === 'feedback' && <Feedback />}
-        {activePage === 'service-recovery' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <ServiceRecovery />
-          </RequireRole>
-        )}
-        {activePage === 'discount-approvals' && (
-          <RequireRole roles={['owner']}>
-            <DiscountApprovals />
-          </RequireRole>
-        )}
-        {activePage === 'approval-codes' && (
-          <RequireRole roles={['owner']}>
-            <ApprovalCodes />
-          </RequireRole>
-        )}
-        {activePage === 'inventory' && <Inventory />}
-        {activePage === 'reports' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <ReportsAnalytics setActivePage={setActivePage} />
-          </RequireRole>
-        )}
-        {activePage === 'reports-analytics' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <ReportsAnalytics setActivePage={setActivePage} initialTab="analytics" />
-          </RequireRole>
-        )}
-        {activePage === 'analytics' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <ReportsAnalytics setActivePage={setActivePage} initialTab="analytics" />
-          </RequireRole>
-        )}
-        {activePage === 'service-sales-analysis' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <ServiceSalesAnalysis setActivePage={setActivePage} />
-          </RequireRole>
-        )}
-        {activePage === 'list-of-bills' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <ListOfBills setActivePage={setActivePage} />
-          </RequireRole>
-        )}
-        {activePage === 'list-of-deleted-bills' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <ListOfDeletedBills setActivePage={setActivePage} />
-          </RequireRole>
-        )}
-        {activePage === 'sales-by-service-group' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <SalesByServiceGroup setActivePage={setActivePage} />
-          </RequireRole>
-        )}
-        {activePage === 'prepaid-package-clients' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <PrepaidPackageClients setActivePage={setActivePage} />
-          </RequireRole>
-        )}
-        {activePage === 'membership-clients' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <MembershipClients setActivePage={setActivePage} />
-          </RequireRole>
-        )}
-        {activePage === 'staff-incentive-report' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <StaffIncentiveReport setActivePage={setActivePage} />
-          </RequireRole>
-        )}
-        {activePage === 'expense-report' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <ExpenseReport setActivePage={setActivePage} />
-          </RequireRole>
-        )}
-        {activePage === 'inventory-report' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <InventoryReport setActivePage={setActivePage} />
-          </RequireRole>
-        )}
-        {activePage === 'staff-combined-report' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <StaffCombinedReport setActivePage={setActivePage} />
-          </RequireRole>
-        )}
-        {activePage === 'business-growth-trend-analysis' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <BusinessGrowthTrendAnalysis setActivePage={setActivePage} />
-          </RequireRole>
-        )}
-        {activePage === 'staff-performance-analysis' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <StaffPerformanceAnalysis setActivePage={setActivePage} />
-          </RequireRole>
-        )}
-        {activePage === 'period-performance-summary' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <PeriodPerformanceSummary setActivePage={setActivePage} />
-          </RequireRole>
-        )}
-        {activePage === 'client-value-loyalty-report' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <ClientValueLoyaltyReport setActivePage={setActivePage} />
-          </RequireRole>
-        )}
-        {activePage === 'service-product-performance' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <ServiceProductPerformance setActivePage={setActivePage} />
-          </RequireRole>
-        )}
-        {activePage === 'service' && <Service />}
-        {activePage === 'package' && <Package />}
-        {activePage === 'product' && <Product />}
-        {activePage === 'prepaid' && <Prepaid />}
-        {activePage === 'settings' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <Settings setActivePage={setActivePage} />
-          </RequireRole>
-        )}
-        {activePage === 'membership' && (
-          <RequireRole roles={['owner']}>
-            <Membership />
-          </RequireRole>
-        )}
-        {activePage === 'referral-program' && (
-          <RequireRole roles={['owner']}>
-            <ReferralProgram />
-          </RequireRole>
-        )}
-        {activePage === 'tax' && (
-          <RequireRole roles={['owner']}>
-            <Tax />
-          </RequireRole>
-        )}
-        {activePage === 'manager' && (
-          <RequireRole roles={['owner']}>
-            <Manager />
-          </RequireRole>
-        )}
-        {activePage === 'owner-settings' && (
-          <RequireRole roles={['owner']}>
-            <OwnerSettings />
-          </RequireRole>
-        )}
-        {activePage === 'staffs' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <Staffs />
-          </RequireRole>
-        )}
-        {activePage === 'staff-attendance' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <StaffAttendance />
-          </RequireRole>
-        )}
-        {activePage === 'staff-temp-assignment' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <StaffTempAssignment />
-          </RequireRole>
-        )}
-        {activePage === 'asset-management' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <AssetManagement />
-          </RequireRole>
-        )}
-        {activePage === 'expense' && (
-          <RequireRole roles={['manager', 'owner']}>
-            <Expense />
-          </RequireRole>
-        )}
-        </AnimatePresence>
+        {/* PERFORMANCE: Suspense wrapper for lazy-loaded components */}
+        <Suspense fallback={<PageLoader />}>
+          <AnimatePresence mode="wait">
+            {activePage === 'dashboard' && <Dashboard key="dashboard" />}
+            {activePage === 'quick-sale' && <QuickSale key="quick-sale" />}
+            {activePage === 'cash-register' && <CashRegister key="cash-register" />}
+            {activePage === 'appointment' && <Appointment key="appointment" setActivePage={setActivePage} />}
+            {activePage === 'customer-list' && <CustomerList key="customer-list" />}
+            {activePage === 'lead-management' && <LeadManagement key="lead-management" />}
+            {activePage === 'missed-enquiries' && <MissedEnquiries key="missed-enquiries" />}
+            {activePage === 'customer-lifecycle' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <CustomerLifecycleReport key="customer-lifecycle" />
+              </RequireRole>
+            )}
+            {activePage === 'feedback' && <Feedback key="feedback" />}
+            {activePage === 'service-recovery' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <ServiceRecovery key="service-recovery" />
+              </RequireRole>
+            )}
+            {activePage === 'discount-approvals' && (
+              <RequireRole roles={['owner']}>
+                <DiscountApprovals key="discount-approvals" />
+              </RequireRole>
+            )}
+            {activePage === 'approval-codes' && (
+              <RequireRole roles={['owner']}>
+                <ApprovalCodes key="approval-codes" />
+              </RequireRole>
+            )}
+            {activePage === 'inventory' && <Inventory key="inventory" />}
+            {activePage === 'reports' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <ReportsAnalytics key="reports" setActivePage={setActivePage} />
+              </RequireRole>
+            )}
+            {activePage === 'reports-analytics' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <ReportsAnalytics key="reports-analytics" setActivePage={setActivePage} initialTab="analytics" />
+              </RequireRole>
+            )}
+            {activePage === 'analytics' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <ReportsAnalytics key="analytics" setActivePage={setActivePage} initialTab="analytics" />
+              </RequireRole>
+            )}
+            {activePage === 'service-sales-analysis' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <ServiceSalesAnalysis key="service-sales-analysis" setActivePage={setActivePage} />
+              </RequireRole>
+            )}
+            {activePage === 'list-of-bills' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <ListOfBills key="list-of-bills" setActivePage={setActivePage} />
+              </RequireRole>
+            )}
+            {activePage === 'list-of-deleted-bills' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <ListOfDeletedBills key="list-of-deleted-bills" setActivePage={setActivePage} />
+              </RequireRole>
+            )}
+            {activePage === 'sales-by-service-group' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <SalesByServiceGroup key="sales-by-service-group" setActivePage={setActivePage} />
+              </RequireRole>
+            )}
+            {activePage === 'prepaid-package-clients' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <PrepaidPackageClients key="prepaid-package-clients" setActivePage={setActivePage} />
+              </RequireRole>
+            )}
+            {activePage === 'membership-clients' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <MembershipClients key="membership-clients" setActivePage={setActivePage} />
+              </RequireRole>
+            )}
+            {activePage === 'staff-incentive-report' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <StaffIncentiveReport key="staff-incentive-report" setActivePage={setActivePage} />
+              </RequireRole>
+            )}
+            {activePage === 'expense-report' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <ExpenseReport key="expense-report" setActivePage={setActivePage} />
+              </RequireRole>
+            )}
+            {activePage === 'inventory-report' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <InventoryReport key="inventory-report" setActivePage={setActivePage} />
+              </RequireRole>
+            )}
+            {activePage === 'staff-combined-report' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <StaffCombinedReport key="staff-combined-report" setActivePage={setActivePage} />
+              </RequireRole>
+            )}
+            {activePage === 'business-growth-trend-analysis' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <BusinessGrowthTrendAnalysis key="business-growth-trend-analysis" setActivePage={setActivePage} />
+              </RequireRole>
+            )}
+            {activePage === 'staff-performance-analysis' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <StaffPerformanceAnalysis key="staff-performance-analysis" setActivePage={setActivePage} />
+              </RequireRole>
+            )}
+            {activePage === 'period-performance-summary' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <PeriodPerformanceSummary key="period-performance-summary" setActivePage={setActivePage} />
+              </RequireRole>
+            )}
+            {activePage === 'client-value-loyalty-report' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <ClientValueLoyaltyReport key="client-value-loyalty-report" setActivePage={setActivePage} />
+              </RequireRole>
+            )}
+            {activePage === 'service-product-performance' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <ServiceProductPerformance key="service-product-performance" setActivePage={setActivePage} />
+              </RequireRole>
+            )}
+            {activePage === 'service' && <Service key="service" />}
+            {activePage === 'package' && <Package key="package" />}
+            {activePage === 'product' && <Product key="product" />}
+            {activePage === 'prepaid' && <Prepaid key="prepaid" />}
+            {activePage === 'settings' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <Settings key="settings" setActivePage={setActivePage} />
+              </RequireRole>
+            )}
+            {activePage === 'membership' && (
+              <RequireRole roles={['owner']}>
+                <Membership key="membership" />
+              </RequireRole>
+            )}
+            {activePage === 'referral-program' && (
+              <RequireRole roles={['owner']}>
+                <ReferralProgram key="referral-program" />
+              </RequireRole>
+            )}
+            {activePage === 'tax' && (
+              <RequireRole roles={['owner']}>
+                <Tax key="tax" />
+              </RequireRole>
+            )}
+            {activePage === 'manager' && (
+              <RequireRole roles={['owner']}>
+                <Manager key="manager" />
+              </RequireRole>
+            )}
+            {activePage === 'owner-settings' && (
+              <RequireRole roles={['owner']}>
+                <OwnerSettings key="owner-settings" />
+              </RequireRole>
+            )}
+            {activePage === 'staffs' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <Staffs key="staffs" />
+              </RequireRole>
+            )}
+            {activePage === 'staff-attendance' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <StaffAttendance key="staff-attendance" />
+              </RequireRole>
+            )}
+            {activePage === 'staff-temp-assignment' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <StaffTempAssignment key="staff-temp-assignment" />
+              </RequireRole>
+            )}
+            {activePage === 'asset-management' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <AssetManagement key="asset-management" />
+              </RequireRole>
+            )}
+            {activePage === 'expense' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <Expense key="expense" />
+              </RequireRole>
+            )}
+          </AnimatePresence>
+        </Suspense>
       </main>
     </div>
   )
@@ -366,4 +387,3 @@ function App() {
 }
 
 export default App
-

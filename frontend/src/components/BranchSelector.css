@@ -65,8 +65,8 @@
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(2px);
-  z-index: 999;
+  backdrop-filter: blur(1px);
+  z-index: 10000;
   animation: fadeIn 0.2s ease-out;
 }
 
@@ -81,14 +81,12 @@
 
 /* ========== DROPDOWN CONTAINER ========== */
 .branch-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
+  position: fixed;
   background: white;
   border-radius: 12px;
   min-width: 320px;
   max-width: 400px;
-  z-index: 1000;
+  z-index: 10001;
   overflow: hidden;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   border: 1px solid #e5e7eb;
@@ -273,8 +271,6 @@
   .branch-dropdown {
     min-width: 280px;
     max-width: 90vw;
-    right: 0;
-    left: auto;
   }
   
   .branch-item {

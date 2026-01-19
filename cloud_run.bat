@@ -3,7 +3,7 @@ set PROJECT_ID=legel-assistent-466812
 set REPOSITORY_NAME=saloon
 set REGION=europe-west2
 set IMAGE_NAME=saloon-management-system
-set IMAGE_TAG=v02
+set IMAGE_TAG=v11
 set SERVICE_NAME=saloon-management-system
 
 REM Authenticate with Google Cloud

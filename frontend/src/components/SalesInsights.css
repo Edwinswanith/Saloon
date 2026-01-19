@@ -1,0 +1,168 @@
+.sales-insights-section {
+  width: 100%;
+  margin: 20px 0;
+}
+
+.sales-insights-section .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.sales-insights-section .section-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+/* Tabs Container */
+.sales-insights-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 2px solid #e5e7eb;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.sales-insights-tabs::-webkit-scrollbar {
+  height: 4px;
+}
+
+.sales-insights-tabs::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sales-insights-tabs::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 2px;
+}
+
+.sales-insights-tabs::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Tab Buttons */
+.sales-insights-tab {
+  position: relative;
+  padding: 12px 24px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sales-insights-tab:hover:not(.disabled) {
+  color: #4f46e5;
+  background: #f3f4f6;
+}
+
+.sales-insights-tab.active {
+  color: #4f46e5;
+  border-bottom-color: #4f46e5;
+  font-weight: 600;
+}
+
+.sales-insights-tab.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sales-insights-tab.disabled:hover {
+  background: none;
+  color: #6b7280;
+}
+
+/* Loading Indicator */
+.tab-loading-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4f46e5;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Tab Content */
+.sales-insights-content {
+  min-height: 300px;
+}
+
+/* Error State */
+.sales-insights-error {
+  padding: 40px 20px;
+  text-align: center;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #dc2626;
+}
+
+.sales-insights-error p {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+}
+
+.retry-button {
+  padding: 8px 16px;
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.retry-button:hover {
+  background: #b91c1c;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .sales-insights-tabs {
+    gap: 4px;
+    padding-bottom: 4px;
+  }
+
+  .sales-insights-tab {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .sales-insights-section .section-title {
+    font-size: 18px;
+  }
+}
+
+/* Ensure table sections inherit properly */
+.sales-insights-content .table-section {
+  width: 100%;
+}
+
+.sales-insights-content .top-moving-items-section,
+.sales-insights-content .top-customers-section {
+  width: 100%;
+}
+

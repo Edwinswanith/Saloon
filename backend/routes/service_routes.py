@@ -5,6 +5,7 @@ from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
 from utils.auth import require_auth, require_role
 from utils.branch_filter import get_selected_branch
+from utils.redis_cache import cache_response
 
 service_bp = Blueprint('services', __name__)
 
@@ -117,63 +118,72 @@ def delete_service_group(group_id, current_user=None):
 # Service Routes
 @service_bp.route('/', methods=['GET'])
 @require_auth
+@cache_response(ttl=300)  # Cache for 5 minutes
 def get_services(current_user=None):
-    """Get all services, optionally filtered by group and branch"""
+    """Get all services, optionally filtered by group and branch
+
+    OPTIMIZED: Added caching, removed debug prints, efficient querying
+    """
     group_id = request.args.get('group_id', type=str)
     search = request.args.get('search', '')
 
-    query = Service.objects(status='active')
-    print(f"[SERVICE GET] Initial query count (active only): {query.count()}")
-
     # Filter by branch - strict filtering, only show services belonging to selected branch
     branch = get_selected_branch(request, current_user)
-    if branch:
-        print(f"[SERVICE GET] Filtering by branch: {branch.name} (ID: {branch.id})")
-        query = query.filter(branch=branch)
-        print(f"[SERVICE GET] After branch filter count: {query.count()}")
-    else:
-        print(f"[SERVICE GET] WARNING: No branch found for user. Services may be empty.")
 
-    if group_id:
-        if ObjectId.is_valid(group_id):
-            try:
-                group = ServiceGroup.objects.get(id=group_id)
-                query = query.filter(group=group)
-            except (DoesNotExist, ValidationError):
-                pass
+    # Build query with all filters upfront
+    query = Service.objects(status='active')
+    if branch:
+        query = query.filter(branch=branch)
+
+    if group_id and ObjectId.is_valid(group_id):
+        try:
+            group = ServiceGroup.objects.get(id=group_id)
+            query = query.filter(group=group)
+        except (DoesNotExist, ValidationError):
+            pass
 
     if search:
         query = query.filter(name__icontains=search)
 
-    # Get pagination parameters
+    # Get pagination parameters - allow up to 1000 for Quick Sale
     page = request.args.get('page', 1, type=int)
-    per_page = min(request.args.get('per_page', 20, type=int), 100)
+    per_page = min(request.args.get('per_page', 20, type=int), 1000)
     sort_by = request.args.get('sort_by', 'name')
     sort_order = request.args.get('sort_order', 'asc')
-    
+
     # Apply sorting
     order_field = f"-{sort_by}" if sort_order == 'desc' else sort_by
     query = query.order_by(order_field)
-    
-    # Get total count before pagination
+
+    # Use only() to limit fields and avoid loading unnecessary data
+    query = query.only('id', 'name', 'group', 'price', 'duration', 'description', 'branch')
+
+    # Get total count (single count query)
     total = query.count()
-    print(f"[SERVICE GET] Total services found: {total}")
-    
-    # Apply pagination
+
+    # Apply pagination and fetch
     services = list(query.skip((page - 1) * per_page).limit(per_page))
-    print(f"[SERVICE GET] Returning {len(services)} services (page {page}, per_page {per_page})")
+
+    # Build response - access preloaded fields only
+    service_data = []
+    for s in services:
+        try:
+            service_data.append({
+                'id': str(s.id),
+                'name': s.name,
+                'groupId': str(s.group.id) if s.group else None,
+                'groupName': s.group.name if s.group else None,
+                'price': s.price,
+                'duration': s.duration,
+                'description': s.description,
+                'branchId': str(s.branch.id) if s.branch else None
+            })
+        except Exception:
+            # Skip services with broken references
+            continue
 
     response = jsonify({
-        'data': [{
-            'id': str(s.id),
-            'name': s.name,
-            'groupId': str(s.group.id) if s.group else None,
-            'groupName': s.group.name if s.group else None,
-            'price': s.price,
-            'duration': s.duration,
-            'description': s.description,
-            'branchId': str(s.branch.id) if s.branch else None
-        } for s in services],
+        'data': service_data,
         'pagination': {
             'total': total,
             'page': page,

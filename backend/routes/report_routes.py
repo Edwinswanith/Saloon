@@ -691,17 +691,10 @@ def business_growth_report():
 
 @report_bp.route('/staff-performance', methods=['GET'])
 def staff_performance_analysis():
-    """Staff performance analysis"""
+    """Staff performance analysis - OPTIMIZED with aggregation"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
-
-        # Force evaluation by converting to list
-        try:
-            staff_list = list(Staff.objects.filter(status='active'))
-        except Exception as e:
-            print(f"Error fetching staff list: {str(e)}")
-            staff_list = []
 
         # Build date filter for bills
         if start_date:
@@ -716,126 +709,183 @@ def staff_performance_analysis():
         else:
             end = datetime.now()
 
-        # Get all bills in date range - force evaluation
-        bills = list(Bill.objects.filter(
-            is_deleted=False,
-            bill_date__gte=start,
-            bill_date__lte=end
-        ))
+        # OPTIMIZED: Use aggregation pipeline instead of loading all bills
+        match_stage = {
+            "is_deleted": False,
+            "bill_date": {"$gte": start, "$lte": end},
+            "items.staff": {"$ne": None}
+        }
 
+        # Aggregation pipeline for staff performance
+        pipeline = [
+            {"$match": match_stage},
+            {"$unwind": "$items"},
+            {"$match": {"items.staff": {"$ne": None}}},
+            {"$group": {
+                "_id": "$items.staff",
+                "total_revenue": {"$sum": {"$ifNull": ["$items.total", 0]}},
+                "item_count": {"$sum": {"$ifNull": ["$items.quantity", 1]}},
+                "service_revenue": {
+                    "$sum": {
+                        "$cond": [
+                            {"$eq": [{"$ifNull": ["$items.item_type", "service"]}, "service"]},
+                            {"$ifNull": ["$items.total", 0]},
+                            0
+                        ]
+                    }
+                },
+                "package_revenue": {
+                    "$sum": {
+                        "$cond": [
+                            {"$eq": [{"$ifNull": ["$items.item_type", "service"]}, "package"]},
+                            {"$ifNull": ["$items.total", 0]},
+                            0
+                        ]
+                    }
+                },
+                "prepaid_revenue": {
+                    "$sum": {
+                        "$cond": [
+                            {"$eq": [{"$ifNull": ["$items.item_type", "service"]}, "prepaid"]},
+                            {"$ifNull": ["$items.total", 0]},
+                            0
+                        ]
+                    }
+                },
+                "product_revenue": {
+                    "$sum": {
+                        "$cond": [
+                            {"$eq": [{"$ifNull": ["$items.item_type", "service"]}, "product"]},
+                            {"$ifNull": ["$items.total", 0]},
+                            0
+                        ]
+                    }
+                },
+                "membership_revenue": {
+                    "$sum": {
+                        "$cond": [
+                            {"$eq": [{"$ifNull": ["$items.item_type", "service"]}, "membership"]},
+                            {"$ifNull": ["$items.total", 0]},
+                            0
+                        ]
+                    }
+                },
+                "service_items": {
+                    "$push": {
+                        "$cond": [
+                            {"$eq": [{"$ifNull": ["$items.item_type", "service"]}, "service"]},
+                            {
+                                "service_id": "$items.service",
+                                "quantity": {"$ifNull": ["$items.quantity", 1]},
+                                "revenue": {"$ifNull": ["$items.total", 0]}
+                            },
+                            "$$REMOVE"
+                        ]
+                    }
+                }
+            }},
+            {"$lookup": {
+                "from": "staffs",
+                "localField": "_id",
+                "foreignField": "_id",
+                "as": "staff_doc"
+            }},
+            {"$unwind": {"path": "$staff_doc", "preserveNullAndEmptyArrays": True}},
+            {"$match": {"staff_doc.status": "active"}},
+            {"$project": {
+                "staff_id": {"$toString": "$_id"},
+                "staff_name": {
+                    "$trim": {
+                        "input": {
+                            "$concat": [
+                                {"$ifNull": ["$staff_doc.first_name", ""]},
+                                " ",
+                                {"$ifNull": ["$staff_doc.last_name", ""]}
+                            ]
+                        }
+                    }
+                },
+                "total_revenue": {"$round": ["$total_revenue", 2]},
+                "item_count": 1,
+                "service_revenue": {"$round": ["$service_revenue", 2]},
+                "package_revenue": {"$round": ["$package_revenue", 2]},
+                "prepaid_revenue": {"$round": ["$prepaid_revenue", 2]},
+                "product_revenue": {"$round": ["$product_revenue", 2]},
+                "membership_revenue": {"$round": ["$membership_revenue", 2]},
+                "service_items": 1
+            }}
+        ]
+
+        # Execute aggregation
+        staff_performance_results = list(Bill.objects.aggregate(pipeline))
+
+        # Get service IDs for service breakdown lookup
+        service_ids = set()
+        for result in staff_performance_results:
+            for item in result.get('service_items', []):
+                if item and item.get('service_id'):
+                    service_ids.add(item['service_id'])
+
+        # Batch lookup services and their groups
+        service_group_map = {}
+        if service_ids:
+            services_pipeline = [
+                {"$match": {"_id": {"$in": list(service_ids)}}},
+                {"$lookup": {
+                    "from": "service_groups",
+                    "localField": "group",
+                    "foreignField": "_id",
+                    "as": "group_doc"
+                }},
+                {"$unwind": {"path": "$group_doc", "preserveNullAndEmptyArrays": True}},
+                {"$project": {
+                    "service_id": {"$toString": "$_id"},
+                    "group_name": {"$ifNull": ["$group_doc.name", "Other"]}
+                }}
+            ]
+            from models import Service
+            service_groups = list(Service.objects.aggregate(services_pipeline))
+            service_group_map = {s['service_id']: s['group_name'] for s in service_groups}
+
+        # Build performance list with service breakdown
         performance = []
-        for staff in staff_list:
-            try:
-                staff_id = str(staff.id)
+        for result in staff_performance_results:
+            # Calculate service breakdown by group
+            service_breakdown = {}
+            for item in result.get('service_items', []):
+                if not item or not item.get('service_id'):
+                    continue
+                
+                service_id = str(item['service_id'])
+                group_name = service_group_map.get(service_id, 'Other')
+                
+                if group_name not in service_breakdown:
+                    service_breakdown[group_name] = {'count': 0, 'revenue': 0.0}
+                
+                service_breakdown[group_name]['count'] += item.get('quantity', 1)
+                service_breakdown[group_name]['revenue'] += item.get('revenue', 0.0)
 
-                # Calculate breakdown by item type
-                service_revenue = 0
-                package_revenue = 0
-                prepaid_revenue = 0
-                product_revenue = 0
-                membership_revenue = 0
-                total_revenue = 0
-                item_count = 0
+            # Round service breakdown values
+            for group_name in service_breakdown:
+                service_breakdown[group_name]['revenue'] = round(service_breakdown[group_name]['revenue'], 2)
 
-                # Group by service type for service breakdown
-                service_breakdown = {}
+            total_revenue = result.get('total_revenue', 0.0)
+            item_count = result.get('item_count', 0)
 
-                # Filter items for this staff
-                for bill in bills:
-                    if not bill.items:
-                        continue
-                    for item in bill.items:
-                        if not item:
-                            continue
-                        # Handle staff reference - could be ObjectId, ReferenceField, or None
-                        item_staff_id = None
-                        try:
-                            if item.staff:
-                                # If it's a ReferenceField, get the ID
-                                if hasattr(item.staff, 'id'):
-                                    item_staff_id = str(item.staff.id)
-                                # If it's already an ObjectId or string
-                                elif isinstance(item.staff, (str, ObjectId)):
-                                    item_staff_id = str(item.staff)
-                                # Try to get ID from the object
-                                else:
-                                    item_staff_id = str(getattr(item.staff, 'id', item.staff))
-                        except Exception as e:
-                            # If we can't get staff ID, skip this item
-                            continue
+            performance.append({
+                'staff_name': result.get('staff_name', '').strip(),
+                'total_revenue': total_revenue,
+                'total_services': int(item_count),
+                'service_revenue': result.get('service_revenue', 0.0),
+                'package_revenue': result.get('package_revenue', 0.0),
+                'prepaid_revenue': result.get('prepaid_revenue', 0.0),
+                'product_revenue': result.get('product_revenue', 0.0),
+                'membership_revenue': result.get('membership_revenue', 0.0),
+                'service_breakdown': service_breakdown,
+                'average_per_service': round(total_revenue / item_count, 2) if item_count > 0 else 0
+            })
 
-                        if not item_staff_id or item_staff_id != staff_id:
-                            continue
-
-                        item_type = item.item_type or 'service'
-                        item_count += item.quantity if item.quantity else 1
-                        total_revenue += float(item.total) if item.total else 0.0
-
-                        if item_type == 'service':
-                            service_revenue += float(item.total) if item.total else 0.0
-                            # Try to access service, but handle case where service was deleted
-                            group_name = 'Other'
-                            try:
-                                # Check if service reference exists in raw data first
-                                has_service_ref = False
-                                if hasattr(item, '_data') and 'service' in item._data:
-                                    has_service_ref = item._data['service'] is not None
-
-                                # Only try to access service if reference exists
-                                if has_service_ref:
-                                    try:
-                                        # Access service - this may raise DoesNotExist if service was deleted
-                                        service_obj = item.service
-                                        if service_obj:
-                                            # Reload service to get group
-                                            if hasattr(service_obj, 'reload'):
-                                                service_obj.reload()
-                                            # Safely access group name
-                                            if hasattr(service_obj, 'group') and service_obj.group:
-                                                if hasattr(service_obj.group, 'name') and service_obj.group.name:
-                                                    group_name = service_obj.group.name
-                                    except DoesNotExist:
-                                        # Service was deleted, use 'Other'
-                                        group_name = 'Other'
-                                    except (AttributeError, Exception):
-                                        # Any other error accessing service/group, use 'Other'
-                                        group_name = 'Other'
-                            except Exception:
-                                # Any error, use 'Other'
-                                group_name = 'Other'
-
-                            if group_name not in service_breakdown:
-                                service_breakdown[group_name] = {'count': 0, 'revenue': 0}
-                            service_breakdown[group_name]['count'] += item.quantity if item.quantity else 1
-                            service_breakdown[group_name]['revenue'] += float(item.total) if item.total else 0.0
-                        elif item_type == 'package':
-                            package_revenue += float(item.total) if item.total else 0.0
-                        elif item_type == 'prepaid':
-                            prepaid_revenue += float(item.total) if item.total else 0.0
-                        elif item_type == 'product':
-                            product_revenue += float(item.total) if item.total else 0.0
-                        elif item_type == 'membership':
-                            membership_revenue += float(item.total) if item.total else 0.0
-
-                performance.append({
-                    'staff_name': f"{staff.first_name or ''} {staff.last_name or ''}".strip(),
-                    'total_revenue': round(float(total_revenue), 2),
-                    'total_services': int(item_count),
-                    'service_revenue': round(float(service_revenue), 2),
-                    'package_revenue': round(float(package_revenue), 2),
-                    'prepaid_revenue': round(float(prepaid_revenue), 2),
-                    'product_revenue': round(float(product_revenue), 2),
-                    'membership_revenue': round(float(membership_revenue), 2),
-                    'service_breakdown': service_breakdown,
-                    'average_per_service': round(float(total_revenue) / item_count, 2) if item_count > 0 else 0
-                })
-            except Exception as staff_error:
-                # If processing one staff fails, log and continue with next staff
-                print(f"Error processing staff {getattr(staff, 'id', 'unknown')}: {str(staff_error)}")
-                import traceback
-                print(traceback.format_exc())
-                continue
-
+        # Sort by total revenue
         performance.sort(key=lambda x: x['total_revenue'], reverse=True)
 
         response = jsonify(performance)

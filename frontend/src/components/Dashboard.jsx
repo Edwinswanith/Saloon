@@ -5,8 +5,7 @@ import { API_BASE_URL } from '../config'
 import { useAuth } from '../contexts/AuthContext'
 import { apiGet } from '../utils/api'
 import DashboardStatsCards from './DashboardStatsCards'
-import TopMovingItems from './TopMovingItems'
-import Top10Customers from './Top10Customers'
+import SalesInsights from './SalesInsights'
 import {
   PieChart,
   Pie,
@@ -77,8 +76,6 @@ const Dashboard = () => {
   const [staffPerformance, setStaffPerformance] = useState([])
   const [topPerformer, setTopPerformer] = useState(null)
   const [staffLeaderboard, setStaffLeaderboard] = useState([])
-  const [topCustomers, setTopCustomers] = useState([])
-  const [topOfferings, setTopOfferings] = useState([])
   const [revenueBreakdown, setRevenueBreakdown] = useState({
     service: { amount: 0, percentage: 0 },
     product: { amount: 0, percentage: 0 },
@@ -99,11 +96,6 @@ const Dashboard = () => {
   const [alerts, setAlerts] = useState([])
   const [showStaffModal, setShowStaffModal] = useState(false)
   const [selectedStaff, setSelectedStaff] = useState(null)
-  const [topMovingItems, setTopMovingItems] = useState({ 
-    services: [], 
-    packages: [], 
-    products: [] 
-  })
   const [clientSource, setClientSource] = useState([])
   const [showOfferingModal, setShowOfferingModal] = useState(false)
   const [selectedOffering, setSelectedOffering] = useState(null)
@@ -279,44 +271,23 @@ const Dashboard = () => {
   }
 
   // Fetch sales data (only when on sales tab)
+  // NOTE: topMovingItems, topCustomers, topOfferings are now lazy-loaded via SalesInsights component
   const fetchSalesData = async (params) => {
     try {
-      // Fetch all sales data in parallel for better performance
+      // Fetch only non-lazy-loaded sales data in parallel
       const [
-        topCustomersRes,
-        topOfferingsRes,
         revenueBreakdownRes,
         paymentDistributionRes,
         clientFunnelRes,
-        topMovingItemsRes,
         clientSourceRes,
         alertsRes
       ] = await Promise.allSettled([
-        apiGet(`/api/dashboard/top-customers?${params}&limit=10`),
-        apiGet(`/api/dashboard/top-offerings?${params}&limit=10`),
         apiGet(`/api/dashboard/revenue-breakdown?${params}`),
         apiGet(`/api/dashboard/payment-distribution?${params}`),
         apiGet(`/api/dashboard/client-funnel?${params}`),
-        apiGet(`/api/dashboard/top-moving-items?${params}`),
         apiGet(`/api/dashboard/client-source?${params}`),
         apiGet('/api/dashboard/alerts')
       ])
-
-      // Process top customers
-      let topCustomersData = []
-      if (topCustomersRes.status === 'fulfilled' && topCustomersRes.value.ok) {
-        const data = await topCustomersRes.value.json()
-        topCustomersData = Array.isArray(data) ? data : []
-      }
-      setTopCustomers(topCustomersData)
-
-      // Process top offerings
-      let topOfferingsData = []
-      if (topOfferingsRes.status === 'fulfilled' && topOfferingsRes.value.ok) {
-        const data = await topOfferingsRes.value.json()
-        topOfferingsData = Array.isArray(data) ? data : []
-      }
-      setTopOfferings(topOfferingsData)
 
       // Process revenue breakdown
       let revenueBreakdownData = {}
@@ -358,14 +329,6 @@ const Dashboard = () => {
       }
       setClientFunnel(clientFunnelData)
 
-      // Process top moving items
-      let topMovingItemsData = { services: [], packages: [], products: [] }
-      if (topMovingItemsRes.status === 'fulfilled' && topMovingItemsRes.value.ok) {
-        const data = await topMovingItemsRes.value.json()
-        topMovingItemsData = data || { services: [], packages: [], products: [] }
-      }
-      setTopMovingItems(topMovingItemsData)
-
       // Process client source
       let clientSourceData = []
       if (clientSourceRes.status === 'fulfilled' && clientSourceRes.value.ok) {
@@ -382,17 +345,14 @@ const Dashboard = () => {
       }
       setAlerts(alertsData)
 
-      // Cache the sales data
+      // Cache the sales data (excluding lazy-loaded data)
       setDataCache(prev => ({
         ...prev,
         sales: {
           data: {
-            topCustomers: topCustomersData,
-            topOfferings: topOfferingsData,
             revenueBreakdown: revenueBreakdownData,
             paymentDistribution: paymentDistributionData,
             clientFunnel: clientFunnelData,
-            topMovingItems: topMovingItemsData,
             clientSource: clientSourceData,
             alerts: alertsData,
           },
@@ -469,12 +429,9 @@ const Dashboard = () => {
       return true
     } else if (cacheKey === 'sales') {
       const salesData = cacheEntry.data
-      if (salesData.topCustomers !== undefined) setTopCustomers(salesData.topCustomers)
-      if (salesData.topOfferings !== undefined) setTopOfferings(salesData.topOfferings)
       if (salesData.revenueBreakdown !== undefined) setRevenueBreakdown(salesData.revenueBreakdown)
       if (salesData.paymentDistribution !== undefined) setPaymentDistribution(salesData.paymentDistribution)
       if (salesData.clientFunnel !== undefined) setClientFunnel(salesData.clientFunnel)
-      if (salesData.topMovingItems !== undefined) setTopMovingItems(salesData.topMovingItems)
       if (salesData.clientSource !== undefined) setClientSource(salesData.clientSource)
       if (salesData.alerts !== undefined) setAlerts(salesData.alerts)
       return true
@@ -1164,10 +1121,9 @@ const Dashboard = () => {
               formatCurrency={formatCurrency}
             />
 
-            {/* Top Moving Items Section */}
-            <TopMovingItems 
-              data={topMovingItems}
-              loading={loading}
+            {/* Sales Insights - Tab-based lazy loading */}
+            <SalesInsights
+              dateRange={getDateRange()}
               formatCurrency={formatCurrency}
             />
 
@@ -1280,75 +1236,6 @@ const Dashboard = () => {
               )}
           </div>
 
-          </div>
-
-          {/* Top 10 Customer */}
-          <Top10Customers 
-            customers={topCustomers}
-            loading={loading}
-            formatCurrency={formatCurrency}
-            onExport={() => {
-              // TODO: Implement export functionality
-              console.log('Export Full Report clicked')
-            }}
-          />
-
-          {/* Top 10 Offerings */}
-          <div className="table-section">
-            <div className="section-header">
-              <h2 className="section-title">Top 10 Offerings</h2>
-              <button 
-                className="export-link" 
-                onClick={(e) => {
-                  e.preventDefault()
-                  // TODO: Implement export functionality
-                }}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', textDecoration: 'underline' }}
-              >
-                Export Full Report
-              </button>
-            </div>
-            <div className="table-container">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Offering</th>
-                    <th>Count</th>
-                    <th>Revenue</th>
-                    <th>View Clients</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan="5" className="empty-row">Loading...</td>
-                    </tr>
-                  ) : topOfferings.length === 0 ? (
-                    <tr>
-                      <td colSpan="5" className="empty-row">No data available</td>
-                    </tr>
-                  ) : (
-                    topOfferings.slice(0, 10).map((offering, index) => (
-                      <tr key={index}>
-                        <td>{index + 1}</td>
-                        <td>{offering.name}</td>
-                        <td>{offering.quantity}</td>
-                        <td>{formatCurrency(offering.revenue)}</td>
-                        <td>
-                          <button 
-                            className="view-link"
-                            onClick={() => handleViewOfferingClients(offering)}
-                          >
-                            View
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
             </div>
             </div>
 

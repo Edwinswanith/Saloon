@@ -531,49 +531,163 @@
   .staff-attendance-container {
     padding: var(--space-4);
   }
-  
+
   .staff-attendance-header {
     padding: var(--space-4);
   }
-  
+
   .attendance-top-section {
     padding: var(--space-4);
   }
-  
+
   .top-actions {
     flex-direction: column;
     width: 100%;
   }
-  
+
+  .date-picker-wrapper {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .date-input-wrapper {
+    width: 100%;
+  }
+
+  .date-picker {
+    width: 100%;
+    min-width: unset;
+  }
+
   .mark-all-btn,
   .download-btn {
     width: 100%;
     justify-content: center;
   }
-  
-  .attendance-table th,
-  .attendance-table td {
-    padding: var(--space-3) var(--space-4);
-    font-size: var(--text-xs);
-  }
-  
-  .action-buttons {
-    flex-direction: column;
-  }
-  
-  .action-btn {
-    width: 100%;
-    justify-content: center;
-    min-height: 44px;
-  }
 
   .table-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow-x: visible;
+    padding: 0 4px;
   }
 
+  /* Attendance Table - Mobile Card Layout */
   .attendance-table {
-    min-width: 700px;
+    display: block;
+    min-width: unset;
+    background: transparent;
+  }
+
+  .attendance-table thead {
+    display: none;
+  }
+
+  .attendance-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .attendance-table tbody tr {
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    gap: 12px;
+  }
+
+  .attendance-table tbody tr:hover {
+    transform: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  .attendance-table td {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0 !important;
+    gap: 6px;
+  }
+
+  .attendance-table td::before {
+    content: attr(data-label);
+    font-size: 10px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* Staff Name - Header style */
+  .attendance-table td[data-label="Staff Member"] {
+    padding-bottom: 12px !important;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .attendance-table td[data-label="Staff Member"]::before {
+    display: none;
+  }
+
+  .attendance-table td[data-label="Staff Member"].staff-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+  }
+
+  /* Status and Monthly Summary - Side by side */
+  .attendance-table td[data-label="Status"],
+  .attendance-table td[data-label="Monthly Summary"] {
+    flex: 1;
+  }
+
+  /* Actions - Full width at bottom */
+  .attendance-table td[data-label="Actions"] {
+    padding-top: 12px !important;
+    border-top: 1px solid #f3f4f6;
+  }
+
+  .attendance-table td[data-label="Actions"]::before {
+    display: none;
+  }
+
+  .action-buttons {
+    flex-direction: row;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .action-btn {
+    flex: 1;
+    justify-content: center;
+    min-height: 44px;
+    padding: 10px 8px;
+    font-size: 12px;
+    min-width: unset;
+  }
+
+  .monthly-summary {
+    gap: 6px;
+  }
+
+  .summary-badge {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+
+  .status-btn {
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+
+  /* Empty row styling */
+  .attendance-table .empty-row {
+    text-align: center;
+    padding: 24px !important;
+    color: #9ca3af;
   }
 }
 
@@ -591,6 +705,16 @@
     padding: var(--space-3);
   }
 
+  .section-title {
+    font-size: 16px;
+  }
+
+  .section-title::before {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+
   .mark-all-btn,
   .download-btn {
     padding: var(--space-3) var(--space-4);
@@ -598,18 +722,18 @@
     min-height: 44px;
   }
 
-  .attendance-table {
-    min-width: 600px;
-    font-size: 11px;
+  .attendance-table tbody tr {
+    padding: 14px;
   }
 
-  .attendance-table th,
-  .attendance-table td {
-    padding: var(--space-2) var(--space-3);
+  .action-buttons {
+    flex-direction: column;
   }
 
   .action-btn {
-    padding: var(--space-3) var(--space-4);
-    font-size: var(--text-sm);
+    width: 100%;
+    flex: none;
+    padding: 12px 16px;
+    font-size: 13px;
   }
 }

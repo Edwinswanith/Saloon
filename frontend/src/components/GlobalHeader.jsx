@@ -56,7 +56,7 @@ const GlobalHeader = ({ onMobileMenuToggle }) => {
               <span className="logo-text">Logout</span>
             </button>
             <button className="header-icon bell-icon" title="Notifications">
-              <FaBell size={18} />
+              <FaBell size={16} />
             </button>
             <button
               className="header-icon user-icon profile-icon-btn"
@@ -68,7 +68,7 @@ const GlobalHeader = ({ onMobileMenuToggle }) => {
                   {getUserInitials()}
                 </div>
               ) : (
-                <FaUser />
+                <FaUser size={16} />
               )}
             </button>
           </div>

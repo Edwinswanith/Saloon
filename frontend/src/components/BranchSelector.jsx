@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import './BranchSelector.css';
 
@@ -6,6 +6,8 @@ const BranchSelector = () => {
   const { user, currentBranch, branches, fetchBranches, switchBranch, getBranchId } = useAuth();
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
+  const buttonRef = useRef(null);
 
   useEffect(() => {
     // Fetch branches on mount if user is Owner
@@ -42,11 +44,23 @@ const BranchSelector = () => {
 
   const currentBranchName = currentBranch ? currentBranch.name : 'Select Branch';
 
+  const handleToggle = () => {
+    if (!isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 8,
+        right: window.innerWidth - rect.right
+      });
+    }
+    setIsOpen(!isOpen);
+  };
+
   return (
     <div className="branch-selector">
       <button
+        ref={buttonRef}
         className="branch-selector-button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
         disabled={loading}
       >
         <span className="branch-name">{currentBranchName}</span>
@@ -56,7 +70,13 @@ const BranchSelector = () => {
       {isOpen && (
         <>
           <div className="branch-overlay" onClick={() => setIsOpen(false)} />
-          <div className="branch-dropdown">
+          <div 
+            className="branch-dropdown"
+            style={{
+              top: `${dropdownPosition.top}px`,
+              right: `${dropdownPosition.right}px`
+            }}
+          >
             <div className="branch-dropdown-header">
               <span>Select Branch</span>
               <button className="branch-close" onClick={() => setIsOpen(false)}>×</button>

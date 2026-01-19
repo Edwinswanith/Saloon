@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from models import Package, Service
 from datetime import datetime
 from mongoengine.errors import DoesNotExist, ValidationError
+from mongoengine import Q
 from bson import ObjectId
 from utils.auth import require_auth, require_role
 from utils.branch_filter import get_selected_branch
@@ -67,14 +68,15 @@ def get_packages(current_user=None):
         
         print(f"[PACKAGE GET] Initial query count (active only): {query.count()}")
 
-        # Filter by branch - strict filtering, only show packages belonging to selected branch
+        # Filter by branch - include packages with matching branch OR packages without branch (legacy)
         branch = get_selected_branch(request, current_user)
         if branch:
             print(f"[PACKAGE GET] Filtering by branch: {branch.name} (ID: {branch.id})")
-            query = query.filter(branch=branch)
+            # Include packages with matching branch OR packages without branch assigned (legacy support)
+            query = query.filter(Q(branch=branch) | Q(branch__exists=False) | Q(branch=None))
             print(f"[PACKAGE GET] After branch filter count: {query.count()}")
         else:
-            print(f"[PACKAGE GET] WARNING: No branch found for user. Packages may be empty.")
+            print(f"[PACKAGE GET] WARNING: No branch found for user. Showing all packages.")
 
         # Apply filters
         # Allow status override if explicitly requested (e.g., for admin views)

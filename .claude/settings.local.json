@@ -4,7 +4,22 @@
       "Bash(python:*)",
       "Bash(tasklist /FI \"IMAGENAME eq python.exe\" /FO CSV)",
       "Bash(findstr:*)",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "mcp__chrome-devtools__take_snapshot",
+      "mcp__chrome-devtools__click",
+      "mcp__chrome-devtools__list_console_messages",
+      "mcp__chrome-devtools__navigate_page",
+      "mcp__chrome-devtools__fill",
+      "mcp__chrome-devtools__wait_for",
+      "mcp__chrome-devtools__take_screenshot",
+      "mcp__chrome-devtools__resize_page",
+      "mcp__chrome-devtools__evaluate_script",
+      "mcp__chrome-devtools__list_network_requests",
+      "mcp__chrome-devtools__get_network_request",
+      "Bash(timeout /t 5 /nobreak)",
+      "Bash(docker tag:*)",
+      "Bash(docker push:*)",
+      "Bash(cmd /c \"del d:\\\\Saloon\\\\frontend\\\\src\\\\components\\\\Top10Offerings.jsx\")"
     ]
   }
 }

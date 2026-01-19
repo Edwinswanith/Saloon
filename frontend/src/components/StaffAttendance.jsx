@@ -245,13 +245,13 @@ const StaffAttendance = () => {
                 ) : (
                   staffAttendance.map((staff) => (
                     <tr key={staff.id}>
-                      <td className="staff-name">{staff.name}</td>
-                      <td>
+                      <td data-label="Staff Member" className="staff-name">{staff.name}</td>
+                      <td data-label="Status">
                         <button className={`status-btn ${staff.status.toLowerCase().replace(' ', '-')}`}>
                           {staff.status}
                         </button>
                       </td>
-                      <td>
+                      <td data-label="Monthly Summary">
                         <div className="monthly-summary">
                           <span className="summary-badge present">
                             P: {staff.monthlySummary.present}
@@ -264,7 +264,7 @@ const StaffAttendance = () => {
                           </span>
                         </div>
                       </td>
-                      <td>
+                      <td data-label="Actions">
                         <div className="action-buttons">
                           <button
                             className="action-btn present-btn"

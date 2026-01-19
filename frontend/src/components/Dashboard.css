@@ -1900,47 +1900,193 @@
   .staff-dashboard {
     grid-template-columns: 1fr;
   }
-  
+
+  /* Employee Performance Table - Mobile Card Layout */
+  .staff-panel.full-width {
+    height: auto;
+    min-height: auto;
+  }
+
+  .staff-panel.full-width .panel-content {
+    padding: 12px;
+  }
+
+  .staff-panel.full-width .table-container {
+    overflow-x: visible;
+  }
+
   .employee-table {
     display: block;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    border-radius: 0;
+    box-shadow: none;
+    min-width: unset;
   }
-  
-  .employee-table thead,
-  .employee-table tbody,
-  .employee-table tr,
-  .employee-table td,
-  .employee-table th {
-    display: block;
-  }
-  
+
   .employee-table thead {
     display: none;
   }
-  
-  .employee-table tr {
-    margin-bottom: var(--space-4);
-    border: 1px solid var(--border-medium);
+
+  .employee-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .employee-table tbody tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 16px;
+    padding: 16px;
+    padding-top: 20px;
+    margin-bottom: 0;
+    border: 1px solid #e5e7eb;
     border-radius: 12px;
-    padding: var(--space-4);
-    background: var(--bg-elevated);
-  }
-  
-  .employee-table td {
-    border: none;
-    padding: var(--space-2) 0;
-    text-align: left;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     position: relative;
-    padding-left: 50%;
   }
-  
-  .employee-table td:before {
+
+  .employee-table tbody tr.row-gold {
+    border-left: 4px solid #0F766E;
+    background: linear-gradient(90deg, #f0fdfa 0%, #ffffff 100%);
+  }
+
+  .employee-table tbody tr.row-silver {
+    border-left: 4px solid #6b7280;
+    background: linear-gradient(90deg, #f9fafb 0%, #ffffff 100%);
+  }
+
+  .employee-table tbody tr.row-bronze {
+    border-left: 4px solid #ea580c;
+    background: linear-gradient(90deg, #fff7ed 0%, #ffffff 100%);
+  }
+
+  .employee-table tbody tr:hover {
+    transform: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  .employee-table td {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 4px 0 !important;
+    border: none;
+    font-size: 14px;
+  }
+
+  .employee-table td::before {
     content: attr(data-label);
+    font-size: 10px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+
+  /* Staff Name - Full width on top */
+  .employee-table td[data-label="Staff Name"] {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 12px !important;
+    margin-bottom: 4px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .employee-table td[data-label="Staff Name"]::before {
+    display: none;
+  }
+
+  .employee-table td[data-label="Staff Name"] .staff-name-cell {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  /* Rank badge - Position in top row with name */
+  .employee-table td[data-label="#"] {
     position: absolute;
-    left: 0;
-    width: 45%;
-    font-weight: var(--font-semibold);
-    color: var(--text-secondary);
+    top: 12px;
+    right: 12px;
+    padding: 0 !important;
+  }
+
+  .employee-table td[data-label="#"]::before {
+    display: none;
+  }
+
+  .employee-table td[data-label="#"] .rank-badge-table {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  /* Info button - Full width at bottom */
+  .employee-table td[data-label="Info"] {
+    grid-column: 1 / -1;
+    margin-top: 8px;
+    padding-top: 12px !important;
+    border-top: 1px solid #f3f4f6;
+  }
+
+  .employee-table td[data-label="Info"]::before {
+    display: none;
+  }
+
+  .employee-table td[data-label="Info"] .info-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 10px 16px;
+  }
+
+  /* Total and Avg Bill - Highlighted */
+  .employee-table td[data-label="Total"],
+  .employee-table td[data-label="Avg. Bill"] {
+    background: #f9fafb;
+    padding: 8px !important;
+    border-radius: 8px;
+  }
+
+  .employee-table td[data-label="Total"] .amount-cell,
+  .employee-table td[data-label="Avg. Bill"] .amount-cell,
+  .employee-table td.amount-cell {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0F766E;
+  }
+
+  /* Empty row styling */
+  .employee-table .empty-row {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 24px !important;
+    color: #9ca3af;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+  .employee-table tbody tr {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .employee-table td[data-label="#"] {
+    top: 10px;
+    right: 10px;
+  }
+
+  .employee-table td[data-label="Total"],
+  .employee-table td[data-label="Avg. Bill"] {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .employee-table td[data-label="Total"]::before,
+  .employee-table td[data-label="Avg. Bill"]::before {
+    margin-bottom: 0;
   }
 }

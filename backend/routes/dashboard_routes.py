@@ -8,7 +8,7 @@ import traceback
 from utils.auth import require_auth
 from utils.branch_filter import get_selected_branch, filter_by_branch
 from utils.date_utils import get_ist_date_range, ist_to_utc_start, ist_to_utc_end, get_ist_today
-from utils.cache import cache_response
+from utils.redis_cache import cache_response
 from utils.performance import log_performance
 
 dashboard_bp = Blueprint('dashboard', __name__)
@@ -403,7 +403,7 @@ def get_staff_performance(current_user=None):
 
 @dashboard_bp.route('/top-customers', methods=['GET'])
 @require_auth
-@cache_response(ttl=300)  # Cache for 5 minutes
+@cache_response(ttl=60)  # Cache for 60 seconds
 @log_performance
 def get_top_customers(current_user=None):
     """Get top customers by revenue - OPTIMIZED with aggregation"""
@@ -488,7 +488,7 @@ def get_top_customers(current_user=None):
 
 @dashboard_bp.route('/top-offerings', methods=['GET'])
 @require_auth
-@cache_response(ttl=300)  # Cache for 5 minutes
+@cache_response(ttl=60)  # Cache for 60 seconds
 @log_performance
 def get_top_offerings(current_user=None):
     """Get top services/products/packages by revenue - OPTIMIZED with aggregation"""
@@ -854,8 +854,10 @@ def get_payment_distribution(current_user=None):
 
 @dashboard_bp.route('/top-moving-items', methods=['GET'])
 @require_auth
+@cache_response(ttl=60)  # Cache for 60 seconds
+@log_performance
 def get_top_moving_items(current_user=None):
-    """Get top moving items (services, packages, products) with trends and stock status"""
+    """Get top moving items (services, packages, products) with trends and stock status - OPTIMIZED with aggregation"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
@@ -873,16 +875,6 @@ def get_top_moving_items(current_user=None):
             default_start_date = default_start_date_obj.strftime('%Y-%m-%d')
             default_end_date = today_ist
             start, end = get_ist_date_range(default_start_date, default_end_date)
-        
-        # Get bills in current period
-        bills_query = Bill.objects(
-            is_deleted=False,
-            bill_date__gte=start,
-            bill_date__lte=end
-        )
-        if branch:
-            bills_query = bills_query.filter(branch=branch)
-        current_bills = list(bills_query)
         
         # Calculate previous period for trend comparison
         if start_date and end_date:
@@ -902,55 +894,81 @@ def get_top_moving_items(current_user=None):
             prev_end_date = prev_end_date_obj.strftime('%Y-%m-%d')
             prev_start, prev_end = get_ist_date_range(prev_start_date, prev_end_date)
         
-        # Get bills in previous period
-        prev_bills_query = Bill.objects(
-            is_deleted=False,
-            bill_date__gte=prev_start,
-            bill_date__lte=prev_end
-        )
+        # Build match stage for current period
+        current_match = {
+            "is_deleted": False,
+            "bill_date": {"$gte": start, "$lte": end}
+        }
         if branch:
-            prev_bills_query = prev_bills_query.filter(branch=branch)
-        prev_bills = list(prev_bills_query)
+            current_match["branch"] = ObjectId(str(branch.id))
         
-        # Services: Name, Bills count, Revenue, Trend
-        services_stats = {}
-        services_prev_stats = {}
+        # Build match stage for previous period
+        prev_match = {
+            "is_deleted": False,
+            "bill_date": {"$gte": prev_start, "$lte": prev_end}
+        }
+        if branch:
+            prev_match["branch"] = ObjectId(str(branch.id))
         
-        for bill in current_bills:
-            for item in (bill.items or []):
-                try:
-                    if getattr(item, 'item_type', None) == 'service' and item.service:
-                        item.service.reload()
-                        service_id = str(item.service.id)
-                        service_name = item.service.name if hasattr(item.service, 'name') else 'Service'
-                        if service_id not in services_stats:
-                            services_stats[service_id] = {
-                                'name': service_name,
-                                'bills': set(),
-                                'revenue': 0.0
-                            }
-                        services_stats[service_id]['bills'].add(str(bill.id))
-                        services_stats[service_id]['revenue'] += _safe_float(item.total)
-                except (DoesNotExist, AttributeError, TypeError, ValueError):
-                    continue
+        # OPTIMIZED: Aggregation pipeline for services (current period)
+        services_current_pipeline = [
+            {"$match": current_match},
+            {"$unwind": "$items"},
+            {"$match": {
+                "items.item_type": "service",
+                "items.service": {"$ne": None}
+            }},
+            {"$group": {
+                "_id": "$items.service",
+                "revenue": {"$sum": {"$ifNull": ["$items.total", 0]}},
+                "bills": {"$addToSet": "$_id"}
+            }},
+            {"$lookup": {
+                "from": "services",
+                "localField": "_id",
+                "foreignField": "_id",
+                "as": "service_doc"
+            }},
+            {"$unwind": {"path": "$service_doc", "preserveNullAndEmptyArrays": True}},
+            {"$project": {
+                "service_id": {"$toString": "$_id"},
+                "service_name": {"$ifNull": ["$service_doc.name", "Service"]},
+                "revenue": {"$round": ["$revenue", 2]},
+                "bills_count": {"$size": "$bills"}
+            }}
+        ]
         
-        for bill in prev_bills:
-            for item in (bill.items or []):
-                try:
-                    if getattr(item, 'item_type', None) == 'service' and item.service:
-                        item.service.reload()
-                        service_id = str(item.service.id)
-                        if service_id not in services_prev_stats:
-                            services_prev_stats[service_id] = {'revenue': 0.0}
-                        services_prev_stats[service_id]['revenue'] += _safe_float(item.total)
-                except (DoesNotExist, AttributeError, TypeError, ValueError):
-                    continue
+        # Aggregation pipeline for services (previous period)
+        services_prev_pipeline = [
+            {"$match": prev_match},
+            {"$unwind": "$items"},
+            {"$match": {
+                "items.item_type": "service",
+                "items.service": {"$ne": None}
+            }},
+            {"$group": {
+                "_id": "$items.service",
+                "revenue": {"$sum": {"$ifNull": ["$items.total", 0]}}
+            }},
+            {"$project": {
+                "service_id": {"$toString": "$_id"},
+                "revenue": {"$round": ["$revenue", 2]}
+            }}
+        ]
         
-        # Calculate trends for services
+        # Execute both pipelines
+        services_current = list(Bill.objects.aggregate(services_current_pipeline))
+        services_prev = list(Bill.objects.aggregate(services_prev_pipeline))
+        
+        # Create lookup for previous period revenue
+        prev_revenue_map = {s['service_id']: s['revenue'] for s in services_prev}
+        
+        # Calculate trends and build services list
         services_list = []
-        for service_id, stats in services_stats.items():
-            current_revenue = stats['revenue']
-            prev_revenue = services_prev_stats.get(service_id, {}).get('revenue', 0.0)
+        for s in services_current:
+            service_id = s.get('service_id')
+            current_revenue = s.get('revenue', 0.0)
+            prev_revenue = prev_revenue_map.get(service_id, 0.0)
             
             if prev_revenue == 0:
                 trend = 'trending_up' if current_revenue > 0 else 'minus'
@@ -962,95 +980,117 @@ def get_top_moving_items(current_user=None):
                 trend = 'minus'
             
             services_list.append({
-                'name': stats['name'],
-                'bills': len(stats['bills']),
-                'revenue': round(current_revenue, 2),
+                'name': s.get('service_name', 'Service'),
+                'bills': s.get('bills_count', 0),
+                'revenue': current_revenue,
                 'trend': trend
             })
         
         # Sort by revenue and limit to top 10
         services_list = sorted(services_list, key=lambda x: x['revenue'], reverse=True)[:10]
         
-        # Packages: Name, Sold count, Revenue, Status
-        packages_stats = {}
+        # OPTIMIZED: Aggregation pipeline for packages (current period)
+        packages_current_pipeline = [
+            {"$match": current_match},
+            {"$unwind": "$items"},
+            {"$match": {
+                "items.item_type": "package",
+                "items.package": {"$ne": None}
+            }},
+            {"$group": {
+                "_id": "$items.package",
+                "revenue": {"$sum": {"$ifNull": ["$items.total", 0]}},
+                "sold": {"$sum": {"$ifNull": ["$items.quantity", 1]}}
+            }},
+            {"$lookup": {
+                "from": "packages",
+                "localField": "_id",
+                "foreignField": "_id",
+                "as": "package_doc"
+            }},
+            {"$unwind": {"path": "$package_doc", "preserveNullAndEmptyArrays": True}},
+            {"$project": {
+                "package_id": {"$toString": "$_id"},
+                "package_name": {"$ifNull": ["$package_doc.name", "Package"]},
+                "revenue": {"$round": ["$revenue", 2]},
+                "sold": 1
+            }}
+        ]
         
-        for bill in current_bills:
-            for item in (bill.items or []):
-                try:
-                    if getattr(item, 'item_type', None) == 'package' and item.package:
-                        item.package.reload()
-                        package_id = str(item.package.id)
-                        package_name = item.package.name if hasattr(item.package, 'name') else 'Package'
-                        if package_id not in packages_stats:
-                            packages_stats[package_id] = {
-                                'name': package_name,
-                                'sold': 0,
-                                'revenue': 0.0
-                            }
-                        packages_stats[package_id]['sold'] += _safe_int(item.quantity, default=1)
-                        packages_stats[package_id]['revenue'] += _safe_float(item.total)
-                except (DoesNotExist, AttributeError, TypeError, ValueError):
-                    continue
+        packages_current = list(Bill.objects.aggregate(packages_current_pipeline))
         
-        # Calculate average sales per package for status
-        if packages_stats:
-            avg_sales = sum(p['sold'] for p in packages_stats.values()) / len(packages_stats)
+        # Calculate average sales for status
+        if packages_current:
+            avg_sales = sum(p.get('sold', 0) for p in packages_current) / len(packages_current)
         else:
             avg_sales = 0
         
         packages_list = []
-        for package_id, stats in packages_stats.items():
-            if stats['sold'] > avg_sales * 1.2:
+        for p in packages_current:
+            sold = p.get('sold', 0)
+            if sold > avg_sales * 1.2:
                 status = 'High Demand'
-            elif stats['sold'] < avg_sales * 0.8:
+            elif sold < avg_sales * 0.8:
                 status = 'Low Demand'
             else:
                 status = 'Stable'
             
             packages_list.append({
-                'name': stats['name'],
-                'sold': stats['sold'],
-                'revenue': round(stats['revenue'], 2),
+                'name': p.get('package_name', 'Package'),
+                'sold': sold,
+                'revenue': p.get('revenue', 0.0),
                 'status': status
             })
         
         # Sort by revenue and limit to top 10
         packages_list = sorted(packages_list, key=lambda x: x['revenue'], reverse=True)[:10]
         
-        # Products: Name, Sold count, Revenue, Stock status
-        products_stats = {}
+        # OPTIMIZED: Aggregation pipeline for products (current period)
+        products_current_pipeline = [
+            {"$match": current_match},
+            {"$unwind": "$items"},
+            {"$match": {
+                "items.item_type": "product",
+                "items.product": {"$ne": None}
+            }},
+            {"$group": {
+                "_id": "$items.product",
+                "revenue": {"$sum": {"$ifNull": ["$items.total", 0]}},
+                "sold": {"$sum": {"$ifNull": ["$items.quantity", 1]}}
+            }},
+            {"$lookup": {
+                "from": "products",
+                "localField": "_id",
+                "foreignField": "_id",
+                "as": "product_doc"
+            }},
+            {"$unwind": {"path": "$product_doc", "preserveNullAndEmptyArrays": True}},
+            {"$project": {
+                "product_id": {"$toString": "$_id"},
+                "product_name": {"$ifNull": ["$product_doc.name", "Product"]},
+                "revenue": {"$round": ["$revenue", 2]},
+                "sold": 1,
+                "stock_quantity": {"$ifNull": ["$product_doc.stock_quantity", 0]},
+                "min_stock_level": {"$ifNull": ["$product_doc.min_stock_level", 0]}
+            }}
+        ]
         
-        for bill in current_bills:
-            for item in (bill.items or []):
-                try:
-                    if getattr(item, 'item_type', None) == 'product' and item.product:
-                        item.product.reload()
-                        product_id = str(item.product.id)
-                        product_name = item.product.name if hasattr(item.product, 'name') else 'Product'
-                        if product_id not in products_stats:
-                            products_stats[product_id] = {
-                                'name': product_name,
-                                'sold': 0,
-                                'revenue': 0.0,
-                                'stock_quantity': item.product.stock_quantity if item.product.stock_quantity is not None else 0,
-                                'min_stock_level': item.product.min_stock_level if hasattr(item.product, 'min_stock_level') else 0
-                            }
-                        products_stats[product_id]['sold'] += _safe_int(item.quantity, default=1)
-                        products_stats[product_id]['revenue'] += _safe_float(item.total)
-                except (DoesNotExist, AttributeError, TypeError, ValueError):
-                    continue
+        products_current = list(Bill.objects.aggregate(products_current_pipeline))
         
         products_list = []
-        for product_id, stats in products_stats.items():
+        for p in products_current:
+            stock_quantity = p.get('stock_quantity', 0)
+            min_stock_level = p.get('min_stock_level', 0)
+            
             stock_status = 'OK'
-            if stats['stock_quantity'] is not None and stats['min_stock_level'] is not None:
-                if stats['stock_quantity'] <= stats['min_stock_level']:
+            if stock_quantity is not None and min_stock_level is not None:
+                if stock_quantity <= min_stock_level:
                     stock_status = 'Low'
             
             products_list.append({
-                'name': stats['name'],
-                'sold': stats['sold'],
-                'revenue': round(stats['revenue'], 2),
+                'name': p.get('product_name', 'Product'),
+                'sold': p.get('sold', 0),
+                'revenue': p.get('revenue', 0.0),
                 'stock': stock_status
             })
         
@@ -1064,8 +1104,8 @@ def get_top_moving_items(current_user=None):
         })
     except Exception as e:
         error_trace = traceback.format_exc()
-        print(f"[DASHBOARD STATS] Error in get_staff_performance: {str(e)}")
-        print(f"[DASHBOARD STATS] Traceback: {error_trace}")
+        print(f"[DASHBOARD] Error in get_top_moving_items: {str(e)}")
+        print(f"[DASHBOARD] Traceback: {error_trace}")
         return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/client-funnel', methods=['GET'])
@@ -1326,37 +1366,10 @@ def get_operational_alerts(current_user=None):
 
 @dashboard_bp.route('/top-performer', methods=['GET'])
 @require_auth
+@cache_response(ttl=300)  # Cache for 5 minutes
+@log_performance
 def get_top_performer(current_user=None):
-    """Calculate top performer based on weighted scoring system (company-wide)"""
-    
-    def safe_get_staff_id(item_staff):
-        """Safely get staff ID from a staff reference, handling DBRef and broken references"""
-        if not item_staff:
-            return None
-        try:
-            # Try to access as dereferenced object
-            if hasattr(item_staff, 'id'):
-                try:
-                    return str(item_staff.id)
-                except (AttributeError, DoesNotExist):
-                    # Staff document might be deleted, try to get ID from DBRef
-                    if hasattr(item_staff, 'pk'):
-                        return str(item_staff.pk)
-                    return None
-            # If it's already a string
-            elif isinstance(item_staff, str):
-                return item_staff
-            # If it's an ObjectId (from bson)
-            elif hasattr(item_staff, '__str__'):
-                try:
-                    return str(item_staff)
-                except:
-                    return None
-        except (AttributeError, DoesNotExist, TypeError, ValueError) as e:
-            # Silently handle errors - broken references are common
-            return None
-        return None
-    
+    """Calculate top performer based on weighted scoring system (company-wide) - OPTIMIZED with aggregation"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
@@ -1373,167 +1386,194 @@ def get_top_performer(current_user=None):
         end = datetime.strptime(end_date, '%Y-%m-%d')
         end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
 
-        # Get branch for filtering (used only for feedback)
-        branch = get_selected_branch(request, current_user)
+        # OPTIMIZED: Single aggregation pipeline for all staff revenue and service metrics
+        bills_pipeline = [
+            {"$match": {
+                "is_deleted": False,
+                "bill_date": {"$gte": start, "$lte": end}
+            }},
+            {"$unwind": "$items"},
+            {"$match": {"items.staff": {"$ne": None}}},
+            {"$group": {
+                "_id": "$items.staff",
+                "revenue": {"$sum": {"$ifNull": ["$items.total", 0]}},
+                "service_count": {
+                    "$sum": {
+                        "$cond": [
+                            {"$in": [{"$ifNull": ["$items.item_type", "service"]}, ["service"]]},
+                            {"$ifNull": ["$items.quantity", 1]},
+                            0
+                        ]
+                    }
+                },
+                "customers": {"$addToSet": "$customer"}
+            }},
+            {"$lookup": {
+                "from": "staffs",
+                "localField": "_id",
+                "foreignField": "_id",
+                "as": "staff_doc"
+            }},
+            {"$unwind": {"path": "$staff_doc", "preserveNullAndEmptyArrays": True}},
+            {"$match": {"staff_doc.status": "active"}},
+            {"$project": {
+                "staff_id": {"$toString": "$_id"},
+                "staff_name": {
+                    "$concat": [
+                        {"$ifNull": ["$staff_doc.first_name", ""]},
+                        " ",
+                        {"$ifNull": ["$staff_doc.last_name", ""]}
+                    ]
+                },
+                "revenue": {"$round": ["$revenue", 2]},
+                "service_count": 1,
+                "customer_count": {"$size": "$customers"},
+                "customer_ids": "$customers"
+            }}
+        ]
+
+        # Execute bills aggregation
+        bills_results = list(Bill.objects.aggregate(bills_pipeline))
         
-        # Get ALL active staff (company-wide, not filtered by branch)
-        staff_list = list(Staff.objects(status='active'))
+        if not bills_results:
+            return jsonify({
+                'top_performer': None,
+                'leaderboard': []
+            })
+
+        # Get all staff IDs from results
+        staff_ids = [ObjectId(r['staff_id']) for r in bills_results if r.get('staff_id')]
         
-        # Get ALL bills in date range (company-wide, not filtered by branch)
-        # Convert to list to avoid multiple query iterations
-        bills = list(Bill.objects(
-            is_deleted=False,
-            bill_date__gte=start,
-            bill_date__lte=end
-        ))
+        # OPTIMIZED: Single aggregation for all appointments
+        appt_start_datetime = start.replace(hour=0, minute=0, second=0, microsecond=0)
+        appt_end_datetime = end.replace(hour=23, minute=59, second=59, microsecond=999999)
         
+        appt_pipeline = [
+            {"$match": {
+                "staff": {"$in": staff_ids},
+                "appointment_date": {"$gte": appt_start_datetime, "$lte": appt_end_datetime},
+                "status": "completed"
+            }},
+            {"$group": {
+                "_id": "$staff",
+                "count": {"$sum": 1}
+            }}
+        ]
+        appt_results = list(Appointment.objects.aggregate(appt_pipeline))
+        appt_counts = {str(r['_id']): r['count'] for r in appt_results}
+
+        # OPTIMIZED: Single aggregation for all feedbacks
+        feedback_pipeline = [
+            {"$match": {
+                "staff": {"$in": staff_ids},
+                "created_at": {"$gte": start, "$lte": end}
+            }},
+            {"$group": {
+                "_id": "$staff",
+                "avg_rating": {"$avg": "$rating"},
+                "count": {"$sum": 1},
+                "total_rating": {"$sum": "$rating"}
+            }}
+        ]
+        feedback_results = list(Feedback.objects.aggregate(feedback_pipeline))
+        feedback_data = {}
+        for r in feedback_results:
+            staff_id_str = str(r['_id'])
+            count = r.get('count', 0)
+            avg_rating = float(r.get('avg_rating', 0)) if count > 0 else 0.0
+            feedback_data[staff_id_str] = {
+                'count': count,
+                'avg_rating': avg_rating
+            }
+
+        # OPTIMIZED: Single aggregation for customer retention (count visits per staff-customer pair)
+        retention_pipeline = [
+            {"$match": {
+                "is_deleted": False,
+                "bill_date": {"$gte": start, "$lte": end},
+                "customer": {"$ne": None}
+            }},
+            {"$unwind": "$items"},
+            {"$match": {
+                "items.staff": {"$ne": None},
+                "items.staff": {"$in": staff_ids}
+            }},
+            {"$group": {
+                "_id": {
+                    "staff": "$items.staff",
+                    "customer": "$customer"
+                },
+                "visit_count": {"$sum": 1}
+            }},
+            {"$group": {
+                "_id": "$_id.staff",
+                "total_customers": {"$sum": 1},
+                "repeat_customers": {
+                    "$sum": {
+                        "$cond": [{"$gte": ["$visit_count", 2]}, 1, 0]
+                    }
+                }
+            }}
+        ]
+        retention_results = list(Bill.objects.aggregate(retention_pipeline))
+        retention_data = {}
+        for r in retention_results:
+            staff_id_str = str(r['_id'])
+            total = r.get('total_customers', 0)
+            repeat = r.get('repeat_customers', 0)
+            retention_rate = (repeat / total) if total > 0 else 0.0
+            retention_data[staff_id_str] = {
+                'total_customers': total,
+                'repeat_customers': repeat,
+                'retention_rate': retention_rate
+            }
+
         # Calculate max values for normalization
-        max_revenue = 0
-        max_services = 0
-        max_appts = 0
+        max_revenue = max((r.get('revenue', 0) for r in bills_results), default=1)
+        max_services = max((r.get('service_count', 0) for r in bills_results), default=1)
+        max_appts = max((appt_counts.get(r.get('staff_id', ''), 0) for r in bills_results), default=1)
         
-        # First pass: calculate max values
-        for staff in staff_list:
-            try:
-                staff_id = str(staff.id)
-
-                # Calculate revenue
-                revenue = 0
-                service_count = 0
-                for bill in bills:
-                    for item in (bill.items or []):
-                        try:
-                            item_staff_id = safe_get_staff_id(item.staff)
-                            if item_staff_id and item_staff_id == staff_id:
-                                revenue += float(item.total) if item.total else 0.0
-                                service_count += int(item.quantity) if item.quantity else 1
-                        except (AttributeError, TypeError, ValueError, DoesNotExist):
-                            # Skip items with invalid staff references or data
-                            continue
-
-                # Calculate appointments
-                try:
-                    appointments = Appointment.objects(
-                        staff=staff,
-                        appointment_date__gte=start.date(),
-                        appointment_date__lte=end.date(),
-                        status='completed'
-                    ).count()
-                except Exception:
-                    appointments = 0
-
-                max_revenue = max(max_revenue, revenue)
-                max_services = max(max_services, service_count)
-                max_appts = max(max_appts, appointments)
-            except Exception as staff_error:
-                print(f"Warning: Failed to compute max values for staff {getattr(staff, 'id', 'unknown')}: {staff_error}")
-                continue
-        
-        # Avoid division by zero
         max_revenue = max_revenue if max_revenue > 0 else 1
         max_services = max_services if max_services > 0 else 1
         max_appts = max_appts if max_appts > 0 else 1
-        
+
+        # Calculate scores for each staff
         scores = []
-        
-        # Second pass: calculate scores
-        for staff in staff_list:
+        for r in bills_results:
             try:
-                staff_id = str(staff.id)
+                staff_id = r.get('staff_id', '')
+                if not staff_id:
+                    continue
 
-                # 1. Revenue (40%)
-                revenue = 0
-                service_count = 0
-                for bill in bills:
-                    for item in (bill.items or []):
-                        try:
-                            item_staff_id = safe_get_staff_id(item.staff)
-                            if item_staff_id and item_staff_id == staff_id:
-                                revenue += float(item.total) if item.total else 0.0
-                                service_count += int(item.quantity) if item.quantity else 1
-                        except (AttributeError, TypeError, ValueError, DoesNotExist):
-                            # Skip items with invalid staff references or data
-                            continue
+                revenue = float(r.get('revenue', 0))
+                service_count = int(r.get('service_count', 0))
+                appointments = appt_counts.get(staff_id, 0)
+                
+                # Get feedback data
+                feedback_info = feedback_data.get(staff_id, {'count': 0, 'avg_rating': 0.0})
+                feedback_count = feedback_info['count']
+                avg_rating = feedback_info['avg_rating']
+                
+                # Get retention data
+                retention_info = retention_data.get(staff_id, {
+                    'total_customers': 0,
+                    'repeat_customers': 0,
+                    'retention_rate': 0.0
+                })
+                retention_rate = retention_info['retention_rate']
 
+                # Calculate weighted scores
                 revenue_score = (revenue / max_revenue) * 40
-
-                # 2. Service Count (20%)
                 service_score = (service_count / max_services) * 20
-
-                # 3. Appointments (15%)
-                try:
-                    appointments = Appointment.objects(
-                        staff=staff,
-                        appointment_date__gte=start.date(),
-                        appointment_date__lte=end.date(),
-                        status='completed'
-                    ).count()
-                except Exception:
-                    appointments = 0
                 appt_score = (appointments / max_appts) * 15
-
-                # 4. Feedback Rating (15%)
-                try:
-                    feedbacks = list(Feedback.objects(
-                        staff=staff,
-                        created_at__gte=start,
-                        created_at__lte=end
-                    ))
-                except Exception:
-                    feedbacks = []
-
-                feedback_count = len(feedbacks)
-                if feedback_count > 0:
-                    try:
-                        total_rating = sum(float(f.rating) for f in feedbacks if f.rating is not None)
-                        avg_rating = total_rating / feedback_count if feedback_count > 0 else 0.0
-                        rating_score = (avg_rating / 5.0) * 15 if avg_rating > 0 else 0.0
-                    except (TypeError, ValueError, ZeroDivisionError):
-                        avg_rating = 0.0
-                        rating_score = 0.0
-                else:
-                    avg_rating = 0.0
-                    rating_score = 0.0
-
-                # 5. Customer Retention (10%)
-                # Count repeat customers who requested this staff
-                customer_visits = {}
-                for bill in bills:
-                    try:
-                        customer_info = get_safe_customer_info(bill.customer)
-                        if customer_info['id']:
-                            customer_id = customer_info['id']
-                            # Check if this bill has items from this staff
-                            has_staff_item = False
-                            for item in (bill.items or []):
-                                try:
-                                    item_staff_id = safe_get_staff_id(item.staff)
-                                    if item_staff_id and item_staff_id == staff_id:
-                                        has_staff_item = True
-                                        break
-                                except (AttributeError, TypeError, DoesNotExist):
-                                    continue
-
-                            if has_staff_item:
-                                if customer_id not in customer_visits:
-                                    customer_visits[customer_id] = 0
-                                customer_visits[customer_id] += 1
-                    except (AttributeError, TypeError, DoesNotExist):
-                        # Skip bills with invalid customer references
-                        continue
-
-                # Calculate retention rate (customers with 2+ visits)
-                total_customers = len(customer_visits)
-                repeat_customers = sum(1 for visits in customer_visits.values() if visits >= 2)
-                retention_rate = (repeat_customers / total_customers) if total_customers > 0 else 0
+                rating_score = (avg_rating / 5.0) * 15 if avg_rating > 0 else 0.0
                 retention_score = retention_rate * 10
 
-                # Calculate total performance score
                 total_score = revenue_score + service_score + appt_score + rating_score + retention_score
 
                 scores.append({
                     'staff_id': staff_id,
-                    'staff_name': f"{staff.first_name or ''} {staff.last_name or ''}".strip(),
+                    'staff_name': r.get('staff_name', '').strip(),
                     'performance_score': round(float(total_score), 1),
                     'revenue': round(float(revenue), 2),
                     'service_count': int(service_count),
@@ -1543,9 +1583,9 @@ def get_top_performer(current_user=None):
                     'retention_rate': round(float(retention_rate) * 100, 1)
                 })
             except Exception as staff_error:
-                print(f"Warning: Failed to compute score for staff {getattr(staff, 'id', 'unknown')}: {staff_error}")
+                print(f"Warning: Failed to compute score for staff {r.get('staff_id', 'unknown')}: {staff_error}")
                 continue
-        
+
         # Sort by performance score
         scores.sort(key=lambda x: x['performance_score'], reverse=True)
         

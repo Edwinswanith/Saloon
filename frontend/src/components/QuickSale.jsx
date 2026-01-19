@@ -1329,107 +1329,106 @@ const QuickSale = () => {
       const billData = await billResponse.json()
       const billId = billData.data.id
 
-      // Add services to bill
-      for (const service of validServices) {
+      // Add all items to bill in PARALLEL for faster checkout
+      const itemPromises = []
+
+      // Collect service promises
+      validServices.forEach(service => {
         if (service.service_id && service.price > 0) {
-          try {
-            const itemResponse = await apiPost(`/api/bills/${billId}/items`, {
+          itemPromises.push(
+            apiPost(`/api/bills/${billId}/items`, {
               item_type: 'service',
-              service_id: service.service_id,  // MongoDB ObjectId as string
-              staff_id: service.staff_id || null,  // MongoDB ObjectId as string
+              service_id: service.service_id,
+              staff_id: service.staff_id || null,
               start_time: service.startTime ? `${service.startTime}:00` : null,
               price: parseFloat(service.price) || 0,
               discount: parseFloat(service.discount) || 0,
               quantity: 1,
               total: parseFloat(service.total) || parseFloat(service.price) || 0,
-            })
-
-            if (!itemResponse.ok) {
-              let errorMessage = 'Failed to add item to bill'
-              try {
-                const errorData = await itemResponse.json()
-                errorMessage = errorData.error || errorMessage
-              } catch (e) {
-                errorMessage = `Server error: ${itemResponse.status} ${itemResponse.statusText}`
+            }).then(async (response) => {
+              if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}))
+                throw new Error(errorData.error || 'Failed to add service to bill')
               }
-              throw new Error(errorMessage)
-            }
-          } catch (itemError) {
-            console.error('Failed to add item to bill:', itemError)
-            throw itemError
-          }
+              return response
+            })
+          )
         }
-      }
+      })
 
-      // Add packages to bill
-      for (const pkg of packages) {
+      // Collect package promises
+      packages.forEach(pkg => {
         if (pkg.package_id) {
-          try {
-            const itemResponse = await apiPost(`/api/bills/${billId}/items`, {
+          itemPromises.push(
+            apiPost(`/api/bills/${billId}/items`, {
               item_type: 'package',
-              package_id: pkg.package_id,  // MongoDB ObjectId as string
+              package_id: pkg.package_id,
               price: parseFloat(pkg.price) || 0,
               discount: parseFloat(pkg.discount) || 0,
               quantity: 1,
               total: parseFloat(pkg.total) || parseFloat(pkg.price) || 0,
+            }).then(async (response) => {
+              if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}))
+                throw new Error(errorData.error || 'Failed to add package to bill')
+              }
+              return response
             })
-
-            if (!itemResponse.ok) {
-              const errorData = await itemResponse.json()
-              throw new Error(errorData.error || 'Failed to add package to bill')
-            }
-          } catch (itemError) {
-            console.error('Failed to add package to bill:', itemError)
-            throw itemError
-          }
+          )
         }
-      }
+      })
 
-      // Add products to bill
-      for (const product of products) {
+      // Collect product promises
+      products.forEach(product => {
         if (product.product_id) {
-          try {
-            const itemResponse = await apiPost(`/api/bills/${billId}/items`, {
+          itemPromises.push(
+            apiPost(`/api/bills/${billId}/items`, {
               item_type: 'product',
-              product_id: product.product_id,  // MongoDB ObjectId as string
+              product_id: product.product_id,
               price: parseFloat(product.price) || 0,
               discount: parseFloat(product.discount) || 0,
-              quantity: parseInt(product.quantity) || 1,  // Quantity is a number, keep parseInt
+              quantity: parseInt(product.quantity) || 1,
               total: parseFloat(product.total) || parseFloat(product.price) * (parseInt(product.quantity) || 1) || 0,
+            }).then(async (response) => {
+              if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}))
+                throw new Error(errorData.error || 'Failed to add product to bill')
+              }
+              return response
             })
-
-            if (!itemResponse.ok) {
-              const errorData = await itemResponse.json()
-              throw new Error(errorData.error || 'Failed to add product to bill')
-            }
-          } catch (itemError) {
-            console.error('Failed to add product to bill:', itemError)
-            throw itemError
-          }
+          )
         }
-      }
+      })
 
-      // Add memberships to bill
-      for (const membership of memberships) {
+      // Collect membership promises
+      memberships.forEach(membership => {
         if (membership.membership_id) {
-          try {
-            const itemResponse = await apiPost(`/api/bills/${billId}/items`, {
+          itemPromises.push(
+            apiPost(`/api/bills/${billId}/items`, {
               item_type: 'membership',
-              membership_id: membership.membership_id,  // MongoDB ObjectId as string
+              membership_id: membership.membership_id,
               price: parseFloat(membership.price) || 0,
               discount: 0,
               quantity: 1,
               total: parseFloat(membership.price) || 0,
+            }).then(async (response) => {
+              if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}))
+                throw new Error(errorData.error || 'Failed to add membership to bill')
+              }
+              return response
             })
+          )
+        }
+      })
 
-            if (!itemResponse.ok) {
-              const errorData = await itemResponse.json()
-              throw new Error(errorData.error || 'Failed to add membership to bill')
-            }
-          } catch (itemError) {
-            console.error('Failed to add membership to bill:', itemError)
-            throw itemError
-          }
+      // Execute ALL item additions in parallel
+      if (itemPromises.length > 0) {
+        try {
+          await Promise.all(itemPromises)
+        } catch (itemError) {
+          console.error('Failed to add items to bill:', itemError)
+          throw itemError
         }
       }
 

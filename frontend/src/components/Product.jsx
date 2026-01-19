@@ -86,32 +86,18 @@ const Product = () => {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       const data = await response.json()
-      
-      // Backend returns array directly, not wrapped in object
+
+      // Backend now returns categories with counts included - no need for N API calls
       const categories = Array.isArray(data) ? data : (data.categories || [])
-      
-      // Get product count for each category
-      const categoriesWithCount = await Promise.all(
-        categories.map(async (cat) => {
-          const prodResponse = await apiGet(`/api/products?category_id=${cat.id}`)
-          if (!prodResponse.ok) {
-            console.error(`[Product] Error fetching products for category ${cat.id}:`, prodResponse.status)
-            return { ...cat, count: 0 }
-          }
-          const prodData = await prodResponse.json()
-          // Backend returns {data: [...], pagination: {...}}
-          const products = prodData.data || (Array.isArray(prodData) ? prodData : (prodData.products || []))
-          console.log(`[Product] Category ${cat.name} (${cat.id}): ${products.length} products`)
-          return { ...cat, count: products.length }
-        })
-      )
-      setProductCategories(categoriesWithCount || [])
+      console.log(`[Product] Loaded ${categories.length} categories with counts from backend`)
+
+      setProductCategories(categories)
     } catch (error) {
       console.error('Error fetching product categories:', error)
       setProductCategories([])
     } finally {
       setLoading(false)
-}
+    }
   }
 
   const fetchProductsForCategory = async (categoryId) => {

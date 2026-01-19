@@ -93,15 +93,35 @@ def get_customer(customer_id, current_user=None):
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 404
         
-        # Calculate visit history and revenue from bills
-        bills_query = Bill.objects(customer=customer)
+        # OPTIMIZED: Calculate visit history and revenue using aggregation
+        from bson import ObjectId
+        match_stage = {
+            "customer": ObjectId(customer_id),
+            "is_deleted": False
+        }
         if branch:
-            bills_query = bills_query.filter(branch=branch)
+            match_stage["branch"] = ObjectId(str(branch.id))
         
-        bills = list(bills_query)
-        total_visits = len(bills)
-        total_revenue = sum(bill.final_amount for bill in bills if bill.final_amount)
-        last_visit = max((bill.bill_date for bill in bills if bill.bill_date), default=None)
+        bills_pipeline = [
+            {"$match": match_stage},
+            {"$group": {
+                "_id": None,
+                "total_revenue": {"$sum": {"$ifNull": ["$final_amount", 0]}},
+                "total_visits": {"$sum": 1},
+                "last_visit": {"$max": "$bill_date"}
+            }}
+        ]
+        
+        bills_result = list(Bill.objects.aggregate(bills_pipeline))
+        
+        if bills_result:
+            total_visits = bills_result[0].get('total_visits', 0)
+            total_revenue = bills_result[0].get('total_revenue', 0.0)
+            last_visit = bills_result[0].get('last_visit')
+        else:
+            total_visits = 0
+            total_revenue = 0.0
+            last_visit = None
         
         # Get active membership info
         active_membership = Membership.objects(

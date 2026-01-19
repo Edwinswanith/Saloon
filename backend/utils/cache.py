@@ -29,8 +29,12 @@ def cache_response(ttl=CACHE_TTL):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # Create cache key from endpoint path + query params
-            cache_key = f"{request.path}:{request.query_string.decode()}"
+            # Create cache key from endpoint path + query params (excluding cache-busting _t param)
+            # Also include branch header for branch-specific caching
+            query_params = {k: v for k, v in request.args.items() if k != '_t'}
+            sorted_params = sorted(query_params.items())
+            branch_id = request.headers.get('x-branch-id', '')
+            cache_key = f"{request.path}:{sorted_params}:{branch_id}"
             cache_key_hash = hashlib.md5(cache_key.encode()).hexdigest()
             
             # Check cache

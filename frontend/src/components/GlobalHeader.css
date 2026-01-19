@@ -12,6 +12,7 @@
   align-items: center;
   justify-content: flex-end;
   padding: 0 24px;
+  overflow: hidden;
 }
 
 .global-header-content {
@@ -20,6 +21,8 @@
   align-items: center;
   justify-content: space-between;
   position: relative;
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* Mobile Menu Button - Hidden by default */
@@ -81,6 +84,8 @@
   margin-left: auto;
   position: relative;
   z-index: 2;
+  flex-shrink: 0;
+  min-width: 0;
 }
 
 .logo-box {
@@ -93,6 +98,9 @@
   align-items: center;
   gap: 10px;
   transition: all 0.2s;
+  flex-shrink: 0;
+  white-space: nowrap;
+  min-width: fit-content;
 }
 
 .logo-box:hover {
@@ -123,16 +131,18 @@
 .header-icon {
   background: #0F766E !important;
   border: none;
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   color: white !important;
-  font-size: 18px;
+  font-size: 14px;
   transition: all 0.2s;
+  flex-shrink: 0;
+  min-width: 38px;
 }
 
 .header-icon:hover {
@@ -150,6 +160,15 @@
 
 .bell-icon {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bell-icon svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .bell-icon::after {
@@ -172,6 +191,15 @@
 
 .profile-icon-btn {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-icon-btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .user-avatar-small {
@@ -183,9 +211,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.5px;
+  line-height: 1;
 }
 
 /* Logout Confirmation Modal */
@@ -352,17 +381,29 @@
   }
 
   .header-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 16px;
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+    min-width: 36px;
   }
 
   .user-avatar-small {
-    font-size: 13px;
+    font-size: 12px;
   }
 
   .global-header-right {
     gap: 10px;
+    flex-wrap: nowrap;
+    overflow: visible;
+  }
+  
+  .logo-box {
+    padding: 8px 12px;
+    gap: 6px;
+  }
+  
+  .logo-text {
+    font-size: 12px;
   }
 }
 
@@ -403,14 +444,28 @@
 
   .global-header-right {
     gap: 6px;
+    flex-wrap: nowrap;
+    overflow: visible;
   }
 
   .logo-box {
     padding: 6px 10px;
+    min-width: auto;
   }
 
   .logo-text {
     display: none;
+  }
+  
+  .header-icon {
+    min-width: 32px;
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+  
+  .user-avatar-small {
+    font-size: 11px;
   }
 
   .header-icon {
