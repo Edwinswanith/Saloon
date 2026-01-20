@@ -101,10 +101,19 @@
   flex-shrink: 0;
   white-space: nowrap;
   min-width: fit-content;
+  height: 42px;
+  box-sizing: border-box;
+  outline: none;
+  box-shadow: none;
+}
+
+.logo-box:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .logo-box:hover {
-  transform: translateY(-1px);
+  /* Hover effect removed */
 }
 
 .logo-logout-btn {
@@ -133,25 +142,39 @@
   border: none;
   width: 42px;
   height: 42px;
-  border-radius: 8px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   color: white !important;
-  font-size: 18px;
+  font-size: 14px;
   transition: all 0.2s;
   flex-shrink: 0;
   min-width: 42px;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 0;
+  outline: none;
+  box-shadow: none;
+}
+
+.header-icon:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .header-icon:hover {
-  transform: translateY(-2px);
+  /* Hover effect removed */
 }
 
 .header-icon svg {
+  width: 16px !important;
+  height: 16px !important;
   color: white !important;
   fill: white !important;
+  flex-shrink: 0;
+  display: block;
 }
 
 .header-icon * {
@@ -163,19 +186,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
 }
 
 .bell-icon svg {
-  width: 16px;
-  height: 16px;
+  width: 16px !important;
+  height: 16px !important;
   flex-shrink: 0;
+  display: block;
 }
 
 .bell-icon::after {
   content: '';
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 6px;
+  right: 6px;
   width: 8px;
   height: 8px;
   background: #ef4444;
@@ -186,7 +211,8 @@
 }
 
 .bell-icon:hover::after {
-  opacity: 1;
+  /* Hover effect removed */
+  opacity: 0;
 }
 
 .profile-icon-btn {
@@ -194,27 +220,31 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  padding: 0;
 }
 
 .profile-icon-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 16px !important;
+  height: 16px !important;
   flex-shrink: 0;
+  display: block;
 }
 
 .user-avatar-small {
   width: 100%;
   height: 100%;
-  border-radius: 50%;
+  border-radius: 10px;
   background: #0F766E !important;
   color: white !important;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
   line-height: 1;
+  box-sizing: border-box;
 }
 
 /* Logout Confirmation Modal */
@@ -381,25 +411,27 @@
   }
 
   .header-icon {
-    width: 36px;
-    height: 36px;
+    width: 38px;
+    height: 38px;
     font-size: 14px;
-    min-width: 36px;
+    min-width: 38px;
   }
 
   .bell-icon svg,
   .profile-icon-btn svg {
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
   }
 
   .user-avatar-small {
-    font-size: 13px;
+    font-size: 12px;
   }
 
   .bell-icon::after {
-    top: 7px;
-    right: 7px;
+    top: 5px;
+    right: 5px;
+    width: 7px;
+    height: 7px;
   }
 
   .global-header-right {
@@ -472,22 +504,24 @@
     min-width: 34px;
     width: 34px;
     height: 34px;
-    font-size: 14px;
+    font-size: 12px;
   }
 
   .bell-icon svg,
   .profile-icon-btn svg {
-    width: 15px;
-    height: 15px;
+    width: 14px;
+    height: 14px;
   }
 
   .user-avatar-small {
-    font-size: 12px;
+    font-size: 11px;
   }
 
   .bell-icon::after {
-    top: 6px;
-    right: 6px;
+    top: 4px;
+    right: 4px;
+    width: 6px;
+    height: 6px;
   }
 
   .mobile-menu-btn {

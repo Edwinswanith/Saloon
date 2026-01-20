@@ -302,7 +302,7 @@
 
 .attendance-table thead tr {
   background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: none;
 }
 
 .attendance-table th {
@@ -314,7 +314,7 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   white-space: nowrap;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: none;
 }
 
 .attendance-table th:first-child {

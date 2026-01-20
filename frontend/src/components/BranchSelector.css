@@ -11,21 +11,30 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px;
+  padding: 10px 18px;
   background: #0F766E;
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: none;
+  height: 42px;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.branch-selector-button:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .branch-selector-button:hover {
+  /* Hover effect removed */
   background: #0F766E !important;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: none;
 }
 
 .branch-selector-button:disabled {
@@ -54,7 +63,8 @@
 }
 
 .branch-selector-button:hover .branch-arrow {
-  transform: translateY(1px);
+  /* Hover effect removed */
+  transform: none;
 }
 
 /* ========== OVERLAY ========== */
