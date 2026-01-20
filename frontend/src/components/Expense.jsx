@@ -581,49 +581,73 @@ const Expense = () => {
 
         {/* Expense Table */}
         <div className="expense-table-section">
+          <div className="expense-table-header">
+            <h3 className="expense-table-title">
+              Expense Records
+              {!loading && expenses.length > 0 && (
+                <span className="expense-count-badge">{expenses.length} items</span>
+              )}
+            </h3>
+          </div>
           <div className="table-container">
             <table className="expense-table">
               <thead>
                 <tr>
                   <th>No.</th>
-                  <th>Expense Category</th>
-                  <th>Mode of payment</th>
+                  <th>Category</th>
+                  <th>Payment</th>
                   <th>Expense Name</th>
-                  <th>Expense Date</th>
-                  <th>Expense Total</th>
-                  <th>Action</th>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="7" className="empty-row">Loading...</td>
+                    <td colSpan="7" className="empty-row">Loading expenses...</td>
                   </tr>
                 ) : expenses.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="empty-row">No expenses found</td>
+                    <td colSpan="7" className="empty-row">No expenses found for the selected filters</td>
                   </tr>
                 ) : (
                   expenses.map((expense, index) => (
                     <tr key={expense.id}>
-                      <td>{index + 1}</td>
-                      <td>{expense.category_name || 'N/A'}</td>
-                      <td>{expense.payment_mode || 'N/A'}</td>
-                      <td>{expense.name}</td>
-                      <td>{expense.expense_date ? expense.expense_date.split('T')[0] : 'N/A'}</td>
-                      <td>₹{(expense.amount || 0).toFixed(2)}</td>
+                      <td style={{ fontWeight: 500, color: '#6b7280' }}>{index + 1}</td>
+                      <td>
+                        <span className={`category-badge ${(expense.category_name || '').toLowerCase().replace(/\s+/g, '-')}`}>
+                          {expense.category_name || 'N/A'}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`payment-badge ${(expense.payment_mode || '').toLowerCase()}`}>
+                          {expense.payment_mode || 'N/A'}
+                        </span>
+                      </td>
+                      <td style={{ fontWeight: 500 }}>{expense.name}</td>
+                      <td style={{ color: '#6b7280' }}>
+                        {expense.expense_date ? new Date(expense.expense_date).toLocaleDateString('en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric'
+                        }) : 'N/A'}
+                      </td>
+                      <td>
+                        <span className="expense-amount">₹{(expense.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      </td>
                       <td>
                         <div className="action-icons">
-                          <button 
-                            className="icon-btn edit-btn" 
-                            title="Edit"
+                          <button
+                            className="icon-btn edit-btn"
+                            title="Edit expense"
                             onClick={() => handleEditExpense(expense)}
                           >
                             <FaEdit />
                           </button>
                           <button
                             className="icon-btn delete-btn"
-                            title="Delete"
+                            title="Delete expense"
                             onClick={() => handleDelete(expense.id)}
                           >
                             <FaTrash />
