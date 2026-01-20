@@ -8,8 +8,8 @@ Saloon Management System - A multi-branch salon/spa business management applicat
 
 ## Tech Stack
 
-- **Backend**: Flask 3.0 with MongoEngine ODM, MongoDB Atlas
-- **Frontend**: React 18, Vite, Ant Design 6, Zustand (state), React Query
+- **Backend**: Flask 3.0, MongoEngine ODM, MongoDB Atlas
+- **Frontend**: React 18, Vite, Ant Design 6, Zustand, React Query
 - **Deployment**: Google Cloud Run via Docker (multi-stage build)
 
 ## Development Commands
@@ -17,88 +17,75 @@ Saloon Management System - A multi-branch salon/spa business management applicat
 ### Backend
 ```bash
 cd backend
-python -m venv myenv
-myenv\Scripts\activate  # Windows
+python -m venv myenv && myenv\Scripts\activate  # Windows
 pip install -r requirements.txt
-python app.py  # Runs on port 5000
+python app.py  # Port 5000
 ```
 
 ### Frontend
 ```bash
 cd frontend
 npm install
-npm run dev   # Dev server on port 5173
-npm run build # Production build to dist/
+npm run dev   # Port 5173
+npm run build # Production build
 ```
 
-### Docker (local full stack)
+### Docker
 ```bash
-docker-compose up
-```
-
-### Deploy to Cloud Run
-```bash
-# Windows
-cloud_run.bat
-
-# Linux/Mac
-./cloud_run.sh
+docker-compose up  # Full stack locally
+cloud_run.bat      # Deploy to Cloud Run (Windows)
 ```
 
 ## Architecture
 
 ### Backend Structure
 
-**Entry Point**: `backend/app.py` - Flask app with MongoDB connection, CORS setup, route registration
+**Entry Point**: `backend/app.py` - Flask app initialization, MongoDB connection, route registration
 
-**Database**: MongoDB Atlas
-- Production: `Saloon_prod`
-- Development: `Saloon` (toggle in app.py MONGODB_DB constant)
+**Database Toggle**: In `app.py`, switch `MONGODB_DB` between `'Saloon_prod'` (production) and `'Saloon'` (development)
 
-**Models**: `backend/models.py` - MongoEngine document classes
-- Key models: Branch, Customer, Staff, Service, Product, Package, Bill, Appointment, Expense, Inventory
+**Models**: `backend/models.py` - MongoEngine documents with `to_dict()` helper for JSON serialization
 
-**Routes**: `backend/routes/` - Flask Blueprints registered via `register_routes(app)`
-- All API endpoints prefixed with `/api/`
-- Branch filtering via `X-Branch-Id` header on most endpoints
+**Routes**: `backend/routes/` - Flask Blueprints registered in `routes/__init__.py`
+- All endpoints prefixed with `/api/`
+- Add new blueprints in `__init__.py` via `register_routes()`
+
+**Backend Utilities** (`backend/utils/`):
+- `auth.py` - JWT handling, decorators: `@require_auth`, `@require_role('manager', 'owner')`, `@optional_auth`
+- `branch_filter.py` - Multi-branch filtering: `get_selected_branch()`, `filter_by_branch()`
+- `redis_cache.py` - Caching layer (optional, falls back to in-memory)
 
 ### Frontend Structure
 
-**Entry**: `frontend/src/main.jsx` → `App.jsx`
+**API Configuration**: `frontend/src/config.js` - Toggle `API_BASE_URL` between local and Cloud Run URL
 
-**API Configuration**: `frontend/src/config.js`
-- Toggle `API_BASE_URL` between local (http://127.0.0.1:5000) and production Cloud Run URL
+**API Utility**: `frontend/src/utils/api.js` - Centralized fetch with auth headers
+- Use `apiGet()`, `apiPost()`, `apiPut()`, `apiDelete()` for all API calls
+- Automatically adds `Authorization` and `X-Branch-Id` headers
 
-**Core Patterns**:
-- Components in `src/components/` - each feature has `.jsx` + `.css` pair
-- Auth via `src/contexts/AuthContext.jsx` - JWT tokens stored in localStorage
-- API calls via `src/utils/api.js` - centralized fetch wrapper with auth headers and branch ID
-- Main billing UI in `QuickSale.jsx` (largest component)
-
-**Key Components**:
-- `Sidebar.jsx` - Navigation
-- `Dashboard.jsx` - Analytics overview
-- `QuickSale.jsx` - Primary billing/POS interface
-- `CustomerList.jsx`, `Staffs.jsx`, `Service.jsx`, `Product.jsx` - CRUD management
+**State**:
+- Auth: `src/contexts/AuthContext.jsx` - JWT tokens in localStorage
+- Branch: Stored in `localStorage.current_branch`, sent via `X-Branch-Id` header
 
 ### Multi-Branch Architecture
 
-The system supports multiple branches (locations):
-- Users (staff/manager/owner) are associated with a branch
-- Most data is branch-scoped via `branch` ReferenceField in models
-- Frontend sends `X-Branch-Id` header with API requests
-- Owners can switch between branches; managers/staff see only their branch
+- Users have roles: `staff`, `manager`, `owner`
+- Data is branch-scoped via `branch` ReferenceField in models
+- `X-Branch-Id` header determines data scope
+- Owners can switch branches; staff/managers locked to their branch
+- Use `get_selected_branch(request, user)` in routes to get current branch
 
-### Authentication Flow
+### Adding a New API Endpoint
 
-1. Login via `/api/auth/login` returns JWT token
-2. Token stored in `localStorage.auth_token`
-3. `AuthContext` manages user state, token validation, branch selection
-4. API utility automatically adds `Authorization` and `X-Branch-Id` headers
+1. Create route file in `backend/routes/` with Blueprint
+2. Use auth decorators: `@require_auth` or `@require_role('manager', 'owner')`
+3. Get branch via: `branch = get_selected_branch(request, current_user)`
+4. Filter queries: `Model.objects(branch=branch)` or `filter_by_branch(query, branch)`
+5. Register blueprint in `routes/__init__.py`
 
-## Database Conventions
+### Database Conventions
 
-- All models use MongoEngine Document classes
-- ObjectIds converted to string `id` field via `to_dict()` helper
-- Timestamps: `created_at`, `updated_at` fields (DateTimeField)
-- Soft deletes where applicable via `is_active` or `status` fields
+- Models use MongoEngine Document classes
+- Convert to JSON via `to_dict(doc)` - converts ObjectId to string `id`
+- Timestamps: `created_at`, `updated_at` (DateTimeField)
+- Soft deletes: `is_active` or `status` fields

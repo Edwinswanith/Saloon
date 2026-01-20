@@ -1072,24 +1072,24 @@ const Dashboard = () => {
                           const rowClass = index === 0 ? 'row-gold' : index === 1 ? 'row-silver' : index === 2 ? 'row-bronze' : ''
                           return (
                             <tr key={staff.staff_id} className={rowClass}>
-                              <td>
+                              <td data-label="#">
                                 <span className="rank-badge-table">{index + 1}</span>
                               </td>
-                              <td>
+                              <td data-label="Staff Name">
                                 <div className="staff-name-cell">
                                   <FaUser className="staff-icon" />
                                   <span>{staff.staff_name}</span>
                                 </div>
                               </td>
-                              <td>{staff.total_services.toLocaleString()}</td>
-                              <td>{staff.service_count ? staff.service_count.toLocaleString() : '-'}</td>
-                              <td>{staff.package_count ? staff.package_count.toLocaleString() : '-'}</td>
-                              <td>{staff.product_count ? staff.product_count.toLocaleString() : '-'}</td>
-                              <td>{staff.prepaid_count ? staff.prepaid_count.toLocaleString() : '-'}</td>
-                              <td>{staff.membership_count ? staff.membership_count.toLocaleString() : '-'}</td>
-                              <td className="amount-cell">{formatCurrency(staff.total_revenue)}</td>
-                              <td className="amount-cell">{formatCurrency(staff.total_revenue / (staff.total_services || 1))}</td>
-                              <td>
+                              <td data-label="Item Count">{staff.total_services.toLocaleString()}</td>
+                              <td data-label="Service">{staff.service_count ? staff.service_count.toLocaleString() : '-'}</td>
+                              <td data-label="Package">{staff.package_count ? staff.package_count.toLocaleString() : '-'}</td>
+                              <td data-label="Product">{staff.product_count ? staff.product_count.toLocaleString() : '-'}</td>
+                              <td data-label="Prepaid">{staff.prepaid_count ? staff.prepaid_count.toLocaleString() : '-'}</td>
+                              <td data-label="Membership">{staff.membership_count ? staff.membership_count.toLocaleString() : '-'}</td>
+                              <td className="amount-cell" data-label="Total">{formatCurrency(staff.total_revenue)}</td>
+                              <td className="amount-cell" data-label="Avg. Bill">{formatCurrency(staff.total_revenue / (staff.total_services || 1))}</td>
+                              <td data-label="Info">
                                 <button 
                                   className="info-btn"
                                   onClick={() => {
