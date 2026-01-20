@@ -293,10 +293,10 @@
 .form-group input,
 .form-group select {
   width: 100%;
-  padding: 0.75rem;
+  padding: 10px 14px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  font-size: 1rem;
+  font-size: 14px;
   font-family: inherit;
 }
 

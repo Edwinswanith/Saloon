@@ -102,19 +102,21 @@
 }
 
 .action-btn {
-  padding: 12px 24px;
+  padding: 10px 18px;
   border: none;
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  font-weight: var(--font-semibold);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all var(--transition-base);
+  transition: all 0.2s ease;
   white-space: nowrap;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  height: auto;
+  max-height: 40px;
 }
 
 .import-btn {
@@ -196,28 +198,49 @@
 }
 
 .icon-btn {
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-md);
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  max-width: 36px !important;
+  max-height: 36px !important;
+  padding: 0 !important;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
   background: white;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--transition-base);
-  color: var(--text-secondary);
-  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+  color: #6b7280;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
 }
 
 .icon-btn:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .icon-btn svg {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
+}
+
+.icon-btn svg,
+.icon-btn svg path {
+  fill: currentColor !important;
+  color: inherit !important;
+}
+
+.edit-btn {
+  color: #3b82f6;
+}
+
+.edit-btn svg,
+.edit-btn svg path {
+  fill: #3b82f6 !important;
 }
 
 .edit-btn:hover {
@@ -226,10 +249,28 @@
   color: #3b82f6;
 }
 
+.delete-btn {
+  color: #ef4444;
+}
+
+.delete-btn svg,
+.delete-btn svg path {
+  fill: #ef4444 !important;
+}
+
 .delete-btn:hover {
   background: #fee2e2;
   border-color: #ef4444;
   color: #ef4444;
+}
+
+.reorder-btn {
+  color: #6b7280;
+}
+
+.reorder-btn svg,
+.reorder-btn svg path {
+  fill: #6b7280 !important;
 }
 
 .reorder-btn:hover {
@@ -239,27 +280,39 @@
 }
 
 .expand-btn {
-  transition: transform var(--transition-base);
+  color: #0F766E;
+  transition: all 0.2s ease;
 }
 
-.expand-btn.expanded {
+.expand-btn svg,
+.expand-btn svg path {
+  fill: #0F766E !important;
+}
+
+.expand-btn.expanded svg {
   transform: rotate(180deg);
 }
 
 .expand-btn:hover {
-  background: #ede9fe;
+  background: #f0fdfa;
   border-color: #0F766E;
   color: #0F766E;
 }
 
 .icon-btn.add-btn {
-  background: white;
-  color: #0F766E;
+  background: #0F766E;
+  color: white;
   border-color: #0F766E;
 }
 
+.icon-btn.add-btn svg,
+.icon-btn.add-btn svg path {
+  fill: white !important;
+}
+
 .icon-btn.add-btn:hover {
-  background: #0F766E;
+  background: #0d5d58;
+  border-color: #0d5d58;
   color: white;
 }
 
@@ -458,10 +511,10 @@
 .form-group select,
 .form-group textarea {
   width: 100%;
-  padding: 12px 16px;
+  padding: 10px 14px;
   border: 2px solid var(--border-light);
   border-radius: var(--radius-md);
-  font-size: var(--text-base);
+  font-size: 14px;
   font-family: inherit;
   transition: all var(--transition-base);
   box-sizing: border-box;
@@ -495,10 +548,10 @@
 
 .custom-dropdown-toggle {
   width: 100%;
-  padding: 12px 16px;
+  padding: 10px 14px;
   border: 2px solid var(--border-light);
   border-radius: var(--radius-md);
-  font-size: var(--text-base);
+  font-size: 14px;
   font-family: inherit;
   background: white;
   color: var(--text-primary);

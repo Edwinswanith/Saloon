@@ -1832,11 +1832,17 @@ const QuickSale = () => {
               <div 
                 className="date-input-wrapper"
                 onClick={(e) => {
-                  // Find and click the DatePicker input
-                  const input = e.currentTarget.querySelector('.react-datepicker__input-container input')
-                  if (input) {
-                    input.focus()
-                    input.click()
+                  // Only open calendar if clicking on wrapper/display/icon, not on the datepicker itself
+                  const target = e.target
+                  if (target.classList.contains('date-display') || 
+                      target.classList.contains('calendar-icon') || 
+                      target.closest('.date-display') || 
+                      target.closest('.calendar-icon')) {
+                    const input = e.currentTarget.querySelector('.react-datepicker__input-container input')
+                    if (input) {
+                      input.focus()
+                      input.click()
+                    }
                   }
                 }}
               >
@@ -1850,6 +1856,7 @@ const QuickSale = () => {
                   dateFormat="dd/MM/yyyy"
                   className="date-picker"
                   placeholderText="Select date"
+                  shouldCloseOnSelect={true}
                 />
                 <span className="date-display">{formatDate(selectedDate)}</span>
                 <span className="calendar-icon"><FaCalendar /></span>

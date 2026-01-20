@@ -321,32 +321,32 @@ const Prepaid = () => {
                     <span className="group-name">{group.name}</span>
                   </div>
                   <div className="group-actions">
-                    <button 
-                      className="icon-btn edit-btn" 
+                    <button
+                      className="icon-btn edit-btn"
                       title="Edit"
                       onClick={() => handleEditGroup(group)}
                     >
-                      <FaEdit />
+                      <FaEdit size={16} color="#3b82f6" />
                     </button>
                     <button
                       className="icon-btn delete-btn"
                       title="Delete"
                       onClick={() => handleDeleteGroup(group.id)}
                     >
-                      <FaTrash />
+                      <FaTrash size={16} color="#ef4444" />
                     </button>
-                    <button 
-                      className="icon-btn add-btn" 
+                    <button
+                      className="icon-btn add-btn"
                       title="Add"
                       onClick={() => alert('Add prepaid package functionality coming soon')}
                     >
-                      <FaPlus />
+                      <FaPlus size={16} color="#ffffff" />
                     </button>
                     <button className="icon-btn reorder-btn" title="Reorder">
-                      <FaArrowsAltV />
+                      <FaArrowsAltV size={16} color="#6b7280" />
                     </button>
                     <button className="icon-btn expand-btn" title="Expand">
-                      <FaChevronDown />
+                      <FaChevronDown size={16} color="#0F766E" />
                     </button>
                   </div>
                 </div>

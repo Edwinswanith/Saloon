@@ -68,8 +68,8 @@ const Package = () => {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       const data = await response.json()
-      // Backend returns array directly
-      setPackages(Array.isArray(data) ? data : (data.packages || []))
+      // Backend returns {data: [...], pagination: {...}}
+      setPackages(Array.isArray(data) ? data : (data.data || data.packages || []))
     } catch (error) {
       console.error('Error fetching packages:', error)
       setPackages([])

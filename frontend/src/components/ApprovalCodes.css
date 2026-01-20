@@ -145,9 +145,10 @@
 .form-group select,
 .form-group input {
   width: 100%;
-  padding: 8px;
+  padding: 10px 14px;
   border: 1px solid #ddd;
   border-radius: 4px;
+  font-size: 14px;
 }
 
 .modal-actions {

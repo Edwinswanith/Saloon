@@ -383,8 +383,8 @@ const Service = () => {
                       </span>
                     </div>
                     <div className="group-actions">
-                      <button 
-                        className="icon-btn edit-btn" 
+                      <button
+                        className="icon-btn edit-btn"
                         title="Edit"
                         onClick={() => {
                           setEditingGroup(group)
@@ -392,17 +392,17 @@ const Service = () => {
                           setShowGroupModal(true)
                         }}
                       >
-                        <FaEdit />
+                        <FaEdit size={16} color="#3b82f6" />
                       </button>
                       <button
                         className="icon-btn delete-btn"
                         title="Delete"
                         onClick={() => handleDeleteGroup(group.id)}
                       >
-                        <FaTrash />
+                        <FaTrash size={16} color="#ef4444" />
                       </button>
-                      <button 
-                        className="icon-btn add-btn" 
+                      <button
+                        className="icon-btn add-btn"
                         title="Add Service"
                         onClick={() => {
                           setEditingService(null)
@@ -417,17 +417,17 @@ const Service = () => {
                           setShowServiceModal(true)
                         }}
                       >
-                        <FaPlus />
+                        <FaPlus size={16} color="#ffffff" />
                       </button>
                       <button className="icon-btn reorder-btn" title="Reorder">
-                        <FaArrowsAltV />
+                        <FaArrowsAltV size={16} color="#6b7280" />
                       </button>
                       <button
                         className={`icon-btn expand-btn ${expandedGroups[group.id] ? 'expanded' : ''}`}
                         title="Expand"
                         onClick={() => toggleGroup(group.id)}
                       >
-                        <FaChevronDown />
+                        <FaChevronDown size={16} color="#0F766E" />
                       </button>
                     </div>
                   </div>
@@ -449,8 +449,8 @@ const Service = () => {
                                 )}
                               </div>
                               <div className="service-card-actions">
-                            <button 
-                              className="icon-btn edit-btn" 
+                            <button
+                              className="icon-btn edit-btn"
                               title="Edit"
                               onClick={() => {
                                 setEditingService(service)
@@ -465,9 +465,9 @@ const Service = () => {
                                 setShowServiceModal(true)
                               }}
                             >
-                              <FaEdit />
+                              <FaEdit size={14} color="#3b82f6" />
                             </button>
-                            <button 
+                            <button
                               className="icon-btn delete-btn"
                               title="Delete"
                               onClick={async () => {
@@ -479,7 +479,7 @@ const Service = () => {
                                   if (response.ok) {
                                     fetchServicesForGroup(group.id)
                                     fetchServiceGroups()
-                                        showSuccess('Service deleted successfully')
+                                    showSuccess('Service deleted successfully')
                                   } else {
                                     showError('Failed to delete service')
                                   }
@@ -489,7 +489,7 @@ const Service = () => {
                                 }
                               }}
                             >
-                              <FaTrash />
+                              <FaTrash size={14} color="#ef4444" />
                             </button>
                           </div>
                         </div>

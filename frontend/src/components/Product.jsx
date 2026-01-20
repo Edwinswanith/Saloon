@@ -512,22 +512,22 @@ const Product = () => {
                       </span>
                     </div>
                     <div className="category-actions">
-                      <button 
-                        className="icon-btn edit-btn" 
+                      <button
+                        className="icon-btn edit-btn"
                         title="Edit"
                         onClick={() => handleEditCategory(category)}
                       >
-                        <FaEdit />
+                        <FaEdit size={16} color="#3b82f6" />
                       </button>
                       <button
                         className="icon-btn delete-btn"
                         title="Delete"
                         onClick={() => handleDeleteCategory(category.id)}
                       >
-                        <FaTrash />
+                        <FaTrash size={16} color="#ef4444" />
                       </button>
-                      <button 
-                        className="icon-btn add-btn" 
+                      <button
+                        className="icon-btn add-btn"
                         title="Add Product"
                         onClick={() => {
                           setEditingProduct(null)
@@ -544,17 +544,17 @@ const Product = () => {
                           setShowProductModal(true)
                         }}
                       >
-                        <FaPlus />
+                        <FaPlus size={16} color="#ffffff" />
                       </button>
                       <button className="icon-btn reorder-btn" title="Reorder">
-                        <FaArrowsAltV />
+                        <FaArrowsAltV size={16} color="#6b7280" />
                       </button>
                       <button
                         className={`icon-btn expand-btn ${expandedCategories[category.id] ? 'expanded' : ''}`}
                         title="Expand"
                         onClick={() => toggleCategory(category.id)}
                       >
-                        <FaChevronDown />
+                        <FaChevronDown size={16} color="#0F766E" />
                       </button>
                     </div>
                   </div>

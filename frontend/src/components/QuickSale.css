@@ -61,7 +61,7 @@
 }
 
 .menu-icon:hover {
-  color: #7c3aed;
+  color: #0F766E;
 }
 
 .header-title {
@@ -107,7 +107,7 @@
 
 .header-icon:hover {
   background: #f9fafb;
-  border-color: #7c3aed;
+  border-color: #0F766E;
 }
 
 .quick-sale-container {
@@ -393,7 +393,7 @@
 
 .search-input:focus {
   outline: none;
-  border-color: #7c3aed;
+  border-color: #0F766E;
 }
 
 .dropdown-arrow {
@@ -410,7 +410,7 @@
   left: 0;
   right: 0;
   background-color: white;
-  border: 1px solid #7c3aed;
+  border: 1px solid #0F766E;
   border-radius: 6px;
   max-height: 250px;
   overflow-y: auto;
@@ -1535,7 +1535,7 @@
 }
 
 .skip-btn:hover {
-  background: #ede9fe;
+  background: #f0fdfa;
   transform: translateY(-2px);
 }
 
@@ -1936,7 +1936,7 @@
 }
 
 .date-input-wrapper:hover .date-display {
-  border-color: #7c3aed;
+  border-color: #0F766E;
   background: #f9fafb;
 }
 
@@ -2012,10 +2012,35 @@
   border: none;
   background: transparent;
   border-radius: 0px !important;
+  pointer-events: auto;
 }
 
 .date-input-wrapper .react-datepicker__input-container > div {
   border-radius: 0px !important;
+}
+
+/* Ensure datepicker calendar popup appears above other elements */
+.react-datepicker-popper {
+  z-index: 10000 !important;
+}
+
+.react-datepicker {
+  z-index: 10000 !important;
+}
+
+/* Ensure calendar can be closed properly */
+.react-datepicker__close-icon {
+  cursor: pointer;
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  cursor: pointer;
+}
+
+/* Ensure calendar closes on outside click */
+.react-datepicker-popper[data-placement] {
+  pointer-events: auto;
 }
 
 .calendar-icon {
@@ -2043,7 +2068,7 @@
 
 .icon-button:hover {
   background: #f9fafb;
-  border-color: #7c3aed;
+  border-color: #0F766E;
 }
 
 /* Service Table */
@@ -2127,8 +2152,8 @@
 .table-select:focus,
 .table-input:focus {
   outline: none;
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+  border-color: #0F766E;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
 }
 
 .table-input[readOnly] {
@@ -2150,8 +2175,8 @@
 
 .table-time-input:focus {
   outline: none;
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+  border-color: #0F766E;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
 }
 
 .table-input {
@@ -2274,7 +2299,7 @@
 
 .form-select,
 .form-input {
-  padding: 8px 10px !important;
+  padding: 10px 14px !important;
   border: 1px solid #d1d5db;
   border-radius: 6px;
   font-size: 14px;
@@ -2290,8 +2315,8 @@
 .form-select:focus,
 .form-input:focus {
   outline: none;
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+  border-color: #0F766E;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
 }
 
 .form-input[readOnly] {
@@ -2380,9 +2405,9 @@
 
 .pill-button:hover {
   background: #f9fafb;
-  border-color: #7c3aed;
-  color: #7c3aed;
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+  border-color: #0F766E;
+  color: #0F766E;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
 }
 
 /* Added Items Grid Layout */
@@ -2678,7 +2703,7 @@
 }
 
 .form-textarea {
-  padding: 10px 12px;
+  padding: 10px 14px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
   font-size: var(--text-body);
@@ -2903,11 +2928,11 @@
 }
 
 .membership-discount-row {
-  background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+  background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%);
   padding: 10px 14px;
   border-radius: 8px;
   margin: 6px 0;
-  border: 1px solid #c4b5fd;
+  border: 1px solid #99f6e4;
   animation: slideInRight 0.3s ease-out;
 }
 
@@ -3052,7 +3077,7 @@
 .action-buttons {
   display: flex;
   gap: 12px;
-  justify-content: flex-start;
+  justify-content: flex-end;
   padding-top: 16px;
 }
 

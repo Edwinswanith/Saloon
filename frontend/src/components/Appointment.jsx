@@ -12,6 +12,7 @@ const Appointment = ({ setActivePage }) => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [viewMode, setViewMode] = useState('day')
   const [selectedStaff, setSelectedStaff] = useState('all')
+  const [activeNavButton, setActiveNavButton] = useState('today')
   const [staffMembers, setStaffMembers] = useState([])
   const [appointments, setAppointments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -97,18 +98,21 @@ const Appointment = ({ setActivePage }) => {
 
   const handleToday = () => {
     setSelectedDate(new Date().toISOString().split('T')[0])
+    setActiveNavButton('today')
   }
 
   const handleBack = () => {
     const date = new Date(selectedDate)
     date.setDate(date.getDate() - 1)
     setSelectedDate(date.toISOString().split('T')[0])
+    setActiveNavButton('back')
   }
 
   const handleNext = () => {
     const date = new Date(selectedDate)
     date.setDate(date.getDate() + 1)
     setSelectedDate(date.toISOString().split('T')[0])
+    setActiveNavButton('next')
   }
 
   useEffect(() => {
@@ -507,13 +511,22 @@ const Appointment = ({ setActivePage }) => {
           <div className="nav-controls-left">
             {/* Navigation Buttons Group */}
             <div className="nav-btn-group">
-              <button className="nav-btn" onClick={handleToday}>
+              <button 
+                className={`nav-btn ${activeNavButton === 'today' ? 'active' : ''}`} 
+                onClick={handleToday}
+              >
                 Today
               </button>
-              <button className="nav-btn" onClick={handleBack}>
+              <button 
+                className={`nav-btn ${activeNavButton === 'back' ? 'active' : ''}`} 
+                onClick={handleBack}
+              >
                 Back
               </button>
-              <button className="nav-btn" onClick={handleNext}>
+              <button 
+                className={`nav-btn ${activeNavButton === 'next' ? 'active' : ''}`} 
+                onClick={handleNext}
+              >
                 Next
               </button>
             </div>
@@ -591,7 +604,7 @@ const Appointment = ({ setActivePage }) => {
           }}
         >
           {/* Time Column Header */}
-          <div className="time-header"></div>
+          <div className="time-header">Time</div>
 
           {/* Staff Headers */}
           {staffMembers.map((staff) => (
