@@ -417,7 +417,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 10000;
   padding: var(--space-4);
 }
 
@@ -1043,9 +1043,9 @@
   }
 
   .modal-overlay {
-    padding: var(--space-6);
-    padding-top: var(--space-8);
-    padding-bottom: var(--space-6);
+    padding: 16px;
+    padding-top: 88px; /* Account for fixed header (72px) + spacing */
+    padding-bottom: 16px;
     align-items: flex-start;
     justify-content: center;
     overflow-y: auto;
@@ -1061,14 +1061,16 @@
   .appointment-detail-modal,
   .appointment-invoice-modal {
     max-width: 90%;
-    max-height: calc(100vh - 64px);
-    max-height: calc(100dvh - 64px);
+    max-height: calc(100vh - 104px); /* Viewport - header - padding */
+    max-height: calc(100dvh - 104px);
     min-height: auto;
     display: flex;
     flex-direction: column;
     margin: 0 auto;
+    margin-top: 0;
     position: relative;
     overflow: hidden;
+    transform: translateY(0);
   }
 
   .appointment-modal-header,
@@ -1267,9 +1269,9 @@
   }
 
   .modal-overlay {
-    padding: var(--space-6) 0;
-    padding-top: max(var(--space-6), env(safe-area-inset-top, var(--space-6)));
-    padding-bottom: max(var(--space-6), env(safe-area-inset-bottom, var(--space-6)));
+    padding: 12px;
+    padding-top: max(80px, calc(72px + env(safe-area-inset-top, 8px))); /* Account for fixed header */
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
     align-items: flex-start;
     justify-content: center;
     overflow-y: auto;
@@ -1278,9 +1280,9 @@
 
   .modal-content {
     max-width: 100%;
-    width: 100%;
-    max-height: calc(100vh - 48px);
-    max-height: calc(100dvh - 48px);
+    width: calc(100% - 24px);
+    max-height: calc(100vh - 92px); /* Viewport - header - padding */
+    max-height: calc(100dvh - 92px);
     padding: var(--space-4);
     border-radius: 16px;
     margin: 0 auto;
@@ -1289,9 +1291,9 @@
   .appointment-detail-modal,
   .appointment-invoice-modal {
     max-width: 100%;
-    width: 100%;
-    max-height: calc(100vh - 48px);
-    max-height: calc(100dvh - 48px);
+    width: calc(100% - 24px);
+    max-height: calc(100vh - 92px);
+    max-height: calc(100dvh - 92px);
     border-radius: 16px;
     display: flex;
     flex-direction: column;

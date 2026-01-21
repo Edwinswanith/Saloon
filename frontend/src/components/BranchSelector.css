@@ -79,7 +79,7 @@
   bottom: 0;
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(1px);
-  z-index: 10000;
+  z-index: 99999;
   animation: fadeIn 0.2s ease-out;
 }
 
@@ -99,7 +99,7 @@
   border-radius: 12px;
   min-width: 320px;
   max-width: 400px;
-  z-index: 10001;
+  z-index: 100000;
   overflow: hidden;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   border: 1px solid #e5e7eb;

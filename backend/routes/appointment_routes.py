@@ -697,11 +697,11 @@ def get_appointment_bill(appointment_id, current_user=None):
         
         # Fall back to legacy method: match by customer, date, and service
         if not appointment.customer:
-            return jsonify({'error': 'Appointment has no customer', 'bill_id': None}), 404
-        
+            return jsonify({'bill_id': None, 'bill_number': None, 'is_checked_out': False})
+
         appointment_date = appointment.appointment_date
         if not appointment_date:
-            return jsonify({'error': 'Appointment has no date', 'bill_id': None}), 404
+            return jsonify({'bill_id': None, 'bill_number': None, 'is_checked_out': False})
         
         # Convert appointment date to datetime range for bill_date comparison
         start_datetime = datetime.combine(appointment_date, datetime.min.time())
@@ -736,11 +736,12 @@ def get_appointment_bill(appointment_id, current_user=None):
             return jsonify({
                 'bill_id': str(bills[0].id),
                 'bill_number': bills[0].bill_number,
-                'is_checked_out': (bills[0].booking_status == 'service-completed' 
+                'is_checked_out': (bills[0].booking_status == 'service-completed'
                                   and bills[0].payment_mode is not None)
             })
-        
-        return jsonify({'error': 'No bill found for this appointment', 'bill_id': None}), 404
+
+        # No bill found - return 200 with null bill_id (this is a valid state, not an error)
+        return jsonify({'bill_id': None, 'bill_number': None, 'is_checked_out': False})
     except Appointment.DoesNotExist:
         return jsonify({'error': 'Appointment not found', 'bill_id': None}), 404
     except Exception as e:

@@ -13,6 +13,12 @@
   justify-content: flex-end;
   padding: 0 24px;
   overflow: hidden;
+  transition: left 0.3s ease;
+}
+
+/* Adjust header position when sidebar is collapsed */
+.app.sidebar-collapsed .global-header {
+  left: 64px;
 }
 
 .global-header-content {
@@ -362,11 +368,19 @@
   .global-header {
     left: 260px;
   }
+
+  .app.sidebar-collapsed .global-header {
+    left: 64px;
+  }
 }
 
 @media (max-width: 1024px) {
   .global-header {
     left: 240px;
+  }
+
+  .app.sidebar-collapsed .global-header {
+    left: 64px;
   }
 
   .global-header-center {

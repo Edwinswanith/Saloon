@@ -194,23 +194,77 @@ def get_bill(id):
         customer_obj_id = customer_info['id']
 
         items = []
-        for idx, item in enumerate(bill.items):
+        for idx, item in enumerate(bill.items or []):
+            # Safely get service info
+            service_id = None
+            service_name = None
+            try:
+                service_ref = getattr(item, 'service', None)
+                if service_ref:
+                    if hasattr(service_ref, 'reload'):
+                        service_ref.reload()
+                    service_id = str(service_ref.id) if hasattr(service_ref, 'id') else None
+                    service_name = getattr(service_ref, 'name', None)
+            except Exception as e:
+                print(f"Error loading service for bill item {idx}: {e}")
+
+            # Safely get package info
+            package_id = None
+            package_name = None
+            try:
+                package_ref = getattr(item, 'package', None)
+                if package_ref:
+                    if hasattr(package_ref, 'reload'):
+                        package_ref.reload()
+                    package_id = str(package_ref.id) if hasattr(package_ref, 'id') else None
+                    package_name = getattr(package_ref, 'name', None)
+            except Exception as e:
+                print(f"Error loading package for bill item {idx}: {e}")
+
+            # Safely get product info
+            product_id = None
+            product_name = None
+            try:
+                product_ref = getattr(item, 'product', None)
+                if product_ref:
+                    if hasattr(product_ref, 'reload'):
+                        product_ref.reload()
+                    product_id = str(product_ref.id) if hasattr(product_ref, 'id') else None
+                    product_name = getattr(product_ref, 'name', None)
+            except Exception as e:
+                print(f"Error loading product for bill item {idx}: {e}")
+
+            # Safely get staff info
+            staff_id = None
+            staff_name = None
+            try:
+                staff_ref = getattr(item, 'staff', None)
+                if staff_ref:
+                    if hasattr(staff_ref, 'reload'):
+                        staff_ref.reload()
+                    staff_id = str(staff_ref.id) if hasattr(staff_ref, 'id') else None
+                    first_name = getattr(staff_ref, 'first_name', '') or ''
+                    last_name = getattr(staff_ref, 'last_name', '') or ''
+                    staff_name = f"{first_name} {last_name}".strip() or None
+            except Exception as e:
+                print(f"Error loading staff for bill item {idx}: {e}")
+
             item_data = {
                 'id': idx,  # Index as ID for embedded documents
-                'item_type': item.item_type,
-                'service_id': str(item.service.id) if item.service else None,
-                'service_name': item.service.name if item.service and hasattr(item.service, 'name') else None,
-                'package_id': str(item.package.id) if item.package else None,
-                'package_name': item.package.name if item.package and hasattr(item.package, 'name') else None,
-                'product_id': str(item.product.id) if item.product else None,
-                'product_name': item.product.name if item.product and hasattr(item.product, 'name') else None,
-                'staff_id': str(item.staff.id) if item.staff else None,
-                'staff_name': f"{item.staff.first_name} {item.staff.last_name}" if item.staff and hasattr(item.staff, 'first_name') else None,
-                'start_time': item.start_time if item.start_time else None,  # Already a string
-                'price': item.price,
-                'discount': item.discount,
-                'quantity': item.quantity,
-                'total': item.total
+                'item_type': getattr(item, 'item_type', None),
+                'service_id': service_id,
+                'service_name': service_name,
+                'package_id': package_id,
+                'package_name': package_name,
+                'product_id': product_id,
+                'product_name': product_name,
+                'staff_id': staff_id,
+                'staff_name': staff_name,
+                'start_time': getattr(item, 'start_time', None),
+                'price': getattr(item, 'price', 0),
+                'discount': getattr(item, 'discount', 0),
+                'quantity': getattr(item, 'quantity', 1),
+                'total': getattr(item, 'total', 0)
             }
             items.append(item_data)
 

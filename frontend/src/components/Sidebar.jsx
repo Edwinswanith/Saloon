@@ -18,6 +18,7 @@ import {
   FaChevronRight,
   FaStar,
   FaExchangeAlt,
+  FaTimes,
 } from 'react-icons/fa'
 import { useAuth } from '../contexts/AuthContext'
 import './Sidebar.css'
@@ -274,25 +275,40 @@ const Sidebar = ({
       )}
       <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''} ${isMobileOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
-        <div className="logo">
-          {!isCollapsed && (
-            <img 
-              src="/logo/priyanka logo.png" 
-              alt="Priyanka Nature Cure" 
-              className="logo-image"
-            />
+          {/* Desktop Toggle Button */}
+          {onToggle && (
+            <button
+              className="sidebar-toggle desktop-toggle"
+              onClick={onToggle}
+              aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              title={isCollapsed ? 'Open Menu' : 'Close Menu'}
+            >
+              {isCollapsed ? <FaChevronRight /> : <FaChevronLeft />}
+            </button>
           )}
+
+          {/* Mobile Close Button */}
+          {onMobileClose && (
+            <button
+              className="sidebar-toggle mobile-close"
+              onClick={onMobileClose}
+              aria-label="Close sidebar"
+              title="Close Menu"
+            >
+              <FaTimes />
+            </button>
+          )}
+
+          <div className="logo">
+            {!isCollapsed && (
+              <img
+                src="/logo/priyanka logo.png"
+                alt="Priyanka Nature Cure"
+                className="logo-image"
+              />
+            )}
+          </div>
         </div>
-        {onToggle && (
-          <button 
-            className="sidebar-toggle"
-            onClick={onToggle}
-            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {isCollapsed ? <FaChevronRight /> : <FaChevronLeft />}
-          </button>
-        )}
-      </div>
       <nav className="sidebar-nav">
         {/* Dashboard - Standalone (first) */}
         {dashboardItem && (
