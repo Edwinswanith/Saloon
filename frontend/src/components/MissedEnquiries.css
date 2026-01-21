@@ -623,6 +623,18 @@
     max-height: calc(100vh - 120px);
   }
 
+  .modal-actions {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .btn-cancel,
+  .btn-save {
+    width: 100%;
+    padding: 12px 20px;
+    min-height: 44px;
+  }
+
   .data-table {
     font-size: 13px;
   }
@@ -674,5 +686,11 @@
   .modal-content {
     max-height: calc(100vh - 100px);
     border-radius: 12px;
+  }
+
+  .btn-cancel,
+  .btn-save {
+    padding: 12px 20px;
+    font-size: 14px;
   }
 }

@@ -16,7 +16,6 @@ button,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-12) var(--space-32);
   border: none;
   border-radius: var(--radius-2xl);
   font-size: var(--text-sm);

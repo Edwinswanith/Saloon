@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { FaBars, FaCalendarAlt, FaPlus, FaTimes, FaEdit, FaShare, FaDownload, FaArrowLeft } from 'react-icons/fa'
+import { FaCalendarAlt, FaPlus, FaTimes, FaEdit, FaShare, FaDownload, FaArrowLeft } from 'react-icons/fa'
 import './Appointment.css'
 import { API_BASE_URL } from '../config'
 import { useAuth } from '../contexts/AuthContext'
@@ -503,7 +503,6 @@ const Appointment = ({ setActivePage }) => {
       {/* Header */}
       <header className="appointment-header">
         <div className="header-left">
-          <button className="menu-icon"><FaBars /></button>
           <h1 className="header-title">Appointment</h1>
         </div>
 
@@ -756,17 +755,7 @@ const Appointment = ({ setActivePage }) => {
             {showInvoiceView ? (
               // Invoice View
               <>
-                <div className="invoice-modal-header">
-                  <div className="invoice-header-left">
-                    <button className="back-btn" onClick={handleBackToAppointment}>
-                      <FaArrowLeft /> Back
-                    </button>
-                    <h2>Invoice</h2>
-                  </div>
-                  <button className="close-btn" onClick={() => setShowDetailModal(false)}>
-                    <FaTimes />
-                  </button>
-                </div>
+                <h2>Invoice</h2>
                 
                 {loadingInvoice ? (
                   <div className="invoice-loading-state">

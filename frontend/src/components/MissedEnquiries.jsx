@@ -363,10 +363,10 @@ const MissedEnquiries = () => {
                   />
                 </div>
                 <div className="modal-actions">
-                  <button type="button" onClick={() => { setShowModal(false); setEditingEnquiry(null); resetForm(); }}>
+                  <button type="button" className="btn-cancel" onClick={() => { setShowModal(false); setEditingEnquiry(null); resetForm(); }}>
                     Cancel
                   </button>
-                  <button type="submit" className="btn-primary">Save</button>
+                  <button type="submit" className="btn-save">Save</button>
                 </div>
               </form>
             </div>

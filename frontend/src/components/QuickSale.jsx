@@ -2603,17 +2603,7 @@ const QuickSale = () => {
       {showBillActivityModal && (
         <div className="bill-activity-modal-overlay" onClick={() => setShowBillActivityModal(false)}>
           <div className="bill-activity-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="bill-activity-modal-header">
-              <h2>
-                Bill Activity - {selectedCustomer?.firstName} {selectedCustomer?.lastName}
-              </h2>
-              <button 
-                className="modal-close-btn"
-                onClick={() => setShowBillActivityModal(false)}
-              >
-                <FaTimes />
-              </button>
-            </div>
+            <h2>Bill Activity - {selectedCustomer?.firstName} {selectedCustomer?.lastName}</h2>
             <div className="bill-activity-modal-body">
               {loadingBills ? (
                 <div className="loading-container">
@@ -2918,12 +2908,7 @@ const QuickSale = () => {
       {showInvoiceModal && (
         <div className="invoice-modal-overlay" onClick={handleCloseInvoiceModal}>
           <div className="invoice-modal-container" onClick={(e) => e.stopPropagation()}>
-            <div className="invoice-modal-header">
-              <h2>Invoice</h2>
-              <button className="invoice-modal-close-btn" onClick={handleCloseInvoiceModal}>
-                <FaTimes />
-              </button>
-            </div>
+            <h2>Invoice</h2>
             
             {loadingInvoice ? (
               <div className="invoice-loading-state">

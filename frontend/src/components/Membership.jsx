@@ -224,16 +224,8 @@ const Membership = () => {
       {showAddModal && (
         <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>{editingPlan ? 'Edit Membership' : 'Add New Membership'}</h3>
-              <button
-                className="modal-close"
-                onClick={() => setShowAddModal(false)}
-              >
-                ×
-              </button>
-            </div>
-            <form onSubmit={handleSubmit} className="membership-form">
+            <h2>{editingPlan ? 'Edit Membership' : 'Add New Membership'}</h2>
+            <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>Name *</label>
                 <input
@@ -316,7 +308,7 @@ const Membership = () => {
                 >
                   Cancel
                 </button>
-                <button type="submit" className="btn-submit">
+                <button type="submit" className="btn-save">
                   {editingPlan ? 'Update' : 'Create'}
                 </button>
               </div>

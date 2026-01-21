@@ -1747,24 +1747,7 @@ const Dashboard = () => {
     {showStaffModal && selectedStaff && (
       <div className="staff-modal-overlay" onClick={() => setShowStaffModal(false)}>
         <div className="staff-modal-content" onClick={(e) => e.stopPropagation()}>
-          <div className="staff-modal-header">
-            <div className="staff-modal-title-section">
-              <div className="staff-modal-avatar">
-                {selectedStaff.staff_name.charAt(0)}
-              </div>
-              <div>
-                <h2 className="staff-modal-title">{selectedStaff.staff_name}</h2>
-                <p className="staff-modal-subtitle">Performance Details</p>
-              </div>
-            </div>
-            <button 
-              className="staff-modal-close"
-              onClick={() => setShowStaffModal(false)}
-            >
-              <FaTimes />
-            </button>
-          </div>
-
+          <h2>{selectedStaff.staff_name} - Performance Details</h2>
           <div className="staff-modal-body">
             <div className="staff-modal-grid">
               <div className="staff-modal-card">

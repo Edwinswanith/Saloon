@@ -404,7 +404,7 @@
   min-width: 70px;
 }
 
-.page-btn:hover:not(:disabled) {
+.page-btn:hover:not(:disabled):not(.active) {
   background: #f0fdfa;
   border-color: #0F766E;
   color: #0F766E;
@@ -421,6 +421,11 @@
   color: white;
   border-color: #0F766E;
   box-shadow: 0 2px 4px rgba(15, 118, 110, 0.2);
+}
+
+.page-btn.active:hover {
+  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  color: white;
 }
 
 /* Modal Styles */
