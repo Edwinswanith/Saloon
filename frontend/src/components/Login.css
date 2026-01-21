@@ -3,7 +3,8 @@
    ================================================ */
 
 .login-container {
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -71,13 +72,14 @@
   background: var(--bg-elevated);
   border-radius: var(--radius-2xl);
   box-shadow: var(--shadow-2xl);
-  padding: var(--space-8);
+  padding: var(--space-6);
   width: 100%;
   max-width: 450px;
   position: relative;
   z-index: 1;
   animation: slideUp 0.5s ease-out;
   border: 1px solid var(--border-light);
+  box-sizing: border-box;
 }
 
 @keyframes slideUp {
@@ -94,7 +96,7 @@
 /* ========== HEADER ========== */
 .login-header {
   text-align: center;
-  margin-bottom: var(--space-8);
+  margin-bottom: var(--space-6);
 }
 
 .login-logo {
@@ -145,7 +147,8 @@
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-4);
+  width: 100%;
 }
 
 .form-group {
@@ -303,10 +306,12 @@
 
 /* ========== FOOTER ========== */
 .login-footer {
-  margin-top: var(--space-6);
-  padding-top: var(--space-6);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  padding-bottom: 0;
   border-top: 1px solid var(--border-light);
   text-align: center;
+  margin-bottom: 0;
 }
 
 .footer-text {
@@ -320,19 +325,30 @@
 
 /* ========== RESPONSIVE ========== */
 
-/* Tablet */
-@media (min-width: 641px) and (max-width: 1024px) {
+/* Laptop and Desktop (1024px and above) */
+@media (min-width: 1024px) {
   .login-container {
     padding: var(--space-6);
+    height: 100vh;
+    max-height: 100vh;
   }
 
   .login-card {
-    padding: var(--space-7);
-    max-width: 500px;
+    padding: var(--space-8);
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .login-header {
+    margin-bottom: var(--space-5);
   }
 
   .login-title {
     font-size: var(--text-2xl);
+  }
+
+  .login-subtitle {
+    font-size: var(--text-base);
   }
 
   .logo-icon {
@@ -341,13 +357,95 @@
     font-size: 2.25rem;
   }
 
+  .login-form {
+    gap: var(--space-4);
+  }
+
+  .form-group {
+    gap: var(--space-2);
+  }
+
+  .form-input,
+  .form-input select {
+    padding: 12px 16px;
+    font-size: 15px;
+  }
+
+  .login-button {
+    padding: var(--space-4) var(--space-5);
+    font-size: var(--text-base);
+    margin-top: var(--space-2);
+    margin-bottom: 0;
+  }
+
+  .login-footer {
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+  }
+
+  .bg-circle-1 {
+    width: 600px;
+    height: 600px;
+  }
+
+  .bg-circle-2 {
+    width: 500px;
+    height: 500px;
+  }
+
+  .bg-circle-3 {
+    width: 400px;
+    height: 400px;
+  }
+}
+
+/* Tablet (768px to 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .login-container {
+    padding: var(--space-6);
+    height: 100vh;
+    max-height: 100vh;
+  }
+
+  .login-card {
+    padding: var(--space-8);
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .login-header {
+    margin-bottom: var(--space-5);
+  }
+
+  .login-title {
+    font-size: var(--text-2xl);
+  }
+
+  .login-subtitle {
+    font-size: var(--text-base);
+  }
+
+  .logo-icon {
+    width: 70px;
+    height: 70px;
+    font-size: 2.25rem;
+  }
+
+  .login-form {
+    gap: var(--space-4);
+  }
+
+  .form-group {
+    gap: var(--space-2);
+  }
+
   .user-type-toggle {
-    gap: var(--space-3);
+    gap: var(--space-2);
     padding: var(--space-2);
   }
 
   .toggle-btn {
-    padding: var(--space-3) var(--space-5);
+    padding: var(--space-3) var(--space-4);
     font-size: var(--text-sm);
   }
 
@@ -358,20 +456,52 @@
   }
 
   .login-button {
-    padding: var(--space-4) var(--space-6);
+    padding: var(--space-4) var(--space-5);
     font-size: var(--text-base);
+    margin-top: var(--space-2);
+    margin-bottom: 0;
+  }
+
+  .login-footer {
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+  }
+
+  .bg-circle-1 {
+    width: 550px;
+    height: 550px;
+  }
+
+  .bg-circle-2 {
+    width: 450px;
+    height: 450px;
+  }
+
+  .bg-circle-3 {
+    width: 350px;
+    height: 350px;
   }
 }
 
-/* Mobile */
-@media (max-width: 640px) {
+/* Small Tablet (641px to 767px) */
+@media (min-width: 641px) and (max-width: 767px) {
+  .login-container {
+    padding: var(--space-4);
+    height: 100vh;
+    max-height: 100vh;
+  }
+
   .login-card {
     padding: var(--space-6);
-    max-width: 100%;
+    max-width: 420px;
+  }
+
+  .login-header {
+    margin-bottom: var(--space-4);
   }
 
   .login-title {
-    font-size: var(--text-2xl);
+    font-size: var(--text-xl);
   }
 
   .logo-icon {
@@ -380,8 +510,109 @@
     font-size: 2rem;
   }
 
+  .login-form {
+    gap: var(--space-3);
+  }
+
+  .user-type-toggle {
+    gap: var(--space-2);
+    padding: var(--space-2);
+  }
+
+  .toggle-btn {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+  }
+
+  .form-input,
+  .form-input select {
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+
+  .login-button {
+    padding: var(--space-4);
+    font-size: var(--text-base);
+    margin-top: var(--space-2);
+  }
+
+  .login-footer {
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+  }
+}
+
+/* Mobile (640px and below) */
+@media (max-width: 640px) {
+  .login-container {
+    padding: var(--space-3);
+    height: 100vh;
+    max-height: 100vh;
+  }
+
+  .login-card {
+    padding: var(--space-5);
+    max-width: 100%;
+  }
+
+  .login-header {
+    margin-bottom: var(--space-4);
+  }
+
+  .login-title {
+    font-size: var(--text-xl);
+  }
+
+  .logo-icon {
+    width: 55px;
+    height: 55px;
+    font-size: 1.75rem;
+  }
+
+  .login-form {
+    gap: var(--space-3);
+  }
+
   .user-type-toggle {
     grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+
+  .toggle-btn {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+  }
+
+  .form-input,
+  .form-input select {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  .login-button {
+    padding: var(--space-4);
+    font-size: var(--text-base);
+    margin-top: var(--space-2);
+  }
+
+  .login-footer {
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+  }
+
+  .bg-circle-1 {
+    width: 300px;
+    height: 300px;
+  }
+
+  .bg-circle-2 {
+    width: 250px;
+    height: 250px;
+  }
+
+  .bg-circle-3 {
+    width: 200px;
+    height: 200px;
   }
 }
 
