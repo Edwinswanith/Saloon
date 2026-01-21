@@ -52,6 +52,9 @@
   white-space: nowrap;
   color: white !important;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
 }
 
 .branch-arrow {
@@ -277,21 +280,55 @@
 }
 
 /* ========== RESPONSIVE DESIGN ========== */
+@media (max-width: 1024px) {
+  .branch-name {
+    max-width: 100px;
+  }
+}
+
 @media (max-width: 768px) {
+  .branch-selector-button {
+    padding: 8px 12px;
+    height: 38px;
+    font-size: 13px;
+  }
+
+  .branch-name {
+    max-width: 80px;
+  }
+
   .branch-dropdown {
     min-width: 280px;
     max-width: 90vw;
   }
-  
+
   .branch-item {
     padding: 12px 14px;
   }
-  
+
   .branch-item-name {
     font-size: 13px;
   }
-  
+
   .branch-item-city {
     font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .branch-selector-button {
+    padding: 6px 10px;
+    height: 34px;
+    font-size: 12px;
+    gap: 4px;
+  }
+
+  .branch-name {
+    max-width: 60px;
+  }
+
+  .branch-arrow {
+    font-size: 10px;
+    margin-left: 2px;
   }
 }
