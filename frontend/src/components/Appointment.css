@@ -406,6 +406,178 @@
   display: none;
 }
 
+/* ========== WEEK VIEW ========== */
+.schedule-grid-week {
+  grid-template-columns: 100px repeat(7, minmax(150px, 1fr)) !important;
+}
+
+.day-header {
+  background: transparent;
+  padding: 14px 16px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #0F766E;
+  text-align: center;
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 2px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.day-header.today {
+  background: #f0fdfa;
+  color: #0F766E;
+  font-weight: 700;
+}
+
+.day-name {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.8;
+}
+
+.day-number {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* ========== MONTH VIEW ========== */
+.schedule-grid-month {
+  grid-template-columns: repeat(7, minmax(120px, 1fr)) !important;
+  min-height: 600px;
+}
+
+.month-day-header {
+  background: transparent;
+  padding: 12px 8px;
+  font-weight: 600;
+  font-size: 12px;
+  color: #0F766E;
+  text-align: center;
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 2px solid #e5e7eb;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.month-cell {
+  background: white;
+  min-height: 100px;
+  padding: 8px;
+  border-right: 1px solid #f3f4f6;
+  border-bottom: 1px solid #f3f4f6;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.month-cell:hover {
+  background: #f0fdfa;
+}
+
+.month-cell.other-month {
+  background: #fafafa;
+  opacity: 0.6;
+}
+
+.month-cell.today {
+  background: #f0fdfa;
+  border: 2px solid #0F766E;
+}
+
+.month-cell-date {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.month-cell.today .month-cell-date {
+  color: #0F766E;
+  font-weight: 700;
+}
+
+.month-cell-appointments {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.month-appointment {
+  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  color: white;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  overflow: hidden;
+}
+
+.month-appointment:hover {
+  background: linear-gradient(135deg, #0d6960 0%, #0b8078 100%);
+  transform: translateX(2px);
+}
+
+.month-appointment.confirmed {
+  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+}
+
+.month-appointment.completed {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+}
+
+.month-appointment.cancelled {
+  background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+  opacity: 0.8;
+}
+
+.month-appointment-time {
+  font-weight: 600;
+  font-size: 9px;
+  flex-shrink: 0;
+}
+
+.month-appointment-customer {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.month-appointment-service {
+  font-size: 9px;
+  opacity: 0.9;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.month-more-appointments {
+  font-size: 10px;
+  color: #6b7280;
+  padding: 2px 4px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.month-more-appointments:hover {
+  color: #0F766E;
+  text-decoration: underline;
+}
+
 /* ========== MODALS ========== */
 .modal-overlay {
   position: fixed;
@@ -1207,6 +1379,14 @@
     min-width: 800px;
   }
 
+  .schedule-grid-week {
+    min-width: 1200px;
+  }
+
+  .schedule-grid-month {
+    min-width: 900px;
+  }
+
   .time-header,
   .staff-header {
     padding: var(--space-2);
@@ -1436,6 +1616,24 @@
 
   .schedule-grid {
     min-width: 700px;
+  }
+
+  .schedule-grid-week {
+    min-width: 1000px;
+  }
+
+  .schedule-grid-month {
+    min-width: 700px;
+  }
+
+  .month-cell {
+    min-height: 80px;
+    padding: 6px;
+  }
+
+  .month-appointment {
+    font-size: 9px;
+    padding: 3px 4px;
   }
 
   .time-header,

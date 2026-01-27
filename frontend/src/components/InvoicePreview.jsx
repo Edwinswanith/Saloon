@@ -1,4 +1,5 @@
 import React from 'react'
+import { FaWhatsapp } from 'react-icons/fa'
 import './InvoicePreview.css'
 
 const InvoicePreview = ({ invoiceData, onDownload, onReview }) => {
@@ -67,6 +68,54 @@ const InvoicePreview = ({ invoiceData, onDownload, onReview }) => {
     } catch (e) {
       return `${dateStr}, ${timeStr}`
     }
+  }
+
+  const handleSendWhatsApp = () => {
+    if (!customer?.mobile) return
+
+    // Format mobile number - remove +91, spaces, and non-digits, then add 91 prefix
+    let phoneNumber = customer.mobile.replace(/[^0-9]/g, '')
+    if (phoneNumber.startsWith('91') && phoneNumber.length > 10) {
+      phoneNumber = phoneNumber // Already has country code
+    } else if (phoneNumber.length === 10) {
+      phoneNumber = '91' + phoneNumber
+    }
+
+    // Build the message
+    const formattedDateTime = formatBookingDateTime(booking_date, booking_time)
+
+    let message = `*Bill Details*\n\n`
+    message += `Bill Number: ${invoice_number || 'N/A'}\n`
+    message += `Date: ${formattedDateTime}\n\n`
+
+    // Items
+    message += `*Items:*\n`
+    if (items && items.length > 0) {
+      items.forEach(item => {
+        message += `${item.name || 'Item'} - Qty: ${item.quantity || 1} - ${formatCurrency(item.total || 0)}\n`
+      })
+    }
+    message += `\n`
+
+    // Summary
+    message += `*Summary:*\n`
+    message += `Subtotal: ${formatCurrency(summary?.subtotal || 0)}\n`
+    if (summary?.discount > 0) {
+      message += `Discount: ${formatCurrency(summary.discount)}\n`
+    }
+    message += `Tax: ${formatCurrency(summary?.tax || 0)}\n`
+    message += `*Total: ${formatCurrencyNoDecimals(summary?.total || 0)}*\n\n`
+
+    // Payment
+    message += `Payment Mode: ${payment?.source || 'N/A'}\n\n`
+
+    // Footer
+    message += `Thank you for your visit!\n`
+    message += `${branch?.name || 'SaloonBoost'}`
+
+    // Create WhatsApp URL and open
+    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
+    window.open(whatsappUrl, '_blank')
   }
 
   return (
@@ -181,6 +230,11 @@ const InvoicePreview = ({ invoiceData, onDownload, onReview }) => {
         {onReview && (
           <button className="invoice-action-btn review-btn" onClick={onReview}>
             Review Us
+          </button>
+        )}
+        {customer?.mobile && (
+          <button className="invoice-action-btn whatsapp-btn" onClick={handleSendWhatsApp}>
+            <FaWhatsapp /> Send via WhatsApp
           </button>
         )}
         {onDownload && (

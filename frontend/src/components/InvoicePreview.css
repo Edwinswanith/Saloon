@@ -247,6 +247,21 @@
   background-color: #1f2937;
 }
 
+.whatsapp-btn {
+  background-color: #25D366 !important;
+  color: white !important;
+  outline: none;
+}
+
+.whatsapp-btn:hover,
+.whatsapp-btn:focus,
+.whatsapp-btn:active {
+  background-color: #1da851 !important;
+  color: white !important;
+  outline: none;
+  box-shadow: none;
+}
+
 /* Footer */
 .invoice-footer {
   background: #0F766E;

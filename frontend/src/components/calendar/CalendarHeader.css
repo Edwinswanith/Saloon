@@ -1,0 +1,340 @@
+/* Calendar Header Styles - Reusable component */
+/* Most styles are inherited from Appointment.css, but we keep this for any header-specific overrides */
+
+.appointment-header {
+  display: flex;
+  align-items: center;
+  padding: var(--space-5) var(--space-8);
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-medium);
+  gap: var(--space-6);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  flex-wrap: wrap;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-shrink: 0;
+}
+
+.header-title {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.header-nav-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex: 1;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.nav-controls-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.nav-btn-group {
+  display: flex;
+  gap: 0;
+  background: #f3f4f6;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+.nav-btn {
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.nav-btn:hover {
+  background: white;
+  color: #0F766E;
+}
+
+.nav-btn.active {
+  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(15, 118, 110, 0.2);
+}
+
+.nav-btn.active:hover {
+  background: linear-gradient(135deg, #0d6960 0%, #0b8078 100%);
+  color: white;
+}
+
+.date-input-group {
+  position: relative;
+}
+
+.date-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.date-input-wrapper:hover {
+  border-color: #0F766E;
+}
+
+.date-input-wrapper:focus-within {
+  border-color: #0F766E;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+}
+
+.date-picker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+  border: none;
+  background: transparent;
+}
+
+.date-picker::-webkit-calendar-picker-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.date-display {
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  min-width: 100px;
+  text-align: center;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.calendar-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  background: #f0fdfa;
+  color: #0F766E;
+  font-size: 16px;
+  border-left: 2px solid #e5e7eb;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.staff-select-group {
+  position: relative;
+}
+
+.staff-select {
+  padding: 10px 16px;
+  padding-right: 36px;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+  cursor: pointer;
+  min-width: 160px;
+  transition: all 0.2s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230F766E' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+.staff-select:hover {
+  border-color: #0F766E;
+}
+
+.staff-select:focus {
+  outline: none;
+  border-color: #0F766E;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+}
+
+.current-date-display {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  padding: var(--space-2) var(--space-4);
+}
+
+.view-mode-buttons {
+  display: flex;
+  gap: 0;
+  background: #f3f4f6;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+.view-btn {
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.view-btn:hover {
+  background: white;
+  color: #0F766E;
+}
+
+.view-btn.active {
+  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  color: white !important;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(15, 118, 110, 0.2);
+}
+
+.view-btn.active:hover {
+  background: linear-gradient(135deg, #0d6960 0%, #0b8078 100%);
+  color: white !important;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .appointment-header {
+    padding: var(--space-4) var(--space-6);
+  }
+
+  .header-nav-bar {
+    gap: var(--space-3);
+  }
+
+  .nav-controls-left {
+    gap: var(--space-3);
+  }
+}
+
+@media (max-width: 768px) {
+  .appointment-header {
+    padding: var(--space-3) var(--space-4);
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+
+  .header-left {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .header-title {
+    font-size: var(--text-lg);
+  }
+
+  .header-nav-bar {
+    width: 100%;
+    flex-direction: column;
+    gap: var(--space-3);
+    align-items: stretch;
+  }
+
+  .nav-controls-left {
+    width: 100%;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .nav-btn-group {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .nav-btn {
+    flex: 1;
+    padding: var(--space-3);
+    min-height: 44px;
+  }
+
+  .date-input-group,
+  .staff-select-group {
+    width: 100%;
+  }
+
+  .date-display {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .staff-select {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .view-mode-buttons {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .view-btn {
+    flex: 1;
+    padding: var(--space-3);
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 480px) {
+  .appointment-header {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .header-title {
+    font-size: var(--text-base);
+  }
+
+  .nav-btn {
+    font-size: var(--text-xs);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .view-btn {
+    font-size: var(--text-xs);
+    padding: var(--space-2) var(--space-3);
+    min-height: 44px;
+  }
+}
+

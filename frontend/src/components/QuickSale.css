@@ -2643,10 +2643,10 @@ select.table-select:focus {
 }
 
 /* Booking Row */
-/* Bottom Section: Three Columns Layout */
+/* Bottom Section: Two Columns Layout */
 .bottom-section-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 20px;
   margin-top: 20px;
   margin-bottom: 16px;
@@ -2654,11 +2654,6 @@ select.table-select:focus {
 }
 
 .booking-column > .booking-status-container:first-child {
-  margin-top: 0;
-  padding-top: 0;
-}
-
-.discount-payment-column > .discount-section:first-child {
   margin-top: 0;
   padding-top: 0;
 }

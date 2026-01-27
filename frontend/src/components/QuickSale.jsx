@@ -196,9 +196,25 @@ const QuickSale = () => {
         setBookingStatus(appointmentData.status === 'confirmed' ? 'confirmed' : 'service-completed')
       }
 
-      // Set booking note immediately
-      if (appointmentData.notes) {
+      // Set booking note immediately (from appointment or bill)
+      if (appointmentData.booking_note) {
+        setBookingNote(appointmentData.booking_note || '')
+      } else if (appointmentData.notes) {
         setBookingNote(appointmentData.notes || '')
+      }
+
+      // Set payment mode from bill data
+      if (appointmentData.payment_mode) {
+        setPaymentMode(appointmentData.payment_mode)
+        console.log('[APPOINTMENT EDIT] Payment mode set:', appointmentData.payment_mode)
+      }
+
+      // Set discount from bill data
+      if (appointmentData.discount_amount !== undefined) {
+        setDiscountAmount(appointmentData.discount_amount || 0)
+      }
+      if (appointmentData.discount_type) {
+        setDiscountType(appointmentData.discount_type)
       }
 
       // Create and set customer object immediately from appointment data
@@ -223,8 +239,91 @@ const QuickSale = () => {
         console.log('[APPOINTMENT EDIT] Customer set immediately:', customer)
       }
 
-      // Create and set service entry immediately from appointment data
-      if (appointmentData.service_id && appointmentData.staff_id && appointmentData.start_time) {
+      // Process bill items if available (preferred over single service from appointment)
+      if (appointmentData.bill_items && appointmentData.bill_items.length > 0) {
+        console.log('[APPOINTMENT EDIT] Processing bill items:', appointmentData.bill_items)
+
+        // Process services from bill items
+        const serviceItems = appointmentData.bill_items.filter(item => item.item_type === 'service')
+        if (serviceItems.length > 0) {
+          const servicesFromBill = serviceItems.map((item, index) => {
+            let timeStr = item.start_time || appointmentData.start_time || ''
+            if (timeStr && timeStr.includes(':')) {
+              const parts = timeStr.split(':')
+              timeStr = `${parts[0]}:${parts[1]}`
+            }
+            return {
+              id: index + 1,
+              service_id: item.service_id,
+              staff_id: item.staff_id,
+              startTime: timeStr,
+              price: item.price || 0,
+              discount: item.discount || 0,
+              total: item.total || item.price || 0,
+            }
+          })
+          setServices(servicesFromBill)
+          console.log('[APPOINTMENT EDIT] Services from bill:', servicesFromBill)
+        }
+
+        // Process packages from bill items
+        const packageItems = appointmentData.bill_items.filter(item => item.item_type === 'package')
+        if (packageItems.length > 0) {
+          const packagesFromBill = packageItems.map((item, index) => ({
+            id: index + 1,
+            package_id: item.package_id,
+            name: item.name || '',
+            price: item.price || 0,
+            discount: item.discount || 0,
+            total: item.total || item.price || 0,
+          }))
+          setPackages(packagesFromBill)
+          console.log('[APPOINTMENT EDIT] Packages from bill:', packagesFromBill)
+        }
+
+        // Process products from bill items
+        const productItems = appointmentData.bill_items.filter(item => item.item_type === 'product')
+        if (productItems.length > 0) {
+          const productsFromBill = productItems.map((item, index) => ({
+            id: index + 1,
+            product_id: item.product_id,
+            name: item.name || '',
+            price: item.price || 0,
+            discount: item.discount || 0,
+            quantity: item.quantity || 1,
+            total: item.total || item.price || 0,
+          }))
+          setProducts(productsFromBill)
+          console.log('[APPOINTMENT EDIT] Products from bill:', productsFromBill)
+        }
+
+        // Process prepaids from bill items
+        const prepaidItems = appointmentData.bill_items.filter(item => item.item_type === 'prepaid')
+        if (prepaidItems.length > 0) {
+          const prepaidsFromBill = prepaidItems.map((item, index) => ({
+            id: index + 1,
+            prepaid_id: item.prepaid_id,
+            name: item.name || '',
+            price: item.price || 0,
+          }))
+          setPrepaidPackages(prepaidsFromBill)
+          console.log('[APPOINTMENT EDIT] Prepaids from bill:', prepaidsFromBill)
+        }
+
+        // Process memberships from bill items
+        const membershipItems = appointmentData.bill_items.filter(item => item.item_type === 'membership')
+        if (membershipItems.length > 0) {
+          const membershipsFromBill = membershipItems.map((item, index) => ({
+            id: index + 1,
+            membership_id: item.membership_id,
+            name: item.name || '',
+            price: item.price || 0,
+          }))
+          setMemberships(membershipsFromBill)
+          console.log('[APPOINTMENT EDIT] Memberships from bill:', membershipsFromBill)
+        }
+      } else if (appointmentData.service_id && appointmentData.staff_id && appointmentData.start_time) {
+        // Fallback: Create and set service entry from basic appointment data
         // Format time (remove seconds if present, keep HH:MM format)
         let timeStr = appointmentData.start_time
         if (timeStr && timeStr.includes(':')) {
@@ -242,7 +341,7 @@ const QuickSale = () => {
           discount: 0,
           total: appointmentData.service_price || 0,
         }])
-        console.log('[APPOINTMENT EDIT] Service set immediately:', {
+        console.log('[APPOINTMENT EDIT] Service set from appointment (no bill):', {
           service_id: appointmentData.service_id,
           staff_id: appointmentData.staff_id,
           startTime: timeStr,
@@ -945,6 +1044,9 @@ const QuickSale = () => {
         console.log('[APPOINTMENT UPDATE] Response data:', updateData)
         console.log('[APPOINTMENT UPDATE] Success: Appointment updated with ID', editingAppointmentId)
 
+        // Update or create the Bill linked to this appointment
+        await updateBillForAppointment(editingAppointmentId, appointmentDate)
+
         showSuccess('Booking updated! Appointment saved to Upcoming Appointments.')
         return true
       }
@@ -994,6 +1096,10 @@ const QuickSale = () => {
         return false
       }
 
+      // Create a Bill linked to this appointment to store all items and payment_mode
+      const appointmentId = data.id
+      await createBillForAppointment(appointmentId, appointmentDate)
+
       // Only show success if we have a valid appointment ID
       showSuccess('Booking confirmed! Appointment saved to Upcoming Appointments.')
       console.log('[APPOINTMENT CREATE] Success: Appointment created with ID', data.id)
@@ -1002,6 +1108,233 @@ const QuickSale = () => {
       console.error('Error creating appointment:', error)
       showError(`Error creating appointment: ${error.message || 'Unknown error'}`)
       return false
+    }
+  }
+
+  // Helper function to create a Bill linked to an appointment with all items
+  const createBillForAppointment = async (appointmentId, billDate) => {
+    try {
+      console.log('[BILL CREATE FOR APPOINTMENT] Creating bill for appointment:', appointmentId)
+
+      // Create bill with confirmed status linked to appointment
+      const billPayload = {
+        customer_id: selectedCustomer.id,
+        bill_date: billDate,
+        booking_status: 'confirmed',
+        booking_note: bookingNote,
+        appointment_id: appointmentId,
+        payment_mode: paymentMode,
+      }
+
+      const billResponse = await apiPost('/api/bills', billPayload)
+
+      if (!billResponse.ok) {
+        console.error('[BILL CREATE FOR APPOINTMENT] Failed to create bill')
+        return // Don't fail the whole operation, appointment was already created
+      }
+
+      const billData = await billResponse.json()
+      const billId = billData.data.id
+      console.log('[BILL CREATE FOR APPOINTMENT] Bill created with ID:', billId)
+
+      // Add all items to bill
+      const validServices = services.filter(s => s.service_id && s.price > 0)
+
+      // Add services
+      for (const service of validServices) {
+        await apiPost(`/api/bills/${billId}/items`, {
+          item_type: 'service',
+          service_id: service.service_id,
+          staff_id: service.staff_id || null,
+          start_time: service.startTime ? `${service.startTime}:00` : null,
+          price: parseFloat(service.price) || 0,
+          discount: parseFloat(service.discount) || 0,
+          quantity: 1,
+          total: parseFloat(service.total) || parseFloat(service.price) || 0,
+        })
+      }
+
+      // Add packages
+      for (const pkg of packages) {
+        if (pkg.package_id) {
+          await apiPost(`/api/bills/${billId}/items`, {
+            item_type: 'package',
+            package_id: pkg.package_id,
+            price: parseFloat(pkg.price) || 0,
+            discount: parseFloat(pkg.discount) || 0,
+            quantity: 1,
+            total: parseFloat(pkg.total) || parseFloat(pkg.price) || 0,
+          })
+        }
+      }
+
+      // Add products
+      for (const product of products) {
+        if (product.product_id) {
+          await apiPost(`/api/bills/${billId}/items`, {
+            item_type: 'product',
+            product_id: product.product_id,
+            price: parseFloat(product.price) || 0,
+            discount: parseFloat(product.discount) || 0,
+            quantity: parseInt(product.quantity) || 1,
+            total: parseFloat(product.total) || parseFloat(product.price) * (parseInt(product.quantity) || 1) || 0,
+          })
+        }
+      }
+
+      // Add prepaids
+      for (const prepaid of prepaidPackages) {
+        if (prepaid.prepaid_id) {
+          await apiPost(`/api/bills/${billId}/items`, {
+            item_type: 'prepaid',
+            prepaid_id: prepaid.prepaid_id,
+            price: parseFloat(prepaid.price) || 0,
+            discount: 0,
+            quantity: 1,
+            total: parseFloat(prepaid.price) || 0,
+          })
+        }
+      }
+
+      // Add memberships
+      for (const membership of memberships) {
+        if (membership.membership_id) {
+          await apiPost(`/api/bills/${billId}/items`, {
+            item_type: 'membership',
+            membership_id: membership.membership_id,
+            price: parseFloat(membership.price) || 0,
+            discount: 0,
+            quantity: 1,
+            total: parseFloat(membership.price) || 0,
+          })
+        }
+      }
+
+      // Finalize bill
+      await apiPut(`/api/bills/${billId}`, {
+        payment_mode: paymentMode,
+        discount_amount: discountAmount,
+        discount_type: discountType,
+      })
+
+      console.log('[BILL CREATE FOR APPOINTMENT] Bill finalized with all items')
+    } catch (error) {
+      console.error('[BILL CREATE FOR APPOINTMENT] Error creating bill:', error)
+      // Don't fail the whole operation, appointment was already created
+    }
+  }
+
+  // Helper function to update or create Bill for an existing appointment
+  const updateBillForAppointment = async (appointmentId, billDate) => {
+    try {
+      console.log('[BILL UPDATE FOR APPOINTMENT] Updating bill for appointment:', appointmentId)
+
+      // First, try to find existing bill for this appointment
+      const searchResponse = await apiGet(`/api/bills?appointment_id=${appointmentId}`)
+      let billId = null
+
+      if (searchResponse.ok) {
+        const searchData = await searchResponse.json()
+        if (searchData.data && searchData.data.length > 0) {
+          billId = searchData.data[0].id
+          console.log('[BILL UPDATE FOR APPOINTMENT] Found existing bill:', billId)
+
+          // Delete existing items from the bill before adding new ones
+          // We'll update the bill with new items
+        }
+      }
+
+      if (!billId) {
+        // No existing bill found, create a new one
+        console.log('[BILL UPDATE FOR APPOINTMENT] No existing bill found, creating new one')
+        await createBillForAppointment(appointmentId, billDate)
+        return
+      }
+
+      // Update existing bill - first clear items, then add new ones
+      const validServices = services.filter(s => s.service_id && s.price > 0)
+
+      // Add services
+      for (const service of validServices) {
+        await apiPost(`/api/bills/${billId}/items`, {
+          item_type: 'service',
+          service_id: service.service_id,
+          staff_id: service.staff_id || null,
+          start_time: service.startTime ? `${service.startTime}:00` : null,
+          price: parseFloat(service.price) || 0,
+          discount: parseFloat(service.discount) || 0,
+          quantity: 1,
+          total: parseFloat(service.total) || parseFloat(service.price) || 0,
+        })
+      }
+
+      // Add packages
+      for (const pkg of packages) {
+        if (pkg.package_id) {
+          await apiPost(`/api/bills/${billId}/items`, {
+            item_type: 'package',
+            package_id: pkg.package_id,
+            price: parseFloat(pkg.price) || 0,
+            discount: parseFloat(pkg.discount) || 0,
+            quantity: 1,
+            total: parseFloat(pkg.total) || parseFloat(pkg.price) || 0,
+          })
+        }
+      }
+
+      // Add products
+      for (const product of products) {
+        if (product.product_id) {
+          await apiPost(`/api/bills/${billId}/items`, {
+            item_type: 'product',
+            product_id: product.product_id,
+            price: parseFloat(product.price) || 0,
+            discount: parseFloat(product.discount) || 0,
+            quantity: parseInt(product.quantity) || 1,
+            total: parseFloat(product.total) || parseFloat(product.price) * (parseInt(product.quantity) || 1) || 0,
+          })
+        }
+      }
+
+      // Add prepaids
+      for (const prepaid of prepaidPackages) {
+        if (prepaid.prepaid_id) {
+          await apiPost(`/api/bills/${billId}/items`, {
+            item_type: 'prepaid',
+            prepaid_id: prepaid.prepaid_id,
+            price: parseFloat(prepaid.price) || 0,
+            discount: 0,
+            quantity: 1,
+            total: parseFloat(prepaid.price) || 0,
+          })
+        }
+      }
+
+      // Add memberships
+      for (const membership of memberships) {
+        if (membership.membership_id) {
+          await apiPost(`/api/bills/${billId}/items`, {
+            item_type: 'membership',
+            membership_id: membership.membership_id,
+            price: parseFloat(membership.price) || 0,
+            discount: 0,
+            quantity: 1,
+            total: parseFloat(membership.price) || 0,
+          })
+        }
+      }
+
+      // Update bill with payment_mode and discount
+      await apiPut(`/api/bills/${billId}`, {
+        payment_mode: paymentMode,
+        discount_amount: discountAmount,
+        discount_type: discountType,
+        booking_note: bookingNote,
+      })
+
+      console.log('[BILL UPDATE FOR APPOINTMENT] Bill updated with all items')
+    } catch (error) {
+      console.error('[BILL UPDATE FOR APPOINTMENT] Error updating bill:', error)
     }
   }
 
@@ -1790,7 +2123,7 @@ const QuickSale = () => {
                 />
                 {showCustomerDropdown && (
                   <div className="customer-dropdown">
-                    {filteredCustomers.length === 0 && searchQuery.length > 0 ? (
+                    {filteredCustomers.length === 0 && searchQuery.length > 0 && !selectedCustomer ? (
                       <div className="no-customer-section">
                         <div style={{ padding: '12px', color: '#6b7280', textAlign: 'center' }}>
                           No customers found for "{searchQuery}"
@@ -2132,7 +2465,7 @@ const QuickSale = () => {
                     }
                   }}
                 >
-                  <option value="confirmed">Confirmed</option>
+                  <option value="confirmed">Completed Appointment</option>
                   <option value="service-completed">Service Completed</option>
                 </select>
               </div>
@@ -2205,43 +2538,6 @@ const QuickSale = () => {
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* Middle Column: Discount */}
-            <div className="bottom-column discount-payment-column">
-              {/* Discount Section */}
-              {membershipInfo && membershipInfo.plan ? null : user && user.role === 'owner' ? (
-                <div className="discount-section">
-                  <label className="form-label">Discount</label>
-                  <input
-                    type="number"
-                    className="form-input discount-input"
-                    placeholder="Discount Amount (₹)"
-                    value={discountAmount}
-                    onChange={(e) => {
-                      const value = parseFloat(e.target.value) || 0
-                      setDiscountAmount(value)
-                    }}
-                  />
-                  {discountType === '%' && (
-                    <small className="discount-limit-info">
-                      Owner: Unlimited discount
-                    </small>
-                  )}
-                </div>
-              ) : (
-                <div className="discount-section" style={{ 
-                  padding: '12px', 
-                  background: '#fef3c7', 
-                  borderRadius: '8px',
-                  border: '1px solid #fbbf24',
-                  color: '#92400e'
-                }}>
-                  <small>
-                    <strong>Note:</strong> Only owners can apply discounts. Contact the owner for discount requests.
-                  </small>
-                </div>
-              )}
             </div>
 
             {/* Right Column: Bill Summary */}

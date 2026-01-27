@@ -133,23 +133,36 @@ const QuickSale = () => {
       return // Data not loaded yet, wait for next render
     }
 
-    try {
-      const appointmentData = JSON.parse(editAppointmentData)
-      setEditingAppointmentId(appointmentData.appointmentId)
-      
-      // Pre-fill the form with appointment data
-      prefillAppointmentData(appointmentData)
-      // Clear the data after reading
-      localStorage.removeItem('edit_appointment_data')
-    } catch (error) {
-      console.error('Error parsing appointment data:', error)
-      localStorage.removeItem('edit_appointment_data')
+    const loadAppointmentData = async () => {
+      try {
+        const appointmentData = JSON.parse(editAppointmentData)
+        console.log('[APPOINTMENT EDIT] Parsed appointment data from localStorage:', appointmentData)
+        console.log('[APPOINTMENT EDIT] Has bill_items?', !!appointmentData.bill_items)
+        console.log('[APPOINTMENT EDIT] bill_items value:', appointmentData.bill_items)
+        console.log('[APPOINTMENT EDIT] Has payment_mode?', !!appointmentData.payment_mode)
+        console.log('[APPOINTMENT EDIT] payment_mode value:', appointmentData.payment_mode)
+        setEditingAppointmentId(appointmentData.appointmentId)
+        
+        // Pre-fill the form with appointment data (await to ensure it completes)
+        await prefillAppointmentData(appointmentData)
+        
+        // Clear the data after reading (only after prefill completes)
+        localStorage.removeItem('edit_appointment_data')
+        console.log('[APPOINTMENT EDIT] Appointment data loaded and localStorage cleared')
+      } catch (error) {
+        console.error('Error parsing appointment data:', error)
+        localStorage.removeItem('edit_appointment_data')
+      }
     }
+
+    loadAppointmentData()
   }, [customers, availableServices, staffMembers])
 
   // Pre-fill form with appointment data
   const prefillAppointmentData = async (appointmentData) => {
     try {
+      console.log('[APPOINTMENT EDIT] Pre-filling appointment data:', appointmentData)
+      
       // Set customer
       if (appointmentData.customer_id) {
         // First try to find in loaded customers array
@@ -187,14 +200,45 @@ const QuickSale = () => {
         setSelectedDate(new Date(appointmentData.appointment_date))
       }
 
-      // Set booking status
-      if (appointmentData.status) {
-        setBookingStatus(appointmentData.status === 'confirmed' ? 'confirmed' : 'service-completed')
+      // Set payment mode from bill data
+      if (appointmentData.payment_mode) {
+        setPaymentMode(appointmentData.payment_mode)
+        console.log('[APPOINTMENT EDIT] Payment mode set:', appointmentData.payment_mode)
+      } else {
+        console.log('[APPOINTMENT EDIT] No payment_mode in appointment data')
       }
 
-      // Set booking note
-      if (appointmentData.notes) {
+      // Set discount from bill data
+      if (appointmentData.discount_amount !== undefined) {
+        setDiscountAmount(appointmentData.discount_amount || 0)
+        console.log('[APPOINTMENT EDIT] Discount amount set:', appointmentData.discount_amount || 0)
+      }
+      if (appointmentData.discount_type) {
+        setDiscountType(appointmentData.discount_type)
+        console.log('[APPOINTMENT EDIT] Discount type set:', appointmentData.discount_type)
+      }
+
+      // Set booking status - use booking_status from bill if available, otherwise use appointment status
+      // Map "completed" to "service-completed"
+      const statusToUse = appointmentData.booking_status || appointmentData.status
+      if (statusToUse) {
+        if (statusToUse === 'confirmed') {
+          setBookingStatus('confirmed')
+        } else if (statusToUse === 'completed' || statusToUse === 'service-completed') {
+          setBookingStatus('service-completed')
+        } else {
+          setBookingStatus('service-completed')
+        }
+        console.log('[APPOINTMENT EDIT] Booking status set:', statusToUse, '->', statusToUse === 'confirmed' ? 'confirmed' : 'service-completed')
+      }
+
+      // Set booking note - check bill booking_note first, then appointment notes
+      if (appointmentData.booking_note) {
+        setBookingNote(appointmentData.booking_note)
+        console.log('[APPOINTMENT EDIT] Booking note set from bill:', appointmentData.booking_note)
+      } else if (appointmentData.notes) {
         setBookingNote(appointmentData.notes)
+        console.log('[APPOINTMENT EDIT] Booking note set from appointment:', appointmentData.notes)
       }
 
       // Set service - try to find in loaded arrays first, then fetch if needed
@@ -247,6 +291,69 @@ const QuickSale = () => {
             staff_id: appointmentData.staff_id 
           })
         }
+      }
+
+      // Process bill items to restore products, prepaids, and memberships
+      console.log('[APPOINTMENT EDIT] Checking for bill_items:', appointmentData.bill_items)
+      if (appointmentData.bill_items && Array.isArray(appointmentData.bill_items) && appointmentData.bill_items.length > 0) {
+        console.log('[APPOINTMENT EDIT] Processing bill items:', appointmentData.bill_items)
+
+        // Process products from bill items
+        const productItems = appointmentData.bill_items.filter(item => item.item_type === 'product')
+        console.log('[APPOINTMENT EDIT] Found product items:', productItems)
+        if (productItems.length > 0) {
+          const productsFromBill = productItems.map((item, index) => ({
+            id: Date.now() + index,
+            product_id: item.product_id,
+            name: item.name || '',
+            price: item.price || 0,
+            discount: item.discount || 0,
+            quantity: item.quantity || 1,
+            total: item.total || (item.price || 0) * (item.quantity || 1),
+          }))
+          console.log('[APPOINTMENT EDIT] Setting products:', productsFromBill)
+          setProducts(productsFromBill)
+          console.log('[APPOINTMENT EDIT] Products restored from bill:', productsFromBill)
+        } else {
+          console.log('[APPOINTMENT EDIT] No product items found in bill_items')
+        }
+
+        // Process prepaids from bill items
+        const prepaidItems = appointmentData.bill_items.filter(item => item.item_type === 'prepaid')
+        console.log('[APPOINTMENT EDIT] Found prepaid items:', prepaidItems)
+        if (prepaidItems.length > 0) {
+          const prepaidsFromBill = prepaidItems.map((item, index) => ({
+            id: Date.now() + 1000 + index,
+            prepaid_id: item.prepaid_id,
+            name: item.name || '',
+            balance: item.price || 0, // Use price as balance
+          }))
+          console.log('[APPOINTMENT EDIT] Setting prepaids:', prepaidsFromBill)
+          setPrepaidPackages(prepaidsFromBill)
+          console.log('[APPOINTMENT EDIT] Prepaids restored from bill:', prepaidsFromBill)
+        } else {
+          console.log('[APPOINTMENT EDIT] No prepaid items found in bill_items')
+        }
+
+        // Process memberships from bill items
+        const membershipItems = appointmentData.bill_items.filter(item => item.item_type === 'membership')
+        console.log('[APPOINTMENT EDIT] Found membership items:', membershipItems)
+        if (membershipItems.length > 0) {
+          const membershipsFromBill = membershipItems.map((item, index) => ({
+            id: Date.now() + 2000 + index,
+            membership_id: item.membership_id,
+            name: item.name || '',
+            price: item.price || 0,
+            validity: 0, // Validity not stored in bill items, default to 0
+          }))
+          console.log('[APPOINTMENT EDIT] Setting memberships:', membershipsFromBill)
+          setMemberships(membershipsFromBill)
+          console.log('[APPOINTMENT EDIT] Memberships restored from bill:', membershipsFromBill)
+        } else {
+          console.log('[APPOINTMENT EDIT] No membership items found in bill_items')
+        }
+      } else {
+        console.log('[APPOINTMENT EDIT] No bill_items found or bill_items is not an array')
       }
 
       showInfo('Appointment data loaded. You can now edit and update the booking.')
@@ -1416,7 +1523,7 @@ const QuickSale = () => {
               <span className="dropdown-arrow"><FaChevronDown /></span>
               {showCustomerDropdown && (
                 <div className="customer-dropdown">
-                  {filteredCustomers.length === 0 && searchQuery.length > 0 ? (
+                  {filteredCustomers.length === 0 && searchQuery.length > 0 && !selectedCustomer ? (
                     <div className="no-customer-section">
                       <div className="no-customer-message">
                         No customers found for "{searchQuery}"

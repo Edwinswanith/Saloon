@@ -101,6 +101,7 @@ def get_bills(current_user=None):
     try:
         # Query parameters
         customer_id = request.args.get('customer_id')
+        appointment_id = request.args.get('appointment_id')
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         payment_mode = request.args.get('payment_mode')
@@ -126,6 +127,13 @@ def get_bills(current_user=None):
                 query = query.filter(customer=customer)
             except Customer.DoesNotExist:
                 pass
+        if appointment_id:
+            from models import Appointment
+            try:
+                appointment = Appointment.objects.get(id=appointment_id)
+                query = query.filter(appointment=appointment)
+            except Appointment.DoesNotExist:
+                pass
         if start_date or end_date:
             start, end = get_ist_date_range(start_date, end_date)
             if start:
@@ -149,7 +157,7 @@ def get_bills(current_user=None):
                 customer_mobile = customer_info['mobile']
                 customer_obj_id = customer_info['id']
 
-                result.append({
+                bill_data = {
                     'id': str(b.id),
                     'bill_number': b.bill_number,
                     'customer_id': customer_obj_id,
@@ -164,9 +172,44 @@ def get_bills(current_user=None):
                     'final_amount': b.final_amount,
                     'payment_mode': b.payment_mode,
                     'booking_status': b.booking_status,
+                    'booking_note': b.booking_note,
                     'is_deleted': b.is_deleted,
                     'created_at': b.created_at.isoformat() if b.created_at else None
-                })
+                }
+
+                # Include items when filtering by appointment_id (for edit functionality)
+                if appointment_id and b.items:
+                    bill_data['items'] = []
+                    for item in b.items:
+                        item_data = {
+                            'item_type': item.item_type,
+                            'price': item.price,
+                            'discount': item.discount,
+                            'quantity': item.quantity,
+                            'total': item.total,
+                            'start_time': item.start_time,
+                        }
+                        # Add reference IDs based on item type
+                        if item.service:
+                            item_data['service_id'] = str(item.service.id)
+                            item_data['name'] = item.service.name if hasattr(item.service, 'name') else ''
+                        if item.package:
+                            item_data['package_id'] = str(item.package.id)
+                            item_data['name'] = item.package.name if hasattr(item.package, 'name') else ''
+                        if item.product:
+                            item_data['product_id'] = str(item.product.id)
+                            item_data['name'] = item.product.name if hasattr(item.product, 'name') else ''
+                        if item.prepaid:
+                            item_data['prepaid_id'] = str(item.prepaid.id)
+                            item_data['name'] = item.prepaid.name if hasattr(item.prepaid, 'name') else ''
+                        if item.membership:
+                            item_data['membership_id'] = str(item.membership.id)
+                            item_data['name'] = item.membership.name if hasattr(item.membership, 'name') else ''
+                        if item.staff:
+                            item_data['staff_id'] = str(item.staff.id)
+                        bill_data['items'].append(item_data)
+
+                result.append(bill_data)
             except Exception as e:
                 print(f"Error processing bill {b.id}: {e}")
                 continue

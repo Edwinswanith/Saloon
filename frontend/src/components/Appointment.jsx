@@ -1,18 +1,26 @@
 import React, { useState, useEffect } from 'react'
-import { FaCalendarAlt, FaPlus, FaTimes, FaEdit, FaShare, FaDownload, FaArrowLeft } from 'react-icons/fa'
+import { FaTimes, FaEdit, FaShare, FaDownload, FaArrowLeft } from 'react-icons/fa'
 import './Appointment.css'
 import { API_BASE_URL } from '../config'
 import { useAuth } from '../contexts/AuthContext'
 import { apiGet, apiPost, apiDelete } from '../utils/api'
 import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
 import InvoicePreview from './InvoicePreview'
+import CalendarHeader from './calendar/CalendarHeader'
+import { useCalendarView } from './calendar/CalendarView'
+import { getWeekDates, getMonthGridDates } from './calendar/calendarUtils'
 
 const Appointment = ({ setActivePage }) => {
   const { currentBranch } = useAuth()
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
-  const [viewMode, setViewMode] = useState('day')
   const [selectedStaff, setSelectedStaff] = useState('all')
   const [activeNavButton, setActiveNavButton] = useState('today')
+  
+  // Use calendar view hook for state management
+  const calendarView = useCalendarView('day', null, (range) => {
+    // Date range change callback - will trigger fetchAppointments via useEffect
+  })
+  
+  const { activeView, selectedDate, fromDate, toDate, setActiveView, setSelectedDate, navigate } = calendarView
   const [staffMembers, setStaffMembers] = useState([])
   const [appointments, setAppointments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -36,49 +44,6 @@ const Appointment = ({ setActivePage }) => {
   const [customers, setCustomers] = useState([])
   const [services, setServices] = useState([])
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString)
-    const day = String(date.getDate()).padStart(2, '0')
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const year = date.getFullYear()
-    return `${day}-${month}-${year}`
-  }
-
-  const getCurrentDateDisplay = (dateString) => {
-    const date = new Date(dateString)
-    const days = [
-      'Sunday',
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-    ]
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ]
-    const dayName = days[date.getDay()]
-    const monthName = months[date.getMonth()]
-    const day = date.getDate()
-    return `${dayName} ${monthName} ${day}`
-  }
-
-  const getCurrentTime = () => {
-    const now = new Date()
-    return now.getHours() + now.getMinutes() / 60
-  }
 
   const isCurrentTime = (hour) => {
     // Show green line at 4:00 PM (16:00) as shown in screenshot
@@ -97,22 +62,39 @@ const Appointment = ({ setActivePage }) => {
   }
 
   const handleToday = () => {
-    setSelectedDate(new Date().toISOString().split('T')[0])
+    navigate('today')
     setActiveNavButton('today')
   }
 
   const handleBack = () => {
-    const date = new Date(selectedDate)
-    date.setDate(date.getDate() - 1)
-    setSelectedDate(date.toISOString().split('T')[0])
+    navigate('prev')
     setActiveNavButton('back')
   }
 
   const handleNext = () => {
-    const date = new Date(selectedDate)
-    date.setDate(date.getDate() + 1)
-    setSelectedDate(date.toISOString().split('T')[0])
+    navigate('next')
     setActiveNavButton('next')
+  }
+
+  const handleViewChange = (view) => {
+    setActiveView(view)
+    setActiveNavButton('today')
+  }
+
+  const handleDateChange = (date) => {
+    setSelectedDate(date)
+    setActiveNavButton('today')
+  }
+
+  const handleNavigate = (direction) => {
+    navigate(direction)
+    if (direction === 'today') {
+      setActiveNavButton('today')
+    } else if (direction === 'prev') {
+      setActiveNavButton('back')
+    } else if (direction === 'next') {
+      setActiveNavButton('next')
+    }
   }
 
   useEffect(() => {
@@ -122,8 +104,10 @@ const Appointment = ({ setActivePage }) => {
   }, [])
 
   useEffect(() => {
-    fetchAppointments()
-  }, [selectedDate, selectedStaff, viewMode, currentBranch])
+    if (fromDate && toDate) {
+      fetchAppointments()
+    }
+  }, [fromDate, toDate, selectedStaff, currentBranch, activeView])
 
   // Listen for branch changes
   useEffect(() => {
@@ -169,11 +153,15 @@ const Appointment = ({ setActivePage }) => {
   }
 
   const fetchAppointments = async () => {
+    if (!fromDate || !toDate) return
+
     try {
       setLoading(true)
       const params = new URLSearchParams({
-        start_date: selectedDate,
-        end_date: selectedDate,
+        start_date: fromDate,
+        end_date: toDate,
+        // Request more items for month view to ensure all appointments are fetched
+        per_page: activeView === 'month' ? '200' : '100',
       })
       if (selectedStaff !== 'all') {
         params.append('staff_id', selectedStaff)
@@ -284,9 +272,15 @@ const Appointment = ({ setActivePage }) => {
     }
   }
 
-  const getAppointmentsForSlot = (hour, staffId) => {
+  const getAppointmentsForSlot = (hour, staffId, date = null) => {
     return appointments.filter((apt) => {
       try {
+        // Filter by date if provided (for week/month views)
+        if (date) {
+          const aptDate = apt.appointment_date ? new Date(apt.appointment_date).toISOString().split('T')[0] : null
+          if (aptDate !== date) return false
+        }
+        
         // Parse time - handle both HH:MM:SS and HH:MM formats
         let timeStr = apt.start_time
         if (!timeStr) return false
@@ -308,12 +302,32 @@ const Appointment = ({ setActivePage }) => {
     })
   }
 
-  const openBookingModal = (staffId, hour) => {
+  const getAppointmentsForDate = (date, staffId = null) => {
+    return appointments.filter((apt) => {
+      try {
+        const aptDate = apt.appointment_date ? new Date(apt.appointment_date).toISOString().split('T')[0] : null
+        if (aptDate !== date) return false
+        
+        if (staffId) {
+          const aptStaffId = apt.staff_id ? apt.staff_id.toString() : ''
+          const staffIdStr = staffId.toString()
+          if (aptStaffId !== staffIdStr) return false
+        }
+        
+        return apt.status !== 'cancelled'
+      } catch (error) {
+        console.error('Error filtering appointments by date:', error, apt)
+        return false
+      }
+    })
+  }
+
+  const openBookingModal = (staffId, hour, date = null) => {
     setBookingForm({
       ...bookingForm,
       staff_id: staffId,
-      appointment_date: selectedDate,
-      start_time: `${String(hour).padStart(2, '0')}:00`,
+      appointment_date: date || selectedDate,
+      start_time: hour ? `${String(hour).padStart(2, '0')}:00` : '',
     })
     setShowBookingModal(true)
   }
@@ -470,10 +484,12 @@ const Appointment = ({ setActivePage }) => {
     setShowCancelModal(true)
   }
 
-  const handleEditAppointment = (appointment) => {
+  const handleEditAppointment = async (appointment) => {
+    const appointmentId = appointment.id || appointmentDetail?.id
+
     // Store appointment data in localStorage for QuickSale to pick up
     const appointmentData = {
-      appointmentId: appointment.id || appointmentDetail?.id,
+      appointmentId: appointmentId,
       customer_id: appointment.customer_id || appointmentDetail?.customer_id,
       customer_name: appointment.customer_name || appointmentDetail?.customer_name,
       customer_mobile: appointment.customer_mobile || appointmentDetail?.customer_mobile,
@@ -487,8 +503,60 @@ const Appointment = ({ setActivePage }) => {
       notes: appointment.notes || appointmentDetail?.notes,
       status: appointment.status || appointmentDetail?.status,
     }
-    localStorage.setItem('edit_appointment_data', JSON.stringify(appointmentData))
+
+    // Try to fetch the associated bill to get all items and payment_mode
+    try {
+      console.log('[APPOINTMENT EDIT] Fetching bill for appointment_id:', appointmentId)
+      const billResponse = await apiGet(`/api/bills?appointment_id=${appointmentId}`)
+      console.log('[APPOINTMENT EDIT] Bill response status:', billResponse.status, billResponse.ok)
+      
+      if (billResponse.ok) {
+        const billData = await billResponse.json()
+        console.log('[APPOINTMENT EDIT] Bill response data:', billData)
+        
+        // Handle both 'data' and 'bills' response formats
+        const billsArray = billData.data || billData.bills || []
+        console.log('[APPOINTMENT EDIT] Bills array:', billsArray)
+        
+        if (billsArray && billsArray.length > 0) {
+          const bill = billsArray[0]
+          console.log('[APPOINTMENT EDIT] Found associated bill:', bill)
+          console.log('[APPOINTMENT EDIT] Bill has items?', !!bill.items)
+          console.log('[APPOINTMENT EDIT] Bill items count:', bill.items ? bill.items.length : 0)
+          console.log('[APPOINTMENT EDIT] Bill items:', bill.items)
+
+          // Add bill data to appointment data
+          appointmentData.bill_id = bill.id
+          appointmentData.payment_mode = bill.payment_mode
+          appointmentData.booking_note = bill.booking_note
+          appointmentData.booking_status = bill.booking_status // Use booking_status from bill
+          appointmentData.discount_amount = bill.discount_amount
+          appointmentData.discount_type = bill.discount_type
+
+          // Add bill items
+          if (bill.items && bill.items.length > 0) {
+            appointmentData.bill_items = bill.items
+            console.log('[APPOINTMENT EDIT] Bill items added to appointment data:', bill.items)
+            console.log('[APPOINTMENT EDIT] appointmentData.bill_items after assignment:', appointmentData.bill_items)
+          } else {
+            console.log('[APPOINTMENT EDIT] Bill has no items or items array is empty')
+          }
+        } else {
+          console.log('[APPOINTMENT EDIT] No bill found in response data')
+        }
+      } else {
+        console.log('[APPOINTMENT EDIT] Bill response not OK:', billResponse.status)
+      }
+    } catch (error) {
+      console.error('[APPOINTMENT EDIT] Error fetching associated bill:', error)
+      // Continue without bill data
+    }
     
+    console.log('[APPOINTMENT EDIT] Final appointmentData before localStorage:', appointmentData)
+    console.log('[APPOINTMENT EDIT] Final appointmentData.bill_items:', appointmentData.bill_items)
+
+    localStorage.setItem('edit_appointment_data', JSON.stringify(appointmentData))
+
     // Navigate to QuickSale
     if (setActivePage) {
       setActivePage('quick-sale')
@@ -501,174 +569,242 @@ const Appointment = ({ setActivePage }) => {
   return (
     <div className="appointment-page">
       {/* Header */}
-      <header className="appointment-header">
-        <div className="header-left">
-          <h1 className="header-title">Appointment</h1>
-        </div>
-
-        <div className="header-nav-bar">
-          <div className="nav-controls-left">
-            {/* Navigation Buttons Group */}
-            <div className="nav-btn-group">
-              <button 
-                className={`nav-btn ${activeNavButton === 'today' ? 'active' : ''}`} 
-                onClick={handleToday}
-              >
-                Today
-              </button>
-              <button 
-                className={`nav-btn ${activeNavButton === 'back' ? 'active' : ''}`} 
-                onClick={handleBack}
-              >
-                Back
-              </button>
-              <button 
-                className={`nav-btn ${activeNavButton === 'next' ? 'active' : ''}`} 
-                onClick={handleNext}
-              >
-                Next
-              </button>
-            </div>
-
-            {/* Date Input Group */}
-            <div className="date-input-group">
-              <div className="date-input-wrapper">
-                <input
-                  type="date"
-                  className="date-picker"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                />
-                <span className="date-display">{formatDate(selectedDate)}</span>
-                <span className="calendar-icon"><FaCalendarAlt /></span>
-              </div>
-            </div>
-
-            {/* Staff Select Group */}
-            <div className="staff-select-group">
-              <select
-                className="staff-select"
-                value={selectedStaff}
-                onChange={(e) => setSelectedStaff(e.target.value)}
-              >
-                <option value="all">All Staff</option>
-                {staffMembers.map((staff) => (
-                  <option key={staff.id} value={staff.id}>
-                    {staff.firstName} {staff.lastName}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="current-date-display">
-            {getCurrentDateDisplay(selectedDate)}
-          </div>
-
-          <div className="view-mode-buttons">
-            <button
-              className={`view-btn ${viewMode === 'month' ? 'active' : ''}`}
-              onClick={() => setViewMode('month')}
-            >
-              Month
-            </button>
-            <button
-              className={`view-btn ${viewMode === 'week' ? 'active' : ''}`}
-              onClick={() => setViewMode('week')}
-            >
-              Week
-            </button>
-            <button
-              className={`view-btn ${viewMode === 'day' ? 'active' : ''}`}
-              onClick={() => setViewMode('day')}
-            >
-              Day
-            </button>
-            <button
-              className={`view-btn ${viewMode === 'agenda' ? 'active' : ''}`}
-              onClick={() => setViewMode('agenda')}
-            >
-              Agenda
-            </button>
-          </div>
-        </div>
-      </header>
+      <CalendarHeader
+        activeView={activeView}
+        selectedDate={selectedDate}
+        fromDate={fromDate}
+        toDate={toDate}
+        onViewChange={handleViewChange}
+        onDateChange={handleDateChange}
+        onNavigate={handleNavigate}
+        staffMembers={staffMembers}
+        selectedStaff={selectedStaff}
+        onStaffChange={setSelectedStaff}
+        activeNavButton={activeNavButton}
+      />
 
       {/* Schedule Grid */}
       <div className="schedule-container">
-        <div 
-          className="schedule-grid"
-          style={{
-            gridTemplateColumns: `100px repeat(${staffMembers.length}, minmax(120px, 180px))`
-          }}
-        >
-          {/* Time Column Header */}
-          <div className="time-header">Time</div>
+        {activeView === 'day' && (
+          <div 
+            className="schedule-grid schedule-grid-day"
+            style={{
+              gridTemplateColumns: `100px repeat(${staffMembers.length}, minmax(120px, 180px))`
+            }}
+          >
+            {/* Time Column Header */}
+            <div className="time-header">Time</div>
 
-          {/* Staff Headers */}
-          {staffMembers.map((staff) => (
-            <div key={staff.id} className="staff-header" title={`${staff.firstName} ${staff.lastName || ''}`.trim()}>
-              {`${staff.firstName} ${staff.lastName || ''}`.trim()}
-            </div>
-          ))}
+            {/* Staff Headers */}
+            {staffMembers.map((staff) => (
+              <div key={staff.id} className="staff-header" title={`${staff.firstName} ${staff.lastName || ''}`.trim()}>
+                {`${staff.firstName} ${staff.lastName || ''}`.trim()}
+              </div>
+            ))}
 
-          {/* Time Slots and Grid Cells */}
-          {timeSlots.map((timeSlot) => {
-            const showCurrentTime = isCurrentTime(timeSlot.hour)
-            return (
-              <React.Fragment key={timeSlot.hour}>
-                {/* Time Label */}
-                <div className="time-label">{timeSlot.label}</div>
+            {/* Time Slots and Grid Cells */}
+            {timeSlots.map((timeSlot) => {
+              const showCurrentTime = isCurrentTime(timeSlot.hour)
+              return (
+                <React.Fragment key={timeSlot.hour}>
+                  {/* Time Label */}
+                  <div className="time-label">{timeSlot.label}</div>
 
-                {/* Staff Columns */}
-                {staffMembers.map((staff, staffIndex) => {
-                  const slotAppointments = getAppointmentsForSlot(timeSlot.hour, staff.id)
-                  return (
-                    <div
-                      key={`${timeSlot.hour}-${staff.id}`}
-                      className="schedule-cell"
-                      onClick={() => openBookingModal(staff.id, timeSlot.hour)}
-                      style={{ cursor: 'pointer', position: 'relative' }}
-                    >
-                      {showCurrentTime && staffIndex === 0 && (
-                        <div 
-                          className="current-time-line-wrapper"
-                          style={{
-                            width: `calc(100% * ${staffMembers.length})`
-                          }}
-                        >
-                          <div className="current-time-line">
-                            <div className="current-time-marker"></div>
+                  {/* Staff Columns */}
+                  {staffMembers.map((staff, staffIndex) => {
+                    const slotAppointments = getAppointmentsForSlot(timeSlot.hour, staff.id, selectedDate)
+                    return (
+                      <div
+                        key={`${timeSlot.hour}-${staff.id}`}
+                        className="schedule-cell"
+                        onClick={() => openBookingModal(staff.id, timeSlot.hour, selectedDate)}
+                        style={{ cursor: 'pointer', position: 'relative' }}
+                      >
+                        {showCurrentTime && staffIndex === 0 && (
+                          <div 
+                            className="current-time-line-wrapper"
+                            style={{
+                              width: `calc(100% * ${staffMembers.length})`
+                            }}
+                          >
+                            <div className="current-time-line">
+                              <div className="current-time-marker"></div>
+                            </div>
                           </div>
-                        </div>
-                      )}
-                      {slotAppointments.map((apt) => (
-                        <div
-                          key={apt.id}
-                          className={`appointment-block ${apt.status}`}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openDetailModal(apt)
-                          }}
-                          title={`${apt.customer_name} - ${apt.service_name || 'Service'}`}
-                        >
-                          <div className="appointment-customer">{apt.customer_name}</div>
-                          <div className="appointment-service">{apt.service_name || 'Service'}</div>
-                          <div className="appointment-time">
-                            {new Date(`2000-01-01T${apt.start_time}`).toLocaleTimeString('en-US', {
-                              hour: 'numeric',
-                              minute: '2-digit',
-                            })}
+                        )}
+                        {slotAppointments.map((apt) => (
+                          <div
+                            key={apt.id}
+                            className={`appointment-block ${apt.status}`}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openDetailModal(apt)
+                            }}
+                            title={`${apt.customer_name} - ${apt.service_name || 'Service'}`}
+                          >
+                            <div className="appointment-customer">{apt.customer_name}</div>
+                            <div className="appointment-service">{apt.service_name || 'Service'}</div>
+                            <div className="appointment-time">
+                              {new Date(`2000-01-01T${apt.start_time}`).toLocaleTimeString('en-US', {
+                                hour: 'numeric',
+                                minute: '2-digit',
+                              })}
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )
-                })}
-              </React.Fragment>
-            )
-          })}
-        </div>
+                        ))}
+                      </div>
+                    )
+                  })}
+                </React.Fragment>
+              )
+            })}
+          </div>
+        )}
+
+        {activeView === 'week' && (
+          <div 
+            className="schedule-grid schedule-grid-week"
+            style={{
+              gridTemplateColumns: `100px repeat(7, minmax(150px, 1fr))`
+            }}
+          >
+            {/* Time Column Header */}
+            <div className="time-header">Time</div>
+
+            {/* Day Headers */}
+            {getWeekDates(selectedDate).map((date) => {
+              const d = new Date(date)
+              const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()]
+              const dayNum = d.getDate()
+              const isToday = date === new Date().toISOString().split('T')[0]
+              return (
+                <div key={date} className={`day-header ${isToday ? 'today' : ''}`}>
+                  <div className="day-name">{dayName}</div>
+                  <div className="day-number">{dayNum}</div>
+                </div>
+              )
+            })}
+
+            {/* Time Slots and Grid Cells */}
+            {timeSlots.map((timeSlot) => {
+              const showCurrentTime = isCurrentTime(timeSlot.hour)
+              return (
+                <React.Fragment key={timeSlot.hour}>
+                  {/* Time Label */}
+                  <div className="time-label">{timeSlot.label}</div>
+
+                  {/* Day Columns */}
+                  {getWeekDates(selectedDate).map((date) => {
+                    const dayAppointments = getAppointmentsForDate(date, selectedStaff !== 'all' ? selectedStaff : null).filter(apt => {
+                      if (!apt.start_time) return false
+                      const timeParts = apt.start_time.split(':')
+                      const aptHour = parseInt(timeParts[0], 10)
+                      return aptHour === timeSlot.hour
+                    })
+                    
+                    return (
+                      <div
+                        key={`${timeSlot.hour}-${date}`}
+                        className="schedule-cell"
+                        onClick={() => openBookingModal(selectedStaff !== 'all' ? selectedStaff : null, timeSlot.hour, date)}
+                        style={{ cursor: 'pointer', position: 'relative' }}
+                      >
+                        {showCurrentTime && date === getWeekDates(selectedDate)[0] && (
+                          <div className="current-time-line-wrapper">
+                            <div className="current-time-line">
+                              <div className="current-time-marker"></div>
+                            </div>
+                          </div>
+                        )}
+                        {dayAppointments.map((apt) => (
+                          <div
+                            key={apt.id}
+                            className={`appointment-block ${apt.status}`}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openDetailModal(apt)
+                            }}
+                            title={`${apt.customer_name} - ${apt.service_name || 'Service'}`}
+                          >
+                            <div className="appointment-customer">{apt.customer_name}</div>
+                            <div className="appointment-service">{apt.service_name || 'Service'}</div>
+                            <div className="appointment-time">
+                              {new Date(`2000-01-01T${apt.start_time}`).toLocaleTimeString('en-US', {
+                                hour: 'numeric',
+                                minute: '2-digit',
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })}
+                </React.Fragment>
+              )
+            })}
+          </div>
+        )}
+
+        {activeView === 'month' && (
+          <div className="schedule-grid schedule-grid-month">
+            {/* Day Name Headers */}
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((dayName) => (
+              <div key={dayName} className="month-day-header">
+                {dayName}
+              </div>
+            ))}
+
+            {/* Month Grid Cells */}
+            {getMonthGridDates(selectedDate).map((date) => {
+              const d = new Date(date)
+              const dayNum = d.getDate()
+              const isCurrentMonth = d.getMonth() === new Date(selectedDate).getMonth()
+              const isToday = date === new Date().toISOString().split('T')[0]
+              const dayAppointments = getAppointmentsForDate(date, selectedStaff !== 'all' ? selectedStaff : null)
+              
+              return (
+                <div
+                  key={date}
+                  className={`month-cell ${!isCurrentMonth ? 'other-month' : ''} ${isToday ? 'today' : ''}`}
+                  onClick={() => {
+                    // Switch to day view for the clicked date
+                    setSelectedDate(date)
+                    setActiveView('day')
+                  }}
+                >
+                  <div className="month-cell-date">{dayNum}</div>
+                  <div className="month-cell-appointments">
+                    {dayAppointments.slice(0, 3).map((apt) => (
+                      <div
+                        key={apt.id}
+                        className={`month-appointment ${apt.status}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openDetailModal(apt)
+                        }}
+                        title={`${apt.customer_name} - ${apt.service_name || 'Service'}`}
+                      >
+                        <span className="month-appointment-time">
+                          {new Date(`2000-01-01T${apt.start_time}`).toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                        <span className="month-appointment-customer">{apt.customer_name}</span>
+                        <span className="month-appointment-service">{apt.service_name || 'Service'}</span>
+                      </div>
+                    ))}
+                    {dayAppointments.length > 3 && (
+                      <div className="month-more-appointments">
+                        +{dayAppointments.length - 3} more
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Booking Modal */}
