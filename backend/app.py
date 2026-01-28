@@ -5,7 +5,7 @@ from datetime import datetime, date, time
 import os
 from urllib.parse import unquote
 
-app = Flask(__name__, static_folder='static', static_url_path='')
+app = Flask(__name__, static_folder='static', static_url_path='', template_folder='templates')
 
 # MongoDB Configuration
 MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
@@ -81,6 +81,13 @@ try:
 except Exception as e:
     print(f"Warning: Redis initialization failed: {e}")
     print("App will continue with in-memory cache fallback.")
+
+# Register Jinja2 template filters for invoice rendering
+try:
+    from services.invoice_pdf_service import register_template_filters
+    register_template_filters(app)
+except Exception as e:
+    print(f"Warning: Failed to register invoice template filters: {e}")
 
 # Import and register routes (after MongoDB connection)
 from routes import register_routes

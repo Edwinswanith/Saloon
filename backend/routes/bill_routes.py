@@ -1143,6 +1143,172 @@ def get_invoice_data(bill_id, current_user=None):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+@bill_bp.route('/bills/<bill_id>/invoice/html', methods=['GET'])
+@require_auth
+def get_invoice_html(bill_id, current_user=None):
+    """Get invoice as rendered HTML for viewing"""
+    try:
+        from services.invoice_pdf_service import render_invoice_html
+
+        # Get invoice data (reuse the same logic as JSON endpoint)
+        bill = Bill.objects.get(id=bill_id)
+
+        # Get customer data
+        customer_data = {
+            'id': None,
+            'name': 'Walk-in',
+            'mobile': None,
+            'wallet_balance': 0
+        }
+        if bill.customer:
+            try:
+                bill.customer.reload()
+                customer_data = {
+                    'id': str(bill.customer.id),
+                    'name': f"{bill.customer.first_name or ''} {bill.customer.last_name or ''}".strip(),
+                    'mobile': bill.customer.mobile,
+                    'wallet_balance': float(bill.customer.wallet_balance) if hasattr(bill.customer, 'wallet_balance') and bill.customer.wallet_balance else 0
+                }
+            except:
+                pass
+
+        # Get branch data
+        branch_data = {
+            'name': 'Saloon',
+            'address': '',
+            'city': '',
+            'phone': '',
+            'gstin': ''
+        }
+        if bill.branch:
+            try:
+                bill.branch.reload()
+                branch_data = {
+                    'name': bill.branch.name or 'Saloon',
+                    'address': bill.branch.address or '',
+                    'city': bill.branch.city or '',
+                    'phone': bill.branch.phone or '',
+                    'gstin': bill.branch.gstin or ''
+                }
+            except:
+                pass
+
+        # Get bill items with full details
+        items = []
+        for idx, item in enumerate(bill.items or []):
+            item_name = 'Item'
+            item_type = item.item_type or 'service'
+
+            if item.item_type == 'service' and item.service:
+                try:
+                    item.service.reload()
+                    item_name = item.service.name if hasattr(item.service, 'name') else 'Service'
+                except:
+                    item_name = 'Service'
+            elif item.item_type == 'product' and item.product:
+                try:
+                    item.product.reload()
+                    item_name = item.product.name if hasattr(item.product, 'name') else 'Product'
+                except:
+                    item_name = 'Product'
+            elif item.item_type == 'package' and item.package:
+                try:
+                    item.package.reload()
+                    item_name = item.package.name if hasattr(item.package, 'name') else 'Package'
+                except:
+                    item_name = 'Package'
+
+            staff_name = 'N/A'
+            if item.staff:
+                try:
+                    item.staff.reload()
+                    staff_name = f"{item.staff.first_name or ''} {item.staff.last_name or ''}".strip() if hasattr(item.staff, 'first_name') else 'N/A'
+                except:
+                    staff_name = 'N/A'
+
+            item_tax = 0.0
+            if bill.tax_amount and bill.subtotal:
+                item_tax = (float(item.total) / float(bill.subtotal)) * float(bill.tax_amount) if bill.subtotal > 0 else 0.0
+
+            items.append({
+                'id': idx + 1,
+                'name': item_name,
+                'type': item_type,
+                'staff_name': staff_name,
+                'quantity': int(item.quantity) if item.quantity else 1,
+                'price': float(item.price) if item.price else 0.0,
+                'tax': round(item_tax, 2),
+                'discount': float(item.discount) if item.discount else 0.0,
+                'total': float(item.total) if item.total else 0.0
+            })
+
+        # Generate invoice number
+        invoice_number = getattr(bill, 'invoice_number', None)
+        if not invoice_number:
+            try:
+                bills_before = Bill.objects(created_at__lt=bill.created_at).count()
+                invoice_num = bills_before + 1
+                invoice_number = f"INV-{invoice_num:06d}"
+            except:
+                invoice_number = f"INV-{bill.bill_number[-6:]}"
+
+        # Format dates
+        bill_date = bill.bill_date
+        booking_date_str = 'N/A'
+        booking_time_str = 'N/A'
+
+        if bill_date:
+            booking_date_str = bill_date.strftime('%a, %d %b, %Y')
+            if items and items[0].get('start_time'):
+                try:
+                    time_parts = items[0]['start_time'].split(':')
+                    if len(time_parts) >= 2:
+                        hour = int(time_parts[0])
+                        minute = int(time_parts[1])
+                        from datetime import time as dt_time
+                        time_obj = dt_time(hour, minute)
+                        booking_time_str = time_obj.strftime('%I:%M %p').lower()
+                except:
+                    booking_time_str = bill_date.strftime('%I:%M %p').lower()
+            else:
+                booking_time_str = bill_date.strftime('%I:%M %p').lower()
+
+        # Build invoice data
+        invoice_data = {
+            'invoice_number': invoice_number,
+            'bill_number': bill.bill_number,
+            'booking_date': booking_date_str,
+            'booking_time': booking_time_str,
+            'customer': customer_data,
+            'branch': branch_data,
+            'items': items,
+            'summary': {
+                'subtotal': float(bill.subtotal) if bill.subtotal else 0.0,
+                'discount': float(bill.discount_amount) if bill.discount_amount else 0.0,
+                'net': float(bill.subtotal) - float(bill.discount_amount) if bill.subtotal else 0.0,
+                'tax': float(bill.tax_amount) if bill.tax_amount else 0.0,
+                'total': float(bill.final_amount) if bill.final_amount else 0.0
+            },
+            'payment': {
+                'status': 'paid' if (bill.booking_status == 'service-completed'
+                                    and bill.payment_mode
+                                    and bill.final_amount > 0) else 'pending',
+                'mode': bill.payment_mode or '',
+                'amount': float(bill.final_amount) if bill.final_amount else 0
+            }
+        }
+
+        # Render HTML template with action buttons visible
+        html_content = render_invoice_html(invoice_data, show_actions=True)
+        return html_content, 200, {'Content-Type': 'text/html; charset=utf-8'}
+
+    except Bill.DoesNotExist:
+        return '<h1>Bill not found</h1>', 404, {'Content-Type': 'text/html'}
+    except Exception as e:
+        return f'<h1>Error: {str(e)}</h1>', 500, {'Content-Type': 'text/html'}
+
+
 @bill_bp.route('/bills/<bill_id>/invoice/pdf', methods=['GET'])
 @require_auth
 def download_invoice_pdf(bill_id, current_user=None):
@@ -1169,7 +1335,7 @@ def download_invoice_pdf(bill_id, current_user=None):
                 }
             except:
                 pass
-        
+
         # Get branch data
         branch_data = {
             'name': 'Saloon',
@@ -1190,7 +1356,7 @@ def download_invoice_pdf(bill_id, current_user=None):
                 }
             except:
                 pass
-        
+
         # Get bill items
         items = []
         for idx, item in enumerate(bill.items or []):

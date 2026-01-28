@@ -2270,11 +2270,11 @@ const QuickSale = () => {
                           disabled={loadingServices}
                         >
                           <option value="">
-                            {loadingServices 
-                              ? 'Loading services...' 
-                              : availableServices.length === 0 
-                                ? 'No services available' 
-                                : 'Choose service'}
+                            {loadingServices
+                              ? 'Loading services...'
+                              : availableServices.length === 0
+                                ? 'No services available'
+                                : 'Select a service'}
                           </option>
                           {availableServices.map(svc => (
                             <option key={svc.id} value={svc.id}>
@@ -2289,7 +2289,7 @@ const QuickSale = () => {
                           value={service.staff_id}
                           onChange={(e) => updateService(service.id, 'staff_id', e.target.value)}
                         >
-                          <option value="">Choose staff</option>
+                          <option value="">Select staff</option>
                           {staffMembers.map(staff => (
                             <option key={staff.id} value={staff.id}>
                               {staff.firstName} {staff.lastName}
@@ -2500,7 +2500,7 @@ const QuickSale = () => {
                   <h3 className="booking-note-title">Booking Note</h3>
                   <textarea
                     className="form-textarea"
-                    placeholder="Add any notes here..."
+                    placeholder="Add booking notes (optional)"
                     rows="3"
                     value={bookingNote}
                     onChange={(e) => setBookingNote(e.target.value)}
@@ -2549,7 +2549,7 @@ const QuickSale = () => {
                   {/* Subtotal Group */}
                   <div className="summary-group">
                     <div className="summary-row">
-                      <span className="summary-label">Subtotal:</span>
+                      <span className="summary-label">Subtotal</span>
                       <span className="summary-value">₹ {calculateSubtotal().toFixed(2)}</span>
                     </div>
                   </div>
@@ -2564,20 +2564,20 @@ const QuickSale = () => {
                           <div className="summary-row membership-discount-row">
                             <span className="summary-label discount-label">
                               <FaGift style={{ fontSize: '14px', marginRight: '6px' }} />
-                              Membership Discount ({membershipInfo.plan.allocated_discount}%):
+                              Membership ({membershipInfo.plan.allocated_discount}%)
                             </span>
                             <span className="summary-value discount-value">
-                              - ₹ {calculateDiscount().toFixed(2)}
+                              − ₹ {calculateDiscount().toFixed(2)}
                             </span>
                           </div>
                         )}
                         {discountType !== 'membership' && discountAmount > 0 && (
                           <div className="summary-row manual-discount-row">
                             <span className="summary-label discount-label">
-                              Discount{discountType === '%' ? ` (${discountAmount}%)` : ''}:
+                              Discount{discountType === '%' ? ` (${discountAmount}%)` : ''}
                             </span>
                             <span className="summary-value discount-value">
-                              - ₹ {calculateDiscount().toFixed(2)}
+                              − ₹ {calculateDiscount().toFixed(2)}
                             </span>
                           </div>
                         )}
@@ -2589,7 +2589,7 @@ const QuickSale = () => {
                   <div className="summary-divider"></div>
                   <div className="summary-group">
                     <div className="summary-row net-row">
-                      <span className="summary-label">Net:</span>
+                      <span className="summary-label">Net Amount</span>
                       <span className="summary-value net-value">₹ {calculateNet().toFixed(2)}</span>
                     </div>
                   </div>
@@ -2598,7 +2598,7 @@ const QuickSale = () => {
                   <div className="summary-divider"></div>
                   <div className="summary-group">
                     <div className="summary-row">
-                      <span className="summary-label">Tax (18%):</span>
+                      <span className="summary-label">Tax (18%)</span>
                       <span className="summary-value">₹ {calculateTax().toFixed(2)}</span>
                     </div>
                   </div>
@@ -2607,7 +2607,7 @@ const QuickSale = () => {
                   <div className="summary-divider summary-divider-final"></div>
                   <div className="summary-group summary-group-final">
                     <div className="summary-row final">
-                      <span className="summary-label">Final Amount:</span>
+                      <span className="summary-label">Total</span>
                       <span className="summary-value final-value">₹ {calculateFinalAmount().toFixed(2)}</span>
                     </div>
                   </div>
@@ -2665,7 +2665,7 @@ const QuickSale = () => {
                 value={approvalReason}
                 onChange={(e) => setApprovalReason(e.target.value)}
                 rows="4"
-                placeholder="Explain why this discount is needed..."
+                placeholder="Enter reason for discount approval request"
                 required
               />
             </div>

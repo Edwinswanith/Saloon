@@ -3089,7 +3089,7 @@ select.table-select:focus {
   flex-direction: column;
   gap: 0;
   width: 100%;
-  padding: 16px 20px;
+  padding: 20px 20px;
 }
 
 /* Summary Groups - Logical grouping of related items */
@@ -3101,24 +3101,25 @@ select.table-select:focus {
 }
 
 .summary-group-final {
-  background: #0F766E;
+  background: linear-gradient(135deg, #0F766E 0%, #0d6b63 100%);
   border-radius: 10px;
   padding: 16px 20px;
-  margin-top: 12px;
+  margin-top: 16px;
 }
 
 /* Summary Rows */
 .summary-row {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: center;
-  padding: 12px 0;
-  min-height: 32px;
+  gap: 16px;
+  padding: 10px 0;
+  min-height: 28px;
 }
 
 .summary-row.net-row {
   font-weight: 600;
-  padding: 14px 0;
+  padding: 12px 0;
 }
 
 .summary-row.final {
@@ -3128,17 +3129,18 @@ select.table-select:focus {
 }
 
 .summary-row.final .summary-label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.85);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
 }
 
 .summary-row.final .summary-value {
-  font-size: 22px;
-  font-weight: 800;
+  font-size: 24px;
+  font-weight: 700;
   color: white;
+  letter-spacing: -0.5px;
 }
 
 /* Discount Rows */
@@ -3151,14 +3153,14 @@ select.table-select:focus {
 .summary-divider {
   width: 100%;
   height: 1px;
-  background-color: #e5e7eb;
-  margin: 8px 0;
+  background-color: #f0f0f0;
+  margin: 6px 0;
 }
 
 .summary-divider-final {
-  height: 2px;
+  height: 1px;
   background-color: #e5e7eb;
-  margin: 16px 0 0 0;
+  margin: 12px 0 0 0;
 }
 
 /* Summary Labels */
