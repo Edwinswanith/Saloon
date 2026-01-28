@@ -109,13 +109,12 @@
 }
 
 .add-feedback-btn {
-  background: #7c3aed;
+  background: #0F766E;
   color: white;
 }
 
 .add-feedback-btn:hover {
-  background: #6d28d9;
-  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+  background: #0F766E;
 }
 
 .btn-icon {

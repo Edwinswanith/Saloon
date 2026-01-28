@@ -146,30 +146,30 @@
 }
 
 .upload-btn {
-  background: #10b981;
+  background: #0F766E;
   color: white;
 }
 
 .upload-btn:hover {
-  background: #059669;
+  background: #0F766E;
 }
 
 .add-btn {
-  background: #3b82f6;
+  background: #0F766E;
   color: white;
 }
 
 .add-btn:hover {
-  background: #2563eb;
+  background: #0F766E;
 }
 
 .download-btn {
-  background: #60a5fa;
+  background: #0F766E;
   color: white;
 }
 
 .download-btn:hover {
-  background: #3b82f6;
+  background: #0F766E;
 }
 
 /* Table */

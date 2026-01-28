@@ -184,15 +184,13 @@
 }
 
 .add-btn {
-  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  background: #0F766E;
   color: white;
-  box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);
+  box-shadow: 0 2px 4px rgba(15, 118, 110, 0.2);
 }
 
 .add-btn:hover {
-  background: linear-gradient(135deg, #047857 0%, #059669 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(5, 150, 105, 0.3);
+  background: #0F766E;
 }
 
 .download-btn {

@@ -120,7 +120,7 @@
 
 .add-staff-btn {
   padding: 10px 20px;
-  background: #3b82f6;
+  background: #0F766E;
   color: white;
   border: none;
   border-radius: 6px;
@@ -131,7 +131,7 @@
 }
 
 .add-staff-btn:hover {
-  background: #2563eb;
+  background: #0F766E;
 }
 
 /* Table */
