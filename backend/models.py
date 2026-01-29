@@ -194,6 +194,7 @@ class Membership(Document):
 # Bill Item Embedded Document (for embedding in Bill)
 class BillItemEmbedded(EmbeddedDocument):
     item_type = StringField(required=True, max_length=20)  # service, package, product, prepaid, membership
+    name = StringField(max_length=200)  # Denormalized name for display (avoids lookup issues with deleted items)
     service = ReferenceField('Service')
     package = ReferenceField('Package')
     product = ReferenceField('Product')

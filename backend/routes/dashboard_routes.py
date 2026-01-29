@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from models import Bill, Customer, Staff, Expense, Product, Appointment, Lead, Feedback
+from models import Bill, Customer, Staff, Expense, Product, Appointment, Lead, Feedback, Service, Package
 from datetime import datetime, timedelta, date
 from mongoengine import Q
 from mongoengine.errors import DoesNotExist
@@ -911,6 +911,7 @@ def get_top_moving_items(current_user=None):
             prev_match["branch"] = ObjectId(str(branch.id))
         
         # OPTIMIZED: Aggregation pipeline for services (current period)
+        # Uses denormalized 'name' field from bill items when available, falls back to service lookup
         services_current_pipeline = [
             {"$match": current_match},
             {"$unwind": "$items"},
@@ -921,23 +922,23 @@ def get_top_moving_items(current_user=None):
             {"$group": {
                 "_id": "$items.service",
                 "revenue": {"$sum": {"$ifNull": ["$items.total", 0]}},
-                "bills": {"$addToSet": "$_id"}
+                "bills": {"$addToSet": "$_id"},
+                # Get any non-null denormalized name from items ($max picks string over null)
+                "item_name": {"$max": "$items.name"}
             }},
-            {"$lookup": {
-                "from": "services",
-                "localField": "_id",
-                "foreignField": "_id",
-                "as": "service_doc"
+            # Handle DBRef: extract ObjectId from $id field if present
+            {"$addFields": {
+                "_id": {"$ifNull": ["$_id.$id", "$_id"]}
             }},
-            {"$unwind": {"path": "$service_doc", "preserveNullAndEmptyArrays": True}},
             {"$project": {
                 "service_id": {"$toString": "$_id"},
-                "service_name": {"$ifNull": ["$service_doc.name", "Service"]},
+                "raw_id": "$_id",
+                "item_name": 1,
                 "revenue": {"$round": ["$revenue", 2]},
                 "bills_count": {"$size": "$bills"}
             }}
         ]
-        
+
         # Aggregation pipeline for services (previous period)
         services_prev_pipeline = [
             {"$match": prev_match},
@@ -950,26 +951,42 @@ def get_top_moving_items(current_user=None):
                 "_id": "$items.service",
                 "revenue": {"$sum": {"$ifNull": ["$items.total", 0]}}
             }},
+            # Handle DBRef: extract ObjectId from $id field if present
+            {"$addFields": {
+                "_id": {"$ifNull": ["$_id.$id", "$_id"]}
+            }},
             {"$project": {
                 "service_id": {"$toString": "$_id"},
                 "revenue": {"$round": ["$revenue", 2]}
             }}
         ]
-        
+
         # Execute both pipelines
         services_current = list(Bill.objects.aggregate(services_current_pipeline))
         services_prev = list(Bill.objects.aggregate(services_prev_pipeline))
-        
+
+        # Fetch all service names at once using Python (as fallback for items without denormalized name)
+        # First, collect service IDs that don't have denormalized names
+        service_ids_needing_lookup = [s.get('raw_id') for s in services_current if s.get('raw_id') and not s.get('item_name')]
+        service_name_map = {}
+        if service_ids_needing_lookup:
+            try:
+                existing_services = Service.objects(id__in=service_ids_needing_lookup)
+                for svc in existing_services:
+                    service_name_map[str(svc.id)] = svc.name
+            except Exception as e:
+                print(f"[WARNING] Error fetching services: {e}")
+
         # Create lookup for previous period revenue
         prev_revenue_map = {s['service_id']: s['revenue'] for s in services_prev}
-        
+
         # Calculate trends and build services list
         services_list = []
         for s in services_current:
             service_id = s.get('service_id')
             current_revenue = s.get('revenue', 0.0)
             prev_revenue = prev_revenue_map.get(service_id, 0.0)
-            
+
             if prev_revenue == 0:
                 trend = 'trending_up' if current_revenue > 0 else 'minus'
             elif current_revenue > prev_revenue * 1.1:  # 10% increase
@@ -978,18 +995,22 @@ def get_top_moving_items(current_user=None):
                 trend = 'trending_down'
             else:
                 trend = 'minus'
-            
+
+            # Priority: 1) denormalized item_name, 2) service lookup, 3) fallback to 'Service'
+            service_name = s.get('item_name') or service_name_map.get(service_id) or 'Service'
+
             services_list.append({
-                'name': s.get('service_name', 'Service'),
+                'name': service_name,
                 'bills': s.get('bills_count', 0),
                 'revenue': current_revenue,
                 'trend': trend
             })
-        
+
         # Sort by revenue and limit to top 10
         services_list = sorted(services_list, key=lambda x: x['revenue'], reverse=True)[:10]
         
         # OPTIMIZED: Aggregation pipeline for packages (current period)
+        # Uses denormalized 'name' field from bill items when available
         packages_current_pipeline = [
             {"$match": current_match},
             {"$unwind": "$items"},
@@ -1000,31 +1021,42 @@ def get_top_moving_items(current_user=None):
             {"$group": {
                 "_id": "$items.package",
                 "revenue": {"$sum": {"$ifNull": ["$items.total", 0]}},
-                "sold": {"$sum": {"$ifNull": ["$items.quantity", 1]}}
+                "sold": {"$sum": {"$ifNull": ["$items.quantity", 1]}},
+                # Get any non-null denormalized name from items ($max picks string over null)
+                "item_name": {"$max": "$items.name"}
             }},
-            {"$lookup": {
-                "from": "packages",
-                "localField": "_id",
-                "foreignField": "_id",
-                "as": "package_doc"
+            # Handle DBRef: extract ObjectId from $id field if present
+            {"$addFields": {
+                "_id": {"$ifNull": ["$_id.$id", "$_id"]}
             }},
-            {"$unwind": {"path": "$package_doc", "preserveNullAndEmptyArrays": True}},
             {"$project": {
                 "package_id": {"$toString": "$_id"},
-                "package_name": {"$ifNull": ["$package_doc.name", "Package"]},
+                "raw_id": "$_id",
+                "item_name": 1,
                 "revenue": {"$round": ["$revenue", 2]},
                 "sold": 1
             }}
         ]
-        
+
         packages_current = list(Bill.objects.aggregate(packages_current_pipeline))
-        
+
+        # Fetch all package names at once using Python (as fallback for items without denormalized name)
+        package_ids_needing_lookup = [p.get('raw_id') for p in packages_current if p.get('raw_id') and not p.get('item_name')]
+        package_name_map = {}
+        if package_ids_needing_lookup:
+            try:
+                existing_packages = Package.objects(id__in=package_ids_needing_lookup)
+                for pkg in existing_packages:
+                    package_name_map[str(pkg.id)] = pkg.name
+            except Exception as e:
+                print(f"[WARNING] Error fetching packages: {e}")
+
         # Calculate average sales for status
         if packages_current:
             avg_sales = sum(p.get('sold', 0) for p in packages_current) / len(packages_current)
         else:
             avg_sales = 0
-        
+
         packages_list = []
         for p in packages_current:
             sold = p.get('sold', 0)
@@ -1034,18 +1066,22 @@ def get_top_moving_items(current_user=None):
                 status = 'Low Demand'
             else:
                 status = 'Stable'
-            
+
+            # Priority: 1) denormalized item_name, 2) package lookup, 3) fallback to 'Package'
+            package_name = p.get('item_name') or package_name_map.get(p.get('package_id')) or 'Package'
+
             packages_list.append({
-                'name': p.get('package_name', 'Package'),
+                'name': package_name,
                 'sold': sold,
                 'revenue': p.get('revenue', 0.0),
                 'status': status
             })
-        
+
         # Sort by revenue and limit to top 10
         packages_list = sorted(packages_list, key=lambda x: x['revenue'], reverse=True)[:10]
         
         # OPTIMIZED: Aggregation pipeline for products (current period)
+        # Uses denormalized 'name' field from bill items when available
         products_current_pipeline = [
             {"$match": current_match},
             {"$unwind": "$items"},
@@ -1056,44 +1092,63 @@ def get_top_moving_items(current_user=None):
             {"$group": {
                 "_id": "$items.product",
                 "revenue": {"$sum": {"$ifNull": ["$items.total", 0]}},
-                "sold": {"$sum": {"$ifNull": ["$items.quantity", 1]}}
+                "sold": {"$sum": {"$ifNull": ["$items.quantity", 1]}},
+                # Get any non-null denormalized name from items ($max picks string over null)
+                "item_name": {"$max": "$items.name"}
             }},
-            {"$lookup": {
-                "from": "products",
-                "localField": "_id",
-                "foreignField": "_id",
-                "as": "product_doc"
+            # Handle DBRef: extract ObjectId from $id field if present
+            {"$addFields": {
+                "_id": {"$ifNull": ["$_id.$id", "$_id"]}
             }},
-            {"$unwind": {"path": "$product_doc", "preserveNullAndEmptyArrays": True}},
             {"$project": {
                 "product_id": {"$toString": "$_id"},
-                "product_name": {"$ifNull": ["$product_doc.name", "Product"]},
+                "raw_id": "$_id",
+                "item_name": 1,
                 "revenue": {"$round": ["$revenue", 2]},
-                "sold": 1,
-                "stock_quantity": {"$ifNull": ["$product_doc.stock_quantity", 0]},
-                "min_stock_level": {"$ifNull": ["$product_doc.min_stock_level", 0]}
+                "sold": 1
             }}
         ]
-        
+
         products_current = list(Bill.objects.aggregate(products_current_pipeline))
-        
+
+        # Fetch all product info at once using Python (for items without denormalized name, and for stock info)
+        product_ids = [p.get('raw_id') for p in products_current if p.get('raw_id')]
+        product_info_map = {}
+        if product_ids:
+            try:
+                existing_products = Product.objects(id__in=product_ids)
+                for prod in existing_products:
+                    product_info_map[str(prod.id)] = {
+                        'name': prod.name,
+                        'stock_quantity': prod.stock_quantity or 0,
+                        'min_stock_level': prod.min_stock_level or 0
+                    }
+            except Exception as e:
+                print(f"[WARNING] Error fetching products: {e}")
+
         products_list = []
         for p in products_current:
-            stock_quantity = p.get('stock_quantity', 0)
-            min_stock_level = p.get('min_stock_level', 0)
-            
+            product_id = p.get('product_id')
+            product_info = product_info_map.get(product_id, {})
+
+            stock_quantity = product_info.get('stock_quantity', 0)
+            min_stock_level = product_info.get('min_stock_level', 0)
+
             stock_status = 'OK'
             if stock_quantity is not None and min_stock_level is not None:
                 if stock_quantity <= min_stock_level:
                     stock_status = 'Low'
-            
+
+            # Priority: 1) denormalized item_name, 2) product lookup, 3) fallback to 'Product'
+            product_name = p.get('item_name') or product_info.get('name') or 'Product'
+
             products_list.append({
-                'name': p.get('product_name', 'Product'),
+                'name': product_name,
                 'sold': p.get('sold', 0),
                 'revenue': p.get('revenue', 0.0),
                 'stock': stock_status
             })
-        
+
         # Sort by revenue and limit to top 10
         products_list = sorted(products_list, key=lambda x: x['revenue'], reverse=True)[:10]
         

@@ -547,8 +547,22 @@ def add_bill_item(id):
             except:
                 pass
 
+        # Determine item name based on item type (for denormalized storage)
+        item_name = None
+        if service:
+            item_name = service.name
+        elif package:
+            item_name = package.name
+        elif product:
+            item_name = product.name
+        elif prepaid:
+            item_name = prepaid.name
+        elif membership:
+            item_name = membership.name
+
         item = BillItemEmbedded(
             item_type=data['item_type'],
+            name=item_name,
             service=service,
             package=package,
             product=product,
@@ -1011,9 +1025,12 @@ def get_invoice_data(bill_id, current_user=None):
         for idx, item in enumerate(bill.items or []):
             item_name = 'Item'
             item_type = item.item_type or 'service'
-            
-            # Get item name based on type
-            if item.item_type == 'service' and item.service:
+
+            # First try to use denormalized name (faster and handles deleted items)
+            if hasattr(item, 'name') and item.name:
+                item_name = item.name
+            # Fall back to fetching from referenced document
+            elif item.item_type == 'service' and item.service:
                 try:
                     item.service.reload()
                     item_name = item.service.name if hasattr(item.service, 'name') else 'Service'
@@ -1200,7 +1217,11 @@ def get_invoice_html(bill_id, current_user=None):
             item_name = 'Item'
             item_type = item.item_type or 'service'
 
-            if item.item_type == 'service' and item.service:
+            # First try to use denormalized name (faster and handles deleted items)
+            if hasattr(item, 'name') and item.name:
+                item_name = item.name
+            # Fall back to fetching from referenced document
+            elif item.item_type == 'service' and item.service:
                 try:
                     item.service.reload()
                     item_name = item.service.name if hasattr(item.service, 'name') else 'Service'
@@ -1362,8 +1383,12 @@ def download_invoice_pdf(bill_id, current_user=None):
         for idx, item in enumerate(bill.items or []):
             item_name = 'Item'
             item_type = item.item_type or 'service'
-            
-            if item.item_type == 'service' and item.service:
+
+            # First try to use denormalized name (faster and handles deleted items)
+            if hasattr(item, 'name') and item.name:
+                item_name = item.name
+            # Fall back to fetching from referenced document
+            elif item.item_type == 'service' and item.service:
                 try:
                     item.service.reload()
                     item_name = item.service.name if hasattr(item.service, 'name') else 'Service'
@@ -1381,7 +1406,7 @@ def download_invoice_pdf(bill_id, current_user=None):
                     item_name = item.package.name if hasattr(item.package, 'name') else 'Package'
                 except:
                     item_name = 'Package'
-            
+
             staff_name = 'N/A'
             if item.staff:
                 try:

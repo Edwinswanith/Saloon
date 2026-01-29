@@ -1338,7 +1338,7 @@ const Dashboard = () => {
                   paddingBottom: '12px'
                 }}>Client Source</h3>
                 {loading ? (
-                  <ChartSkeleton height={250} />
+                  <ChartSkeleton height={300} />
                 ) : clientSourceChartData.length === 0 ? (
                   <div style={{
                     display: 'flex',
@@ -1374,90 +1374,226 @@ const Dashboard = () => {
                   </div>
                 ) : (
                   <div>
-                    <ResponsiveContainer width="100%" height={250}>
-                      <PieChart>
-                        <Pie
-                          data={clientSourceChartData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, percentage }) => `${name}: ${percentage}%`}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {clientSourceChartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip 
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              const data = payload[0].payload
-                              return (
-                                <div style={{
-                                  backgroundColor: 'white',
-                                  padding: '10px',
-                                  border: '1px solid #ccc',
-                                  borderRadius: '4px',
-                                }}>
-                                  <p style={{ margin: 0, fontWeight: 'bold' }}>{data.name}</p>
-                                  <p style={{ margin: '4px 0 0 0', color: '#6b7280' }}>
-                                    Customers: {data.value}
-                                  </p>
-                                  <p style={{ margin: '4px 0 0 0', color: data.color }}>
-                                    Revenue: {formatCurrency(data.revenue)}
-                                  </p>
-                                  <p style={{ margin: '4px 0 0 0', color: '#6b7280' }}>
-                                    {data.percentage}% of total
-                                  </p>
-                                </div>
-                              )
-                            }
-                            return null
-                          }}
-                        />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
+                    {/* Summary Stats */}
                     <div style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
-                      marginTop: '16px',
-                      paddingTop: '16px',
-                      borderTop: '1px solid #e5e7eb'
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '12px',
+                      marginBottom: '20px',
+                      paddingBottom: '16px',
+                      borderBottom: '1px solid #e5e7eb'
                     }}>
-                      {clientSourceChartData.slice(0, 5).map((item, index) => (
-                        <div key={index} style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '8px 12px',
-                          background: '#f9fafb',
-                          borderRadius: '6px'
+                      <div style={{
+                        padding: '12px',
+                        background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                        borderRadius: '8px',
+                        border: '1px solid #3b82f620'
+                      }}>
+                        <div style={{
+                          fontSize: '11px',
+                          color: '#3b82f6',
+                          fontWeight: '600',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                          marginBottom: '4px'
+                        }}>Total Clients</div>
+                        <div style={{
+                          fontSize: '20px',
+                          fontWeight: '700',
+                          color: '#1e40af'
                         }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{
-                              width: '12px',
-                              height: '12px',
-                              borderRadius: '2px',
-                              background: item.color
-                            }}></div>
-                            <span style={{
-                              fontSize: '13px',
-                              color: '#374151',
-                              fontWeight: '500'
-                            }}>{item.name}</span>
-                          </div>
-                          <span style={{
-                            fontSize: '13px',
-                            fontWeight: '600',
-                            color: '#6b7280'
-                          }}>{item.value} ({item.percentage}%)</span>
+                          {clientSourceChartData.reduce((sum, item) => sum + item.value, 0).toLocaleString()}
                         </div>
-                      ))}
+                      </div>
+                      <div style={{
+                        padding: '12px',
+                        background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                        borderRadius: '8px',
+                        border: '1px solid #10b98120'
+                      }}>
+                        <div style={{
+                          fontSize: '11px',
+                          color: '#10b981',
+                          fontWeight: '600',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                          marginBottom: '4px'
+                        }}>Total Revenue</div>
+                        <div style={{
+                          fontSize: '20px',
+                          fontWeight: '700',
+                          color: '#047857'
+                        }}>
+                          {formatCurrency(clientSourceChartData.reduce((sum, item) => sum + (item.revenue || 0), 0))}
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Source Icons Mapping */}
+                    {(() => {
+                      const getSourceIcon = (sourceName) => {
+                        const source = (sourceName || '').toLowerCase()
+                        if (source.includes('walk') || source.includes('walk-in')) return <FaUser size={16} />
+                        if (source.includes('phone') || source.includes('call')) return <FaPhone size={16} />
+                        if (source.includes('referral') || source.includes('refer')) return <FaHandSparkles size={16} />
+                        if (source.includes('online') || source.includes('website') || source.includes('web')) return <FaMobileAlt size={16} />
+                        if (source.includes('instagram') || source.includes('facebook') || source.includes('social')) return <FaMobileAlt size={16} />
+                        if (source.includes('google') || source.includes('search')) return <FaMobileAlt size={16} />
+                        if (source.includes('member') || source.includes('membership')) return <FaCrown size={16} />
+                        return <FaCircle size={16} />
+                      }
+
+                      const getSourceColor = (sourceName, index) => {
+                        const source = (sourceName || '').toLowerCase()
+                        if (source.includes('walk') || source.includes('walk-in')) return COLORS.primary
+                        if (source.includes('phone') || source.includes('call')) return COLORS.info
+                        if (source.includes('referral') || source.includes('refer')) return COLORS.success
+                        if (source.includes('online') || source.includes('website') || source.includes('web')) return COLORS.purple
+                        if (source.includes('instagram') || source.includes('facebook') || source.includes('social')) return COLORS.pink
+                        if (source.includes('google') || source.includes('search')) return COLORS.warning
+                        if (source.includes('member') || source.includes('membership')) return COLORS.teal
+                        return [COLORS.primary, COLORS.success, COLORS.warning, COLORS.info, COLORS.purple, COLORS.pink, COLORS.teal, COLORS.danger][index % 8]
+                      }
+
+                      // Sort by count descending for better visualization
+                      const sortedData = [...clientSourceChartData].sort((a, b) => b.value - a.value)
+                      const maxCount = Math.max(...sortedData.map(d => d.value), 1)
+
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          {sortedData.map((item, index) => {
+                            const sourceColor = getSourceColor(item.name, index)
+                            const percentageWidth = (item.value / maxCount) * 100
+                            
+                            return (
+                              <div
+                                key={index}
+                                style={{
+                                  padding: '12px',
+                                  background: '#f9fafb',
+                                  borderRadius: '8px',
+                                  border: `1px solid ${sourceColor}20`,
+                                  transition: 'all 0.2s',
+                                  cursor: 'pointer'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = `${sourceColor}08`
+                                  e.currentTarget.style.transform = 'translateX(4px)'
+                                  e.currentTarget.style.boxShadow = `0 2px 8px ${sourceColor}20`
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = '#f9fafb'
+                                  e.currentTarget.style.transform = 'translateX(0)'
+                                  e.currentTarget.style.boxShadow = 'none'
+                                }}
+                              >
+                                {/* Source Header */}
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  marginBottom: '8px'
+                                }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+                                    <div style={{
+                                      width: '32px',
+                                      height: '32px',
+                                      borderRadius: '8px',
+                                      background: `${sourceColor}15`,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      color: sourceColor
+                                    }}>
+                                      {getSourceIcon(item.name)}
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{
+                                        fontSize: '14px',
+                                        fontWeight: '600',
+                                        color: '#1f2937',
+                                        marginBottom: '2px'
+                                      }}>
+                                        {item.name || 'Unknown'}
+                                      </div>
+                                      <div style={{
+                                        fontSize: '11px',
+                                        color: '#6b7280'
+                                      }}>
+                                        {item.percentage.toFixed(1)}% of total
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div style={{ textAlign: 'right' }}>
+                                    <div style={{
+                                      fontSize: '16px',
+                                      fontWeight: '700',
+                                      color: sourceColor,
+                                      marginBottom: '2px'
+                                    }}>
+                                      {item.value.toLocaleString()}
+                                    </div>
+                                    <div style={{
+                                      fontSize: '11px',
+                                      color: '#6b7280',
+                                      fontWeight: '500'
+                                    }}>
+                                      clients
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Progress Bar */}
+                                <div style={{
+                                  width: '100%',
+                                  height: '6px',
+                                  background: '#e5e7eb',
+                                  borderRadius: '3px',
+                                  overflow: 'hidden',
+                                  marginBottom: '6px'
+                                }}>
+                                  <div style={{
+                                    width: `${percentageWidth}%`,
+                                    height: '100%',
+                                    background: `linear-gradient(90deg, ${sourceColor} 0%, ${sourceColor}dd 100%)`,
+                                    borderRadius: '3px',
+                                    transition: 'width 0.3s ease'
+                                  }} />
+                                </div>
+
+                                {/* Revenue Info */}
+                                {item.revenue > 0 && (
+                                  <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    paddingTop: '6px',
+                                    borderTop: '1px solid #e5e7eb'
+                                  }}>
+                                    <div style={{
+                                      fontSize: '11px',
+                                      color: '#6b7280',
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '0.5px',
+                                      fontWeight: '600'
+                                    }}>
+                                      Revenue
+                                    </div>
+                                    <div style={{
+                                      fontSize: '13px',
+                                      fontWeight: '700',
+                                      color: '#10b981'
+                                    }}>
+                                      {formatCurrency(item.revenue)}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )
+                    })()}
                   </div>
                 )}
               </div>
