@@ -163,7 +163,7 @@ def get_dashboard_stats(current_user=None):
         net_profit = float(total_revenue) - float(total_expenses)
 
         # Use .count() for other stats (efficient with indexes)
-        customers_query = Customer.objects
+        customers_query = Customer.objects.filter(merged_into=None)
         if branch:
             customers_query = customers_query.filter(branch=branch)
         total_customers = customers_query.count()
@@ -171,7 +171,7 @@ def get_dashboard_stats(current_user=None):
         new_customers_query = Customer.objects(
             created_at__gte=start,
             created_at__lte=end
-        )
+        ).filter(merged_into=None)
         if branch:
             new_customers_query = new_customers_query.filter(branch=branch)
         new_customers = new_customers_query.count()
@@ -302,12 +302,6 @@ def get_staff_performance(current_user=None):
                         {"$ifNull": ["$items.quantity", 1]}, 0
                     ]}
                 },
-                "prepaid_count": {
-                    "$sum": {"$cond": [
-                        {"$eq": ["$items.item_type", "prepaid"]},
-                        {"$ifNull": ["$items.quantity", 1]}, 0
-                    ]}
-                },
                 "membership_count": {
                     "$sum": {"$cond": [
                         {"$eq": ["$items.item_type", "membership"]},
@@ -337,7 +331,6 @@ def get_staff_performance(current_user=None):
                 "service_count": 1,
                 "package_count": 1,
                 "product_count": 1,
-                "prepaid_count": 1,
                 "membership_count": 1,
                 "commission_rate": {"$ifNull": ["$staff_doc.commission_rate", 0]}
             }},
@@ -388,7 +381,6 @@ def get_staff_performance(current_user=None):
                 'service_count': r.get('service_count', 0),
                 'package_count': r.get('package_count', 0),
                 'product_count': r.get('product_count', 0),
-                'prepaid_count': r.get('prepaid_count', 0),
                 'membership_count': r.get('membership_count', 0),
                 'commission_earned': r.get('commission_earned', 0),
                 'completed_appointments': appt_counts.get(staff_id, 0)
@@ -764,7 +756,6 @@ def get_revenue_breakdown(current_user=None):
             'service': 0,
             'product': 0,
             'package': 0,
-            'prepaid': 0,
             'membership': 0
         }
 
@@ -1191,7 +1182,7 @@ def get_client_funnel(current_user=None):
         branch = get_selected_branch(request, current_user)
 
         # Total customers - filter by branch
-        customers_query = Customer.objects
+        customers_query = Customer.objects.filter(merged_into=None)
         if branch:
             customers_query = customers_query.filter(branch=branch)
         total_customers = customers_query.count()
@@ -1200,7 +1191,7 @@ def get_client_funnel(current_user=None):
         new_customers_query = Customer.objects(
             created_at__gte=start,
             created_at__lte=end
-        )
+        ).filter(merged_into=None)
         if branch:
             new_customers_query = new_customers_query.filter(branch=branch)
         new_customers = new_customers_query.count()
@@ -1278,10 +1269,10 @@ def get_client_source(current_user=None):
         customers_query = Customer.objects(
             created_at__gte=start,
             created_at__lte=end
-        )
+        ).filter(merged_into=None)
         if branch:
             customers_query = customers_query.filter(branch=branch)
-        
+
         # Force evaluation by converting to list
         customers = list(customers_query)
         

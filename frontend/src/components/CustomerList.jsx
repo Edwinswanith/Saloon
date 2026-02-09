@@ -12,7 +12,7 @@ import { TableSkeleton } from './shared/SkeletonLoaders'
 import { EmptyCustomers, EmptySearch } from './shared/EmptyStates'
 
 const CustomerList = () => {
-  const { currentBranch } = useAuth()
+  const { currentBranch, user } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [customers, setCustomers] = useState([])
@@ -24,6 +24,11 @@ const CustomerList = () => {
   const [showImportModal, setShowImportModal] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState(null)
   const [viewingCustomer, setViewingCustomer] = useState(null)
+  const [mergeMode, setMergeMode] = useState(false)
+  const [selectedForMerge, setSelectedForMerge] = useState([])
+  const [mergePreview, setMergePreview] = useState(null)
+  const [showMergePreviewModal, setShowMergePreviewModal] = useState(false)
+  const [mergeLoading, setMergeLoading] = useState(false)
   const [customerFormData, setCustomerFormData] = useState({
     mobile: '',
     firstName: '',
@@ -240,7 +245,11 @@ const CustomerList = () => {
           dob: '',
           dobRange: '',
         })
-        showSuccess(data.message || (isEdit ? 'Customer updated successfully!' : 'Customer added successfully!'))
+        if (!isEdit && data.created === false) {
+          showWarning(`Customer already exists — ${data.customerName || data.message}`)
+        } else {
+          showSuccess(data.message || (isEdit ? 'Customer updated successfully!' : 'Customer added successfully!'))
+        }
       } else {
         let errorData
         try {
@@ -328,6 +337,80 @@ const CustomerList = () => {
     }
   }
 
+  const handleMergeToggle = (customerId) => {
+    setSelectedForMerge(prev => {
+      if (prev.includes(customerId)) {
+        return prev.filter(id => id !== customerId)
+      }
+      if (prev.length >= 2) return prev
+      return [...prev, customerId]
+    })
+  }
+
+  const handleMergePreview = async () => {
+    if (selectedForMerge.length !== 2) return
+    setMergeLoading(true)
+    try {
+      const response = await apiPost('/api/customers/merge/preview', {
+        primary_id: selectedForMerge[0],
+        secondary_id: selectedForMerge[1]
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setMergePreview(data)
+        setShowMergePreviewModal(true)
+      } else {
+        const err = await response.json()
+        showError(err.error || 'Failed to preview merge')
+      }
+    } catch (error) {
+      showError('Error previewing merge: ' + error.message)
+    } finally {
+      setMergeLoading(false)
+    }
+  }
+
+  const handleSwapMerge = () => {
+    if (!mergePreview) return
+    setMergePreview({
+      ...mergePreview,
+      primary: mergePreview.secondary,
+      secondary: mergePreview.primary,
+      primaryRecords: mergePreview.secondaryRecords,
+      secondaryRecords: mergePreview.primaryRecords,
+    })
+  }
+
+  const handleExecuteMerge = async () => {
+    if (!mergePreview) return
+    if (!window.confirm('This merge cannot be undone. All records from the secondary customer will be moved to the primary customer. Continue?')) {
+      return
+    }
+    setMergeLoading(true)
+    try {
+      const response = await apiPost('/api/customers/merge/execute', {
+        primary_id: mergePreview.primary.id,
+        secondary_id: mergePreview.secondary.id
+      })
+      if (response.ok) {
+        const data = await response.json()
+        showSuccess(data.message || 'Customers merged successfully')
+        setShowMergePreviewModal(false)
+        setMergeMode(false)
+        setSelectedForMerge([])
+        setMergePreview(null)
+        fetchCustomers()
+      } else {
+        const err = await response.json()
+        showError(err.error || 'Failed to merge customers')
+      }
+    } catch (error) {
+      showError('Error merging customers: ' + error.message)
+    } finally {
+      setMergeLoading(false)
+    }
+  }
+
   return (
     <PageTransition>
       <div className="customer-list-page">
@@ -344,7 +427,33 @@ const CustomerList = () => {
             <button className="action-btn manage-btn" onClick={handleManageSources}>Manage Sources</button>
             <button className="action-btn import-btn" onClick={handleImportCustomer}>Import Customer</button>
             <button className="action-btn add-btn" onClick={handleAddCustomer}>Add Customer</button>
+            {(user?.role === 'owner' || user?.role === 'manager') && (
+              <button
+                className={`action-btn ${mergeMode ? 'merge-active-btn' : 'merge-btn'}`}
+                onClick={() => {
+                  setMergeMode(!mergeMode)
+                  setSelectedForMerge([])
+                }}
+              >
+                {mergeMode ? 'Cancel Merge' : 'Merge Customers'}
+              </button>
+            )}
           </div>
+
+          {/* Merge Action Bar */}
+          {mergeMode && selectedForMerge.length === 2 && (
+            <div className="merge-action-bar">
+              <span>2 customers selected for merge</span>
+              <button className="btn-save" onClick={handleMergePreview} disabled={mergeLoading}>
+                {mergeLoading ? 'Loading...' : 'Preview Merge'}
+              </button>
+            </div>
+          )}
+          {mergeMode && selectedForMerge.length < 2 && (
+            <div className="merge-action-bar merge-hint">
+              <span>Select 2 customers to merge ({selectedForMerge.length}/2 selected)</span>
+            </div>
+          )}
 
           {/* Search Bar */}
           <div className="search-section">
@@ -362,6 +471,7 @@ const CustomerList = () => {
             <table className="customer-table">
               <thead>
                 <tr>
+                  {mergeMode && <th style={{width: '40px'}}>Select</th>}
                   <th>No.</th>
                   <th>Mobile</th>
                   <th>First Name</th>
@@ -376,13 +486,13 @@ const CustomerList = () => {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="9" style={{ padding: 0, border: 'none' }}>
-                      <TableSkeleton rows={10} columns={9} />
+                    <td colSpan={mergeMode ? 10 : 9} style={{ padding: 0, border: 'none' }}>
+                      <TableSkeleton rows={10} columns={mergeMode ? 10 : 9} />
                     </td>
                   </tr>
                 ) : customers.length === 0 ? (
                   <tr>
-                    <td colSpan="9" style={{ padding: 0, border: 'none' }}>
+                    <td colSpan={mergeMode ? 10 : 9} style={{ padding: 0, border: 'none' }}>
                       {searchQuery ? (
                         <EmptySearch searchQuery={searchQuery} message="Try adjusting your search query." />
                       ) : (
@@ -392,7 +502,17 @@ const CustomerList = () => {
                   </tr>
                 ) : (
                   customers.map((customer, index) => (
-                    <tr key={customer.id}>
+                    <tr key={customer.id} className={selectedForMerge.includes(customer.id) ? 'merge-selected-row' : ''}>
+                      {mergeMode && (
+                        <td>
+                          <input
+                            type="checkbox"
+                            checked={selectedForMerge.includes(customer.id)}
+                            disabled={selectedForMerge.length >= 2 && !selectedForMerge.includes(customer.id)}
+                            onChange={() => handleMergeToggle(customer.id)}
+                          />
+                        </td>
+                      )}
                       <td>{(currentPage - 1) * 10 + index + 1}</td>
                       <td>+91 {customer.mobile}</td>
                       <td>{customer.firstName}</td>
@@ -636,6 +756,75 @@ const CustomerList = () => {
             </div>
             <div className="modal-actions">
               <button className="btn-cancel" onClick={() => setShowImportModal(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Merge Preview Modal */}
+      {showMergePreviewModal && mergePreview && (
+        <div className="modal-overlay" onClick={() => setShowMergePreviewModal(false)}>
+          <div className="modal-content merge-preview-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Merge Customers Preview</h2>
+
+            <div className="merge-comparison">
+              <div className="merge-card merge-primary">
+                <h3>Primary (Keep)</h3>
+                <div className="merge-card-details">
+                  <p><strong>Name:</strong> {mergePreview.primary.firstName} {mergePreview.primary.lastName}</p>
+                  <p><strong>Mobile:</strong> +91 {mergePreview.primary.mobile}</p>
+                  <p><strong>Email:</strong> {mergePreview.primary.email || '-'}</p>
+                  <p><strong>Visits:</strong> {mergePreview.primary.totalVisits}</p>
+                  <p><strong>Total Spent:</strong> ₹{mergePreview.primary.totalSpent?.toLocaleString('en-IN')}</p>
+                  <p><strong>Records:</strong> {Object.values(mergePreview.primaryRecords).reduce((a, b) => a + b, 0)}</p>
+                </div>
+              </div>
+
+              <button className="merge-swap-btn" onClick={handleSwapMerge} title="Swap primary and secondary">
+                ⇄
+              </button>
+
+              <div className="merge-card merge-secondary">
+                <h3>Secondary (Merge Into Primary)</h3>
+                <div className="merge-card-details">
+                  <p><strong>Name:</strong> {mergePreview.secondary.firstName} {mergePreview.secondary.lastName}</p>
+                  <p><strong>Mobile:</strong> +91 {mergePreview.secondary.mobile}</p>
+                  <p><strong>Email:</strong> {mergePreview.secondary.email || '-'}</p>
+                  <p><strong>Visits:</strong> {mergePreview.secondary.totalVisits}</p>
+                  <p><strong>Total Spent:</strong> ₹{mergePreview.secondary.totalSpent?.toLocaleString('en-IN')}</p>
+                  <p><strong>Records:</strong> {Object.values(mergePreview.secondaryRecords).reduce((a, b) => a + b, 0)}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="merge-records-summary">
+              <h4>Records to move from secondary to primary:</h4>
+              <table className="merge-stats-table">
+                <tbody>
+                  {Object.entries(mergePreview.secondaryRecords).map(([key, count]) => (
+                    count > 0 && (
+                      <tr key={key}>
+                        <td>{key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())}</td>
+                        <td>{count}</td>
+                      </tr>
+                    )
+                  ))}
+                  {Object.values(mergePreview.secondaryRecords).every(v => v === 0) && (
+                    <tr><td colSpan="2">No records to move</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="merge-warning">
+              This action cannot be undone. The secondary customer's mobile ({mergePreview.secondary.mobile}) will be saved as a secondary mobile on the primary customer. All records will be moved to the primary customer.
+            </div>
+
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setShowMergePreviewModal(false)}>Cancel</button>
+              <button className="btn-save merge-confirm-btn" onClick={handleExecuteMerge} disabled={mergeLoading}>
+                {mergeLoading ? 'Merging...' : 'Confirm Merge'}
+              </button>
             </div>
           </div>
         </div>

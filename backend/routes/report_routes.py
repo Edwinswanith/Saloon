@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from models import Bill, Service, ServiceGroup, Staff, Customer, Expense, Product, PrepaidPackage, Membership
+from models import Bill, Service, ServiceGroup, Staff, Customer, Expense, Product, Membership
 from datetime import datetime, timedelta
 from mongoengine.errors import DoesNotExist
 from bson import ObjectId
@@ -290,38 +290,6 @@ def sales_by_service_group(current_user=None):
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 500
 
-@report_bp.route('/prepaid-clients', methods=['GET'])
-@require_role('manager', 'owner')
-def prepaid_clients_report(current_user=None):
-    """Active prepaid package clients (Manager and Owner only)"""
-    try:
-        status = request.args.get('status', 'active')
-
-        # Get branch for filtering
-        branch = get_selected_branch(request, current_user)
-        packages = PrepaidPackage.objects(status=status)
-        if branch:
-            packages = packages.filter(branch=branch)
-        packages = packages.order_by('-purchase_date')
-
-        response = jsonify([{
-            'customer_name': f"{p.customer.first_name} {p.customer.last_name}" if p.customer else None,
-            'customer_mobile': p.customer.mobile if p.customer else None,
-            'package_name': p.name,
-            'group_name': p.group.name if p.group else None,
-            'price': p.price,
-            'remaining_balance': p.remaining_balance,
-            'purchase_date': p.purchase_date.isoformat() if p.purchase_date else None,
-            'expiry_date': p.expiry_date.isoformat() if p.expiry_date else None,
-            'usage_percentage': round(((p.price - p.remaining_balance) / p.price * 100) if p.price > 0 else 0, 2)
-        } for p in packages])
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        return response
-    except Exception as e:
-        response = jsonify({'error': str(e)})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        return response, 500
-
 @report_bp.route('/membership-clients', methods=['GET'])
 @require_role('manager', 'owner')
 def membership_clients_report(current_user=None):
@@ -394,7 +362,6 @@ def staff_incentive_report(current_user=None):
             service_revenue = 0.0
             package_revenue = 0.0
             product_revenue = 0.0
-            prepaid_revenue = 0.0
             membership_revenue = 0.0
             total_revenue = 0.0
             item_count = 0
@@ -412,8 +379,6 @@ def staff_incentive_report(current_user=None):
                             package_revenue += item_total
                         elif item.item_type == 'product':
                             product_revenue += item_total
-                        elif item.item_type == 'prepaid':
-                            prepaid_revenue += item_total
                         elif item.item_type == 'membership':
                             membership_revenue += item_total
             
@@ -426,7 +391,6 @@ def staff_incentive_report(current_user=None):
                 'service': round(service_revenue, 2),
                 'package': round(package_revenue, 2),
                 'product': round(product_revenue, 2),
-                'prepaid': round(prepaid_revenue, 2),
                 'membership': round(membership_revenue, 2),
                 'total': round(total_revenue, 2),
                 'avg_bill': round(avg_bill, 2),
@@ -743,15 +707,6 @@ def staff_performance_analysis():
                         ]
                     }
                 },
-                "prepaid_revenue": {
-                    "$sum": {
-                        "$cond": [
-                            {"$eq": [{"$ifNull": ["$items.item_type", "service"]}, "prepaid"]},
-                            {"$ifNull": ["$items.total", 0]},
-                            0
-                        ]
-                    }
-                },
                 "product_revenue": {
                     "$sum": {
                         "$cond": [
@@ -809,7 +764,6 @@ def staff_performance_analysis():
                 "item_count": 1,
                 "service_revenue": {"$round": ["$service_revenue", 2]},
                 "package_revenue": {"$round": ["$package_revenue", 2]},
-                "prepaid_revenue": {"$round": ["$prepaid_revenue", 2]},
                 "product_revenue": {"$round": ["$product_revenue", 2]},
                 "membership_revenue": {"$round": ["$membership_revenue", 2]},
                 "service_items": 1
@@ -878,7 +832,6 @@ def staff_performance_analysis():
                 'total_services': int(item_count),
                 'service_revenue': result.get('service_revenue', 0.0),
                 'package_revenue': result.get('package_revenue', 0.0),
-                'prepaid_revenue': result.get('prepaid_revenue', 0.0),
                 'product_revenue': result.get('product_revenue', 0.0),
                 'membership_revenue': result.get('membership_revenue', 0.0),
                 'service_breakdown': service_breakdown,

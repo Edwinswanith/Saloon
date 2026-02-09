@@ -26,7 +26,7 @@ const QuickSale = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [customerDetails, setCustomerDetails] = useState(null)
   const [loadingCustomerDetails, setLoadingCustomerDetails] = useState(false)
-  const [bookingStatus, setBookingStatus] = useState('confirmed')
+  const [bookingStatus, setBookingStatus] = useState('service-completed')
   const [bookingNote, setBookingNote] = useState('')
   const [discountAmount, setDiscountAmount] = useState(0)
   const [membershipInfo, setMembershipInfo] = useState(null)
@@ -69,10 +69,9 @@ const QuickSale = () => {
   const [customerBills, setCustomerBills] = useState([])
   const [loadingBills, setLoadingBills] = useState(false)
 
-  // Add Package/Product/Prepaid/Membership modal states
+  // Add Package/Product/Membership modal states
   const [showPackageModal, setShowPackageModal] = useState(false)
   const [showProductModal, setShowProductModal] = useState(false)
-  const [showPrepaidModal, setShowPrepaidModal] = useState(false)
   const [showMembershipModal, setShowMembershipModal] = useState(false)
   const [productQuantities, setProductQuantities] = useState({}) // Map product ID to quantity
 
@@ -97,11 +96,9 @@ const QuickSale = () => {
   })
   const [packages, setPackages] = useState([])
   const [products, setProducts] = useState([])
-  const [prepaidPackages, setPrepaidPackages] = useState([])
   const [memberships, setMemberships] = useState([])
   const [availablePackages, setAvailablePackages] = useState([])
   const [availableProducts, setAvailableProducts] = useState([])
-  const [availablePrepaid, setAvailablePrepaid] = useState([])
   const [availableMemberships, setAvailableMemberships] = useState([])
 
   // State for editing appointment
@@ -113,15 +110,12 @@ const QuickSale = () => {
   const [currentBillId, setCurrentBillId] = useState(null)
   const [loadingInvoice, setLoadingInvoice] = useState(false)
 
-  // Fetch data on component mount
+  // Fetch essential data on component mount
+  // Packages, products, and memberships are fetched on-demand when needed
   useEffect(() => {
     fetchCustomers()
     fetchStaff()
     fetchServices()
-    fetchPackages()
-    fetchProducts()
-    fetchPrepaidPackages()
-    fetchMembershipPlans()
   }, [])
 
   // Auto-select logged-in staff when staff members are loaded
@@ -297,19 +291,6 @@ const QuickSale = () => {
           console.log('[APPOINTMENT EDIT] Products from bill:', productsFromBill)
         }
 
-        // Process prepaids from bill items
-        const prepaidItems = appointmentData.bill_items.filter(item => item.item_type === 'prepaid')
-        if (prepaidItems.length > 0) {
-          const prepaidsFromBill = prepaidItems.map((item, index) => ({
-            id: index + 1,
-            prepaid_id: item.prepaid_id,
-            name: item.name || '',
-            price: item.price || 0,
-          }))
-          setPrepaidPackages(prepaidsFromBill)
-          console.log('[APPOINTMENT EDIT] Prepaids from bill:', prepaidsFromBill)
-        }
-
         // Process memberships from bill items
         const membershipItems = appointmentData.bill_items.filter(item => item.item_type === 'membership')
         if (membershipItems.length > 0) {
@@ -457,10 +438,10 @@ const QuickSale = () => {
       fetchCustomers()
       fetchStaff()
       fetchServices()
-      fetchPackages()
-      fetchProducts()
-      fetchPrepaidPackages()
-      fetchMembershipPlans()
+      // Reset deferred data so it re-fetches on next use
+      setAvailablePackages([])
+      setAvailableProducts([])
+      setAvailableMemberships([])
     }
     
     window.addEventListener('branchChanged', handleBranchChange)
@@ -677,30 +658,18 @@ const QuickSale = () => {
       const productsList = responseData.data || (Array.isArray(responseData) ? responseData : (responseData.products || []))
       setAvailableProducts(productsList)
       console.log('[QuickSale] Products loaded:', productsList.length, 'Branch:', currentBranch?.name || 'Not set')
-      
+
       if (productsList.length === 0) {
         console.warn('[QuickSale] No products found. Check:')
         console.warn('  - Branch filtering (current branch:', currentBranch?.id || 'Not set', ')')
         console.warn('  - Product status (should be "active")')
         console.warn('  - X-Branch-Id header in request')
       }
+      return productsList
     } catch (error) {
       console.error('[QuickSale] Error fetching products:', error)
       setAvailableProducts([])
-    }
-  }
-
-  const fetchPrepaidPackages = async () => {
-    try {
-      const response = await apiGet('/api/prepaid/packages')
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      const data = await response.json()
-      setAvailablePrepaid(Array.isArray(data) ? data : (data.packages || []))
-    } catch (error) {
-      console.error('Error fetching prepaid packages:', error)
-      setAvailablePrepaid([])
+      return []
     }
   }
 
@@ -736,10 +705,13 @@ const QuickSale = () => {
     ])
   }
 
-  const addPackage = () => {
+  const addPackage = async () => {
     if (!selectedCustomer) {
       showWarning('Please select a customer first')
       return
+    }
+    if (availablePackages.length === 0) {
+      await fetchPackages()
     }
     setShowPackageModal(true)
   }
@@ -757,14 +729,18 @@ const QuickSale = () => {
     showSuccess(`${selectedPackage.name} added to bill`)
   }
 
-  const addProduct = () => {
+  const addProduct = async () => {
     if (!selectedCustomer) {
       showWarning('Please select a customer first')
       return
     }
+    let products = availableProducts
+    if (products.length === 0) {
+      products = await fetchProducts()
+    }
     // Initialize quantities for all products to 1 when opening modal
     const initialQuantities = {}
-    availableProducts.forEach(product => {
+    products.forEach(product => {
       initialQuantities[product.id] = 1
     })
     setProductQuantities(initialQuantities)
@@ -803,50 +779,13 @@ const QuickSale = () => {
     // Note: Stock will be updated by backend during checkout, not here
   }
 
-  const addPrepaid = async () => {
+  const addMembership = async () => {
     if (!selectedCustomer) {
       showWarning('Please select a customer first')
       return
     }
-    // Fetch all available prepaid packages
-    // Backend already filters by status='active' and branch, so show all returned packages
-    try {
-      const response = await apiGet('/api/prepaid/packages')
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      const data = await response.json()
-      const availablePackages = Array.isArray(data) ? data : (data.packages || [])
-      console.log('[QuickSale] Prepaid packages fetched:', availablePackages.length)
-      
-      // Show all packages returned by backend (already filtered by status='active' and branch)
-      // Packages can be:
-      // 1. Available for purchase (no customer_id) - can be purchased for selected customer
-      // 2. Already assigned to a customer (has customer_id) - can be used if balance > 0
-      setAvailablePrepaid(availablePackages)
-      setShowPrepaidModal(true)
-    } catch (error) {
-      console.error('Error fetching prepaid packages:', error)
-      showError('Failed to load prepaid packages')
-      setAvailablePrepaid([])
-    }
-  }
-
-  const handleSelectPrepaid = (selectedPrepaid) => {
-    setPrepaidPackages([...prepaidPackages, {
-      id: Date.now(),
-      prepaid_id: selectedPrepaid.id,
-      name: selectedPrepaid.name,
-      balance: selectedPrepaid.remaining_balance || 0,
-    }])
-    setShowPrepaidModal(false)
-    showSuccess(`${selectedPrepaid.name} added to bill`)
-  }
-
-  const addMembership = () => {
-    if (!selectedCustomer) {
-      showWarning('Please select a customer first')
-      return
+    if (availableMemberships.length === 0) {
+      await fetchMembershipPlans()
     }
     setShowMembershipModal(true)
   }
@@ -869,10 +808,6 @@ const QuickSale = () => {
 
   const removeProduct = (id) => {
     setProducts(products.filter(p => p.id !== id))
-  }
-
-  const removePrepaid = (id) => {
-    setPrepaidPackages(prepaidPackages.filter(p => p.id !== id))
   }
 
   const removeMembership = (id) => {
@@ -1182,20 +1117,6 @@ const QuickSale = () => {
         }
       }
 
-      // Add prepaids
-      for (const prepaid of prepaidPackages) {
-        if (prepaid.prepaid_id) {
-          await apiPost(`/api/bills/${billId}/items`, {
-            item_type: 'prepaid',
-            prepaid_id: prepaid.prepaid_id,
-            price: parseFloat(prepaid.price) || 0,
-            discount: 0,
-            quantity: 1,
-            total: parseFloat(prepaid.price) || 0,
-          })
-        }
-      }
-
       // Add memberships
       for (const membership of memberships) {
         if (membership.membership_id) {
@@ -1292,20 +1213,6 @@ const QuickSale = () => {
             discount: parseFloat(product.discount) || 0,
             quantity: parseInt(product.quantity) || 1,
             total: parseFloat(product.total) || parseFloat(product.price) * (parseInt(product.quantity) || 1) || 0,
-          })
-        }
-      }
-
-      // Add prepaids
-      for (const prepaid of prepaidPackages) {
-        if (prepaid.prepaid_id) {
-          await apiPost(`/api/bills/${billId}/items`, {
-            item_type: 'prepaid',
-            prepaid_id: prepaid.prepaid_id,
-            price: parseFloat(prepaid.price) || 0,
-            discount: 0,
-            quantity: 1,
-            total: parseFloat(prepaid.price) || 0,
           })
         }
       }
@@ -1431,27 +1338,35 @@ const QuickSale = () => {
       })
 
       const data = await response.json()
-      
-      // Backend returns { id: "...", message: "..." }
+
+      if (!response.ok) {
+        showError(data.error || 'Failed to create customer')
+        return
+      }
+
+      // Build customer object from response
       const newCustomer = {
         id: data.id,
         mobile: cleanMobile,
-        firstName: firstName,
-        lastName: lastName,
+        firstName: data.reason === 'existing_same_branch' && data.customerName ? data.customerName.split(' ')[0] : firstName,
+        lastName: data.reason === 'existing_same_branch' && data.customerName ? data.customerName.split(' ').slice(1).join(' ') : lastName,
         email: ''
       }
 
-      // Add to customers list
+      // Add to customers list and select
       setCustomers([newCustomer, ...customers])
-      
-      // Select the new customer
       selectCustomer(newCustomer)
-      
+
       // Reset form
       setShowNewCustomerForm(false)
       setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '' })
-      
-      showSuccess(`Customer ${newCustomer.firstName} ${newCustomer.lastName} created successfully!`)
+
+      // Show appropriate message based on backend response
+      if (data.created) {
+        showSuccess(`Customer ${firstName} ${lastName} created successfully!`)
+      } else if (data.reason === 'existing_same_branch') {
+        showWarning(`Customer already exists in this branch — ${data.customerName || 'selected'}. Using existing record.`)
+      }
     } catch (error) {
       console.error('Error creating customer:', error)
       showError(`Failed to create customer: ${error.message}`)
@@ -1460,12 +1375,16 @@ const QuickSale = () => {
     }
   }
 
-  const handleShowInventory = (service) => {
+  const handleShowInventory = async (service) => {
     const selectedService = availableServices.find(s => s.id === service.service_id)
-    
+
     if (!selectedService) {
       showWarning('Please select a service first')
       return
+    }
+
+    if (availableProducts.length === 0) {
+      await fetchProducts()
     }
 
     // Filter products related to this service
@@ -1508,7 +1427,8 @@ const QuickSale = () => {
     const servicesTotal = services.reduce((sum, service) => sum + (parseFloat(service.total) || 0), 0)
     const packagesTotal = packages.reduce((sum, pkg) => sum + (parseFloat(pkg.total) || 0), 0)
     const productsTotal = products.reduce((sum, product) => sum + (parseFloat(product.total) || 0), 0)
-    return servicesTotal + packagesTotal + productsTotal
+    const membershipsTotal = memberships.reduce((sum, m) => sum + (parseFloat(m.price) || 0), 0)
+    return servicesTotal + packagesTotal + productsTotal + membershipsTotal
   }
 
   const calculateDiscount = () => {
@@ -1591,7 +1511,6 @@ const QuickSale = () => {
     }])
     setPackages([])
     setProducts([])
-    setPrepaidPackages([])
     setMemberships([])
     setSelectedCustomer(null)
     setSearchQuery('')
@@ -1662,113 +1581,75 @@ const QuickSale = () => {
       const billData = await billResponse.json()
       const billId = billData.data.id
 
-      // Add all items to bill in PARALLEL for faster checkout
-      const itemPromises = []
+      // Add all items to bill SEQUENTIALLY to avoid race conditions
+      const allItems = []
 
-      // Collect service promises
+      // Collect service items
       validServices.forEach(service => {
         if (service.service_id && service.price > 0) {
-          itemPromises.push(
-            apiPost(`/api/bills/${billId}/items`, {
-              item_type: 'service',
-              service_id: service.service_id,
-              staff_id: service.staff_id || null,
-              start_time: service.startTime ? `${service.startTime}:00` : null,
-              price: parseFloat(service.price) || 0,
-              discount: parseFloat(service.discount) || 0,
-              quantity: 1,
-              total: parseFloat(service.total) || parseFloat(service.price) || 0,
-            }).then(async (response) => {
-              if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}))
-                throw new Error(errorData.error || 'Failed to add service to bill')
-              }
-              return response
-            })
-          )
+          allItems.push({
+            item_type: 'service',
+            service_id: service.service_id,
+            staff_id: service.staff_id || null,
+            start_time: service.startTime ? `${service.startTime}:00` : null,
+            price: parseFloat(service.price) || 0,
+            discount: parseFloat(service.discount) || 0,
+            quantity: 1,
+            total: parseFloat(service.total) || parseFloat(service.price) || 0,
+          })
         }
       })
 
-      // Collect package promises
+      // Collect package items
       packages.forEach(pkg => {
         if (pkg.package_id) {
-          itemPromises.push(
-            apiPost(`/api/bills/${billId}/items`, {
-              item_type: 'package',
-              package_id: pkg.package_id,
-              price: parseFloat(pkg.price) || 0,
-              discount: parseFloat(pkg.discount) || 0,
-              quantity: 1,
-              total: parseFloat(pkg.total) || parseFloat(pkg.price) || 0,
-            }).then(async (response) => {
-              if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}))
-                throw new Error(errorData.error || 'Failed to add package to bill')
-              }
-              return response
-            })
-          )
+          allItems.push({
+            item_type: 'package',
+            package_id: pkg.package_id,
+            price: parseFloat(pkg.price) || 0,
+            discount: parseFloat(pkg.discount) || 0,
+            quantity: 1,
+            total: parseFloat(pkg.total) || parseFloat(pkg.price) || 0,
+          })
         }
       })
 
-      // Collect product promises
+      // Collect product items
       products.forEach(product => {
         if (product.product_id) {
-          itemPromises.push(
-            apiPost(`/api/bills/${billId}/items`, {
-              item_type: 'product',
-              product_id: product.product_id,
-              price: parseFloat(product.price) || 0,
-              discount: parseFloat(product.discount) || 0,
-              quantity: parseInt(product.quantity) || 1,
-              total: parseFloat(product.total) || parseFloat(product.price) * (parseInt(product.quantity) || 1) || 0,
-            }).then(async (response) => {
-              if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}))
-                throw new Error(errorData.error || 'Failed to add product to bill')
-              }
-              return response
-            })
-          )
+          allItems.push({
+            item_type: 'product',
+            product_id: product.product_id,
+            price: parseFloat(product.price) || 0,
+            discount: parseFloat(product.discount) || 0,
+            quantity: parseInt(product.quantity) || 1,
+            total: parseFloat(product.total) || parseFloat(product.price) * (parseInt(product.quantity) || 1) || 0,
+          })
         }
       })
 
-      // Collect membership promises
+      // Collect membership items
       memberships.forEach(membership => {
         if (membership.membership_id) {
-          itemPromises.push(
-            apiPost(`/api/bills/${billId}/items`, {
-              item_type: 'membership',
-              membership_id: membership.membership_id,
-              price: parseFloat(membership.price) || 0,
-              discount: 0,
-              quantity: 1,
-              total: parseFloat(membership.price) || 0,
-            }).then(async (response) => {
-              if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}))
-                throw new Error(errorData.error || 'Failed to add membership to bill')
-              }
-              return response
-            })
-          )
+          allItems.push({
+            item_type: 'membership',
+            membership_id: membership.membership_id,
+            name: membership.name || '',
+            price: parseFloat(membership.price) || 0,
+            discount: 0,
+            quantity: 1,
+            total: parseFloat(membership.price) || 0,
+          })
         }
       })
 
-      // Execute ALL item additions in parallel
-      if (itemPromises.length > 0) {
-        try {
-          await Promise.all(itemPromises)
-        } catch (itemError) {
-          console.error('Failed to add items to bill:', itemError)
-          throw itemError
+      // Add items one at a time to avoid race conditions
+      for (const itemData of allItems) {
+        const response = await apiPost(`/api/bills/${billId}/items`, itemData)
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.error || `Failed to add ${itemData.item_type} to bill`)
         }
-      }
-
-      // Handle prepaid packages (if any selected)
-      let prepaidPackageId = null
-      if (prepaidPackages.length > 0) {
-        prepaidPackageId = prepaidPackages[0].prepaid_id
       }
 
       // Phase 5: Check if approval is needed
@@ -1821,7 +1702,6 @@ const QuickSale = () => {
         tax_rate: 18.0, // GST rate - ensure it's a float
         payment_mode: paymentMode,
         booking_status: bookingStatus,
-        prepaid_package_id: prepaidPackageId,
       })
 
       if (checkoutResponse.ok) {
@@ -2375,12 +2255,11 @@ const QuickSale = () => {
           </button>
           <button className="pill-button" onClick={addPackage}>Add Package</button>
           <button className="pill-button" onClick={addProduct}>Add Product</button>
-          <button className="pill-button" onClick={addPrepaid}>Add Prepaid</button>
           <button className="pill-button" onClick={addMembership}>Add Membership</button>
         </div>
 
         {/* Display Added Items in Grid Layout */}
-        {(packages.length > 0 || products.length > 0 || prepaidPackages.length > 0 || memberships.length > 0) && (
+        {(packages.length > 0 || products.length > 0 || memberships.length > 0) && (
           <div className="added-items-grid">
             {/* Display Added Packages */}
             {packages.length > 0 && (
@@ -2406,21 +2285,6 @@ const QuickSale = () => {
                     <div key={product.id} className="added-item">
                       <span>{product.name} - ₹{product.price} x {product.quantity} = ₹{product.total}</span>
                       <button onClick={() => removeProduct(product.id)} className="remove-btn">Remove</button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Display Added Prepaid */}
-            {prepaidPackages.length > 0 && (
-              <div className="added-items-section">
-                <h3>Added Prepaid Packages:</h3>
-                <div className="added-items-list">
-                  {prepaidPackages.map(prepaid => (
-                    <div key={prepaid.id} className="added-item">
-                      <span>{prepaid.name} - Balance: ₹{prepaid.balance}</span>
-                      <button onClick={() => removePrepaid(prepaid.id)} className="remove-btn">Remove</button>
                     </div>
                   ))}
                 </div>
@@ -3123,47 +2987,6 @@ const QuickSale = () => {
         </div>
       )}
 
-      {/* Prepaid Selection Modal */}
-      {showPrepaidModal && (
-        <div className="selection-modal-overlay" onClick={() => setShowPrepaidModal(false)}>
-          <div className="selection-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="selection-modal-header">
-              <h2>Select Prepaid Package</h2>
-              <button className="modal-close-btn" onClick={() => setShowPrepaidModal(false)}>
-                <FaTimes />
-              </button>
-            </div>
-            <div className="selection-modal-body">
-              {availablePrepaid.length > 0 ? (
-                <div className="selection-grid">
-                  {availablePrepaid.map(prepaid => (
-                    <div key={prepaid.id} className="selection-item" onClick={() => handleSelectPrepaid(prepaid)}>
-                      <div className="selection-item-header">
-                        <h3>{prepaid.name}</h3>
-                        <span className="selection-price">₹{prepaid.price || prepaid.remaining_balance || 0}</span>
-                      </div>
-                      <div className="selection-item-details">
-                        {prepaid.group_name && <p>Group: {prepaid.group_name}</p>}
-                        <p>Balance: ₹{prepaid.remaining_balance || prepaid.price || 0}</p>
-                        {prepaid.expiry_date && (
-                          <p>Expires: {new Date(prepaid.expiry_date).toLocaleDateString()}</p>
-                        )}
-                        <p className="prepaid-status">Status: {prepaid.status || 'active'}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="selection-empty">
-                  <p>No prepaid packages available</p>
-                  <p className="selection-empty-hint">No prepaid packages to purchase at the moment</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Membership Selection Modal */}
       {showMembershipModal && (
         <div className="selection-modal-overlay" onClick={() => setShowMembershipModal(false)}>
@@ -3212,8 +3035,9 @@ const QuickSale = () => {
               </div>
             ) : invoiceData ? (
               <div className="invoice-preview-wrapper">
-                <InvoicePreview 
+                <InvoicePreview
                   invoiceData={invoiceData}
+                  billId={currentBillId}
                   onDownload={handleDownloadInvoice}
                   onReview={handleReviewUs}
                 />

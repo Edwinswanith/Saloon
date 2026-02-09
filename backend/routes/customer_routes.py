@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from models import Customer, Bill, Membership
 from datetime import datetime
 from mongoengine import Q
+from mongoengine.errors import NotUniqueError
 from utils.auth import require_auth
 from utils.branch_filter import get_selected_branch, filter_by_branch
 import random
@@ -37,8 +38,8 @@ def get_customers(current_user=None):
     # If branch is selected (via X-Branch-Id header), filter by that branch
     # If no branch is selected (Owner without branch selection), show all customers
     branch = get_selected_branch(request, current_user)
-    query = Customer.objects
-    
+    query = Customer.objects.filter(merged_into=None)
+
     # Only filter by branch if a branch is explicitly selected
     # This allows Owners to see all customers when no branch is selected
     if branch:
@@ -177,52 +178,48 @@ def get_customer(customer_id, current_user=None):
 @customer_bp.route('/', methods=['POST'])
 @require_auth
 def create_customer(current_user=None):
-    """Create new customer"""
+    """Create new customer (branch-scoped uniqueness)"""
     try:
         data = request.json
-        
-        # Debug logging
-        print(f"[CUSTOMER CREATE] Data received: {data}")
-        print(f"[CUSTOMER CREATE] Current user: {current_user}")
-        print(f"[CUSTOMER CREATE] X-Branch-Id header: {request.headers.get('X-Branch-Id')}")
-        
+
         if not data:
             response = jsonify({'error': 'No data provided'})
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 400
-        
-        # Validate required fields
+
         if not data.get('mobile'):
             response = jsonify({'error': 'Mobile number is required'})
             response.headers.add('Access-Control-Allow-Origin', '*')
-            print(f"[CUSTOMER CREATE] Error: Mobile number is required")
             return response, 400
         if not data.get('firstName'):
             response = jsonify({'error': 'First name is required'})
             response.headers.add('Access-Control-Allow-Origin', '*')
-            print(f"[CUSTOMER CREATE] Error: First name is required")
             return response, 400
-        
-        # Get branch for assignment
+
         branch = get_selected_branch(request, current_user)
         if not branch:
-            error_msg = 'Branch is required. Please ensure you have selected a branch or your user has a branch assigned.'
-            response = jsonify({'error': error_msg})
-            response.headers.add('Access-Control-Allow-Origin', '*')
-            print(f"[CUSTOMER CREATE] Error: {error_msg}")
-            return response, 400
-        
-        print(f"[CUSTOMER CREATE] Branch found: {branch.id} - {branch.name}")
-        
-        # Check if mobile already exists in this branch
-        existing = Customer.objects(mobile=data.get('mobile'), branch=branch).first()
-        if existing:
-            error_msg = f'Customer with mobile number {data.get("mobile")} already exists in this branch (Customer: {existing.first_name} {existing.last_name})'
-            print(f"[CUSTOMER CREATE] Error: {error_msg}")
-            response = jsonify({'error': error_msg})
+            response = jsonify({'error': 'Branch is required. Please ensure you have selected a branch or your user has a branch assigned.'})
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 400
-        
+
+        mobile = data.get('mobile')
+
+        # Check if customer exists in THIS branch → reuse existing
+        existing_same_branch = Customer.objects(mobile=mobile, branch=branch).first()
+        if existing_same_branch:
+            customer_name = f'{existing_same_branch.first_name} {existing_same_branch.last_name}'.strip()
+            response = jsonify({
+                'id': str(existing_same_branch.id),
+                'created': False,
+                'reason': 'existing_same_branch',
+                'message': f'Customer with mobile {mobile} already exists in this branch',
+                'customerName': customer_name
+            })
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 200
+
+        # Customer may exist in OTHER branches — that's fine, create in this branch
+
         # Handle DOB if provided
         dob = None
         if data.get('dob'):
@@ -232,9 +229,9 @@ def create_customer(current_user=None):
                 response = jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'})
                 response.headers.add('Access-Control-Allow-Origin', '*')
                 return response, 400
-        
+
         customer = Customer(
-            mobile=data.get('mobile'),
+            mobile=mobile,
             first_name=data.get('firstName', ''),
             last_name=data.get('lastName', ''),
             email=data.get('email', ''),
@@ -246,17 +243,52 @@ def create_customer(current_user=None):
             branch=branch
         )
         customer.save()
-        
-        print(f"[CUSTOMER CREATE] Success: Customer created with ID {customer.id} - {customer.first_name} {customer.last_name}")
-        response = jsonify({'id': str(customer.id), 'message': 'Customer created successfully'})
+
+        response = jsonify({
+            'id': str(customer.id),
+            'created': True,
+            'reason': 'created_new',
+            'message': 'Customer created successfully'
+        })
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 201
+
+    except NotUniqueError as e:
+        error_str = str(e).lower()
+        # Check if it's a mobile+branch duplicate (race condition)
+        existing = Customer.objects(mobile=data.get('mobile'), branch=branch).first()
+        if existing:
+            customer_name = f'{existing.first_name} {existing.last_name}'.strip()
+            response = jsonify({
+                'id': str(existing.id),
+                'created': False,
+                'reason': 'existing_same_branch',
+                'message': f'Customer with mobile {data.get("mobile")} already exists in this branch',
+                'customerName': customer_name
+            })
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 200
+        # If it's a referral_code collision, retry with a new code
+        if 'referral_code' in error_str:
+            try:
+                customer.referral_code = generate_referral_code(data.get('firstName', ''))
+                customer.save()
+                response = jsonify({
+                    'id': str(customer.id),
+                    'created': True,
+                    'reason': 'created_new',
+                    'message': 'Customer created successfully'
+                })
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response, 201
+            except Exception:
+                pass
+        response = jsonify({'error': 'Could not create customer. Please try again.'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 400
     except Exception as e:
-        error_msg = str(e)
-        print(f"[CUSTOMER CREATE] Unexpected error: {error_msg}")
-        import traceback
-        traceback.print_exc()
-        response = jsonify({'error': error_msg})
+        print(f"[CUSTOMER CREATE] Error: {str(e)}")
+        response = jsonify({'error': str(e)})
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 500
 
@@ -415,9 +447,12 @@ def search_customers():
         return jsonify({'customers': []})
     
     customers = Customer.objects.filter(
+        merged_into=None
+    ).filter(
         Q(mobile__icontains=query) |
         Q(first_name__icontains=query) |
-        Q(last_name__icontains=query)
+        Q(last_name__icontains=query) |
+        Q(secondary_mobiles=query)
     ).limit(10)
     
     return jsonify({

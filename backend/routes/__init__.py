@@ -5,7 +5,6 @@ from .staff_routes import staff_bp
 from .service_routes import service_bp
 from .product_routes import product_bp
 from .package_routes import package_bp
-from .prepaid_routes import prepaid_bp
 from .bill_routes import bill_bp
 from .appointment_routes import appointment_bp
 from .expense_routes import expense_bp
@@ -30,6 +29,7 @@ from .discount_approval_routes import discount_approval_bp
 from .branch_routes import branch_bp
 from .temp_assignment_routes import temp_assignment_bp
 from .leave_routes import leave_bp
+from .customer_merge_routes import customer_merge_bp
 
 def register_routes(app):
     # Register blueprints with /api prefix
@@ -39,7 +39,6 @@ def register_routes(app):
     app.register_blueprint(service_bp, url_prefix='/api/services')
     app.register_blueprint(product_bp, url_prefix='/api/products')
     app.register_blueprint(package_bp, url_prefix='/api/packages')
-    app.register_blueprint(prepaid_bp, url_prefix='/api/prepaid')
     app.register_blueprint(bill_bp, url_prefix='/api')
     app.register_blueprint(appointment_bp, url_prefix='/api')
     app.register_blueprint(expense_bp, url_prefix='/api/expenses')
@@ -64,4 +63,5 @@ def register_routes(app):
     app.register_blueprint(branch_bp, url_prefix='/api')
     app.register_blueprint(temp_assignment_bp, url_prefix='/api/temp-assignments')
     app.register_blueprint(leave_bp, url_prefix='/api/leaves')
+    app.register_blueprint(customer_merge_bp, url_prefix='/api/customers/merge')
 

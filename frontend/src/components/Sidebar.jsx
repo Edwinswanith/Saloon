@@ -137,8 +137,7 @@ const Sidebar = ({
             { id: 'service', label: 'Service' },
             { id: 'package', label: 'Package' },
             { id: 'product', label: 'Product' },
-            { id: 'prepaid', label: 'Prepaid' },
-            { 
+            {
               id: 'settings', 
               label: 'Settings',
               requiresRole: ['manager', 'owner']

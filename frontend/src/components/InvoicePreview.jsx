@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { FaWhatsapp } from 'react-icons/fa'
-import { apiGet } from '../utils/api'
+import { apiGet, apiPost } from '../utils/api'
+import { API_BASE_URL } from '../config'
 import './InvoicePreview.css'
 
 // Branch information mapping
@@ -198,7 +199,7 @@ const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
     }
   }
 
-  const handleSendWhatsApp = () => {
+  const handleSendWhatsApp = async () => {
     if (!customer?.mobile) return
 
     let phoneNumber = customer.mobile.replace(/[^0-9]/g, '')
@@ -208,32 +209,34 @@ const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
       phoneNumber = '91' + phoneNumber
     }
 
-    const formattedDateTime = formatBookingDateTime(booking_date, booking_time)
-
-    let message = `*Bill Details*\n\n`
-    message += `Bill Number: ${invoice_number || 'N/A'}\n`
-    message += `Date: ${formattedDateTime}\n\n`
-
-    message += `*Items:*\n`
-    if (items && items.length > 0) {
-      items.forEach(item => {
-        message += `${item.name || 'Item'} - Qty: ${item.quantity || 1} - ${formatCurrency(item.total || 0)}\n`
-      })
+    // Try to generate shareable invoice links
+    let invoiceLink = ''
+    let pdfLink = ''
+    if (billId) {
+      try {
+        const res = await apiPost(`/api/bills/${billId}/share-link`)
+        if (res.ok) {
+          const data = await res.json()
+          invoiceLink = `${API_BASE_URL}/api/invoice/view/${data.token}`
+          pdfLink = `${API_BASE_URL}/api/invoice/pdf/${data.token}`
+        }
+      } catch (e) {
+        // Fallback to text-only if link generation fails
+      }
     }
-    message += `\n`
 
-    message += `*Summary:*\n`
-    message += `Subtotal: ${formatCurrency(summary?.subtotal || 0)}\n`
-    if (summary?.discount > 0) {
-      message += `Discount: ${formatCurrency(summary.discount)}\n`
+    let message = `*Invoice from ${branch?.name || 'Priyanka Nature Cure'}*\n\n`
+    message += `Bill: ${invoice_number || 'N/A'}\n`
+    message += `Total: ${formatCurrencyNoDecimals(summary?.total || 0)}\n\n`
+
+    if (invoiceLink) {
+      message += `View invoice: ${invoiceLink}\n\n`
     }
-    message += `Tax: ${formatCurrency(summary?.tax || 0)}\n`
-    message += `*Total: ${formatCurrencyNoDecimals(summary?.total || 0)}*\n\n`
+    if (pdfLink) {
+      message += `Download PDF: ${pdfLink}\n\n`
+    }
 
-    message += `Payment Mode: ${payment?.source || 'N/A'}\n\n`
-
-    message += `Thank you for your visit!\n`
-    message += `${branch?.name || 'SaloonBoost'}`
+    message += `Thank you for your visit!`
 
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, '_blank')

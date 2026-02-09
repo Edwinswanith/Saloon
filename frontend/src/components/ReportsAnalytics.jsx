@@ -5,7 +5,6 @@ import {
   FaClipboardList,
   FaTrash,
   FaChartLine,
-  FaCreditCard,
   FaUsers,
   FaDollarSign,
   FaFileAlt,
@@ -110,12 +109,6 @@ const ReportsAnalytics = ({ setActivePage, initialTab }) => {
         }
         return
       } else if (reportId === 5) {
-        // Prepaid Package Clients
-        if (setActivePage) {
-          setActivePage('prepaid-package-clients')
-        }
-        return
-      } else if (reportId === 6) {
         // Membership Clients
         if (setActivePage) {
           setActivePage('membership-clients')
@@ -213,14 +206,6 @@ const ReportsAnalytics = ({ setActivePage, initialTab }) => {
     },
     {
       id: 5,
-      title: 'Prepaid Package Clients',
-      description:
-        'View a list of all clients with active prepaid packages and their remaining balances.',
-      icon: <FaCreditCard />,
-      color: 'orange',
-    },
-    {
-      id: 6,
       title: 'Membership Clients',
       description:
         'View a list of all clients with active memberships and their expiration dates.',

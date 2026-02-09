@@ -41,7 +41,7 @@ const Login = ({ onLoginSuccess }) => {
             'Content-Type': 'application/json',
           },
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           setBranches(data);
@@ -70,7 +70,7 @@ const Login = ({ onLoginSuccess }) => {
 
       setLoadingStaff(true);
       setError('');
-      
+
       try {
         const url = `${API_BASE_URL}/api/auth/staff-list${selectedBranch ? `?branch_id=${selectedBranch}` : ''}`;
         console.log('Fetching staff list from:', url);
@@ -80,15 +80,15 @@ const Login = ({ onLoginSuccess }) => {
             'Content-Type': 'application/json',
           },
         });
-        
+
         console.log('Staff list response status:', response.status);
-        
+
         if (response.ok) {
           const data = await response.json();
           console.log('Staff list data received:', data);
           const staff = data.staff || [];
           setStaffList(staff);
-          
+
           if (staff.length === 0) {
             console.warn('No staff members found for this branch.');
             setError('');
@@ -121,7 +121,7 @@ const Login = ({ onLoginSuccess }) => {
       setLoadingManagers(true);
       setError('');
       setIdentifier(''); // Clear manager selection when fetching new list
-      
+
       try {
         // Fetch managers filtered by selected branch (same as staff login)
         const url = `${API_BASE_URL}/api/auth/manager-list?role=manager&branch_id=${selectedBranch}`;
@@ -132,7 +132,7 @@ const Login = ({ onLoginSuccess }) => {
             'Content-Type': 'application/json',
           },
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           console.log('Manager list data received:', data);
@@ -187,7 +187,7 @@ const Login = ({ onLoginSuccess }) => {
 
       setLoadingOwners(true);
       setError('');
-      
+
       try {
         const url = `${API_BASE_URL}/api/auth/manager-list?role=owner`;
         console.log('Fetching owner list from:', url);
@@ -197,7 +197,7 @@ const Login = ({ onLoginSuccess }) => {
             'Content-Type': 'application/json',
           },
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           console.log('Owner list data received:', data);
@@ -296,275 +296,276 @@ const Login = ({ onLoginSuccess }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">
-          {/* User Type Selection */}
-          <div className="form-group">
-            <label className="form-label">Login As</label>
-            <div className="user-type-toggle">
-              <button
-                type="button"
-                className={`toggle-btn ${userType === 'staff' ? 'active' : ''}`}
-                onClick={() => {
-                  setUserType('staff');
-                  setIdentifier('');
-                  setPassword('');
-                  setError('');
-                }}
-              >
-                Staff
-              </button>
-              <button
-                type="button"
-                className={`toggle-btn ${userType === 'manager' ? 'active' : ''}`}
-                onClick={() => {
-                  setUserType('manager');
-                  setIdentifier('');
-                  setPassword('');
-                  setError('');
-                }}
-              >
-                Manager
-              </button>
-              <button
-                type="button"
-                className={`toggle-btn ${userType === 'owner' ? 'active' : ''}`}
-                onClick={() => {
-                  setUserType('owner');
-                  setIdentifier('');
-                  setPassword('');
-                  setError('');
-                }}
-              >
-                Owner
-              </button>
-            </div>
-          </div>
-
-          {/* Branch Selection */}
-          <div className="form-group">
-            <label htmlFor="branch-select" className="form-label">
-              Select Branch
-            </label>
-            {loadingBranches ? (
-              <div className="form-input" style={{ padding: '12px', textAlign: 'center', color: '#666' }}>
-                Loading branches...
-              </div>
-            ) : (
-              <select
-                id="branch-select"
-                className="form-input"
-                value={selectedBranch}
-                onChange={(e) => {
-                  setSelectedBranch(e.target.value);
-                  setIdentifier(''); // Clear selection when branch changes
-                  setPassword('');
-                  setError('');
-                }}
-                required
-                disabled={branches.length === 0}
-              >
-                <option value="">
-                  {branches.length === 0 
-                    ? '-- No Branches Available --' 
-                    : '-- Select Branch --'}
-                </option>
-                {branches.map((branch) => (
-                  <option key={branch.id} value={branch.id}>
-                    {branch.name} - {branch.city}
-                  </option>
-                ))}
-              </select>
-            )}
-            {branches.length === 0 && !loadingBranches && (
-              <p className="form-help-text" style={{ color: '#d32f2f', marginTop: '4px' }}>
-                No branches found. Please create branches first.
-              </p>
-            )}
-          </div>
-
-          {/* Staff Selection */}
-          {userType === 'staff' && (
-            <>
-              <div className="form-group">
-                <label htmlFor="staff-select" className="form-label">
-                  Select Staff Member
-                </label>
-                {loadingStaff ? (
-                  <div className="form-input" style={{ padding: '12px', textAlign: 'center', color: '#666' }}>
-                    Loading staff members...
-                  </div>
-                ) : (
-                <select
-                  id="staff-select"
-                  className="form-input"
-                  value={identifier}
-                  onChange={handleStaffSelect}
-                  required
-                    disabled={staffList.length === 0}
+            {/* User Type Selection */}
+            <div className="form-group">
+              <label className="form-label">Login As</label>
+              <div className="user-type-toggle">
+                <button
+                  type="button"
+                  className={`toggle-btn ${userType === 'staff' ? 'active' : ''}`}
+                  onClick={() => {
+                    setUserType('staff');
+                    setIdentifier('');
+                    setPassword('');
+                    setError('');
+                  }}
                 >
-                    <option value="">
-                      {staffList.length === 0 
-                        ? '-- No Staff Available --' 
-                        : '-- Select Staff --'}
-                    </option>
-                  {staffList.map((staff) => (
-                    <option key={staff.id} value={staff.mobile}>
-                      {staff.name} ({staff.mobile})
+                  Staff
+                </button>
+                <button
+                  type="button"
+                  className={`toggle-btn ${userType === 'manager' ? 'active' : ''}`}
+                  onClick={() => {
+                    setUserType('manager');
+                    setIdentifier('');
+                    setPassword('');
+                    setError('');
+                  }}
+                >
+                  Manager
+                </button>
+                <button
+                  type="button"
+                  className={`toggle-btn ${userType === 'owner' ? 'active' : ''}`}
+                  onClick={() => {
+                    setUserType('owner');
+                    setIdentifier('');
+                    setPassword('');
+                    setError('');
+                  }}
+                >
+                  Owner
+                </button>
+              </div>
+            </div>
+
+            {/* Branch Selection */}
+            <div className="form-group">
+              <label htmlFor="branch-select" className="form-label">
+                Select Branch
+              </label>
+              {loadingBranches ? (
+                <div className="form-input" style={{ padding: '12px', textAlign: 'center', color: '#666' }}>
+                  Loading branches...
+                </div>
+              ) : (
+                <select
+                  id="branch-select"
+                  className="form-input"
+                  value={selectedBranch}
+                  onChange={(e) => {
+                    setSelectedBranch(e.target.value);
+                    setIdentifier(''); // Clear selection when branch changes
+                    setPassword('');
+                    setError('');
+                  }}
+                  required
+                  disabled={branches.length === 0}
+                >
+                  <option value="">
+                    {branches.length === 0
+                      ? '-- No Branches Available --'
+                      : '-- Select Branch --'}
+                  </option>
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {branch.name} - {branch.city}
                     </option>
                   ))}
                 </select>
-                )}
-                {staffList.length === 0 && !loadingStaff && (
-                  <p className="form-help-text" style={{ color: '#d32f2f', marginTop: '4px' }}>
-                    No staff members found. Please insert dummy data using: python backend/insert_dummy_auth_data.py
-                  </p>
-                )}
-              </div>
+              )}
+              {branches.length === 0 && !loadingBranches && (
+                <p className="form-help-text" style={{ color: '#d32f2f', marginTop: '4px' }}>
+                  No branches found. Please create branches first.
+                </p>
+              )}
+            </div>
 
-              <div className="form-group">
-                <label htmlFor="staff-password" className="form-label">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  id="staff-password"
-                  className="form-input"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-            </>
-          )}
-
-          {/* Manager Login */}
-          {userType === 'manager' && (
-            <>
-              <div className="form-group">
-                <label htmlFor="manager-select" className="form-label">
-                  Select Manager
-                </label>
-                {loadingManagers ? (
-                  <div className="form-input" style={{ padding: '12px', textAlign: 'center', color: '#666' }}>
-                    Loading managers...
-                  </div>
-                ) : (
+            {/* Staff Selection */}
+            {userType === 'staff' && (
+              <>
+                <div className="form-group">
+                  <label htmlFor="staff-select" className="form-label">
+                    Select Staff Member
+                  </label>
+                  {loadingStaff ? (
+                    <div className="form-input" style={{ padding: '12px', textAlign: 'center', color: '#666' }}>
+                      Loading staff members...
+                    </div>
+                  ) : (
                   <select
-                    id="manager-select"
-                  className="form-input"
-                  value={identifier}
-                    onChange={(e) => {
-                      const selectedManager = managerList.find(m => 
-                        m.email === e.target.value || m.mobile === e.target.value
-                      );
-                      if (selectedManager) {
-                        setIdentifier(selectedManager.email);
-                      } else {
-                        setIdentifier(e.target.value);
-                      }
-                    }}
-                  required
-                    disabled={managerList.length === 0}
+                    id="staff-select"
+                    className="form-input"
+                    value={identifier}
+                    onChange={handleStaffSelect}
+                    required
+                      disabled={staffList.length === 0}
                   >
-                    <option value="">
-                      {managerList.length === 0 
-                        ? '-- No Managers Available --' 
-                        : '-- Select Manager --'}
-                    </option>
-                    {managerList.map((manager) => (
-                      <option key={manager.id} value={manager.email}>
-                        {manager.name} - {manager.branch_name}
+                      <option value="">
+                        {staffList.length === 0
+                          ? '-- No Staff Available --'
+                          : '-- Select Staff --'}
+                      </option>
+                    {staffList.map((staff) => (
+                      <option key={staff.id} value={staff.mobile}>
+                        {staff.name} ({staff.mobile})
                       </option>
                     ))}
                   </select>
-                )}
-                {managerList.length === 0 && !loadingManagers && selectedBranch && (
-                  <p className="form-help-text" style={{ color: '#d32f2f', marginTop: '4px' }}>
-                    No managers found for this branch.
-                    <br />
-                    <span style={{ fontSize: '0.85em', color: '#666' }}>
-                      Please ensure managers are assigned to this branch in the database.
-                    </span>
-                  </p>
-                )}
-              </div>
+                  )}
+                  {staffList.length === 0 && !loadingStaff && (
+                    <p className="form-help-text" style={{ color: '#d32f2f', marginTop: '4px' }}>
+                      No staff members found. Please insert dummy data using: python backend/insert_dummy_auth_data.py
+                    </p>
+                  )}
+                </div>
 
-              <div className="form-group">
-                <label htmlFor="manager-password" className="form-label">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  id="manager-password"
-                  className="form-input"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-            </>
-          )}
-
-          {/* Owner Login */}
-          {userType === 'owner' && (
-            <>
-              <div className="form-group">
-                <label htmlFor="owner-email" className="form-label">
-                  Enter Email Address
-                </label>
-                <input
-                  type="email"
-                  id="owner-email"
-                  className="form-input"
-                  placeholder="Enter your email address"
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="owner-password" className="form-label">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  id="owner-password"
-                  className="form-input"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-            </>
-          )}
-
-          {/* Error Message */}
-          {error && (
-            <div className="error-message" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <FaExclamationTriangle size={16} color="#ef4444" />
-              {error}
-            </div>
-          )}
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            className="login-button"
-            disabled={loading || !selectedBranch || (userType === 'staff' && staffList.length === 0) || (userType === 'manager' && (!selectedBranch || managerList.length === 0)) || (userType === 'owner' && !identifier.trim())}
-          >
-            {loading ? (
-              <>
-                <span className="loading-spinner"></span>
-                Signing in...
+                <div className="form-group">
+                  <label htmlFor="staff-password" className="form-label">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    id="staff-password"
+                    className="form-input"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
               </>
-            ) : (
-              'Sign In'
             )}
-          </button>
-        </form>
+
+            {/* Manager Login */}
+            {userType === 'manager' && (
+              <>
+                <div className="form-group">
+                  <label htmlFor="manager-select" className="form-label">
+                    Select Manager
+                  </label>
+                  {loadingManagers ? (
+                    <div className="form-input" style={{ padding: '12px', textAlign: 'center', color: '#666' }}>
+                      Loading managers...
+                    </div>
+                  ) : (
+                    <select
+                      id="manager-select"
+                    className="form-input"
+                    value={identifier}
+                      onChange={(e) => {
+                        const selectedManager = managerList.find(m =>
+                          m.email === e.target.value || m.mobile === e.target.value
+                        );
+                        if (selectedManager) {
+                          setIdentifier(selectedManager.email);
+                        } else {
+                          setIdentifier(e.target.value);
+                        }
+                      }}
+                    required
+                      disabled={managerList.length === 0}
+                    >
+                      <option value="">
+                        {managerList.length === 0
+                          ? '-- No Managers Available --'
+                          : '-- Select Manager --'}
+                      </option>
+                      {managerList.map((manager) => (
+                        <option key={manager.id} value={manager.email}>
+                          {manager.name} - {manager.branch_name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {managerList.length === 0 && !loadingManagers && selectedBranch && (
+                    <p className="form-help-text" style={{ color: '#d32f2f', marginTop: '4px' }}>
+                      No managers found for this branch.
+                      <br />
+                      <span style={{ fontSize: '0.85em', color: '#666' }}>
+                        Please ensure managers are assigned to this branch in the database.
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="manager-password" className="form-label">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    id="manager-password"
+                    className="form-input"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Owner Login */}
+            {userType === 'owner' && (
+              <>
+                <div className="form-group">
+                  <label htmlFor="owner-email" className="form-label">
+                    Enter Email Address
+                  </label>
+                  <input
+                    type="email"
+                    id="owner-email"
+                    className="form-input"
+                    placeholder="Enter your email address"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="owner-password" className="form-label">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    id="owner-password"
+                    className="form-input"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Error Message */}
+            {error && (
+              <div className="error-message" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FaExclamationTriangle size={16} color="#ef4444" />
+                {error}
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              className="login-button"
+              disabled={loading || !selectedBranch || (userType === 'staff' && staffList.length === 0) || (userType === 'manager' && (!selectedBranch || managerList.length === 0)) || (userType === 'owner' && !identifier.trim())}
+            >
+              {loading ? (
+                <>
+                  <span className="loading-spinner"></span>
+                  Signing in...
+                </>
+              ) : (
+                'Sign In'
+              )}
+            </button>
+
+          </form>
 
         {/* Footer */}
         <div className="login-footer">

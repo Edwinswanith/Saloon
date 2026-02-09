@@ -13,7 +13,6 @@ const Tax = () => {
     gstNumber: '',
     servicePricingType: 'inclusive',
     productPricingType: 'exclusive',
-    prepaidPricingType: 'inclusive',
   })
   const [taxSlabs, setTaxSlabs] = useState([])
   const [loading, setLoading] = useState(true)
@@ -27,7 +26,6 @@ const Tax = () => {
     rate: '',
     applyToServices: false,
     applyToProducts: false,
-    applyToPrepaid: false,
   })
 
   
@@ -46,7 +44,6 @@ const Tax = () => {
           gstNumber: data.gstNumber || '',
           servicePricingType: data.servicePricingType || 'inclusive',
           productPricingType: data.productPricingType || 'exclusive',
-          prepaidPricingType: data.prepaidPricingType || 'inclusive',
         })
       }
     } catch (error) {
@@ -108,7 +105,6 @@ const Tax = () => {
       rate: '',
       applyToServices: false,
       applyToProducts: false,
-      applyToPrepaid: false,
     })
     setShowSlabModal(true)
   }
@@ -120,7 +116,6 @@ const Tax = () => {
       rate: slab.rate,
       applyToServices: slab.applyToServices,
       applyToProducts: slab.applyToProducts,
-      applyToPrepaid: slab.applyToPrepaid,
     })
     setShowSlabModal(true)
   }
@@ -167,7 +162,6 @@ const Tax = () => {
           rate: parseFloat(slabFormData.rate),
           applyToServices: slabFormData.applyToServices,
           applyToProducts: slabFormData.applyToProducts,
-          applyToPrepaid: slabFormData.applyToPrepaid,
         }),
       })
 
@@ -256,8 +250,6 @@ const Tax = () => {
       const rateIdx = headers.findIndex(h => h.includes('rate'))
       const servicesIdx = headers.findIndex(h => h.includes('service'))
       const productsIdx = headers.findIndex(h => h.includes('product'))
-      const prepaidIdx = headers.findIndex(h => h.includes('prepaid') || h.includes('membership'))
-
       if (nameIdx === -1 || rateIdx === -1) {
         alert('File must contain Name and Rate columns')
         return
@@ -278,14 +270,10 @@ const Tax = () => {
             (String(values[servicesIdx] || '').toLowerCase().includes('yes') || 
              String(values[servicesIdx] || '').toLowerCase().includes('true') ||
              String(values[servicesIdx] || '').toLowerCase().includes('1')) : false,
-          applyToProducts: productsIdx >= 0 ? 
-            (String(values[productsIdx] || '').toLowerCase().includes('yes') || 
+          applyToProducts: productsIdx >= 0 ?
+            (String(values[productsIdx] || '').toLowerCase().includes('yes') ||
              String(values[productsIdx] || '').toLowerCase().includes('true') ||
              String(values[productsIdx] || '').toLowerCase().includes('1')) : false,
-          applyToPrepaid: prepaidIdx >= 0 ? 
-            (String(values[prepaidIdx] || '').toLowerCase().includes('yes') || 
-             String(values[prepaidIdx] || '').toLowerCase().includes('true') ||
-             String(values[prepaidIdx] || '').toLowerCase().includes('1')) : false,
         }
 
         if (slabData.name && slabData.rate >= 0) {
@@ -381,19 +369,6 @@ const Tax = () => {
                     <option value="exclusive">Price Excludes Tax (Exclusive)</option>
                   </select>
                 </div>
-                <div className="form-group">
-                  <label htmlFor="prepaidPricingType">For Prepaid & Memberships:</label>
-                  <select
-                    id="prepaidPricingType"
-                    value={settings.prepaidPricingType}
-                    onChange={(e) =>
-                      handleSettingsChange('prepaidPricingType', e.target.value)
-                    }
-                  >
-                    <option value="inclusive">Price Includes Tax (Inclusive)</option>
-                    <option value="exclusive">Price Excludes Tax (Exclusive)</option>
-                  </select>
-                </div>
               </div>
 
               {/* Message */}
@@ -448,14 +423,13 @@ const Tax = () => {
                   <th>Rate (%)</th>
                   <th>Apply to Services</th>
                   <th>Apply to Products</th>
-                  <th>Apply to Prepaid & Memberships</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {taxSlabs.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="empty-row">
+                    <td colSpan="5" className="empty-row">
                       No tax slabs found
                     </td>
                   </tr>
@@ -480,15 +454,6 @@ const Tax = () => {
                           }`}
                         >
                           {slab.applyToProducts ? '✓' : '✗'}
-                        </span>
-                      </td>
-                      <td>
-                        <span
-                          className={`toggle-indicator ${
-                            slab.applyToPrepaid ? 'active' : 'inactive'
-                          }`}
-                        >
-                          {slab.applyToPrepaid ? '✓' : '✗'}
                         </span>
                       </td>
                       <td>
@@ -587,21 +552,6 @@ const Tax = () => {
                   Apply to Products
                 </label>
               </div>
-              <div className="form-group checkbox-group">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={slabFormData.applyToPrepaid}
-                    onChange={(e) =>
-                      setSlabFormData({
-                        ...slabFormData,
-                        applyToPrepaid: e.target.checked,
-                      })
-                    }
-                  />
-                  Apply to Prepaid & Memberships
-                </label>
-              </div>
               <div className="modal-actions">
                 <button
                   type="button"
@@ -631,7 +581,6 @@ const Tax = () => {
                 <li>Rate (required - percentage)</li>
                 <li>Apply to Services (optional - yes/no, true/false, or 1/0)</li>
                 <li>Apply to Products (optional - yes/no, true/false, or 1/0)</li>
-                <li>Apply to Prepaid (optional - yes/no, true/false, or 1/0)</li>
               </ul>
             </div>
             <div className="form-group">

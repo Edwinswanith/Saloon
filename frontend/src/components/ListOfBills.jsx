@@ -404,7 +404,7 @@ const ListOfBills = ({ setActivePage }) => {
                             {billDetails.items.map((item, index) => (
                               <tr key={index} style={{ borderBottom: '1px solid #f3f4f6' }}>
                                 <td style={{ padding: '8px 12px', color: '#374151' }}>
-                                  {item.service_name || item.product_name || item.package_name || item.prepaid_name || 'N/A'}
+                                  {item.service_name || item.product_name || item.package_name || 'N/A'}
                                 </td>
                                 <td style={{ padding: '8px 12px', color: '#6b7280', textTransform: 'capitalize' }}>
                                   {item.item_type || 'N/A'}

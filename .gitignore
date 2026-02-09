@@ -114,3 +114,7 @@ coverage.xml
 # cursor/
 # 1cursor/
 
+# MCP configuration files (may contain secrets)
+mcp.json
+.mcp.json
+

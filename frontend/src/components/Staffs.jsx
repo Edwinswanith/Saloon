@@ -24,7 +24,8 @@ const Staffs = () => {
     lastName: '',
     email: '',
     salary: '',
-    commissionRate: ''
+    commissionRate: '',
+    password: ''
   })
 
   useEffect(() => {
@@ -37,7 +38,7 @@ const Staffs = () => {
       console.log('[Staffs] Branch changed, refreshing staff...')
       fetchStaffs()
     }
-    
+
     window.addEventListener('branchChanged', handleBranchChange)
     return () => window.removeEventListener('branchChanged', handleBranchChange)
   }, [currentBranch])
@@ -67,7 +68,8 @@ const Staffs = () => {
       lastName: '',
       email: '',
       salary: '',
-      commissionRate: ''
+      commissionRate: '',
+      password: ''
     })
     setShowStaffModal(true)
   }
@@ -80,7 +82,8 @@ const Staffs = () => {
       lastName: staff.lastName || '',
       email: staff.email || '',
       salary: staff.salary || '',
-      commissionRate: staff.commissionRate || ''
+      commissionRate: staff.commissionRate || '',
+      password: ''
     })
     setShowStaffModal(true)
   }
@@ -110,6 +113,14 @@ const Staffs = () => {
       showError('First name is required')
       return
     }
+    if (!editingStaff && !staffFormData.password.trim()) {
+      showError('Password is required')
+      return
+    }
+    if (!editingStaff && staffFormData.password.trim().length < 6) {
+      showError('Password must be at least 6 characters')
+      return
+    }
 
     try {
       const staffData = {
@@ -122,7 +133,11 @@ const Staffs = () => {
         status: 'active'
       }
 
-      const response = editingStaff 
+      if (!editingStaff) {
+        staffData.password = staffFormData.password.trim()
+      }
+
+      const response = editingStaff
         ? await apiPut(`/api/staffs/${editingStaff.id}`, staffData)
         : await apiPost('/api/staffs', staffData)
 
@@ -137,9 +152,10 @@ const Staffs = () => {
           lastName: '',
           email: '',
           salary: '',
-          commissionRate: ''
+          commissionRate: '',
+          password: ''
         })
-        showError(data.message || (editingStaff ? 'Staff updated successfully!' : 'Staff added successfully!'))
+        showSuccess(data.message || (editingStaff ? 'Staff updated successfully!' : 'Staff added successfully!'))
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         showError(errorData.error || `Failed to save staff (Status: ${response.status})`)
@@ -214,15 +230,15 @@ const Staffs = () => {
                       <td>₹{staff.salary ? staff.salary.toLocaleString() : 'N/A'}</td>
                       <td>
                         <div className="action-icons">
-                          <button 
-                            className="icon-btn view-btn" 
+                          <button
+                            className="icon-btn view-btn"
                             title="View"
                             onClick={() => handleViewStaff(staff.id)}
                           >
                             <FaList />
                           </button>
-                          <button 
-                            className="icon-btn edit-btn" 
+                          <button
+                            className="icon-btn edit-btn"
                             title="Edit"
                             onClick={() => handleEditStaff(staff)}
                           >
@@ -309,6 +325,19 @@ const Staffs = () => {
                 placeholder="Enter commission rate"
               />
             </div>
+            {!editingStaff && (
+              <div className="form-group">
+                <label>Password *</label>
+                <input
+                  type="password"
+                  value={staffFormData.password}
+                  onChange={(e) => setStaffFormData({ ...staffFormData, password: e.target.value })}
+                  placeholder="Enter initial password (min 6 characters)"
+                  required
+                  minLength={6}
+                />
+              </div>
+            )}
             <div className="modal-actions">
               <button className="btn-cancel" onClick={() => setShowStaffModal(false)}>Cancel</button>
               <button className="btn-save" onClick={handleSaveStaff}>Save</button>
@@ -363,4 +392,3 @@ const Staffs = () => {
 }
 
 export default Staffs
-

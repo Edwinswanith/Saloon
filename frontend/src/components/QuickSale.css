@@ -976,7 +976,7 @@
   }
 }
 
-/* Selection Modals (Package, Product, Prepaid, Membership) */
+/* Selection Modals (Package, Product, Membership) */
 .selection-modal-overlay {
   position: fixed;
   top: 0;
@@ -1197,12 +1197,6 @@
   font-size: 14px;
   font-weight: 400;
   color: #9ca3af !important;
-}
-
-.prepaid-status {
-  font-weight: 600;
-  color: #10b981;
-  text-transform: capitalize;
 }
 
 /* Package Services List */
@@ -3200,7 +3194,7 @@ select.table-select:focus {
 
 .final-value {
   font-size: var(--text-body-large);
-  color: #0F766E;
+  color: white;
   font-weight: var(--weight-primary);
   font-variant-numeric: tabular-nums;
 }

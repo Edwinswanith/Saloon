@@ -106,7 +106,6 @@ const StaffIncentiveReport = ({ setActivePage }) => {
         service: staff.service || 0,
         package: staff.package || 0,
         product: staff.product || 0,
-        prepaid: staff.prepaid || 0,
         membership: staff.membership || 0,
         total: staff.total || staff.total_revenue || 0,
         avgBill: staff.avg_bill || 0,
@@ -124,7 +123,7 @@ const StaffIncentiveReport = ({ setActivePage }) => {
 
   const handleDownload = () => {
     const csvContent = [
-      ['#', 'Staff Name', 'Item Count', 'Service', 'Package', 'Product', 'Prepaid', 'Membership', 'Total', 'Avg. Bill'],
+      ['#', 'Staff Name', 'Item Count', 'Service', 'Package', 'Product', 'Membership', 'Total', 'Avg. Bill'],
       ...staffPerformance.map((staff, index) => [
         index + 1,
         staff.staffName,
@@ -132,7 +131,6 @@ const StaffIncentiveReport = ({ setActivePage }) => {
         staff.service.toFixed(2),
         staff.package.toFixed(2),
         staff.product.toFixed(2),
-        staff.prepaid.toFixed(2),
         staff.membership.toFixed(2),
         staff.total.toFixed(2),
         staff.avgBill.toFixed(2),
@@ -205,7 +203,6 @@ const StaffIncentiveReport = ({ setActivePage }) => {
                     <th>Service</th>
                     <th>Package</th>
                     <th>Product</th>
-                    <th>Prepaid</th>
                     <th>Membership</th>
                     <th>Total</th>
                     <th>Avg. Bill (₹)</th>
@@ -215,11 +212,11 @@ const StaffIncentiveReport = ({ setActivePage }) => {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan="11" className="empty-message">Loading...</td>
+                      <td colSpan="10" className="empty-message">Loading...</td>
                     </tr>
                   ) : staffPerformance.length === 0 ? (
                     <tr>
-                      <td colSpan="11" className="empty-message">
+                      <td colSpan="10" className="empty-message">
                         No staff performance data found for this selection.
                       </td>
                     </tr>
@@ -232,7 +229,6 @@ const StaffIncentiveReport = ({ setActivePage }) => {
                         <td>{staff.service.toFixed(2)}</td>
                         <td>{staff.package.toFixed(2)}</td>
                         <td>{staff.product.toFixed(2)}</td>
-                        <td>{staff.prepaid.toFixed(2)}</td>
                         <td>{staff.membership.toFixed(2)}</td>
                         <td className="total-cell">₹ {staff.total.toFixed(2)}</td>
                         <td className="avg-bill-cell">
@@ -242,7 +238,7 @@ const StaffIncentiveReport = ({ setActivePage }) => {
                           <button 
                             className="info-btn" 
                             title="View Details"
-                            onClick={() => alert(`Staff Performance Details:\n\nStaff: ${staff.staffName}\nItem Count: ${staff.itemCount}\nService: ₹${staff.service.toFixed(2)}\nPackage: ₹${staff.package.toFixed(2)}\nProduct: ₹${staff.product.toFixed(2)}\nPrepaid: ₹${staff.prepaid.toFixed(2)}\nMembership: ₹${staff.membership.toFixed(2)}\nTotal: ₹${staff.total.toFixed(2)}\nAvg. Bill: ₹${staff.avgBill.toFixed(2)}`)}
+                            onClick={() => alert(`Staff Performance Details:\n\nStaff: ${staff.staffName}\nItem Count: ${staff.itemCount}\nService: ₹${staff.service.toFixed(2)}\nPackage: ₹${staff.package.toFixed(2)}\nProduct: ₹${staff.product.toFixed(2)}\nMembership: ₹${staff.membership.toFixed(2)}\nTotal: ₹${staff.total.toFixed(2)}\nAvg. Bill: ₹${staff.avgBill.toFixed(2)}`)}
                           >
                             <FaList />
                           </button>
@@ -312,10 +308,6 @@ const StaffIncentiveReport = ({ setActivePage }) => {
                     <div className="customer-detail-item">
                       <span className="detail-label">Product Revenue:</span>
                       <span className="detail-value">{formatCurrency(selectedStaff.product || 0)}</span>
-                    </div>
-                    <div className="customer-detail-item">
-                      <span className="detail-label">Prepaid Revenue:</span>
-                      <span className="detail-value">{formatCurrency(selectedStaff.prepaid || 0)}</span>
                     </div>
                     <div className="customer-detail-item">
                       <span className="detail-label">Membership Revenue:</span>

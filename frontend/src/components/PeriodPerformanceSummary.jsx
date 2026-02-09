@@ -37,7 +37,6 @@ const PeriodPerformanceSummary = ({ setActivePage }) => {
     { method: 'UPI', amount: 176454 },
     { method: 'Cash', amount: 49031 },
     { method: 'Credit/Debit Card', amount: 0 },
-    { method: 'Prepaid/Loyalty', amount: 30597 },
   ]
 
   const expensesData = [

@@ -1,4 +1,4 @@
-from mongoengine import connect, Document, ReferenceField, StringField, IntField, FloatField, DateTimeField, BooleanField, DateField, ListField, EmbeddedDocument, EmbeddedDocumentField
+from mongoengine import connect, Document, ReferenceField, StringField, IntField, FloatField, DateTimeField, BooleanField, DateField, ListField, EmbeddedDocument, EmbeddedDocumentField, DictField
 from datetime import datetime
 from bson import ObjectId
 import os
@@ -41,9 +41,14 @@ class Branch(Document):
 
 # Customer Model
 class Customer(Document):
-    meta = {'collection': 'customers'}
-    
-    mobile = StringField(required=True, unique=True, max_length=15)
+    meta = {
+        'collection': 'customers',
+        'indexes': [
+            {'fields': ['mobile', 'branch'], 'unique': True},
+        ]
+    }
+
+    mobile = StringField(required=True, max_length=15)
     first_name = StringField(max_length=100)
     last_name = StringField(max_length=100)
     email = StringField(max_length=100)
@@ -51,7 +56,7 @@ class Customer(Document):
     gender = StringField(max_length=10)
     dob = DateField()
     dob_range = StringField(max_length=20)  # Young, Mid, Old
-    referral_code = StringField(max_length=50, unique=True, sparse=True)
+    referral_code = StringField(max_length=50)
     whatsapp_consent = BooleanField(default=False)  # Phase 4: WhatsApp consent
     last_visit_date = DateField()  # Phase 4: Computed from bills
     total_visits = IntField(default=0)  # Phase 4: Computed
@@ -59,6 +64,24 @@ class Customer(Document):
     branch = ReferenceField('Branch')  # Multi-branch: Customer's branch
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
+    # Merge support
+    merged_into = ReferenceField('Customer', default=None)
+    secondary_mobiles = ListField(StringField(max_length=15), default=list)
+    merged_at = DateTimeField()
+
+
+class CustomerMergeLog(Document):
+    meta = {'collection': 'customer_merge_logs'}
+    primary_customer = ReferenceField('Customer', required=True)
+    secondary_customer = ReferenceField('Customer', required=True)
+    branch = ReferenceField('Branch', required=True)
+    merged_by_name = StringField()
+    secondary_mobile = StringField(max_length=15)
+    secondary_name = StringField(max_length=200)
+    primary_name = StringField(max_length=200)
+    records_moved = DictField()
+    created_at = DateTimeField(default=datetime.utcnow)
+
 
 # Staff Model
 class Staff(Document):
@@ -88,7 +111,12 @@ class ServiceGroup(Document):
 
 # Service Model
 class Service(Document):
-    meta = {'collection': 'services'}
+    meta = {
+        'collection': 'services',
+        'indexes': [
+            {'fields': ['status', 'branch']},
+        ]
+    }
 
     name = StringField(required=True, max_length=100)
     group = ReferenceField('ServiceGroup', required=True)
@@ -138,30 +166,6 @@ class Package(Document):
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
 
-# Prepaid Group Model
-class PrepaidGroup(Document):
-    meta = {'collection': 'prepaid_groups'}
-    
-    name = StringField(required=True, max_length=100)
-    display_order = IntField(default=0)
-    created_at = DateTimeField(default=datetime.utcnow)
-
-# Prepaid Package Model
-class PrepaidPackage(Document):
-    meta = {'collection': 'prepaid_packages'}
-    
-    name = StringField(required=True, max_length=100)
-    group = ReferenceField('PrepaidGroup')
-    price = FloatField(required=True)
-    customer = ReferenceField('Customer')
-    branch = ReferenceField('Branch')  # Multi-branch: Prepaid package's branch
-    remaining_balance = FloatField(default=0.0)
-    purchase_date = DateTimeField()
-    expiry_date = DateTimeField()
-    status = StringField(max_length=20, default='active')  # active, expired, used
-    created_at = DateTimeField(default=datetime.utcnow)
-    updated_at = DateTimeField(default=datetime.utcnow)
-
 # Membership Plan Model (Template for membership plans)
 class MembershipPlan(Document):
     meta = {'collection': 'membership_plans'}
@@ -193,12 +197,11 @@ class Membership(Document):
 
 # Bill Item Embedded Document (for embedding in Bill)
 class BillItemEmbedded(EmbeddedDocument):
-    item_type = StringField(required=True, max_length=20)  # service, package, product, prepaid, membership
+    item_type = StringField(required=True, max_length=20)  # service, package, product, membership
     name = StringField(max_length=200)  # Denormalized name for display (avoids lookup issues with deleted items)
     service = ReferenceField('Service')
     package = ReferenceField('Package')
     product = ReferenceField('Product')
-    prepaid = ReferenceField('PrepaidPackage')
     membership = ReferenceField('Membership')
     staff = ReferenceField('Staff')
     start_time = StringField()  # Store as string in HH:MM:SS format
@@ -420,7 +423,6 @@ class TaxSettings(Document):
     gst_number = StringField(max_length=50)
     service_pricing_type = StringField(max_length=20, default='inclusive')  # inclusive, exclusive
     product_pricing_type = StringField(max_length=20, default='exclusive')  # inclusive, exclusive
-    prepaid_pricing_type = StringField(max_length=20, default='inclusive')  # inclusive, exclusive
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
     
@@ -433,7 +435,6 @@ class TaxSettings(Document):
                 gst_number='',
                 service_pricing_type='inclusive',
                 product_pricing_type='exclusive',
-                prepaid_pricing_type='inclusive'
             )
             settings.save()
         return settings
@@ -446,7 +447,6 @@ class TaxSlab(Document):
     rate = FloatField(required=True)  # Tax rate percentage
     apply_to_services = BooleanField(default=False)
     apply_to_products = BooleanField(default=False)
-    apply_to_prepaid = BooleanField(default=False)
     status = StringField(max_length=20, default='active')  # active, inactive
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)

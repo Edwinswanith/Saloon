@@ -76,14 +76,14 @@ def get_lifecycle_report(current_user=None):
         print(f"[Customer Lifecycle] Branch ID (ObjectId): {branch_oid}")
         
         # Use __raw__ MongoDB query - this is the MOST reliable method for ReferenceField
-        customers_query = Customer.objects(__raw__={'branch': branch_oid})
-        
+        customers_query = Customer.objects(__raw__={'branch': branch_oid, 'merged_into': None})
+
         # Apply additional filters
         if min_spent:
             customers_query = customers_query.filter(total_spent__gte=min_spent)
         if min_visits:
             customers_query = customers_query.filter(total_visits__gte=min_visits)
-        
+
         # Exclude null branch customers (shouldn't be needed but safety)
         customers_query = customers_query.filter(branch__ne=None)
         
@@ -279,7 +279,7 @@ def get_segment_counts(current_user=None):
         branch_oid = ObjectId(branch_id_str)
         
         # Use __raw__ MongoDB query - this is the MOST reliable method for ReferenceField
-        customers = Customer.objects(__raw__={'branch': branch_oid}).filter(branch__ne=None)
+        customers = Customer.objects(__raw__={'branch': branch_oid, 'merged_into': None}).filter(branch__ne=None)
         
         customer_count = customers.count()
         print(f"[Customer Segments] Filtering by branch: {branch.name} (ID: {branch_id_str})")

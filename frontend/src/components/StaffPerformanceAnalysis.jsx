@@ -133,7 +133,6 @@ const StaffPerformanceAnalysis = ({ setActivePage }) => {
             staff: staff.staff_name || 'Unknown',
             membership: staff.membership_revenue || 0,
             package: staff.package_revenue || 0,
-            prepaid: staff.prepaid_revenue || 0,
             product: staff.product_revenue || 0,
             service: staff.service_revenue || 0,
             total: staff.total_revenue || 0,
@@ -168,7 +167,6 @@ const StaffPerformanceAnalysis = ({ setActivePage }) => {
             itemCount: Number(staff.total_services) || 0,
             service: Number(staff.service_revenue) || 0,
             package: Number(staff.package_revenue) || 0,
-            prepaid: Number(staff.prepaid_revenue) || 0,
             product: Number(staff.product_revenue) || 0,
             membership: Number(staff.membership_revenue) || 0,
             totalRevenue: Number(staff.total_revenue) || 0,
@@ -253,7 +251,6 @@ const StaffPerformanceAnalysis = ({ setActivePage }) => {
       'Staff Name': staff.staff,
       'Service Revenue': staff.service,
       'Package Revenue': staff.package,
-      'Prepaid Revenue': staff.prepaid,
       'Product Revenue': staff.product,
       'Membership Revenue': staff.membership,
       'Total Revenue': staff.total,
@@ -436,7 +433,6 @@ const StaffPerformanceAnalysis = ({ setActivePage }) => {
                     />
                     <Bar dataKey="service" stackId="a" fill="#4f46e5" name="Service" radius={[0, 0, 0, 0]} />
                     <Bar dataKey="product" stackId="a" fill="#06b6d4" name="Product" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="prepaid" stackId="a" fill="#f59e0b" name="Prepaid" radius={[0, 0, 0, 0]} />
                     <Bar dataKey="package" stackId="a" fill="#10b981" name="Package" radius={[0, 0, 0, 0]} />
                     <Bar dataKey="membership" stackId="a" fill="#8b5cf6" name="Membership" radius={[4, 4, 0, 0]} />
                   </BarChart>
@@ -467,7 +463,6 @@ const StaffPerformanceAnalysis = ({ setActivePage }) => {
                     <th className="text-center">Item Count</th>
                     <th className="text-right">Service</th>
                     <th className="text-right">Package</th>
-                    <th className="text-right">Prepaid</th>
                     <th className="text-right">Product</th>
                     <th className="text-right">Membership</th>
                     <th className="text-right">Total Revenue</th>
@@ -494,9 +489,6 @@ const StaffPerformanceAnalysis = ({ setActivePage }) => {
                         </td>
                         <td className="text-right">
                           {formatCurrency(staff.package || 0)}
-                        </td>
-                        <td className="text-right">
-                          {formatCurrency(staff.prepaid || 0)}
                         </td>
                         <td className="text-right">
                           {formatCurrency(staff.product || 0)}

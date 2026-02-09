@@ -93,6 +93,21 @@ except Exception as e:
 from routes import register_routes
 register_routes(app)
 
+# One-time migration: drop old global unique index on customers.mobile
+# (replaced with compound index on mobile+branch for multi-branch support)
+try:
+    from mongoengine.connection import get_db
+    db = get_db()
+    indexes = db.customers.index_information()
+    if 'mobile_1' in indexes:
+        db.customers.drop_index('mobile_1')
+        print("[MIGRATION] Dropped old global unique index 'mobile_1' on customers collection")
+    if 'referral_code_1' in indexes:
+        db.customers.drop_index('referral_code_1')
+        print("[MIGRATION] Dropped old unique index 'referral_code_1' on customers collection")
+except Exception as e:
+    pass  # Index may not exist or DB not connected yet
+
 # Serve React static files
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')

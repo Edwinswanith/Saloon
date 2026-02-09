@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from models import db, ReferralProgramSettings
+from models import ReferralProgramSettings
 from datetime import datetime
 
 referral_program_bp = Blueprint('referral_program', __name__)
@@ -44,7 +44,7 @@ def update_referral_program_settings():
             settings.referee_reward_percentage = referee_reward
         
         settings.updated_at = datetime.utcnow()
-        db.session.commit()
+        settings.save()
         
         return jsonify({
             'message': 'Referral program settings updated successfully',
@@ -56,6 +56,5 @@ def update_referral_program_settings():
     except ValueError as e:
         return jsonify({'error': 'Invalid value provided'}), 400
     except Exception as e:
-        db.session.rollback()
         return jsonify({'error': str(e)}), 500
 

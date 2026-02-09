@@ -164,19 +164,37 @@ def get_services(current_user=None):
     # Apply pagination and fetch
     services = list(query.skip((page - 1) * per_page).limit(per_page))
 
-    # Build response - access preloaded fields only
+    # Pre-fetch all service groups to avoid N+1 queries
+    group_ids = set()
+    for s in services:
+        raw_group = s._data.get('group')
+        if raw_group:
+            gid = raw_group if isinstance(raw_group, ObjectId) else getattr(raw_group, 'id', raw_group)
+            group_ids.add(gid)
+
+    group_map = {}
+    if group_ids:
+        for g in ServiceGroup.objects(id__in=list(group_ids)).only('id', 'name'):
+            group_map[str(g.id)] = g.name
+
+    # Build response using pre-fetched group map
     service_data = []
     for s in services:
         try:
+            raw_group = s._data.get('group')
+            group_id_str = str(raw_group) if raw_group else None
+            raw_branch = s._data.get('branch')
+            branch_id_str = str(raw_branch) if raw_branch else None
+
             service_data.append({
                 'id': str(s.id),
                 'name': s.name,
-                'groupId': str(s.group.id) if s.group else None,
-                'groupName': s.group.name if s.group else None,
+                'groupId': group_id_str,
+                'groupName': group_map.get(group_id_str) if group_id_str else None,
                 'price': s.price,
                 'duration': s.duration,
                 'description': s.description,
-                'branchId': str(s.branch.id) if s.branch else None
+                'branchId': branch_id_str
             })
         except Exception:
             # Skip services with broken references

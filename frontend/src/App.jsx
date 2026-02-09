@@ -30,7 +30,6 @@ const ReportsAnalytics = lazy(() => import('./components/ReportsAnalytics'))
 const Service = lazy(() => import('./components/Service'))
 const Package = lazy(() => import('./components/Package'))
 const Product = lazy(() => import('./components/Product'))
-const Prepaid = lazy(() => import('./components/Prepaid'))
 const Settings = lazy(() => import('./components/Settings'))
 const Membership = lazy(() => import('./components/Membership'))
 const ReferralProgram = lazy(() => import('./components/ReferralProgram'))
@@ -46,7 +45,6 @@ const ServiceSalesAnalysis = lazy(() => import('./components/ServiceSalesAnalysi
 const ListOfBills = lazy(() => import('./components/ListOfBills'))
 const ListOfDeletedBills = lazy(() => import('./components/ListOfDeletedBills'))
 const SalesByServiceGroup = lazy(() => import('./components/SalesByServiceGroup'))
-const PrepaidPackageClients = lazy(() => import('./components/PrepaidPackageClients'))
 const MembershipClients = lazy(() => import('./components/MembershipClients'))
 const StaffIncentiveReport = lazy(() => import('./components/StaffIncentiveReport'))
 const ExpenseReport = lazy(() => import('./components/ExpenseReport'))
@@ -224,11 +222,6 @@ function AppContent() {
                 <SalesByServiceGroup key="sales-by-service-group" setActivePage={setActivePage} />
               </RequireRole>
             )}
-            {activePage === 'prepaid-package-clients' && (
-              <RequireRole roles={['manager', 'owner']}>
-                <PrepaidPackageClients key="prepaid-package-clients" setActivePage={setActivePage} />
-              </RequireRole>
-            )}
             {activePage === 'membership-clients' && (
               <RequireRole roles={['manager', 'owner']}>
                 <MembershipClients key="membership-clients" setActivePage={setActivePage} />
@@ -282,7 +275,6 @@ function AppContent() {
             {activePage === 'service' && <Service key="service" />}
             {activePage === 'package' && <Package key="package" />}
             {activePage === 'product' && <Product key="product" />}
-            {activePage === 'prepaid' && <Prepaid key="prepaid" />}
             {activePage === 'settings' && (
               <RequireRole roles={['manager', 'owner']}>
                 <Settings key="settings" setActivePage={setActivePage} />

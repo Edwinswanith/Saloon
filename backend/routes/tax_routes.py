@@ -1,7 +1,9 @@
 from flask import Blueprint, request, jsonify
-from models import db, TaxSettings, TaxSlab
+from models import TaxSettings, TaxSlab
 from datetime import datetime
 from utils.auth import require_role
+from bson import ObjectId
+from mongoengine.errors import DoesNotExist, ValidationError
 
 tax_bp = Blueprint('tax', __name__)
 
@@ -14,8 +16,7 @@ def get_tax_settings():
         return jsonify({
             'gstNumber': settings.gst_number or '',
             'servicePricingType': settings.service_pricing_type,
-            'productPricingType': settings.product_pricing_type,
-            'prepaidPricingType': settings.prepaid_pricing_type
+            'productPricingType': settings.product_pricing_type
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -40,24 +41,16 @@ def update_tax_settings(current_user=None):
             if pricing_type not in ['inclusive', 'exclusive']:
                 return jsonify({'error': 'Pricing type must be "inclusive" or "exclusive"'}), 400
             settings.product_pricing_type = pricing_type
-        if 'prepaidPricingType' in data:
-            pricing_type = data['prepaidPricingType'].lower()
-            if pricing_type not in ['inclusive', 'exclusive']:
-                return jsonify({'error': 'Pricing type must be "inclusive" or "exclusive"'}), 400
-            settings.prepaid_pricing_type = pricing_type
-        
         settings.updated_at = datetime.utcnow()
-        db.session.commit()
+        settings.save()
         
         return jsonify({
             'message': 'Tax settings updated successfully',
             'gstNumber': settings.gst_number,
             'servicePricingType': settings.service_pricing_type,
-            'productPricingType': settings.product_pricing_type,
-            'prepaidPricingType': settings.prepaid_pricing_type
+            'productPricingType': settings.product_pricing_type
         })
     except Exception as e:
-        db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 # Tax Slab Routes
@@ -67,41 +60,44 @@ def get_tax_slabs():
     try:
         status = request.args.get('status', 'all')
         
-        query = TaxSlab.query
+        query = TaxSlab.objects
         
         if status != 'all':
-            query = query.filter_by(status=status)
+            query = query.filter(status=status)
         
-        slabs = query.order_by(TaxSlab.created_at.desc()).all()
+        slabs = query.order_by('-created_at')
         
         return jsonify({
             'slabs': [{
-                'id': s.id,
+                'id': str(s.id),
                 'name': s.name,
                 'rate': s.rate,
                 'applyToServices': s.apply_to_services,
                 'applyToProducts': s.apply_to_products,
-                'applyToPrepaid': s.apply_to_prepaid,
                 'status': s.status
             } for s in slabs]
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@tax_bp.route('/slabs/<int:slab_id>', methods=['GET'])
+@tax_bp.route('/slabs/<slab_id>', methods=['GET'])
 def get_tax_slab(slab_id):
     """Get single tax slab"""
     try:
-        slab = TaxSlab.query.get_or_404(slab_id)
+        if not ObjectId.is_valid(slab_id):
+            return jsonify({'error': 'Invalid tax slab ID format'}), 400
+        
+        slab = TaxSlab.objects.get(id=slab_id)
         return jsonify({
-            'id': slab.id,
+            'id': str(slab.id),
             'name': slab.name,
             'rate': slab.rate,
             'applyToServices': slab.apply_to_services,
             'applyToProducts': slab.apply_to_products,
-            'applyToPrepaid': slab.apply_to_prepaid,
             'status': slab.status
         })
+    except DoesNotExist:
+        return jsonify({'error': 'Tax slab not found'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -127,29 +123,30 @@ def create_tax_slab(current_user=None):
             rate=rate,
             apply_to_services=bool(data.get('applyToServices', False)),
             apply_to_products=bool(data.get('applyToProducts', False)),
-            apply_to_prepaid=bool(data.get('applyToPrepaid', False)),
             status=data.get('status', 'active')
         )
-        
-        db.session.add(slab)
-        db.session.commit()
+        slab.save()
         
         return jsonify({
-            'id': slab.id,
+            'id': str(slab.id),
             'message': 'Tax slab created successfully'
         }), 201
     except ValueError as e:
         return jsonify({'error': 'Invalid rate value'}), 400
+    except ValidationError as e:
+        return jsonify({'error': f'Validation error: {str(e)}'}), 400
     except Exception as e:
-        db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-@tax_bp.route('/slabs/<int:slab_id>', methods=['PUT'])
+@tax_bp.route('/slabs/<slab_id>', methods=['PUT'])
 @require_role('owner')
 def update_tax_slab(slab_id, current_user=None):
     """Update tax slab (Owner only)"""
     try:
-        slab = TaxSlab.query.get_or_404(slab_id)
+        if not ObjectId.is_valid(slab_id):
+            return jsonify({'error': 'Invalid tax slab ID format'}), 400
+        
+        slab = TaxSlab.objects.get(id=slab_id)
         data = request.json
         
         if 'name' in data:
@@ -163,32 +160,35 @@ def update_tax_slab(slab_id, current_user=None):
             slab.apply_to_services = bool(data['applyToServices'])
         if 'applyToProducts' in data:
             slab.apply_to_products = bool(data['applyToProducts'])
-        if 'applyToPrepaid' in data:
-            slab.apply_to_prepaid = bool(data['applyToPrepaid'])
         if 'status' in data:
             slab.status = data['status']
         
         slab.updated_at = datetime.utcnow()
-        db.session.commit()
+        slab.save()
         
         return jsonify({'message': 'Tax slab updated successfully'})
+    except DoesNotExist:
+        return jsonify({'error': 'Tax slab not found'}), 404
     except ValueError as e:
         return jsonify({'error': 'Invalid rate value'}), 400
     except Exception as e:
-        db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-@tax_bp.route('/slabs/<int:slab_id>', methods=['DELETE'])
+@tax_bp.route('/slabs/<slab_id>', methods=['DELETE'])
 @require_role('owner')
 def delete_tax_slab(slab_id, current_user=None):
     """Delete tax slab (Owner only - soft delete)"""
     try:
-        slab = TaxSlab.query.get_or_404(slab_id)
+        if not ObjectId.is_valid(slab_id):
+            return jsonify({'error': 'Invalid tax slab ID format'}), 400
+        
+        slab = TaxSlab.objects.get(id=slab_id)
         slab.status = 'inactive'
         slab.updated_at = datetime.utcnow()
-        db.session.commit()
+        slab.save()
         return jsonify({'message': 'Tax slab deleted successfully'})
+    except DoesNotExist:
+        return jsonify({'error': 'Tax slab not found'}), 404
     except Exception as e:
-        db.session.rollback()
         return jsonify({'error': str(e)}), 500
 

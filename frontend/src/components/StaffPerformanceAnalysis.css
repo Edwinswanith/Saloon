@@ -440,7 +440,7 @@
   max-width: 75px;
   min-height: 30px;
   display: flex;
-  flex-direction: column-reverse; /* Bottom to top: Service, Product, Package, Prepaid, Membership */
+  flex-direction: column-reverse; /* Bottom to top: Service, Product, Package, Membership */
   border-radius: 6px 6px 0 0;
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -498,10 +498,6 @@
 
 .package-bar {
   background: #60a5fa; /* Light blue */
-}
-
-.prepaid-bar {
-  background: #0d9488; /* Dark teal - matches image */
 }
 
 .membership-bar {
@@ -574,10 +570,6 @@
 
 .legend-color.package {
   background: #60a5fa; /* Light blue - matches bar */
-}
-
-.legend-color.prepaid {
-  background: #0d9488; /* Dark teal - matches bar */
 }
 
 .legend-color.product {

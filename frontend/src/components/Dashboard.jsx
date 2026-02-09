@@ -80,7 +80,6 @@ const Dashboard = () => {
     service: { amount: 0, percentage: 0 },
     product: { amount: 0, percentage: 0 },
     package: { amount: 0, percentage: 0 },
-    prepaid: { amount: 0, percentage: 0 },
     membership: { amount: 0, percentage: 0 },
   })
   const [paymentDistribution, setPaymentDistribution] = useState([])
@@ -618,7 +617,6 @@ const Dashboard = () => {
     { name: 'Service', value: revenueBreakdown.service?.amount || 0, color: COLORS.primary },
     { name: 'Product', value: revenueBreakdown.product?.amount || 0, color: COLORS.success },
     { name: 'Package', value: revenueBreakdown.package?.amount || 0, color: COLORS.warning },
-    { name: 'Prepaid', value: revenueBreakdown.prepaid?.amount || 0, color: COLORS.info },
     { name: 'Membership', value: revenueBreakdown.membership?.amount || 0, color: COLORS.purple },
   ].filter(item => item.value > 0)
 
@@ -1032,11 +1030,6 @@ const Dashboard = () => {
                         </th>
                         <th>
                           <span className="th-content">
-                            <span>Prepaid</span>
-                          </span>
-                        </th>
-                        <th>
-                          <span className="th-content">
                             <span>Membership</span>
                           </span>
                         </th>
@@ -1085,7 +1078,6 @@ const Dashboard = () => {
                               <td data-label="Service">{staff.service_count ? staff.service_count.toLocaleString() : '-'}</td>
                               <td data-label="Package">{staff.package_count ? staff.package_count.toLocaleString() : '-'}</td>
                               <td data-label="Product">{staff.product_count ? staff.product_count.toLocaleString() : '-'}</td>
-                              <td data-label="Prepaid">{staff.prepaid_count ? staff.prepaid_count.toLocaleString() : '-'}</td>
                               <td data-label="Membership">{staff.membership_count ? staff.membership_count.toLocaleString() : '-'}</td>
                               <td className="amount-cell" data-label="Total">{formatCurrency(staff.total_revenue)}</td>
                               <td className="amount-cell" data-label="Avg. Bill">{formatCurrency(staff.total_revenue / (staff.total_services || 1))}</td>
@@ -1274,8 +1266,7 @@ const Dashboard = () => {
                       { label: 'Service Revenue', value: revenueBreakdown.service?.amount || 0, icon: <FaCut size={20} />, color: '#3b82f6' },
                       { label: 'Retail Product Sales', value: revenueBreakdown.product?.amount || 0, icon: <FaShoppingBag size={20} />, color: '#10b981' },
                       { label: 'Package Sales', value: revenueBreakdown.package?.amount || 0, icon: <FaBox size={20} />, color: '#f59e0b' },
-                      { label: 'Membership Sales', value: revenueBreakdown.membership?.amount || 0, icon: <FaCrown size={20} />, color: '#8b5cf6' },
-                      { label: 'Prepaid Packages', value: revenueBreakdown.prepaid?.amount || 0, icon: <FaCreditCard size={20} />, color: '#ec4899' }
+                      { label: 'Membership Sales', value: revenueBreakdown.membership?.amount || 0, icon: <FaCrown size={20} />, color: '#8b5cf6' }
                     ].map((item, index) => (
                       <div key={index} style={{
                         display: 'flex',

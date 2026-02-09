@@ -4,7 +4,7 @@ from datetime import datetime, date
 from mongoengine.errors import DoesNotExist, NotUniqueError, ValidationError
 from bson import ObjectId
 from utils.branch_filter import get_selected_branch
-from utils.auth import require_auth, require_role
+from utils.auth import require_auth, require_role, hash_password
 
 staff_bp = Blueprint('staffs', __name__)
 
@@ -186,6 +186,17 @@ def create_staff(current_user=None):
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 400
         
+        # Validate password
+        password = data.get('password', '').strip()
+        if not password:
+            response = jsonify({'error': 'Password is required'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
+        if len(password) < 6:
+            response = jsonify({'error': 'Password must be at least 6 characters'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
+
         staff = Staff(
             mobile=data.get('mobile'),
             first_name=data.get('firstName', ''),
@@ -194,11 +205,15 @@ def create_staff(current_user=None):
             salary=data.get('salary'),
             commission_rate=data.get('commissionRate', 0.0),
             status=data.get('status', 'active'),
-            branch=branch
+            branch=branch,
+            password_hash=hash_password(password)
         )
         staff.save()
-        
-        response = jsonify({'id': str(staff.id), 'message': 'Staff created successfully'})
+
+        response = jsonify({
+            'id': str(staff.id),
+            'message': 'Staff created successfully'
+        })
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 201
     except NotUniqueError:
@@ -220,6 +235,15 @@ def update_staff(staff_id, current_user=None):
         staff = Staff.objects.get(id=staff_id)
         data = request.get_json()
         
+        # Update mobile with uniqueness check
+        new_mobile = data.get('mobile')
+        if new_mobile and new_mobile != staff.mobile:
+            if Staff.objects(mobile=new_mobile).first():
+                response = jsonify({'error': 'Mobile number already in use'})
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response, 400
+            staff.mobile = new_mobile
+
         staff.first_name = data.get('firstName', staff.first_name)
         staff.last_name = data.get('lastName', staff.last_name)
         staff.email = data.get('email', staff.email)
@@ -263,4 +287,5 @@ def delete_staff(staff_id, current_user=None):
         response = jsonify({'error': str(e)})
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 500
+
 
