@@ -934,10 +934,18 @@ def checkout_bill(id):
         amount_after_all_discounts = float(subtotal) - float(discount_amount)
         if amount_after_all_discounts < 0:
             amount_after_all_discounts = 0.0
-        tax_amount = float(amount_after_all_discounts) * (float(tax_rate) / 100.0)
 
-        # Calculate final amount
-        final_amount = amount_after_all_discounts + tax_amount
+        # Use pre-calculated tax values from frontend if provided (handles inclusive/exclusive pricing)
+        if data.get('tax_amount') is not None:
+            tax_amount = float(data.get('tax_amount', 0) or 0)
+        else:
+            tax_amount = float(amount_after_all_discounts) * (float(tax_rate) / 100.0)
+
+        # Calculate final amount — use frontend value if provided (inclusive pricing differs)
+        if data.get('final_amount') is not None:
+            final_amount = float(data.get('final_amount', 0) or 0)
+        else:
+            final_amount = amount_after_all_discounts + tax_amount
 
         # Update bill_date if provided in checkout data (for selected date from frontend)
         if data.get('bill_date'):

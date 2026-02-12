@@ -13,6 +13,27 @@ const SalesByServiceGroup = ({ setActivePage }) => {
   const [dateFilter, setDateFilter] = useState('today')
   const [salesData, setSalesData] = useState([])
   const [loading, setLoading] = useState(true)
+  const [taxRate, setTaxRate] = useState(0)
+
+  useEffect(() => {
+    const fetchTaxRate = async () => {
+      try {
+        const response = await apiGet('/api/tax/slabs?status=active')
+        if (response.ok) {
+          const data = await response.json()
+          const slabs = data.slabs || data || []
+          const totalRate = slabs.reduce((sum, slab) => {
+            if (slab.applyToServices || slab.apply_to_services) return sum + (slab.rate || 0)
+            return sum
+          }, 0)
+          setTaxRate(totalRate)
+        }
+      } catch (error) {
+        console.error('Error fetching tax slabs:', error)
+      }
+    }
+    fetchTaxRate()
+  }, [])
 
   const handleBackToReports = () => {
     if (setActivePage) {
@@ -96,8 +117,8 @@ const SalesByServiceGroup = ({ setActivePage }) => {
       const enrichedData = (data || []).map(item => ({
         service_group: item.group_name || item.service_group || 'N/A',
         count: item.count || 0,
-        net_amount: (item.revenue || 0) / 1.18, // Assuming 18% tax
-        tax_amount: (item.revenue || 0) - ((item.revenue || 0) / 1.18),
+        net_amount: taxRate > 0 ? (item.revenue || 0) / (1 + taxRate / 100) : (item.revenue || 0),
+        tax_amount: taxRate > 0 ? (item.revenue || 0) - ((item.revenue || 0) / (1 + taxRate / 100)) : 0,
         total_amount: item.revenue || 0,
         percentage: item.percentage || '0.00'
       }))

@@ -29,10 +29,15 @@ def generate_referral_code(first_name):
 @customer_bp.route('/', methods=['GET'])
 @require_auth
 def get_customers(current_user=None):
-    """Get all customers with optional search and branch filtering"""
+    """Get all customers with optional search, branch filtering, and filters"""
     search = request.args.get('search', '')
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
+    
+    # Get filter parameters
+    source_filter = request.args.get('source', '')
+    gender_filter = request.args.get('gender', '')
+    dob_range_filter = request.args.get('dob_range', '')
     
     # Get branch for filtering
     # If branch is selected (via X-Branch-Id header), filter by that branch
@@ -46,6 +51,18 @@ def get_customers(current_user=None):
         query = query.filter(branch=branch)
     # If no branch is selected, show all customers (for Owners viewing all branches)
     # Note: This is intentional - Owners can see all customers when no branch filter is applied
+    
+    # Apply source filter
+    if source_filter:
+        query = query.filter(source=source_filter)
+    
+    # Apply gender filter
+    if gender_filter:
+        query = query.filter(gender=gender_filter)
+    
+    # Apply DOB range filter
+    if dob_range_filter:
+        query = query.filter(dob_range=dob_range_filter)
     
     if search:
         query = query.filter(

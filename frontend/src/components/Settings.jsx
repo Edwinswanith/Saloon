@@ -1,6 +1,5 @@
 import React from 'react'
 import {
-  FaFileAlt,
   FaGift,
   FaShare,
   FaDownload,
@@ -14,12 +13,6 @@ const Settings = ({ setActivePage }) => {
   const { user } = useAuth()
   const isOwner = user && user.role === 'owner'
   const settingsOptions = [
-    {
-      id: 1,
-      title: 'Membership',
-      description: 'Manage your Plan, staff-size, add-ons and billing cycle',
-      icon: <FaFileAlt />,
-    },
     {
       id: 2,
       title: 'Referral Program',
@@ -63,10 +56,7 @@ const Settings = ({ setActivePage }) => {
               key={option.id}
               className="settings-card"
               onClick={() => {
-                if (option.id === 1 && setActivePage) {
-                  // Membership card clicked
-                  setActivePage('membership')
-                } else if (option.id === 2 && setActivePage) {
+                if (option.id === 2 && setActivePage) {
                   // Referral Program card clicked
                   setActivePage('referral-program')
                 } else if (option.id === 3 && setActivePage) {
@@ -81,7 +71,7 @@ const Settings = ({ setActivePage }) => {
                 }
                 // Add other navigation handlers here for other options
               }}
-              style={option.id === 1 || option.id === 2 || option.id === 3 || option.id === 4 || option.id === 5 || option.id === 6 ? { cursor: 'pointer' } : {}}
+              style={option.id === 2 || option.id === 3 || option.id === 4 || option.id === 5 || option.id === 6 ? { cursor: 'pointer' } : {}}
             >
               <div className="card-icon">{option.icon}</div>
               <h3 className="card-title">{option.title}</h3>

@@ -59,7 +59,16 @@ const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
   const [htmlContent, setHtmlContent] = useState('')
   const [loading, setLoading] = useState(false)
   const [useServerHtml, setUseServerHtml] = useState(false)
+  const [gstNumber, setGstNumber] = useState('')
   const containerRef = useRef(null)
+
+  // Fetch GST number from Tax Settings
+  useEffect(() => {
+    apiGet('/api/tax/settings')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data?.gstNumber) setGstNumber(data.gstNumber) })
+      .catch(() => {})
+  }, [])
 
   // Try to fetch server-rendered HTML if billId is provided
   useEffect(() => {
@@ -250,8 +259,8 @@ const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
         {branchInfo?.address && branchInfo.address.map((line, index) => (
           <p key={index} className="company-address">{line}</p>
         ))}
-        {branch?.gstin && (
-          <p className="company-gst">GST: GSTIN {branch.gstin}</p>
+        {(branch?.gstin || gstNumber) && (
+          <p className="company-gst">GSTIN: {branch?.gstin || gstNumber}</p>
         )}
         {branchInfo?.phone && (
           <p className="company-phone">Call us for appointment: {branchInfo.phone}</p>

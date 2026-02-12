@@ -97,6 +97,14 @@ const QuickSale = () => {
   const [packages, setPackages] = useState([])
   const [products, setProducts] = useState([])
   const [memberships, setMemberships] = useState([])
+  // Tax configuration from Tax Settings
+  const [taxSettings, setTaxSettings] = useState({
+    gstNumber: '',
+    servicePricingType: 'exclusive',
+    productPricingType: 'exclusive'
+  })
+  const [serviceTaxRate, setServiceTaxRate] = useState(0)
+  const [productTaxRate, setProductTaxRate] = useState(0)
   const [availablePackages, setAvailablePackages] = useState([])
   const [availableProducts, setAvailableProducts] = useState([])
   const [availableMemberships, setAvailableMemberships] = useState([])
@@ -116,6 +124,7 @@ const QuickSale = () => {
     fetchCustomers()
     fetchStaff()
     fetchServices()
+    fetchTaxConfig()
   }, [])
 
   // Auto-select logged-in staff when staff members are loaded
@@ -438,6 +447,7 @@ const QuickSale = () => {
       fetchCustomers()
       fetchStaff()
       fetchServices()
+      fetchTaxConfig()
       // Reset deferred data so it re-fetches on next use
       setAvailablePackages([])
       setAvailableProducts([])
@@ -555,6 +565,33 @@ const QuickSale = () => {
       setStaffMembers(data.staffs || [])
     } catch (error) {
       console.error('Error fetching staff:', error)
+    }
+  }
+
+  const fetchTaxConfig = async () => {
+    try {
+      const [settingsRes, slabsRes] = await Promise.all([
+        apiGet('/api/tax/settings'),
+        apiGet('/api/tax/slabs?status=active')
+      ])
+
+      if (settingsRes.ok) {
+        const settings = await settingsRes.json()
+        setTaxSettings({
+          gstNumber: settings.gstNumber || '',
+          servicePricingType: settings.servicePricingType || 'exclusive',
+          productPricingType: settings.productPricingType || 'exclusive'
+        })
+      }
+
+      if (slabsRes.ok) {
+        const data = await slabsRes.json()
+        const slabs = data.slabs || []
+        setServiceTaxRate(slabs.reduce((sum, s) => s.applyToServices ? sum + (s.rate || 0) : sum, 0))
+        setProductTaxRate(slabs.reduce((sum, s) => s.applyToProducts ? sum + (s.rate || 0) : sum, 0))
+      }
+    } catch (error) {
+      console.error('Error fetching tax config:', error)
     }
   }
 
@@ -1425,29 +1462,37 @@ const QuickSale = () => {
     setShowInventoryModal(true)
   }
 
-  const calculateSubtotal = () => {
+  // Subtotal helpers split by category
+  const getServiceSubtotal = () => {
     const servicesTotal = services.reduce((sum, service) => sum + (parseFloat(service.total) || 0), 0)
     const packagesTotal = packages.reduce((sum, pkg) => sum + (parseFloat(pkg.total) || 0), 0)
-    const productsTotal = products.reduce((sum, product) => sum + (parseFloat(product.total) || 0), 0)
     const membershipsTotal = memberships.reduce((sum, m) => sum + (parseFloat(m.price) || 0), 0)
-    return servicesTotal + packagesTotal + productsTotal + membershipsTotal
+    return servicesTotal + packagesTotal + membershipsTotal
+  }
+
+  const getProductSubtotal = () => {
+    return products.reduce((sum, product) => sum + (parseFloat(product.total) || 0), 0)
+  }
+
+  const calculateSubtotal = () => {
+    return getServiceSubtotal() + getProductSubtotal()
   }
 
   const calculateDiscount = () => {
     const subtotal = calculateSubtotal()
-    
+
     // Handle membership discount
     if (discountType === 'membership' && membershipInfo && membershipInfo.plan) {
       const discountPercent = membershipInfo.plan.allocated_discount || 0
       return subtotal * (discountPercent / 100)
     }
-    
+
     if (discountType === 'fix') {
       return parseFloat(discountAmount) || 0
     } else if (discountType === '%') {
       return subtotal * (parseFloat(discountAmount) || 0) / 100
     }
-    
+
     return 0
   }
 
@@ -1455,13 +1500,72 @@ const QuickSale = () => {
     return calculateSubtotal() - calculateDiscount()
   }
 
+  // Tax calculation respecting inclusive/exclusive pricing per category
+  const calculateTaxBreakdown = () => {
+    const net = calculateNet()
+    const totalSubtotal = calculateSubtotal()
+    if (totalSubtotal === 0 || net <= 0) return { displayTax: 0, additionalTax: 0 }
+
+    // Split net proportionally between services and products
+    const servicePortion = net * (getServiceSubtotal() / totalSubtotal)
+    const productPortion = net * (getProductSubtotal() / totalSubtotal)
+
+    let displayTax = 0    // Tax amount to show in summary
+    let additionalTax = 0 // Tax to add on top of net (only for exclusive)
+
+    // Service tax
+    if (serviceTaxRate > 0 && servicePortion > 0) {
+      if (taxSettings.servicePricingType === 'inclusive') {
+        // Tax is already in the price — extract for display only
+        displayTax += servicePortion - (servicePortion / (1 + serviceTaxRate / 100))
+      } else {
+        const tax = servicePortion * (serviceTaxRate / 100)
+        displayTax += tax
+        additionalTax += tax
+      }
+    }
+
+    // Product tax
+    if (productTaxRate > 0 && productPortion > 0) {
+      if (taxSettings.productPricingType === 'inclusive') {
+        displayTax += productPortion - (productPortion / (1 + productTaxRate / 100))
+      } else {
+        const tax = productPortion * (productTaxRate / 100)
+        displayTax += tax
+        additionalTax += tax
+      }
+    }
+
+    return { displayTax, additionalTax }
+  }
+
   const calculateTax = () => {
-    // Assuming 18% GST, you can make this configurable
-    return calculateNet() * 0.18
+    return calculateTaxBreakdown().displayTax
   }
 
   const calculateFinalAmount = () => {
-    return calculateNet() + calculateTax()
+    // Only exclusive tax adds to the total; inclusive tax is already in the price
+    return calculateNet() + calculateTaxBreakdown().additionalTax
+  }
+
+  // Combined effective tax rate for display
+  const getDisplayTaxRate = () => {
+    const sRate = serviceTaxRate
+    const pRate = productTaxRate
+    if (sRate === pRate) return sRate
+    // Mixed rates — show whichever is non-zero, or both
+    const totalSubtotal = calculateSubtotal()
+    if (totalSubtotal === 0) return sRate || pRate
+    // Weighted average for display
+    const sWeight = getServiceSubtotal() / totalSubtotal
+    const pWeight = getProductSubtotal() / totalSubtotal
+    return (sRate * sWeight + pRate * pWeight)
+  }
+
+  // Check if any portion uses inclusive pricing
+  const hasInclusiveTax = () => {
+    return (serviceTaxRate > 0 && taxSettings.servicePricingType === 'inclusive' && getServiceSubtotal() > 0) ||
+           (productTaxRate > 0 && taxSettings.productPricingType === 'inclusive' && getProductSubtotal() > 0)
   }
 
   const handleShowBillActivity = async () => {
@@ -1701,7 +1805,9 @@ const QuickSale = () => {
           : parseFloat(discountAmount) || 0,
         discount_type: discountType === 'membership' ? 'membership' : (discountType === '%' ? 'percentage' : 'fix'),
         discount_reason: approvalReason || undefined, // Phase 5: Include reason
-        tax_rate: 18.0, // GST rate - ensure it's a float
+        tax_rate: getDisplayTaxRate(),
+        tax_amount: calculateTax(),
+        final_amount: calculateFinalAmount(),
         payment_mode: paymentMode,
         booking_status: bookingStatus,
       })
@@ -2464,7 +2570,7 @@ const QuickSale = () => {
                   <div className="summary-divider"></div>
                   <div className="summary-group">
                     <div className="summary-row">
-                      <span className="summary-label">Tax (18%)</span>
+                      <span className="summary-label">Tax ({getDisplayTaxRate().toFixed(1)}%{hasInclusiveTax() ? ' Incl.' : ''})</span>
                       <span className="summary-value">₹ {calculateTax().toFixed(2)}</span>
                     </div>
                   </div>

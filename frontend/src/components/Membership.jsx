@@ -5,7 +5,7 @@ import {
   FaPlus,
 } from 'react-icons/fa'
 import './Membership.css'
-import { API_BASE_URL } from '../config'
+import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 import { useAuth } from '../contexts/AuthContext'
 
 const Membership = () => {
@@ -41,7 +41,7 @@ const Membership = () => {
   const fetchMembershipPlans = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE_URL}/api/membership-plans`)
+      const response = await apiGet('/api/membership-plans')
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -88,9 +88,7 @@ const Membership = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/membership-plans/${planId}`, {
-        method: 'DELETE',
-      })
+      const response = await apiDelete(`/api/membership-plans/${planId}`)
 
       if (response.ok) {
         fetchMembershipPlans()
@@ -108,26 +106,18 @@ const Membership = () => {
     e.preventDefault()
 
     try {
-      const url = editingPlan
-        ? `${API_BASE_URL}/api/membership-plans/${editingPlan.id}`
-        : `${API_BASE_URL}/api/membership-plans`
-      
-      const method = editingPlan ? 'PUT' : 'POST'
+      const payload = {
+        name: formData.name,
+        validity: parseInt(formData.validity),
+        price: parseFloat(formData.price),
+        allocatedDiscount: parseFloat(formData.allocatedDiscount) || 0,
+        status: formData.status,
+        description: formData.description,
+      }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          validity: parseInt(formData.validity),
-          price: parseFloat(formData.price),
-          allocatedDiscount: parseFloat(formData.allocatedDiscount) || 0,
-          status: formData.status,
-          description: formData.description,
-        }),
-      })
+      const response = editingPlan
+        ? await apiPut(`/api/membership-plans/${editingPlan.id}`, payload)
+        : await apiPost('/api/membership-plans', payload)
 
       if (response.ok) {
         setShowAddModal(false)

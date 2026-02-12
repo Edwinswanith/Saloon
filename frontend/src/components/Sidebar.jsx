@@ -138,6 +138,11 @@ const Sidebar = ({
             { id: 'package', label: 'Package' },
             { id: 'product', label: 'Product' },
             {
+              id: 'membership',
+              label: 'Membership',
+              requiresRole: ['owner']
+            },
+            {
               id: 'settings', 
               label: 'Settings',
               requiresRole: ['manager', 'owner']

@@ -29,6 +29,11 @@ const CustomerList = () => {
   const [mergePreview, setMergePreview] = useState(null)
   const [showMergePreviewModal, setShowMergePreviewModal] = useState(false)
   const [mergeLoading, setMergeLoading] = useState(false)
+  const [filters, setFilters] = useState({
+    source: '',
+    gender: '',
+    dobRange: '',
+  })
   const [customerFormData, setCustomerFormData] = useState({
     mobile: '',
     firstName: '',
@@ -42,7 +47,7 @@ const CustomerList = () => {
 
   useEffect(() => {
     fetchCustomers()
-  }, [currentPage, searchQuery, currentBranch])
+  }, [currentPage, searchQuery, currentBranch, filters])
 
   // Listen for branch changes
   useEffect(() => {
@@ -64,6 +69,15 @@ const CustomerList = () => {
       })
       if (searchQuery) {
         params.append('search', searchQuery)
+      }
+      if (filters.source) {
+        params.append('source', filters.source)
+      }
+      if (filters.gender) {
+        params.append('gender', filters.gender)
+      }
+      if (filters.dobRange) {
+        params.append('dob_range', filters.dobRange)
       }
       const response = await apiGet(`/api/customers?${params}`)
       const data = await response.json()
@@ -128,6 +142,29 @@ const CustomerList = () => {
 
   const handleManageSources = () => {
     setShowSourcesModal(true)
+  }
+
+  const getActiveFilterCount = () => {
+    let count = 0
+    if (filters.source) count++
+    if (filters.gender) count++
+    if (filters.dobRange) count++
+    return count
+  }
+
+  const handleApplyFilters = () => {
+    setCurrentPage(1) // Reset to first page when filters change
+    setShowSourcesModal(false)
+  }
+
+  const handleClearFilters = () => {
+    setFilters({
+      source: '',
+      gender: '',
+      dobRange: '',
+    })
+    setCurrentPage(1) // Reset to first page when filters are cleared
+    setShowSourcesModal(false)
   }
 
   const handleImportCustomer = () => {
@@ -424,7 +461,12 @@ const CustomerList = () => {
             <button className="action-btn download-btn" onClick={handleDownloadClients}>
               Download Clients
             </button>
-            <button className="action-btn manage-btn" onClick={handleManageSources}>Manage Sources</button>
+            <button className="action-btn manage-btn" onClick={handleManageSources}>
+              Filter Customers
+              {getActiveFilterCount() > 0 && (
+                <span className="filter-badge">({getActiveFilterCount()})</span>
+              )}
+            </button>
             <button className="action-btn import-btn" onClick={handleImportCustomer}>Import Customer</button>
             <button className="action-btn add-btn" onClick={handleAddCustomer}>Add Customer</button>
             {(user?.role === 'owner' || user?.role === 'manager') && (
@@ -703,27 +745,56 @@ const CustomerList = () => {
         </div>
       )}
 
-      {/* Manage Sources Modal */}
+      {/* Filter Customers Modal */}
       {showSourcesModal && (
         <div className="modal-overlay" onClick={() => setShowSourcesModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Manage Customer Sources</h2>
-            <div className="sources-list">
-              <p>Available Sources:</p>
-              <ul>
-                <li>Walk-in</li>
-                <li>Facebook</li>
-                <li>Instagram</li>
-                <li>Referral</li>
-                <li>Google</li>
-                <li>Other</li>
-              </ul>
-              <p style={{ fontSize: '12px', color: '#666', marginTop: '10px' }}>
-                Note: Source management will be enhanced in future updates.
-              </p>
+            <h2>Filter Customers</h2>
+            <div className="filter-form">
+              <div className="form-group">
+                <label>Source</label>
+                <select
+                  value={filters.source}
+                  onChange={(e) => setFilters({ ...filters, source: e.target.value })}
+                >
+                  <option value="">All Sources</option>
+                  <option value="Walk-in">Walk-in</option>
+                  <option value="Facebook">Facebook</option>
+                  <option value="Instagram">Instagram</option>
+                  <option value="Referral">Referral</option>
+                  <option value="Google">Google</option>
+                  <option value="Website">Website</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Gender</label>
+                <select
+                  value={filters.gender}
+                  onChange={(e) => setFilters({ ...filters, gender: e.target.value })}
+                >
+                  <option value="">All Genders</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Date of Birth Range</label>
+                <select
+                  value={filters.dobRange}
+                  onChange={(e) => setFilters({ ...filters, dobRange: e.target.value })}
+                >
+                  <option value="">All Ranges</option>
+                  <option value="Young">Young</option>
+                  <option value="Mid">Mid</option>
+                  <option value="Old">Old</option>
+                </select>
+              </div>
             </div>
             <div className="modal-actions">
-              <button className="btn-cancel" onClick={() => setShowSourcesModal(false)}>Close</button>
+              <button className="btn-cancel" onClick={handleClearFilters}>Clear Filters</button>
+              <button className="btn-save" onClick={handleApplyFilters}>Apply Filters</button>
             </div>
           </div>
         </div>
