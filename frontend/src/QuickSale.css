@@ -1218,7 +1218,7 @@
   align-items: center;
   padding: var(--space-24) var(--space-32);
   border-bottom: 2px solid var(--border-light);
-  background: #0F766E;
+  background: var(--primary-700);
 }
 
 .package-image-modal-header h2 {
@@ -1236,7 +1236,7 @@
 }
 
 .package-info-banner {
-  background: #0F766E;
+  background: var(--primary-700);
   padding: var(--space-24);
   border-radius: var(--radius-2xl);
   margin-bottom: var(--space-24);
@@ -1375,7 +1375,7 @@
 .confirm-btn {
   flex: 1;
   padding: 14px 24px;
-  background: #0F766E;
+  background: var(--primary-700);
   color: var(--text-inverse);
   border: none;
   border-radius: var(--radius-2xl);
@@ -2351,7 +2351,7 @@
 .summary-section {
   margin-bottom: var(--space-24);
   padding: var(--space-24);
-  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 50%, #d1fae5 100%);
+  background: linear-gradient(135deg, var(--success-50) 0%, #ecfdf5 50%, var(--success-200) 100%);
   border-radius: var(--radius-2xl);
   border: 2px solid var(--money-primary);
   position: relative;
@@ -2550,6 +2550,63 @@
 }
 
 /* Responsive Design */
+/* Tablet view (769px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* Payment Pills - Tablet */
+  .payment-pills {
+    gap: 10px;
+    flex-wrap: nowrap;
+  }
+
+  .payment-pill {
+    white-space: nowrap;
+    padding: 10px 20px;
+    min-width: fit-content;
+    flex-shrink: 0;
+  }
+
+  /* Service Table - Tablet */
+  .service-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .service-table {
+    min-width: 800px;
+  }
+
+  .service-table th {
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+
+  .service-table td {
+    padding: 12px 14px;
+  }
+
+  /* Specifically target Start Time and Price columns for better spacing */
+  .service-table th:nth-child(3),
+  .service-table td:nth-child(3) {
+    padding-left: 16px;
+    padding-right: 16px;
+    min-width: 120px;
+  }
+
+  .service-table th:nth-child(4),
+  .service-table td:nth-child(4) {
+    padding-left: 18px;
+    padding-right: 18px;
+    min-width: 100px;
+  }
+
+  .table-time-input,
+  .table-input {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+}
+
 @media (max-width: 1024px) {
   .service-row {
     grid-template-columns: 1fr;

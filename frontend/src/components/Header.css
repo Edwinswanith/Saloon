@@ -5,7 +5,7 @@
   justify-content: flex-start;
   padding: 16px 24px;
   background: white;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--gray-200);
   position: relative;
   z-index: 1;
 }
@@ -20,7 +20,7 @@
   background: none;
   border: none;
   font-size: 20px;
-  color: #374151;
+  color: var(--gray-700);
   cursor: pointer;
   padding: 8px;
   border-radius: 6px;
@@ -31,15 +31,15 @@
 }
 
 .menu-icon:hover {
-  background: #f3f4f6;
-  color: #111827;
+  background: var(--gray-100);
+  color: var(--gray-900);
 }
 
 .header-title {
   margin: 0;
   font-size: 24px;
   font-weight: 600;
-  color: #111827;
+  color: var(--gray-900);
 }
 
 .header-right {
@@ -50,7 +50,7 @@
 
 .logo-box {
   padding: 10px 18px;
-  background: #0F766E !important;
+  background: var(--primary-700) !important;
   border-radius: 10px;
   border: none;
   cursor: pointer;
@@ -106,8 +106,8 @@
 
 .logout-modal-header {
   padding: 20px 24px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #0F766E;
+  border-bottom: 1px solid var(--gray-200);
+  background: var(--primary-700);
 }
 
 .logout-modal-header h3 {
@@ -124,17 +124,17 @@
 .logout-modal-body p {
   margin: 0;
   font-size: 16px;
-  color: #374151;
+  color: var(--gray-700);
   text-align: center;
 }
 
 .logout-modal-actions {
   padding: 16px 24px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--gray-200);
   display: flex;
   gap: 12px;
   justify-content: flex-end;
-  background: #f9fafb;
+  background: var(--gray-50);
 }
 
 .logout-btn-cancel,
@@ -152,26 +152,26 @@
 }
 
 .logout-btn-cancel {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--gray-100);
+  color: var(--gray-700);
 }
 
 .logout-btn-cancel:hover {
-  background: #e5e7eb;
+  background: var(--gray-200);
 }
 
 .logout-btn-confirm {
-  background: #dc2626;
+  background: var(--error-600);
   color: white;
 }
 
 .logout-btn-confirm:hover {
-  background: #b91c1c;
+  background: var(--error-700);
   transform: translateY(-1px);
 }
 
 .header-icon {
-  background: #0F766E !important;
+  background: var(--primary-700) !important;
   border: none;
   width: 44px;
   height: 44px;
@@ -204,7 +204,7 @@
   right: 8px;
   width: 8px;
   height: 8px;
-  background: #ef4444;
+  background: var(--error-500);
   border-radius: 50%;
   border: 2px solid white;
   opacity: 0;
@@ -223,7 +223,7 @@
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: #0F766E !important;
+  background: var(--primary-700) !important;
   color: white !important;
   display: flex;
   align-items: center;

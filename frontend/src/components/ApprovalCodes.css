@@ -44,7 +44,7 @@
 }
 
 .btn-copy {
-  background: #0F766E;
+  background: var(--primary-700);
   color: white;
 }
 
@@ -103,7 +103,7 @@
 }
 
 .btn-primary {
-  background: #0F766E;
+  background: var(--primary-700);
   color: white;
   border: none;
   padding: 10px 20px;

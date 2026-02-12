@@ -222,7 +222,7 @@
 
 .toggle-btn.active {
   color: #ffffff !important;
-  background: #0d9488 !important;
+  background: var(--primary-600) !important;
   box-shadow: var(--shadow-sm);
 }
 

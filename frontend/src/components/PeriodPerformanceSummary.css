@@ -13,7 +13,7 @@
   align-items: center;
   padding: 16px 24px;
   background: white;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--gray-200);
   margin-bottom: 24px;
   width: 100%;
   box-sizing: border-box;
@@ -31,7 +31,7 @@
   font-size: 20px;
   cursor: pointer;
   padding: 4px;
-  color: #374151;
+  color: var(--gray-700);
   transition: color 0.2s ease;
 }
 
@@ -42,7 +42,7 @@
 .header-title {
   font-size: 20px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gray-800);
   margin: 0;
 }
 
@@ -55,7 +55,7 @@
 .user-icon {
   width: 36px;
   height: 36px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
   border-radius: 50%;
   background: white;
   cursor: pointer;
@@ -67,21 +67,21 @@
 }
 
 .user-icon:hover {
-  background: #f9fafb;
+  background: var(--gray-50);
   border-color: #7c3aed;
 }
 
 .logo-box {
   padding: 6px 12px;
-  background: #f3f4f6;
+  background: var(--gray-100);
   border-radius: 6px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
 }
 
 .logo-text {
   font-size: 11px;
   font-weight: 600;
-  color: #374151;
+  color: var(--gray-700);
   letter-spacing: 0.5px;
 }
 
@@ -138,17 +138,17 @@
 .date-range-label {
   font-size: 11px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--gray-500);
   letter-spacing: 0.5px;
 }
 
 .date-range-select {
   padding: 8px 36px 8px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--gray-300);
   border-radius: 6px;
   background: white;
   font-size: 14px;
-  color: #374151;
+  color: var(--gray-700);
   cursor: pointer;
   transition: all 0.2s ease;
   appearance: none;
@@ -213,7 +213,7 @@
 }
 
 .metric-card.red {
-  background: linear-gradient(135deg, #f87171 0%, #dc2626 100%);
+  background: linear-gradient(135deg, #f87171 0%, var(--error-600) 100%);
   color: white;
 }
 
@@ -281,7 +281,7 @@
 .card-title {
   font-size: 16px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gray-800);
   margin: 0 0 20px 0;
 }
 
@@ -316,7 +316,7 @@
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: #4b5563;
+  color: var(--gray-600);
 }
 
 .legend-dot {
@@ -334,11 +334,11 @@
 }
 
 .legend-dot.products {
-  background: #3b82f6;
+  background: var(--info-500);
 }
 
 .legend-dot.services {
-  background: #1e40af;
+  background: var(--info-700);
 }
 
 .revenue-breakdown {
@@ -352,7 +352,7 @@
   justify-content: space-between;
   align-items: center;
   padding-bottom: 12px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--gray-200);
 }
 
 .breakdown-item:last-child {
@@ -362,13 +362,13 @@
 
 .breakdown-label {
   font-size: 14px;
-  color: #4b5563;
+  color: var(--gray-600);
 }
 
 .breakdown-value {
   font-size: 14px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gray-800);
 }
 
 /* Payment Distribution */
@@ -383,7 +383,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--gray-200);
 }
 
 .payment-item:last-child {
@@ -392,13 +392,13 @@
 
 .payment-method {
   font-size: 14px;
-  color: #4b5563;
+  color: var(--gray-600);
 }
 
 .payment-amount {
   font-size: 15px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gray-800);
 }
 
 /* Expenses & Deductions */
@@ -411,7 +411,7 @@
 .subsection-title {
   font-size: 11px;
   font-weight: 700;
-  color: #6b7280;
+  color: var(--gray-500);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin: 12px 0 8px 0;
@@ -439,14 +439,14 @@
 .expense-label,
 .deduction-label {
   font-size: 14px;
-  color: #4b5563;
+  color: var(--gray-600);
 }
 
 .expense-amount,
 .deduction-amount {
   font-size: 14px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gray-800);
 }
 
 /* Responsive Design */

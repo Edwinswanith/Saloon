@@ -7,6 +7,15 @@ from urllib.parse import unquote
 
 app = Flask(__name__, static_folder='static', static_url_path='', template_folder='templates')
 
+# Enable response compression (gzip) - reduces transfer sizes by 70-80%
+from flask_compress import Compress
+Compress(app)
+app.config['COMPRESS_MIMETYPES'] = [
+    'text/html', 'text/css', 'text/xml', 'text/javascript',
+    'application/json', 'application/javascript',
+]
+app.config['COMPRESS_MIN_SIZE'] = 500
+
 # MongoDB Configuration
 MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
 # for production
@@ -52,9 +61,12 @@ try:
     # Connect with increased timeouts to handle SSL handshake
     # Explicitly specify the database name to avoid defaulting to 'test'
     connect(host=base_uri, alias='default', db=MONGODB_DB,
-            serverSelectionTimeoutMS=30000,
-            connectTimeoutMS=30000,
-            socketTimeoutMS=30000)
+            maxPoolSize=10,
+            minPoolSize=2,
+            serverSelectionTimeoutMS=10000,
+            connectTimeoutMS=10000,
+            socketTimeoutMS=20000,
+            maxIdleTimeMS=60000)
     print(f"Connected to MongoDB: {MONGODB_DB}")
 except Exception as e:
     print(f"Warning: MongoDB connection failed: {e}")
@@ -113,12 +125,20 @@ except Exception as e:
 @app.route('/<path:path>')
 def serve(path):
     if path != "":
-        # Decode URL-encoded path (e.g., %20 -> space)
         decoded_path = unquote(path)
         file_path = os.path.join(app.static_folder, decoded_path)
         if os.path.exists(file_path):
-            return send_from_directory(app.static_folder, decoded_path)
-    return send_from_directory(app.static_folder, 'index.html')
+            response = send_from_directory(app.static_folder, decoded_path)
+            # Cache hashed assets (JS/CSS from Vite) for 1 year
+            if any(decoded_path.endswith(ext) for ext in ['.js', '.css']) and '-' in decoded_path:
+                response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+            # Cache images/fonts for 30 days
+            elif any(decoded_path.endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.woff', '.woff2', '.ttf']):
+                response.headers['Cache-Control'] = 'public, max-age=2592000'
+            return response
+    response = send_from_directory(app.static_folder, 'index.html')
+    response.headers['Cache-Control'] = 'no-cache'
+    return response
 
 @app.teardown_appcontext
 def close_db(error):

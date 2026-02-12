@@ -55,5 +55,5 @@ ENV PYTHONUNBUFFERED=1
 ENV PORT=8080
 
 # Run Flask app
-CMD ["python", "app.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "--threads", "4", "--timeout", "120", "--worker-class", "gthread", "app:app"]
 

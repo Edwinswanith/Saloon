@@ -5,7 +5,7 @@
 }
 
 #nprogress .bar {
-  background: linear-gradient(90deg, #0F766E 0%, #0d9488 50%, #0F766E 100%);
+  background: linear-gradient(90deg, var(--primary-700) 0%, var(--primary-600) 50%, var(--primary-700) 100%);
   background-size: 200% 100%;
   animation: shimmer 2s linear infinite;
   
@@ -34,7 +34,7 @@
   right: 0px;
   width: 100px;
   height: 100%;
-  box-shadow: 0 0 10px #0F766E, 0 0 5px #0F766E;
+  box-shadow: 0 0 10px var(--primary-700), 0 0 5px var(--primary-700);
   opacity: 1.0;
   
   -webkit-transform: rotate(3deg) translate(0px, -4px);

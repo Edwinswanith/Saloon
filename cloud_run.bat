@@ -3,7 +3,7 @@ set PROJECT_ID=legel-assistent-466812
 set REPOSITORY_NAME=saloon
 set REGION=europe-west2
 set IMAGE_NAME=saloon-management-system
-set IMAGE_TAG=v19
+set IMAGE_TAG=v29
 set SERVICE_NAME=saloon-management-system
 
 REM Authenticate with Google Cloud
@@ -21,4 +21,4 @@ docker tag %IMAGE_NAME%:%IMAGE_TAG% %REGION%-docker.pkg.dev/%PROJECT_ID%/%REPOSI
 
 docker push %REGION%-docker.pkg.dev/%PROJECT_ID%/%REPOSITORY_NAME%/%IMAGE_NAME%:%IMAGE_TAG%
 
-gcloud run deploy %SERVICE_NAME% --image %REGION%-docker.pkg.dev/%PROJECT_ID%/%REPOSITORY_NAME%/%IMAGE_NAME%:%IMAGE_TAG% --platform managed --region %REGION% --allow-unauthenticated --timeout=600s
+gcloud run deploy %SERVICE_NAME% --image %REGION%-docker.pkg.dev/%PROJECT_ID%/%REPOSITORY_NAME%/%IMAGE_NAME%:%IMAGE_TAG% --platform managed --region %REGION% --allow-unauthenticated --timeout=600s --min-instances=1 --memory=512Mi --concurrency=80 --cpu=1

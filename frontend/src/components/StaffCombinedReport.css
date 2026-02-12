@@ -1,7 +1,7 @@
 .staff-combined-report-page {
   width: 100%;
   min-height: 100vh;
-  background-color: #f9fafb;
+  background-color: var(--gray-50);
 }
 
 /* Header */
@@ -10,7 +10,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--gray-200);
   background: white;
 }
 
@@ -26,7 +26,7 @@
   font-size: 20px;
   cursor: pointer;
   padding: 4px;
-  color: #374151;
+  color: var(--gray-700);
   transition: color 0.2s ease;
   display: flex;
   align-items: center;
@@ -40,7 +40,7 @@
 .header-title {
   font-size: 20px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gray-800);
   margin: 0;
 }
 
@@ -52,22 +52,22 @@
 
 .logo-box {
   padding: 6px 12px;
-  background: #f3f4f6;
+  background: var(--gray-100);
   border-radius: 6px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
 }
 
 .logo-text {
   font-size: 11px;
   font-weight: 600;
-  color: #374151;
+  color: var(--gray-700);
   letter-spacing: 0.5px;
 }
 
 .header-icon {
   width: 36px;
   height: 36px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
   border-radius: 6px;
   background: white;
   cursor: pointer;
@@ -79,7 +79,7 @@
 }
 
 .header-icon:hover {
-  background: #f9fafb;
+  background: var(--gray-50);
   border-color: #7c3aed;
 }
 
@@ -121,7 +121,7 @@
 /* Filter Card */
 .filter-card {
   background: white;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   padding: 20px;
@@ -137,15 +137,15 @@
 .filter-label {
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: var(--gray-700);
 }
 
 .filter-dropdown {
   padding: 10px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--gray-300);
   border-radius: 6px;
   font-size: 14px;
-  color: #374151;
+  color: var(--gray-700);
   background: white;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -165,7 +165,7 @@
 /* Report Card */
 .report-card {
   background: white;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   padding: 24px;
@@ -174,7 +174,7 @@
 .section-title {
   font-size: 18px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gray-800);
   margin: 0 0 20px 0;
 }
 
@@ -190,15 +190,15 @@
 }
 
 .staff-summary-table thead {
-  background: #f9fafb;
-  border-bottom: 2px solid #e5e7eb;
+  background: var(--gray-50);
+  border-bottom: 2px solid var(--gray-200);
 }
 
 .staff-summary-table th {
   padding: 12px 16px;
   text-align: left;
   font-weight: 600;
-  color: #374151;
+  color: var(--gray-700);
   font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -206,17 +206,17 @@
 
 .staff-summary-table td {
   padding: 12px 16px;
-  color: #6b7280;
-  border-bottom: 1px solid #f3f4f6;
+  color: var(--gray-500);
+  border-bottom: 1px solid var(--gray-100);
 }
 
 .staff-summary-table tbody tr:hover {
-  background: #f9fafb;
+  background: var(--gray-50);
 }
 
 .staff-name {
   font-weight: 500;
-  color: #374151;
+  color: var(--gray-700);
 }
 
 .details-btn {
@@ -247,7 +247,7 @@
 .empty-message {
   text-align: center;
   padding: 48px 16px !important;
-  color: #9ca3af;
+  color: var(--gray-400);
   font-size: 14px;
   font-style: italic;
 }

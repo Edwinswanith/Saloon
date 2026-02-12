@@ -720,8 +720,10 @@ def get_offering_clients(current_user=None):
 
 @dashboard_bp.route('/revenue-breakdown', methods=['GET'])
 @require_auth
+@cache_response(ttl=300)
+@log_performance
 def get_revenue_breakdown(current_user=None):
-    """Get revenue breakdown by source"""
+    """Get revenue breakdown by source - OPTIMIZED with aggregation"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
@@ -733,43 +735,40 @@ def get_revenue_breakdown(current_user=None):
         if not end_date:
             end_date = get_ist_today()
 
-        # Get branch for filtering
         branch = get_selected_branch(request, current_user)
-        
-        # Convert IST dates to UTC for filtering
         start, end = get_ist_date_range(start_date, end_date)
 
-        bills_query = Bill.objects(
-            is_deleted=False,
-            bill_date__gte=start,
-            bill_date__lte=end
-        )
-        
-        # Apply branch filter
+        match_stage = {
+            "is_deleted": False,
+            "bill_date": {"$gte": start, "$lte": end}
+        }
         if branch:
-            bills_query = bills_query.filter(branch=branch)
-        
-        # Force evaluation by converting to list
-        bills = list(bills_query)
+            match_stage["branch"] = ObjectId(str(branch.id))
+
+        pipeline = [
+            {"$match": match_stage},
+            {"$unwind": "$items"},
+            {"$group": {
+                "_id": "$items.item_type",
+                "amount": {"$sum": {"$ifNull": ["$items.total", 0]}}
+            }}
+        ]
+
+        results = list(Bill.objects.aggregate(pipeline))
+        type_map = {r['_id']: r['amount'] for r in results if r['_id']}
 
         breakdown = {
-            'service': 0,
-            'product': 0,
-            'package': 0,
-            'membership': 0
+            'service': round(float(type_map.get('service', 0)), 2),
+            'product': round(float(type_map.get('product', 0)), 2),
+            'package': round(float(type_map.get('package', 0)), 2),
+            'membership': round(float(type_map.get('membership', 0)), 2)
         }
-
-        for bill in bills:
-            for item in bill.items:
-                if item.item_type in breakdown:
-                    breakdown[item.item_type] += float(item.total) if item.total else 0.0
-
         total = sum(breakdown.values())
 
         return jsonify({
             'breakdown': {
                 key: {
-                    'amount': round(value, 2),
+                    'amount': value,
                     'percentage': round((value / total * 100) if total > 0 else 0, 2)
                 }
                 for key, value in breakdown.items()
@@ -778,14 +777,16 @@ def get_revenue_breakdown(current_user=None):
         })
     except Exception as e:
         error_trace = traceback.format_exc()
-        print(f"[DASHBOARD STATS] Error in get_staff_performance: {str(e)}")
-        print(f"[DASHBOARD STATS] Traceback: {error_trace}")
+        print(f"[DASHBOARD] Error in get_revenue_breakdown: {str(e)}")
+        print(f"[DASHBOARD] Traceback: {error_trace}")
         return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/payment-distribution', methods=['GET'])
 @require_auth
+@cache_response(ttl=300)
+@log_performance
 def get_payment_distribution(current_user=None):
-    """Get payment method breakdown"""
+    """Get payment method breakdown - OPTIMIZED with aggregation"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
@@ -797,50 +798,47 @@ def get_payment_distribution(current_user=None):
         if not end_date:
             end_date = get_ist_today()
 
-        # Get branch for filtering
         branch = get_selected_branch(request, current_user)
-        
-        # Convert IST dates to UTC for filtering
         start, end = get_ist_date_range(start_date, end_date)
 
-        bills_query = Bill.objects(
-            is_deleted=False,
-            bill_date__gte=start,
-            bill_date__lte=end,
-            payment_mode__ne=None
-        )
-        
-        # Apply branch filter
+        match_stage = {
+            "is_deleted": False,
+            "bill_date": {"$gte": start, "$lte": end},
+            "payment_mode": {"$ne": None}
+        }
         if branch:
-            bills_query = bills_query.filter(branch=branch)
-        
-        # Force evaluation by converting to list
-        bills = list(bills_query)
-        
-        # Group by payment mode
-        payment_stats = {}
-        for bill in bills:
-            mode = bill.payment_mode or 'unknown'
-            if mode not in payment_stats:
-                payment_stats[mode] = {'total_amount': 0.0, 'count': 0}
-            payment_stats[mode]['total_amount'] += float(bill.final_amount) if bill.final_amount else 0.0
-            payment_stats[mode]['count'] += 1
-        
-        total = sum([stats['total_amount'] for stats in payment_stats.values()])
+            match_stage["branch"] = ObjectId(str(branch.id))
+
+        pipeline = [
+            {"$match": match_stage},
+            {"$group": {
+                "_id": {"$ifNull": ["$payment_mode", "unknown"]},
+                "total_amount": {"$sum": {"$ifNull": ["$final_amount", 0]}},
+                "count": {"$sum": 1}
+            }}
+        ]
+
+        results = list(Bill.objects.aggregate(pipeline))
+        total = sum(float(r.get('total_amount', 0)) for r in results)
+
+        distribution = []
+        for r in results:
+            amount = round(float(r.get('total_amount', 0)), 2)
+            distribution.append({
+                'payment_mode': r['_id'],
+                'amount': amount,
+                'count': r.get('count', 0),
+                'percentage': round((amount / total * 100) if total > 0 else 0, 2)
+            })
 
         return jsonify({
-            'distribution': [{
-                'payment_mode': mode,
-                'amount': round(stats['total_amount'], 2),
-                'count': stats['count'],
-                'percentage': round((stats['total_amount'] / total * 100) if total > 0 else 0, 2)
-            } for mode, stats in payment_stats.items()],
+            'distribution': distribution,
             'total': round(total, 2)
         })
     except Exception as e:
         error_trace = traceback.format_exc()
-        print(f"[DASHBOARD STATS] Error in get_staff_performance: {str(e)}")
-        print(f"[DASHBOARD STATS] Traceback: {error_trace}")
+        print(f"[DASHBOARD] Error in get_payment_distribution: {str(e)}")
+        print(f"[DASHBOARD] Traceback: {error_trace}")
         return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/top-moving-items', methods=['GET'])
@@ -1156,17 +1154,17 @@ def get_top_moving_items(current_user=None):
 
 @dashboard_bp.route('/client-funnel', methods=['GET'])
 @require_auth
+@cache_response(ttl=300)
+@log_performance
 def get_client_funnel(current_user=None):
-    """Get client acquisition funnel"""
+    """Get client acquisition funnel - OPTIMIZED with aggregation"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
 
-        # Convert IST dates to UTC for filtering
         if start_date:
             start = ist_to_utc_start(start_date)
         else:
-            # Default to 30 days ago in IST, convert to UTC
             today_ist = get_ist_today()
             default_start_date_obj = datetime.strptime(today_ist, '%Y-%m-%d') - timedelta(days=30)
             default_start_date = default_start_date_obj.strftime('%Y-%m-%d')
@@ -1175,19 +1173,17 @@ def get_client_funnel(current_user=None):
         if end_date:
             end = ist_to_utc_end(end_date)
         else:
-            # Default to today in IST, convert to UTC
             end = ist_to_utc_end(get_ist_today())
 
-        # Get branch for filtering
         branch = get_selected_branch(request, current_user)
 
-        # Total customers - filter by branch
+        # Total customers
         customers_query = Customer.objects.filter(merged_into=None)
         if branch:
             customers_query = customers_query.filter(branch=branch)
         total_customers = customers_query.count()
 
-        # New customers in period - filter by branch
+        # New customers in period
         new_customers_query = Customer.objects(
             created_at__gte=start,
             created_at__lte=end
@@ -1196,24 +1192,26 @@ def get_client_funnel(current_user=None):
             new_customers_query = new_customers_query.filter(branch=branch)
         new_customers = new_customers_query.count()
 
-        # Returning customers (with more than 1 bill) - filter by branch
-        bills_query = Bill.objects(
-            is_deleted=False,
-            bill_date__gte=start,
-            bill_date__lte=end
-        )
+        # OPTIMIZED: Use aggregation to count returning customers instead of loading all bills
+        returning_match = {
+            "is_deleted": False,
+            "bill_date": {"$gte": start, "$lte": end},
+            "customer": {"$ne": None}
+        }
         if branch:
-            bills_query = bills_query.filter(branch=branch)
-        
-        # Force evaluation by converting to list
-        bills_in_period = list(bills_query)
-        customer_bill_count = {}
-        for bill in bills_in_period:
-            customer_info = get_safe_customer_info(bill.customer)
-            if customer_info['id']:
-                customer_id = customer_info['id']
-                customer_bill_count[customer_id] = customer_bill_count.get(customer_id, 0) + 1
-        returning_customers = len([cid for cid, count in customer_bill_count.items() if count > 1])
+            returning_match["branch"] = ObjectId(str(branch.id))
+
+        returning_pipeline = [
+            {"$match": returning_match},
+            {"$group": {
+                "_id": "$customer",
+                "bill_count": {"$sum": 1}
+            }},
+            {"$match": {"bill_count": {"$gte": 2}}},
+            {"$count": "returning_customers"}
+        ]
+        returning_result = list(Bill.objects.aggregate(returning_pipeline))
+        returning_customers = returning_result[0]['returning_customers'] if returning_result else 0
 
         # Leads
         total_leads = Lead.objects.count()
@@ -1234,8 +1232,8 @@ def get_client_funnel(current_user=None):
         })
     except Exception as e:
         error_trace = traceback.format_exc()
-        print(f"[DASHBOARD STATS] Error in get_staff_performance: {str(e)}")
-        print(f"[DASHBOARD STATS] Traceback: {error_trace}")
+        print(f"[DASHBOARD] Error in get_client_funnel: {str(e)}")
+        print(f"[DASHBOARD] Traceback: {error_trace}")
         return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/client-source', methods=['GET'])
@@ -1651,9 +1649,8 @@ def get_top_performer(current_user=None):
 @cache_response(ttl=300)  # Cache for 5 minutes
 @log_performance
 def get_staff_leaderboard(current_user=None):
-    """Get staff leaderboard (company-wide) - returns leaderboard using same logic as top-performer"""
+    """Get staff leaderboard (company-wide) - OPTIMIZED with aggregation pipelines"""
     try:
-        # Use same date range logic as top-performer
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
 
@@ -1668,142 +1665,178 @@ def get_staff_leaderboard(current_user=None):
         end = datetime.strptime(end_date, '%Y-%m-%d')
         end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
 
-        # Get ALL active staff (company-wide, not filtered by branch)
-        staff_list = list(Staff.objects(status='active'))
-        
-        if not staff_list:
+        # OPTIMIZED: Single aggregation for all staff revenue and service metrics (company-wide)
+        bills_pipeline = [
+            {"$match": {
+                "is_deleted": False,
+                "bill_date": {"$gte": start, "$lte": end}
+            }},
+            {"$unwind": "$items"},
+            {"$match": {"items.staff": {"$ne": None}}},
+            {"$group": {
+                "_id": "$items.staff",
+                "revenue": {"$sum": {"$ifNull": ["$items.total", 0]}},
+                "service_count": {
+                    "$sum": {
+                        "$cond": [
+                            {"$in": [{"$ifNull": ["$items.item_type", "service"]}, ["service"]]},
+                            {"$ifNull": ["$items.quantity", 1]},
+                            0
+                        ]
+                    }
+                },
+                "total_services": {"$sum": {"$ifNull": ["$items.quantity", 1]}},
+                "customers": {"$addToSet": "$customer"}
+            }},
+            {"$lookup": {
+                "from": "staffs",
+                "localField": "_id",
+                "foreignField": "_id",
+                "as": "staff_doc"
+            }},
+            {"$unwind": {"path": "$staff_doc", "preserveNullAndEmptyArrays": True}},
+            {"$match": {"staff_doc.status": "active"}},
+            {"$project": {
+                "staff_id": {"$toString": "$_id"},
+                "staff_name": {
+                    "$concat": [
+                        {"$ifNull": ["$staff_doc.first_name", ""]},
+                        " ",
+                        {"$ifNull": ["$staff_doc.last_name", ""]}
+                    ]
+                },
+                "revenue": {"$round": ["$revenue", 2]},
+                "service_count": 1,
+                "total_services": 1,
+                "customer_count": {"$size": "$customers"},
+                "customer_ids": "$customers"
+            }}
+        ]
+
+        bills_results = list(Bill.objects.aggregate(bills_pipeline))
+
+        if not bills_results:
             return jsonify({'leaderboard': []})
-        
-        # Get ALL bills in date range (company-wide, not filtered by branch)
-        bills = list(Bill.objects(
-            is_deleted=False,
-            bill_date__gte=start,
-            bill_date__lte=end
-        ))
-        
-        def safe_get_staff_id(item_staff):
-            """Safely get staff ID from a staff reference"""
-            if not item_staff:
-                return None
-            try:
-                if hasattr(item_staff, 'id'):
-                    try:
-                        return str(item_staff.id)
-                    except (AttributeError, DoesNotExist):
-                        if hasattr(item_staff, 'pk'):
-                            return str(item_staff.pk)
-                        return None
-                elif isinstance(item_staff, str):
-                    return item_staff
-                elif hasattr(item_staff, '__str__'):
-                    try:
-                        return str(item_staff)
-                    except:
-                        return None
-            except (AttributeError, DoesNotExist, TypeError, ValueError):
-                return None
-            return None
-        
-        # Calculate max values for normalization (same as top-performer)
-        max_revenue = 0
-        max_services = 0
-        max_appts = 0
-        
-        for staff in staff_list:
-            try:
-                staff_id = str(staff.id)
-                revenue = 0
-                service_count = 0
-                for bill in bills:
-                    for item in (bill.items or []):
-                        try:
-                            item_staff_id = safe_get_staff_id(item.staff)
-                            if item_staff_id and item_staff_id == staff_id:
-                                revenue += float(item.total) if item.total else 0.0
-                                service_count += int(item.quantity) if item.quantity else 1
-                        except (AttributeError, TypeError, ValueError, DoesNotExist):
-                            continue
-                
-                appointments = Appointment.objects(
-                    staff=staff,
-                    appointment_date__gte=start.date(),
-                    appointment_date__lte=end.date(),
-                    status='completed'
-                ).count()
-                
-                max_revenue = max(max_revenue, revenue)
-                max_services = max(max_services, service_count)
-                max_appts = max(max_appts, appointments)
-            except Exception:
-                continue
-        
+
+        # Get all staff IDs from results
+        staff_ids = [ObjectId(r['staff_id']) for r in bills_results if r.get('staff_id')]
+
+        # OPTIMIZED: Batch appointment counts
+        appt_start_datetime = start.replace(hour=0, minute=0, second=0, microsecond=0)
+        appt_end_datetime = end.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+        appt_pipeline = [
+            {"$match": {
+                "staff": {"$in": staff_ids},
+                "appointment_date": {"$gte": appt_start_datetime, "$lte": appt_end_datetime},
+                "status": "completed"
+            }},
+            {"$group": {
+                "_id": "$staff",
+                "count": {"$sum": 1}
+            }}
+        ]
+        appt_results = list(Appointment.objects.aggregate(appt_pipeline))
+        appt_counts = {str(r['_id']): r['count'] for r in appt_results}
+
+        # OPTIMIZED: Batch feedback aggregation
+        feedback_pipeline = [
+            {"$match": {
+                "staff": {"$in": staff_ids},
+                "created_at": {"$gte": start, "$lte": end}
+            }},
+            {"$group": {
+                "_id": "$staff",
+                "avg_rating": {"$avg": "$rating"},
+                "count": {"$sum": 1}
+            }}
+        ]
+        feedback_results = list(Feedback.objects.aggregate(feedback_pipeline))
+        feedback_data = {}
+        for r in feedback_results:
+            staff_id_str = str(r['_id'])
+            count = r.get('count', 0)
+            avg_rating = float(r.get('avg_rating', 0)) if count > 0 else 0.0
+            feedback_data[staff_id_str] = {'count': count, 'avg_rating': avg_rating}
+
+        # OPTIMIZED: Batch retention aggregation
+        retention_pipeline = [
+            {"$match": {
+                "is_deleted": False,
+                "bill_date": {"$gte": start, "$lte": end},
+                "customer": {"$ne": None}
+            }},
+            {"$unwind": "$items"},
+            {"$match": {
+                "items.staff": {"$ne": None},
+                "items.staff": {"$in": staff_ids}
+            }},
+            {"$group": {
+                "_id": {
+                    "staff": "$items.staff",
+                    "customer": "$customer"
+                },
+                "visit_count": {"$sum": 1}
+            }},
+            {"$group": {
+                "_id": "$_id.staff",
+                "total_customers": {"$sum": 1},
+                "repeat_customers": {
+                    "$sum": {
+                        "$cond": [{"$gte": ["$visit_count", 2]}, 1, 0]
+                    }
+                }
+            }}
+        ]
+        retention_results = list(Bill.objects.aggregate(retention_pipeline))
+        retention_data = {}
+        for r in retention_results:
+            staff_id_str = str(r['_id'])
+            total = r.get('total_customers', 0)
+            repeat = r.get('repeat_customers', 0)
+            retention_data[staff_id_str] = {
+                'retention_rate': (repeat / total) if total > 0 else 0.0
+            }
+
+        # Calculate max values for normalization
+        max_revenue = max((r.get('revenue', 0) for r in bills_results), default=1)
+        max_services = max((r.get('service_count', 0) for r in bills_results), default=1)
+        max_appts = max((appt_counts.get(r.get('staff_id', ''), 0) for r in bills_results), default=1)
+
         max_revenue = max_revenue if max_revenue > 0 else 1
         max_services = max_services if max_services > 0 else 1
         max_appts = max_appts if max_appts > 0 else 1
-        
+
+        # Calculate scores for each staff
         scores = []
-        
-        for staff in staff_list:
+        for r in bills_results:
             try:
-                staff_id = str(staff.id)
-                
-                # Calculate revenue and service count
-                revenue = 0
-                service_count = 0
-                customer_visits = {}
-                
-                for bill in bills:
-                    for item in (bill.items or []):
-                        try:
-                            item_staff_id = safe_get_staff_id(item.staff)
-                            if item_staff_id and item_staff_id == staff_id:
-                                revenue += float(item.total) if item.total else 0.0
-                                service_count += int(item.quantity) if item.quantity else 1
-                                
-                                customer_info = get_safe_customer_info(bill.customer)
-                                if customer_info['id']:
-                                    customer_id = customer_info['id']
-                                    if customer_id not in customer_visits:
-                                        customer_visits[customer_id] = 0
-                                    customer_visits[customer_id] += 1
-                        except (AttributeError, TypeError, ValueError, DoesNotExist):
-                            continue
-                
+                staff_id = r.get('staff_id', '')
+                if not staff_id:
+                    continue
+
+                revenue = float(r.get('revenue', 0))
+                service_count = int(r.get('service_count', 0))
+                appointments = appt_counts.get(staff_id, 0)
+
+                feedback_info = feedback_data.get(staff_id, {'count': 0, 'avg_rating': 0.0})
+                feedback_count = feedback_info['count']
+                avg_rating = feedback_info['avg_rating']
+
+                retention_info = retention_data.get(staff_id, {'retention_rate': 0.0})
+                retention_rate = retention_info['retention_rate']
+
                 revenue_score = (revenue / max_revenue) * 40
                 service_score = (service_count / max_services) * 20
-                
-                appointments = Appointment.objects(
-                    staff=staff,
-                    appointment_date__gte=start.date(),
-                    appointment_date__lte=end.date(),
-                    status='completed'
-                ).count()
                 appt_score = (appointments / max_appts) * 15
-                
-                feedbacks = list(Feedback.objects(
-                    staff=staff,
-                    created_at__gte=start,
-                    created_at__lte=end
-                ))
-                feedback_count = len(feedbacks)
-                if feedback_count > 0:
-                    total_rating = sum(float(f.rating) for f in feedbacks if f.rating is not None)
-                    avg_rating = total_rating / feedback_count if feedback_count > 0 else 0.0
-                    rating_score = (avg_rating / 5.0) * 15 if avg_rating > 0 else 0.0
-                else:
-                    avg_rating = 0.0
-                    rating_score = 0.0
-                
-                total_customers = len(customer_visits)
-                repeat_customers = sum(1 for visits in customer_visits.values() if visits >= 2)
-                retention_rate = (repeat_customers / total_customers) if total_customers > 0 else 0
+                rating_score = (avg_rating / 5.0) * 15 if avg_rating > 0 else 0.0
                 retention_score = retention_rate * 10
-                
+
                 total_score = revenue_score + service_score + appt_score + rating_score + retention_score
-                
+
                 scores.append({
                     'staff_id': staff_id,
-                    'staff_name': f"{staff.first_name or ''} {staff.last_name or ''}".strip(),
+                    'staff_name': r.get('staff_name', '').strip(),
                     'performance_score': round(float(total_score), 1),
                     'revenue': round(float(revenue), 2),
                     'service_count': int(service_count),
@@ -1813,11 +1846,11 @@ def get_staff_leaderboard(current_user=None):
                     'retention_rate': round(float(retention_rate) * 100, 1)
                 })
             except Exception as staff_error:
-                print(f"Warning: Failed to compute score for staff {getattr(staff, 'id', 'unknown')}: {staff_error}")
+                print(f"Warning: Failed to compute score for staff {r.get('staff_id', 'unknown')}: {staff_error}")
                 continue
-        
+
         scores.sort(key=lambda x: x['performance_score'], reverse=True)
-        
+
         return jsonify({
             'leaderboard': scores
         })

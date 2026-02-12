@@ -227,27 +227,14 @@ const Dashboard = () => {
       
       const statsData = await statsRes.json()
 
-      // Calculate tax from bills (simplified - you may need to adjust based on your tax calculation)
-      const taxRes = await apiGet(`/api/bills?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`)
-      
-      if (!taxRes.ok) {
-        throw new Error(`HTTP error! status: ${taxRes.status}`)
-      }
-      
-      const billsData = await taxRes.json()
-      const totalTax = billsData.bills?.reduce((sum, bill) => sum + (bill.tax_amount || 0), 0) || 0
-      const deletedBills = billsData.bills?.filter(b => b.is_deleted) || []
-      const deletedBillsCount = deletedBills.length
-      const deletedBillsAmount = deletedBills.reduce((sum, b) => sum + (b.final_amount || 0), 0)
-
       const statsResult = {
-        totalTax: totalTax,
+        totalTax: statsData.tax?.total || 0,
         grossRevenue: statsData.revenue?.total || 0,
         avgBillValue: statsData.revenue?.average_per_transaction || 0,
         transactions: statsData.transactions?.total || 0,
         expenses: statsData.expenses?.total || 0,
-        deletedBills: deletedBillsCount,
-        deletedBillsAmount: deletedBillsAmount,
+        deletedBills: statsData.deleted_bills?.count || 0,
+        deletedBillsAmount: statsData.deleted_bills?.amount || 0,
       }
 
       setStats(statsResult)
@@ -368,32 +355,30 @@ const Dashboard = () => {
   // Fetch staff data (only when on staff tab)
   const fetchStaffData = async (params) => {
     try {
-      // Fetch staff performance (branch-specific) - uses filtered date range
-      let staffPerformanceData = []
-      const staffRes = await apiGet(`/api/dashboard/staff-performance?${params}`)
-      if (staffRes.ok) {
-        staffPerformanceData = await staffRes.json() || []
-        console.log('[Dashboard] Staff Performance Data (Branch):', staffPerformanceData)
-      } else {
-        console.error('[Dashboard] Failed to fetch staff performance:', staffRes.status)
-      }
-      setStaffPerformance(staffPerformanceData)
-      
-      // Fetch top performer (company-wide, not branch-specific) - always uses current month
+      // Fetch staff performance and top performer in parallel
       const currentMonthRange = getCurrentMonthDateRange()
       const topPerformerParams = new URLSearchParams(currentMonthRange)
       topPerformerParams.append('_t', Date.now())
-      
+
+      const [staffRes, topPerformerRes] = await Promise.allSettled([
+        apiGet(`/api/dashboard/staff-performance?${params}`),
+        apiGet(`/api/dashboard/top-performer?${topPerformerParams}`)
+      ])
+
+      // Process staff performance (branch-specific)
+      let staffPerformanceData = []
+      if (staffRes.status === 'fulfilled' && staffRes.value.ok) {
+        staffPerformanceData = await staffRes.value.json() || []
+      }
+      setStaffPerformance(staffPerformanceData)
+
+      // Process top performer (company-wide)
       let topPerformerData = null
       let staffLeaderboardData = []
-      const topPerformerRes = await apiGet(`/api/dashboard/top-performer?${topPerformerParams}`)
-      if (topPerformerRes.ok) {
-        const performerData = await topPerformerRes.json()
-        console.log('[Dashboard] Top Performer Data (Company-Wide):', performerData)
+      if (topPerformerRes.status === 'fulfilled' && topPerformerRes.value.ok) {
+        const performerData = await topPerformerRes.value.json()
         topPerformerData = performerData.top_performer
         staffLeaderboardData = performerData.leaderboard || []
-      } else {
-        console.error('[Dashboard] Failed to fetch top performer:', topPerformerRes.status)
       }
       setTopPerformer(topPerformerData)
       setStaffLeaderboard(staffLeaderboardData)
@@ -474,9 +459,11 @@ const Dashboard = () => {
 
         console.log('[Dashboard] Fetching sales data - filter:', filter, 'year:', selectedYear, 'month:', selectedMonth, 'currentBranch:', currentBranch?.id || currentBranch)
         
-        // Fetch stats and sales data
-        await fetchStatsData(params, dateRange)
-        await fetchSalesData(params)
+        // Fetch stats and sales data in parallel
+        await Promise.all([
+          fetchStatsData(params, dateRange),
+          fetchSalesData(params)
+        ])
       } catch (error) {
         console.error('Error loading sales data:', error)
         if (error.message && error.message.includes('Failed to fetch')) {
@@ -828,19 +815,30 @@ const Dashboard = () => {
                 {loading ? (
                   <ChartSkeleton height={400} />
                 ) : topPerformer ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0px', height: '100%' }}>
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 0,
+                    height: '100%'
+                  }}>
                     {/* Top Performer Info Header */}
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
                       justifyContent: 'space-between',
                       padding: '4px 8px',
                       background: 'linear-gradient(135deg, #f0fdfa 0%, #ffffff 100%)',
                       borderRadius: '12px',
-                      border: '1px solid #0F766E20',
+                      border: '1px solid rgba(15, 118, 110, 0.125)',
                       marginTop: '-12px'
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '16px',
+                        minWidth: 0,
+                        flex: 1
+                      }}>
                         <div style={{
                           width: '50px',
                           height: '50px',
@@ -852,7 +850,8 @@ const Dashboard = () => {
                           justifyContent: 'center',
                           fontSize: '20px',
                           fontWeight: '700',
-                          position: 'relative'
+                          position: 'relative',
+                          flexShrink: 0
                         }}>
                           {topPerformer.staff_name.charAt(0)}
                           <div style={{
@@ -872,8 +871,19 @@ const Dashboard = () => {
                             <FaCrown />
                           </div>
                         </div>
-                        <div>
-                          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>
+                        <div style={{
+                          minWidth: 0,
+                          flex: 1
+                        }}>
+                          <h3 style={{
+                            margin: 0,
+                            fontSize: '16px',
+                            fontWeight: '700',
+                            color: '#0f172a',
+                            wordWrap: 'break-word',
+                            overflowWrap: 'break-word',
+                            lineHeight: 1.3
+                          }}>
                             {topPerformer.staff_name}
                           </h3>
                           <div style={{
@@ -884,22 +894,41 @@ const Dashboard = () => {
                             borderRadius: '6px',
                             fontSize: '9px',
                             fontWeight: '600',
-                            marginTop: '2px'
+                            marginTop: '2px',
+                            whiteSpace: 'nowrap'
                           }}>
                             TOP PERFORMER
                           </div>
                         </div>
                       </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '20px', fontWeight: '700', color: '#0F766E' }}>
+                      <div style={{
+                        textAlign: 'right',
+                        flexShrink: 0,
+                        marginLeft: '12px'
+                      }}>
+                        <div style={{
+                          fontSize: '20px',
+                          fontWeight: '700',
+                          color: '#0F766E',
+                          lineHeight: 1.2
+                        }}>
                           {topPerformer.performance_score}
                         </div>
-                        <div style={{ fontSize: '11px', color: '#6b7280' }}>/100 Score</div>
+                        <div style={{
+                          fontSize: '11px',
+                          color: '#6b7280',
+                          lineHeight: 1.2
+                        }}>/100 Score</div>
                       </div>
                     </div>
 
                     {/* Horizontal Bar Chart */}
-                    <div style={{ flex: 1, minHeight: 0, marginTop: '8px', marginBottom: '12px' }}>
+                    <div style={{
+                      flex: 1,
+                      minHeight: 0,
+                      marginTop: '8px',
+                      marginBottom: '12px'
+                    }}>
                       <ResponsiveContainer width="100%" height={350}>
                         <BarChart 
                           data={topPerformerBarData} 
@@ -956,29 +985,97 @@ const Dashboard = () => {
                       background: '#f9fafb',
                       borderRadius: '12px'
                     }}>
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '20px', fontWeight: '700', color: '#10b981', marginBottom: '4px' }}>
+                      <div style={{
+                        textAlign: 'center',
+                        minWidth: 0
+                      }}>
+                        <div style={{
+                          fontSize: '20px',
+                          fontWeight: '700',
+                          marginBottom: '4px',
+                          wordWrap: 'break-word',
+                          overflowWrap: 'break-word',
+                          lineHeight: 1.2,
+                          color: '#10b981'
+                        }}>
                           {formatCurrency(topPerformer.revenue)}
                         </div>
-                        <div style={{ fontSize: '11px', color: '#6b7280', textTransform: 'uppercase' }}>Revenue</div>
+                        <div style={{
+                          fontSize: '11px',
+                          color: '#6b7280',
+                          textTransform: 'uppercase',
+                          wordWrap: 'break-word',
+                          overflowWrap: 'break-word'
+                        }}>Revenue</div>
                       </div>
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '20px', fontWeight: '700', color: '#3b82f6', marginBottom: '4px' }}>
+                      <div style={{
+                        textAlign: 'center',
+                        minWidth: 0
+                      }}>
+                        <div style={{
+                          fontSize: '20px',
+                          fontWeight: '700',
+                          marginBottom: '4px',
+                          wordWrap: 'break-word',
+                          overflowWrap: 'break-word',
+                          lineHeight: 1.2,
+                          color: '#3b82f6'
+                        }}>
                           {topPerformer.service_count}
                         </div>
-                        <div style={{ fontSize: '11px', color: '#6b7280', textTransform: 'uppercase' }}>Services</div>
+                        <div style={{
+                          fontSize: '11px',
+                          color: '#6b7280',
+                          textTransform: 'uppercase',
+                          wordWrap: 'break-word',
+                          overflowWrap: 'break-word'
+                        }}>Services</div>
                       </div>
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '20px', fontWeight: '700', color: '#d97706', marginBottom: '4px' }}>
+                      <div style={{
+                        textAlign: 'center',
+                        minWidth: 0
+                      }}>
+                        <div style={{
+                          fontSize: '20px',
+                          fontWeight: '700',
+                          marginBottom: '4px',
+                          wordWrap: 'break-word',
+                          overflowWrap: 'break-word',
+                          lineHeight: 1.2,
+                          color: '#d97706'
+                        }}>
                           {topPerformer.avg_rating}/5
                         </div>
-                        <div style={{ fontSize: '11px', color: '#6b7280', textTransform: 'uppercase' }}>Rating</div>
+                        <div style={{
+                          fontSize: '11px',
+                          color: '#6b7280',
+                          textTransform: 'uppercase',
+                          wordWrap: 'break-word',
+                          overflowWrap: 'break-word'
+                        }}>Rating</div>
                       </div>
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '20px', fontWeight: '700', color: '#8b5cf6', marginBottom: '4px' }}>
+                      <div style={{
+                        textAlign: 'center',
+                        minWidth: 0
+                      }}>
+                        <div style={{
+                          fontSize: '20px',
+                          fontWeight: '700',
+                          marginBottom: '4px',
+                          wordWrap: 'break-word',
+                          overflowWrap: 'break-word',
+                          lineHeight: 1.2,
+                          color: '#8b5cf6'
+                        }}>
                           {topPerformer.completed_appointments}
                         </div>
-                        <div style={{ fontSize: '11px', color: '#6b7280', textTransform: 'uppercase' }}>Appointments</div>
+                        <div style={{
+                          fontSize: '11px',
+                          color: '#6b7280',
+                          textTransform: 'uppercase',
+                          wordWrap: 'break-word',
+                          overflowWrap: 'break-word'
+                        }}>Appointments</div>
                       </div>
                     </div>
                   </div>
@@ -1165,21 +1262,16 @@ const Dashboard = () => {
             </div>
 
             {/* Payment Distribution */}
-            <div className="chart-card" style={{
-              backgroundColor: 'white',
-              padding: '20px',
-              borderRadius: '12px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            }}>
-              <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '16px', fontWeight: '600' }}>
+            <div className="payment-distribution-card">
+              <h3 className="payment-distribution-title">
                 Payment Distribution
               </h3>
               {loading ? (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af' }}>Loading...</div>
+                <div className="payment-distribution-loading">Loading...</div>
               ) : paymentDistribution.length === 0 ? (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af' }}>No payment data available</div>
+                <div className="payment-distribution-empty">No payment data available</div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div className="payment-distribution-list">
                   {paymentDistribution.map((payment, index) => {
                     const paymentIcons = {
                       'upi': <FaMobileAlt size={20} />,
@@ -1196,32 +1288,15 @@ const Dashboard = () => {
                     const color = paymentColors[mode] || '#3b82f6'
                     
                     return (
-                      <div key={index} style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '14px 16px',
-                        background: '#f9fafb',
-                        borderRadius: '8px',
-                        border: `1px solid ${color}20`
-            }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          {icon}
-                          <span style={{
-                            fontSize: '14px',
-                            color: '#374151',
-                            fontWeight: '600',
-                            textTransform: 'capitalize'
-                          }}>{payment.payment_mode}</span>
-                </div>
-                        <span style={{
-                          fontSize: '15px',
-                          fontWeight: '700',
-                          color: color
-                        }}>
+                      <div key={index} className="payment-distribution-item" style={{ borderColor: `${color}20` }}>
+                        <div className="payment-distribution-info">
+                          <span className="payment-distribution-icon">{icon}</span>
+                          <span className="payment-distribution-mode">{payment.payment_mode}</span>
+                        </div>
+                        <span className="payment-distribution-amount" style={{ color: color }}>
                           {formatCurrency(payment.amount)}
                         </span>
-                </div>
+                      </div>
                     )
                   })}
                 </div>

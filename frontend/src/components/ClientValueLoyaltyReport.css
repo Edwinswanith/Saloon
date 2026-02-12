@@ -13,7 +13,7 @@
   align-items: center;
   padding: 16px 24px;
   background: white;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--gray-200);
   margin-bottom: 24px;
   width: 100%;
   box-sizing: border-box;
@@ -31,18 +31,18 @@
   font-size: 20px;
   cursor: pointer;
   padding: 4px;
-  color: #374151;
+  color: var(--gray-700);
   transition: color 0.2s ease;
 }
 
 .menu-icon:hover {
-  color: #0d9488;
+  color: var(--primary-600);
 }
 
 .header-title {
   font-size: 20px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gray-800);
   margin: 0;
 }
 
@@ -55,7 +55,7 @@
 .user-icon {
   width: 36px;
   height: 36px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
   border-radius: 50%;
   background: white;
   cursor: pointer;
@@ -67,21 +67,21 @@
 }
 
 .user-icon:hover {
-  background: #f9fafb;
-  border-color: #0d9488;
+  background: var(--gray-50);
+  border-color: var(--primary-600);
 }
 
 .logo-box {
   padding: 6px 12px;
-  background: #f3f4f6;
+  background: var(--gray-100);
   border-radius: 6px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
 }
 
 .logo-text {
   font-size: 11px;
   font-weight: 600;
-  color: #374151;
+  color: var(--gray-700);
   letter-spacing: 0.5px;
 }
 
@@ -121,7 +121,7 @@
 }
 
 .back-button {
-  background: #0d9488;
+  background: var(--primary-600);
   color: white;
   border: none;
   padding: 10px 20px;
@@ -136,7 +136,7 @@
 }
 
 .back-button:hover {
-  background: #0f766e;
+  background: var(--primary-700);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
 }
@@ -150,17 +150,17 @@
 .date-range-label {
   font-size: 11px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--gray-500);
   letter-spacing: 0.5px;
 }
 
 .date-range-select {
   padding: 8px 36px 8px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--gray-300);
   border-radius: 6px;
   background: white;
   font-size: 14px;
-  color: #374151;
+  color: var(--gray-700);
   cursor: pointer;
   transition: all 0.2s ease;
   appearance: none;
@@ -171,12 +171,12 @@
 }
 
 .date-range-select:hover {
-  border-color: #0d9488;
+  border-color: var(--primary-600);
 }
 
 .date-range-select:focus {
   outline: none;
-  border-color: #0d9488;
+  border-color: var(--primary-600);
   box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
 }
 
@@ -216,7 +216,7 @@
 }
 
 .metric-card.red {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  background: linear-gradient(135deg, var(--error-500) 0%, var(--error-600) 100%);
   color: white;
 }
 
@@ -227,7 +227,7 @@
 }
 
 .metric-card.blue {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, var(--info-500) 0%, var(--info-600) 100%);
   color: white;
 }
 
@@ -299,13 +299,13 @@
 .chart-title {
   font-size: 16px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gray-800);
   margin: 0 0 8px 0;
 }
 
 .chart-subtitle {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--gray-500);
   margin: 0 0 24px 0;
   line-height: 1.5;
 }
@@ -337,7 +337,7 @@
 
 .y-axis-label {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--gray-500);
   font-weight: 500;
   line-height: 1;
 }
@@ -355,10 +355,10 @@
   justify-content: space-around;
   gap: 8px;
   padding: 20px 20px 50px;
-  border-left: 2px solid #d1d5db;
-  border-bottom: 2px solid #d1d5db;
-  border-right: 2px solid #d1d5db;
-  background: linear-gradient(to top, #f9fafb 0%, #ffffff 100%);
+  border-left: 2px solid var(--gray-300);
+  border-bottom: 2px solid var(--gray-300);
+  border-right: 2px solid var(--gray-300);
+  background: linear-gradient(to top, var(--gray-50) 0%, #ffffff 100%);
   position: relative;
   min-height: 320px;
   overflow: visible;
@@ -393,7 +393,7 @@
   position: absolute;
   bottom: -42px;
   font-size: 11px;
-  color: #6b7280;
+  color: var(--gray-500);
   text-align: center;
   width: 120%;
   white-space: nowrap;
@@ -443,7 +443,7 @@
   gap: 24px;
   padding-top: 20px;
   margin-top: 20px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--gray-200);
 }
 
 .legend-item {
@@ -451,7 +451,7 @@
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: #4b5563;
+  color: var(--gray-600);
 }
 
 .legend-icon-line {
@@ -485,8 +485,8 @@
 
 .table-tabs {
   display: flex;
-  border-bottom: 2px solid #e5e7eb;
-  background: #f9fafb;
+  border-bottom: 2px solid var(--gray-200);
+  background: var(--gray-50);
 }
 
 .tab-button {
@@ -496,7 +496,7 @@
   background: transparent;
   font-size: 14px;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--gray-500);
   cursor: pointer;
   transition: all 0.2s ease;
   border-bottom: 3px solid transparent;
@@ -505,13 +505,13 @@
 }
 
 .tab-button:hover {
-  color: #374151;
+  color: var(--gray-700);
   background: #ffffff;
 }
 
 .tab-button.active {
-  color: #0d9488;
-  border-bottom-color: #0d9488;
+  color: var(--primary-600);
+  border-bottom-color: var(--primary-600);
   background: white;
   font-weight: 600;
 }
@@ -526,7 +526,7 @@
 }
 
 .client-table thead {
-  background: #f9fafb;
+  background: var(--gray-50);
 }
 
 .client-table th {
@@ -535,8 +535,8 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #6b7280;
-  border-bottom: 1px solid #e5e7eb;
+  color: var(--gray-500);
+  border-bottom: 1px solid var(--gray-200);
 }
 
 .client-table th.text-left {
@@ -552,12 +552,12 @@
 }
 
 .client-table tbody tr {
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--gray-200);
   transition: background-color 0.2s ease;
 }
 
 .client-table tbody tr:hover {
-  background: #f9fafb;
+  background: var(--gray-50);
 }
 
 .client-table tbody tr:last-child {
@@ -569,7 +569,7 @@
 }
 
 .client-table tbody tr:hover {
-  background: #f9fafb;
+  background: var(--gray-50);
 }
 
 .client-table tbody tr.vip-row:hover {
@@ -579,7 +579,7 @@
 .client-table td {
   padding: 16px;
   font-size: 14px;
-  color: #374151;
+  color: var(--gray-700);
 }
 
 .client-cell {
@@ -615,12 +615,12 @@
 
 .spend-value {
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gray-800);
 }
 
 .no-data-cell {
   padding: 40px 16px;
-  color: #9ca3af;
+  color: var(--gray-400);
   font-style: italic;
 }
 
@@ -637,8 +637,8 @@
 .loading-spinner {
   width: 50px;
   height: 50px;
-  border: 4px solid #e5e7eb;
-  border-top-color: #0d9488;
+  border: 4px solid var(--gray-200);
+  border-top-color: var(--primary-600);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -651,7 +651,7 @@
 
 .loading-container p {
   font-size: 16px;
-  color: #6b7280;
+  color: var(--gray-500);
   margin: 0;
 }
 
@@ -665,7 +665,7 @@
 
 .no-data-message p {
   font-size: 15px;
-  color: #9ca3af;
+  color: var(--gray-400);
   text-align: center;
   margin: 0;
 }
@@ -675,7 +675,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  background: linear-gradient(135deg, var(--warning-500) 0%, var(--warning-600) 100%);
   color: white;
   padding: 4px 10px;
   border-radius: 12px;
@@ -689,7 +689,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  background: linear-gradient(135deg, var(--warning-500) 0%, var(--warning-600) 100%);
   color: white;
   padding: 6px 12px;
   border-radius: 16px;
@@ -715,8 +715,8 @@
 }
 
 .membership-badge.none {
-  background: #e5e7eb;
-  color: #6b7280;
+  background: var(--gray-200);
+  color: var(--gray-500);
 }
 
 /* Customer Detail Modal */
@@ -749,15 +749,15 @@
   justify-content: space-between;
   align-items: flex-start;
   padding: 20px 24px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border-bottom: 1px solid var(--gray-200);
+  background: var(--gray-50);
   border-radius: 12px 12px 0 0;
 }
 
 .customer-detail-header-left h2 {
   font-size: 20px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gray-800);
   margin: 0 0 4px 0;
   display: flex;
   align-items: center;
@@ -767,7 +767,7 @@
 
 .customer-branch-name {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--gray-500);
   margin: 0;
 }
 
@@ -775,7 +775,7 @@
   background: none;
   border: none;
   font-size: 20px;
-  color: #6b7280;
+  color: var(--gray-500);
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
@@ -784,8 +784,8 @@
 }
 
 .customer-detail-modal-close:hover {
-  background: #e5e7eb;
-  color: #374151;
+  background: var(--gray-200);
+  color: var(--gray-700);
 }
 
 .customer-detail-modal-body {
@@ -796,12 +796,12 @@
 .customer-detail-error {
   padding: 40px;
   text-align: center;
-  color: #6b7280;
+  color: var(--gray-500);
   font-size: 15px;
 }
 
 .customer-detail-error {
-  color: #ef4444;
+  color: var(--error-500);
 }
 
 .customer-detail-section {
@@ -815,10 +815,10 @@
 .customer-detail-section h3 {
   font-size: 16px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gray-800);
   margin: 0 0 16px 0;
   padding-bottom: 8px;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--gray-200);
 }
 
 .customer-detail-metrics-grid {
@@ -836,7 +836,7 @@
 .customer-detail-metric-item .metric-label {
   font-size: 12px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--gray-500);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -844,12 +844,12 @@
 .customer-detail-metric-item .metric-value {
   font-size: 16px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gray-800);
 }
 
 /* Value Explanation */
 .value-explanation {
-  background: #f0fdf4;
+  background: var(--success-50);
   border: 1px solid #86efac;
   border-radius: 8px;
   padding: 16px;
@@ -884,14 +884,14 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px;
-  background: #f9fafb;
+  background: var(--gray-50);
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
 }
 
 .activity-date {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--gray-500);
   font-weight: 500;
   min-width: 100px;
 }
@@ -899,7 +899,7 @@
 .activity-services {
   flex: 1;
   font-size: 14px;
-  color: #374151;
+  color: var(--gray-700);
   margin: 0 16px;
   text-align: left;
 }
@@ -924,20 +924,20 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: #f9fafb;
+  background: var(--gray-50);
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
 }
 
 .service-name {
   font-size: 14px;
-  color: #374151;
+  color: var(--gray-700);
   font-weight: 500;
 }
 
 .service-count {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--gray-500);
   font-weight: 600;
 }
 

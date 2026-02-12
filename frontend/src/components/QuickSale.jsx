@@ -1123,6 +1123,7 @@ const QuickSale = () => {
           await apiPost(`/api/bills/${billId}/items`, {
             item_type: 'membership',
             membership_id: membership.membership_id,
+            name: membership.name || '',
             price: parseFloat(membership.price) || 0,
             discount: 0,
             quantity: 1,
@@ -1223,6 +1224,7 @@ const QuickSale = () => {
           await apiPost(`/api/bills/${billId}/items`, {
             item_type: 'membership',
             membership_id: membership.membership_id,
+            name: membership.name || '',
             price: parseFloat(membership.price) || 0,
             discount: 0,
             quantity: 1,

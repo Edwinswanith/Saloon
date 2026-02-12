@@ -18,7 +18,7 @@
   margin-bottom: 24px;
   padding: 20px 24px;
   background: white;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
@@ -32,7 +32,7 @@
 .temp-assignment-header .header-icon {
   font-size: 24px;
   color: white;
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
   padding: 12px;
   border-radius: 10px;
   display: flex;
@@ -43,14 +43,14 @@
 .temp-assignment-header h2 {
   margin: 0;
   font-size: 18px;
-  color: #1f2937;
+  color: var(--gray-800);
   font-weight: 700;
 }
 
 .temp-assignment-header p {
   margin: 4px 0 0 0;
   font-size: 13px;
-  color: #6b7280;
+  color: var(--gray-500);
 }
 
 .btn-add-assignment {
@@ -59,7 +59,7 @@
   justify-content: center;
   gap: 8px;
   padding: 10px 18px;
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
   color: white;
   border: none;
   border-radius: 8px;
@@ -73,7 +73,7 @@
 }
 
 .btn-add-assignment:hover {
-  background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+  background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -89,7 +89,7 @@
 .stat-card {
   background: white;
   padding: 20px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   display: flex;
@@ -125,14 +125,14 @@
 .stat-value {
   font-size: 28px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--gray-800);
   margin-bottom: 4px;
   line-height: 1;
 }
 
 .stat-label {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--gray-500);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -156,7 +156,7 @@
 }
 
 .assignments-table thead {
-  background: #0F766E;
+  background: var(--primary-700);
 }
 
 .assignments-table th {
@@ -196,7 +196,7 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: #0F766E;
+  background: var(--primary-700);
   color: white;
   display: flex;
   align-items: center;
@@ -365,7 +365,7 @@
   align-items: center;
   padding: 24px 30px;
   border-bottom: 1px solid #ecf0f1;
-  background: #0F766E;
+  background: var(--primary-700);
   border-radius: 16px 16px 0 0;
 }
 
@@ -514,7 +514,7 @@
   align-items: center;
   gap: 8px;
   padding: 12px 24px;
-  background: #0F766E;
+  background: var(--primary-700);
   color: white;
   border: none;
   border-radius: 12px;
@@ -540,10 +540,10 @@
 .view-toggle {
   display: flex;
   gap: 0;
-  background: #f3f4f6;
+  background: var(--gray-100);
   padding: 4px;
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
 }
 
 .toggle-btn {
@@ -557,27 +557,27 @@
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--gray-500);
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
 }
 
 .toggle-btn.active {
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
   color: white;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .toggle-btn:hover:not(.active) {
-  color: #0F766E;
+  color: var(--primary-700);
   background: rgba(15, 118, 110, 0.08);
 }
 
 /* Coverage Dashboard Sections */
 .coverage-section {
   background: white;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   padding: 20px 24px;
@@ -589,10 +589,10 @@
   align-items: center;
   font-size: 16px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--gray-800);
   margin: 0 0 16px 0;
   padding-bottom: 12px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--gray-200);
 }
 
 /* Branch Coverage Cards */
@@ -700,7 +700,7 @@
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: #0F766E;
+  background: var(--primary-700);
   color: white;
   border: none;
   border-radius: 6px;
@@ -723,7 +723,7 @@
   justify-content: center;
   gap: 8px;
   padding: 12px;
-  background: #0F766E;
+  background: var(--primary-700);
   color: white;
   border: none;
   border-radius: 12px;
@@ -747,8 +747,8 @@
 }
 
 .available-staff-card {
-  background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%);
-  border: 1px solid #99f6e4;
+  background: linear-gradient(135deg, var(--primary-50) 0%, var(--primary-100) 100%);
+  border: 1px solid var(--primary-200);
   border-radius: 12px;
   padding: 16px;
   transition: all 0.2s ease;
@@ -771,7 +771,7 @@
   margin: 0 0 4px 0;
   font-size: 15px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gray-800);
 }
 
 .staff-count-badge {
@@ -779,11 +779,11 @@
   align-items: center;
   padding: 4px 10px;
   background: white;
-  border: 1px solid #99f6e4;
+  border: 1px solid var(--primary-200);
   border-radius: 16px;
   font-size: 12px;
   font-weight: 600;
-  color: #0F766E;
+  color: var(--primary-700);
   white-space: nowrap;
 }
 
@@ -815,7 +815,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #0F766E;
+  background: var(--primary-700);
   color: white;
   display: flex;
   align-items: center;
@@ -830,7 +830,7 @@
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: #0F766E;
+  background: var(--primary-700);
   color: white;
   border: none;
   border-radius: 6px;
@@ -912,7 +912,7 @@
   }
 
   .toggle-btn.active {
-    background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+    background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
     color: white;
   }
 

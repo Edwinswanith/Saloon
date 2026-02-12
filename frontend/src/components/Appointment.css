@@ -71,17 +71,17 @@
 .nav-btn-group {
   display: flex;
   gap: 0;
-  background: #f3f4f6;
+  background: var(--gray-100);
   padding: 4px;
   border-radius: 10px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
 }
 
 .nav-btn {
   padding: 8px 16px;
   border: none;
   background: transparent;
-  color: #6b7280;
+  color: var(--gray-500);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -92,11 +92,11 @@
 
 .nav-btn:hover {
   background: white;
-  color: #0F766E;
+  color: var(--primary-700);
 }
 
 .nav-btn.active {
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
   color: white;
   font-weight: 600;
   box-shadow: 0 2px 4px rgba(15, 118, 110, 0.2);
@@ -116,18 +116,18 @@
   display: flex;
   align-items: center;
   background: white;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--gray-200);
   border-radius: 10px;
   overflow: hidden;
   transition: all 0.2s ease;
 }
 
 .date-input-wrapper:hover {
-  border-color: #0F766E;
+  border-color: var(--primary-700);
 }
 
 .date-input-wrapper:focus-within {
-  border-color: #0F766E;
+  border-color: var(--primary-700);
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
 }
 
@@ -160,7 +160,7 @@
   border: none;
   font-size: 14px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gray-800);
   min-width: 100px;
   text-align: center;
   pointer-events: none;
@@ -172,10 +172,10 @@
   align-items: center;
   justify-content: center;
   padding: 10px 14px;
-  background: #f0fdfa;
-  color: #0F766E;
+  background: var(--primary-50);
+  color: var(--primary-700);
   font-size: 16px;
-  border-left: 2px solid #e5e7eb;
+  border-left: 2px solid var(--gray-200);
   pointer-events: none;
   z-index: 1;
 }
@@ -188,11 +188,11 @@
   padding: 10px 16px;
   padding-right: 36px;
   background: white;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--gray-200);
   border-radius: 10px;
   font-size: 14px;
   font-weight: 500;
-  color: #1f2937;
+  color: var(--gray-800);
   cursor: pointer;
   min-width: 160px;
   transition: all 0.2s ease;
@@ -203,12 +203,12 @@
 }
 
 .staff-select:hover {
-  border-color: #0F766E;
+  border-color: var(--primary-700);
 }
 
 .staff-select:focus {
   outline: none;
-  border-color: #0F766E;
+  border-color: var(--primary-700);
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
 }
 
@@ -222,17 +222,17 @@
 .view-mode-buttons {
   display: flex;
   gap: 0;
-  background: #f3f4f6;
+  background: var(--gray-100);
   padding: 4px;
   border-radius: 10px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
 }
 
 .view-btn {
   padding: 8px 16px;
   border: none;
   background: transparent;
-  color: #6b7280;
+  color: var(--gray-500);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -243,11 +243,11 @@
 
 .view-btn:hover {
   background: white;
-  color: #0F766E;
+  color: var(--primary-700);
 }
 
 .view-btn.active {
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
   color: white !important;
   font-weight: 600;
   box-shadow: 0 2px 4px rgba(15, 118, 110, 0.2);
@@ -268,7 +268,7 @@
   display: grid;
   gap: 0;
   background: white;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--gray-200);
   border-radius: 12px;
   overflow: hidden;
   min-width: fit-content;
@@ -280,9 +280,9 @@
   padding: 14px 16px;
   font-weight: 600;
   font-size: 13px;
-  color: #0F766E;
-  border-right: 1px solid #e5e7eb;
-  border-bottom: 2px solid #e5e7eb;
+  color: var(--primary-700);
+  border-right: 1px solid var(--gray-200);
+  border-bottom: 2px solid var(--gray-200);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -296,10 +296,10 @@
   padding: 14px 16px;
   font-weight: 600;
   font-size: 13px;
-  color: #0F766E;
+  color: var(--primary-700);
   text-align: center;
-  border-right: 1px solid #e5e7eb;
-  border-bottom: 2px solid #e5e7eb;
+  border-right: 1px solid var(--gray-200);
+  border-bottom: 2px solid var(--gray-200);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -310,10 +310,10 @@
   padding: 10px 14px;
   font-size: 12px;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--gray-500);
   text-align: right;
-  border-right: 1px solid #e5e7eb;
-  border-bottom: 1px solid #f3f4f6;
+  border-right: 1px solid var(--gray-200);
+  border-bottom: 1px solid var(--gray-100);
   min-height: 60px;
   display: flex;
   align-items: center;
@@ -324,19 +324,19 @@
   background: white;
   min-height: 60px;
   padding: 4px;
-  border-right: 1px solid #f3f4f6;
-  border-bottom: 1px solid #f3f4f6;
+  border-right: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--gray-100);
   position: relative;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .schedule-cell:hover {
-  background: #f0fdfa;
+  background: var(--primary-50);
 }
 
 .appointment-block {
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%) !important;
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%) !important;
   color: white;
   padding: 8px 10px;
   border-radius: 6px;
@@ -351,11 +351,11 @@
 .appointment-block:hover {
   transform: none;
   box-shadow: 0 2px 6px rgba(15, 118, 110, 0.25);
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%) !important;
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%) !important;
 }
 
 .appointment-block.confirmed {
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%) !important;
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%) !important;
 }
 
 .appointment-block.completed {
@@ -363,7 +363,7 @@
 }
 
 .appointment-block.cancelled {
-  background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%) !important;
+  background: linear-gradient(135deg, var(--error-600) 0%, var(--error-500) 100%) !important;
   opacity: 0.8;
 }
 
@@ -416,18 +416,18 @@
   padding: 14px 16px;
   font-weight: 600;
   font-size: 13px;
-  color: #0F766E;
+  color: var(--primary-700);
   text-align: center;
-  border-right: 1px solid #e5e7eb;
-  border-bottom: 2px solid #e5e7eb;
+  border-right: 1px solid var(--gray-200);
+  border-bottom: 2px solid var(--gray-200);
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
 .day-header.today {
-  background: #f0fdfa;
-  color: #0F766E;
+  background: var(--primary-50);
+  color: var(--primary-700);
   font-weight: 700;
 }
 
@@ -454,10 +454,10 @@
   padding: 12px 8px;
   font-weight: 600;
   font-size: 12px;
-  color: #0F766E;
+  color: var(--primary-700);
   text-align: center;
-  border-right: 1px solid #e5e7eb;
-  border-bottom: 2px solid #e5e7eb;
+  border-right: 1px solid var(--gray-200);
+  border-bottom: 2px solid var(--gray-200);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -466,8 +466,8 @@
   background: white;
   min-height: 100px;
   padding: 8px;
-  border-right: 1px solid #f3f4f6;
-  border-bottom: 1px solid #f3f4f6;
+  border-right: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--gray-100);
   position: relative;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -477,7 +477,7 @@
 }
 
 .month-cell:hover {
-  background: #f0fdfa;
+  background: var(--primary-50);
 }
 
 .month-cell.other-month {
@@ -486,19 +486,19 @@
 }
 
 .month-cell.today {
-  background: #f0fdfa;
-  border: 2px solid #0F766E;
+  background: var(--primary-50);
+  border: 2px solid var(--primary-700);
 }
 
 .month-cell-date {
   font-weight: 600;
   font-size: 14px;
-  color: #1f2937;
+  color: var(--gray-800);
   margin-bottom: 4px;
 }
 
 .month-cell.today .month-cell-date {
-  color: #0F766E;
+  color: var(--primary-700);
   font-weight: 700;
 }
 
@@ -511,7 +511,7 @@
 }
 
 .month-appointment {
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
   color: white;
   padding: 4px 6px;
   border-radius: 4px;
@@ -531,7 +531,7 @@
 }
 
 .month-appointment.confirmed {
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
 }
 
 .month-appointment.completed {
@@ -539,7 +539,7 @@
 }
 
 .month-appointment.cancelled {
-  background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+  background: linear-gradient(135deg, var(--error-600) 0%, var(--error-500) 100%);
   opacity: 0.8;
 }
 
@@ -567,14 +567,14 @@
 
 .month-more-appointments {
   font-size: 10px;
-  color: #6b7280;
+  color: var(--gray-500);
   padding: 2px 4px;
   font-weight: 500;
   cursor: pointer;
 }
 
 .month-more-appointments:hover {
-  color: #0F766E;
+  color: var(--primary-700);
   text-decoration: underline;
 }
 
@@ -589,10 +589,10 @@
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   z-index: 10000;
-  padding: 100px 20px 20px 20px;
+  padding: 20px;
   overflow-y: auto;
 }
 
@@ -684,7 +684,7 @@
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #0F766E;
+  border-color: var(--primary-700);
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
 }
 
@@ -694,7 +694,7 @@
   justify-content: flex-end;
   margin-top: 24px;
   padding-top: 16px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--gray-200);
 }
 
 .modal-actions button {
@@ -708,19 +708,19 @@
 }
 
 .modal-actions button[type="button"] {
-  background: #f3f4f6;
-  color: #4b5563;
-  border: 1px solid #e5e7eb;
+  background: var(--gray-100);
+  color: var(--gray-600);
+  border: 1px solid var(--gray-200);
 }
 
 .modal-actions button[type="button"]:hover {
-  background: #e5e7eb;
-  color: #374151;
+  background: var(--gray-200);
+  color: var(--gray-700);
 }
 
 .modal-actions button[type="submit"],
 .modal-actions button:not([type="button"]) {
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
   color: white;
   box-shadow: 0 2px 4px rgba(15, 118, 110, 0.2);
 }
@@ -793,8 +793,8 @@
   justify-content: space-between;
   align-items: flex-start;
   padding: 24px;
-  border-bottom: 1px solid #e5e7eb;
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  border-bottom: 1px solid var(--gray-200);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
 }
 
 .invoice-customer-info h3 {
@@ -1111,7 +1111,7 @@
 }
 
 .appointment-action-btn.edit-btn {
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
   color: white !important;
   box-shadow: 0 2px 4px rgba(15, 118, 110, 0.2);
 }
@@ -1168,6 +1168,20 @@
 /* ========== RESPONSIVE DESIGN ========== */
 
 /* Tablet */
+/* Tablet view (769px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .modal-overlay {
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .modal-content {
+    max-width: 90%;
+    max-height: 90vh;
+  }
+}
+
 @media (max-width: 1024px) {
   .appointment-header {
     padding: var(--space-4) var(--space-6);
@@ -1186,10 +1200,8 @@
   }
 
   .modal-overlay {
-    padding: 16px;
-    padding-top: 88px; /* Account for fixed header (72px) + spacing */
-    padding-bottom: 16px;
-    align-items: flex-start;
+    padding: 20px;
+    align-items: center;
     justify-content: center;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -1410,9 +1422,7 @@
 
   .modal-overlay {
     padding: 12px;
-    padding-top: max(80px, calc(72px + env(safe-area-inset-top, 8px))); /* Account for fixed header */
-    padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -1605,7 +1615,7 @@
   }
 
   .view-btn.active {
-    background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+    background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
     color: white !important;
     font-weight: 600;
   }

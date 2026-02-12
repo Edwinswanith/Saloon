@@ -45,6 +45,7 @@ class Customer(Document):
         'collection': 'customers',
         'indexes': [
             {'fields': ['mobile', 'branch'], 'unique': True},
+            {'fields': ['branch', 'created_at']},  # New customers dashboard query
         ]
     }
 
@@ -85,7 +86,12 @@ class CustomerMergeLog(Document):
 
 # Staff Model
 class Staff(Document):
-    meta = {'collection': 'staffs'}
+    meta = {
+        'collection': 'staffs',
+        'indexes': [
+            {'fields': ['branch', 'status']},  # Staff listing by branch
+        ]
+    }
 
     mobile = StringField(required=True, unique=True, max_length=15)
     first_name = StringField(required=True, max_length=100)
@@ -138,7 +144,12 @@ class ProductCategory(Document):
 
 # Product Model
 class Product(Document):
-    meta = {'collection': 'products'}
+    meta = {
+        'collection': 'products',
+        'indexes': [
+            {'fields': ['branch', 'status']},  # Product listing by branch
+        ]
+    }
 
     name = StringField(required=True, max_length=100)
     category = ReferenceField('ProductCategory', required=True)
@@ -155,7 +166,12 @@ class Product(Document):
 
 # Package Model
 class Package(Document):
-    meta = {'collection': 'packages'}
+    meta = {
+        'collection': 'packages',
+        'indexes': [
+            {'fields': ['branch', 'status']},  # Package listing by branch
+        ]
+    }
 
     name = StringField(required=True, max_length=100)
     price = FloatField(required=True)
@@ -215,7 +231,12 @@ class BillItemEmbedded(EmbeddedDocument):
 class Bill(Document):
     meta = {
         'collection': 'bills',
-        'strict': False  # Allow legacy/unknown fields in existing documents
+        'strict': False,  # Allow legacy/unknown fields in existing documents
+        'indexes': [
+            {'fields': ['branch', 'bill_date', 'is_deleted']},   # Dashboard stats, revenue queries
+            {'fields': ['branch', 'is_deleted', '-bill_date']},   # Bill listing sorted by date desc
+            {'fields': ['customer', 'is_deleted']},               # Customer bill history
+        ]
     }
     
     bill_number = StringField(required=True, unique=True, max_length=50)
@@ -244,7 +265,13 @@ class Bill(Document):
 
 # Appointment Model
 class Appointment(Document):
-    meta = {'collection': 'appointments'}
+    meta = {
+        'collection': 'appointments',
+        'indexes': [
+            {'fields': ['branch', 'appointment_date', 'status']},  # Dashboard, calendar views
+            {'fields': ['staff', 'appointment_date', 'status']},   # Staff performance queries
+        ]
+    }
     
     customer = ReferenceField('Customer', required=True)
     staff = ReferenceField('Staff', required=True)
@@ -268,7 +295,12 @@ class ExpenseCategory(Document):
 
 # Expense Model
 class Expense(Document):
-    meta = {'collection': 'expenses'}
+    meta = {
+        'collection': 'expenses',
+        'indexes': [
+            {'fields': ['branch', 'expense_date']},  # Dashboard expense queries
+        ]
+    }
     
     category = ReferenceField('ExpenseCategory', required=True)
     branch = ReferenceField('Branch')  # Multi-branch: Expense's branch
@@ -333,7 +365,12 @@ class Lead(Document):
 
 # Feedback Model
 class Feedback(Document):
-    meta = {'collection': 'feedbacks'}
+    meta = {
+        'collection': 'feedbacks',
+        'indexes': [
+            {'fields': ['staff', 'created_at']},  # Staff feedback aggregation
+        ]
+    }
     
     customer = ReferenceField('Customer')
     bill = ReferenceField('Bill')

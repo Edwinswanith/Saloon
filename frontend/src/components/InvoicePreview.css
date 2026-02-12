@@ -9,7 +9,7 @@
 
 .invoice-preview-container {
   background: white;
-  color: #1f2937;
+  color: var(--gray-800);
   padding: 12px;
   max-width: 800px;
   margin: 0 auto;
@@ -20,7 +20,7 @@
 .invoice-loading {
   text-align: center;
   padding: 40px;
-  color: #6b7280;
+  color: var(--gray-500);
 }
 
 /* Header Section - Center-Aligned */
@@ -33,7 +33,7 @@
 .company-name {
   font-size: 20px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--gray-800);
   margin: 0 0 8px 0;
 }
 
@@ -41,7 +41,7 @@
 .company-gst,
 .company-phone {
   font-size: 10px;
-  color: #4b5563;
+  color: var(--gray-600);
   margin: 4px 0;
   line-height: 1.4;
 }
@@ -62,7 +62,7 @@
 
 .billed-to {
   font-size: 11px;
-  color: #1f2937;
+  color: var(--gray-800);
   margin: 0;
   line-height: 1.4;
 }
@@ -73,14 +73,14 @@
 
 .customer-mobile {
   font-size: 10px;
-  color: #1f2937;
+  color: var(--gray-800);
   margin: 0;
   line-height: 1.4;
 }
 
 .customer-mobile-link {
   font-size: 10px;
-  color: #2563eb;
+  color: var(--info-600);
   text-decoration: none;
   line-height: 1.4;
 }
@@ -99,14 +99,14 @@
 .invoice-number {
   font-size: 10px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gray-800);
   margin: 0;
   line-height: 1.4;
 }
 
 .wallet-balance {
   font-size: 9px;
-  color: #4b5563;
+  color: var(--gray-600);
   margin: 0;
   line-height: 1.4;
 }
@@ -117,20 +117,20 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 0;
-  border-top: 1px solid #e5e7eb;
-  border-bottom: 1px solid #e5e7eb;
+  border-top: 1px solid var(--gray-200);
+  border-bottom: 1px solid var(--gray-200);
   margin-bottom: 12px;
 }
 
 .booking-label {
   font-size: 10px;
-  color: #1f2937;
+  color: var(--gray-800);
   font-weight: 600;
 }
 
 .booking-datetime {
   font-size: 10px;
-  color: #1f2937;
+  color: var(--gray-800);
 }
 
 /* Payment Strip */
@@ -146,7 +146,7 @@
   justify-content: space-between;
   align-items: center;
   font-size: 10px;
-  color: #1f2937;
+  color: var(--gray-800);
 }
 
 .payment-status-label,
@@ -156,7 +156,7 @@
 
 .payment-status-value,
 .payment-source-value {
-  color: #4b5563;
+  color: var(--gray-600);
 }
 
 /* Items Grid - 8 Columns */
@@ -170,11 +170,11 @@
   grid-template-columns: 1.8fr 0.9fr 0.6fr 0.4fr 0.7fr 0.6fr 0.7fr 0.7fr;
   gap: 4px;
   padding: 8px 4px;
-  background-color: #f3f4f6;
+  background-color: var(--gray-100);
   font-size: 9px;
   font-weight: 600;
-  color: #1f2937;
-  border-bottom: 1px solid #e5e7eb;
+  color: var(--gray-800);
+  border-bottom: 1px solid var(--gray-200);
 }
 
 .items-grid-row {
@@ -183,12 +183,12 @@
   gap: 4px;
   padding: 6px 4px;
   font-size: 9px;
-  color: #1f2937;
-  border-bottom: 0.5px solid #e5e7eb;
+  color: var(--gray-800);
+  border-bottom: 0.5px solid var(--gray-200);
 }
 
 .items-grid-row:nth-child(even) {
-  background-color: #f9fafb;
+  background-color: var(--gray-50);
 }
 
 .items-grid-row:nth-child(odd) {
@@ -227,7 +227,7 @@
 .items-grid-row.no-items {
   grid-column: 1 / -1;
   text-align: center;
-  color: #6b7280;
+  color: var(--gray-500);
   padding: 20px;
 }
 
@@ -239,7 +239,7 @@
   gap: 4px;
   margin-bottom: 16px;
   padding-top: 12px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--gray-200);
 }
 
 .summary-row {
@@ -248,7 +248,7 @@
   align-items: center;
   width: 100%;
   font-size: 10px;
-  color: #1f2937;
+  color: var(--gray-800);
 }
 
 .summary-label {
@@ -267,7 +267,7 @@
   font-weight: 600;
   padding-top: 8px;
   margin-top: 4px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--gray-200);
 }
 
 .summary-row.summary-total .summary-label,
@@ -280,25 +280,25 @@
   text-align: center;
   padding: 16px 0;
   margin-bottom: 16px;
-  border-top: 1px solid #e5e7eb;
-  border-bottom: 1px solid #e5e7eb;
-  background-color: #f9fafb;
+  border-top: 1px solid var(--gray-200);
+  border-bottom: 1px solid var(--gray-200);
+  background-color: var(--gray-50);
 }
 
 .invoice-contact-footer p {
   margin: 4px 0;
   font-size: 10px;
-  color: #4b5563;
+  color: var(--gray-600);
   line-height: 1.5;
 }
 
 .invoice-contact-footer .contact-enquiry {
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gray-800);
 }
 
 .invoice-contact-footer .contact-link {
-  color: #0F766E;
+  color: var(--primary-700);
   text-decoration: none;
 }
 
@@ -338,12 +338,12 @@
 }
 
 .download-btn {
-  background-color: #374151;
+  background-color: var(--gray-700);
   color: white;
 }
 
 .download-btn:hover {
-  background-color: #1f2937;
+  background-color: var(--gray-800);
 }
 
 .whatsapp-btn {

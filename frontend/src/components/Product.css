@@ -30,7 +30,7 @@
   align-items: center;
   gap: var(--space-4);
   padding: var(--space-6);
-  background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+  background: linear-gradient(135deg, var(--gray-50) 0%, #ffffff 100%);
   border-bottom: 2px solid var(--border-light);
   flex-wrap: wrap;
 }
@@ -66,7 +66,7 @@
 
 .search-input:focus {
   outline: none;
-  border-color: #0F766E;
+  border-color: var(--primary-700);
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
 }
 
@@ -131,12 +131,12 @@
 }
 
 .action-btn.add-btn {
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
   color: white;
 }
 
 .action-btn.add-btn:hover {
-  background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+  background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
@@ -159,7 +159,7 @@
 }
 
 .product-category-row:hover {
-  background: #f9fafb;
+  background: var(--gray-50);
   transform: translateX(4px);
 }
 
@@ -187,7 +187,7 @@
   content: '';
   width: 4px;
   height: 20px;
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
   border-radius: 2px;
 }
 
@@ -235,57 +235,57 @@
 }
 
 .edit-btn {
-  color: #3b82f6;
+  color: var(--info-500);
 }
 
 .edit-btn svg,
 .edit-btn svg path {
-  fill: #3b82f6 !important;
+  fill: var(--info-500) !important;
 }
 
 .delete-btn {
-  color: #ef4444;
+  color: var(--error-500);
 }
 
 .delete-btn svg,
 .delete-btn svg path {
-  fill: #ef4444 !important;
+  fill: var(--error-500) !important;
 }
 
 .reorder-btn {
-  color: #6b7280;
+  color: var(--gray-500);
 }
 
 .reorder-btn svg,
 .reorder-btn svg path {
-  fill: #6b7280 !important;
+  fill: var(--gray-500) !important;
 }
 
 .expand-btn {
-  color: #0F766E;
+  color: var(--primary-700);
 }
 
 .expand-btn svg,
 .expand-btn svg path {
-  fill: #0F766E !important;
+  fill: var(--primary-700) !important;
 }
 
 .edit-btn:hover {
-  background: #dbeafe;
-  border-color: #3b82f6;
-  color: #3b82f6;
+  background: var(--info-100);
+  border-color: var(--info-500);
+  color: var(--info-500);
 }
 
 .delete-btn:hover {
-  background: #fee2e2;
-  border-color: #ef4444;
-  color: #ef4444;
+  background: var(--error-100);
+  border-color: var(--error-500);
+  color: var(--error-500);
 }
 
 .reorder-btn:hover {
-  background: #f3f4f6;
-  border-color: #6b7280;
-  color: #6b7280;
+  background: var(--gray-100);
+  border-color: var(--gray-500);
+  color: var(--gray-500);
 }
 
 .expand-btn {
@@ -298,14 +298,14 @@
 
 .expand-btn:hover {
   background: #ede9fe;
-  border-color: #0F766E;
-  color: #0F766E;
+  border-color: var(--primary-700);
+  color: var(--primary-700);
 }
 
 .icon-btn.add-btn {
-  background: #0F766E;
+  background: var(--primary-700);
   color: white;
-  border-color: #0F766E;
+  border-color: var(--primary-700);
 }
 
 .icon-btn.add-btn svg,
@@ -321,7 +321,7 @@
 
 /* ========== PRODUCTS LIST ========== */
 .products-list {
-  background: #f9fafb;
+  background: var(--gray-50);
   padding: 20px 24px;
   border-top: 1px solid var(--border-light);
   animation: slideDown var(--transition-base) ease-out;
@@ -362,7 +362,7 @@
 .product-item-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
-  border-color: #0F766E;
+  border-color: var(--primary-700);
 }
 
 .product-item-header {
@@ -387,22 +387,22 @@
 .product-item-price {
   font-size: var(--text-lg);
   font-weight: var(--font-bold);
-  color: #0F766E;
+  color: var(--primary-700);
   font-family: 'Courier New', monospace;
 }
 
 .product-item-stock {
   font-size: var(--text-sm);
   color: var(--text-secondary);
-  background: #f3f4f6;
+  background: var(--gray-100);
   padding: 4px 10px;
   border-radius: 12px;
   font-weight: var(--font-medium);
 }
 
 .product-item-stock.low-stock {
-  background: #fee2e2;
-  color: #dc2626;
+  background: var(--error-100);
+  color: var(--error-600);
   font-weight: var(--font-semibold);
 }
 
@@ -500,7 +500,7 @@
   content: '';
   width: 4px;
   height: 24px;
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
   border-radius: 2px;
 }
 
@@ -535,7 +535,7 @@
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #0F766E;
+  border-color: var(--primary-700);
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
 }
 
@@ -573,12 +573,12 @@
 }
 
 .custom-dropdown-toggle:hover {
-  border-color: #0F766E;
+  border-color: var(--primary-700);
 }
 
 .custom-dropdown-toggle:focus {
   outline: none;
-  border-color: #0F766E;
+  border-color: var(--primary-700);
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
 }
 
@@ -624,19 +624,19 @@
 }
 
 .custom-dropdown-option:hover {
-  background: #f0fdfa;
-  color: #0F766E;
+  background: var(--primary-50);
+  color: var(--primary-700);
   font-weight: var(--font-semibold);
 }
 
 .custom-dropdown-option.selected {
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
   color: white;
   font-weight: var(--font-semibold);
 }
 
 .custom-dropdown-option.selected:hover {
-  background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+  background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
   color: white;
 }
 
@@ -673,12 +673,12 @@
 }
 
 .btn-save {
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
   color: white;
 }
 
 .btn-save:hover {
-  background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+  background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
@@ -686,7 +686,7 @@
 .import-instructions {
   margin-bottom: 24px;
   padding: 20px;
-  background: linear-gradient(135deg, #f0fdfa 0%, #ffffff 100%);
+  background: linear-gradient(135deg, var(--primary-50) 0%, #ffffff 100%);
   border-radius: var(--radius-md);
   border: 1px solid #0F766E20;
 }

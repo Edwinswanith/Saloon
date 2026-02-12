@@ -50,8 +50,8 @@
 .profile-header {
   position: relative;
   padding: 16px 20px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #0F766E;
+  border-bottom: 1px solid var(--gray-200);
+  background: var(--primary-700);
   border-radius: 12px 12px 0 0;
   min-height: 100px;
   overflow: hidden;
@@ -213,15 +213,15 @@
 }
 
 .profile-error {
-  background: #fee2e2;
-  color: #dc2626;
-  border: 1px solid #fecaca;
+  background: var(--error-100);
+  color: var(--error-600);
+  border: 1px solid var(--error-200);
 }
 
 .profile-success {
-  background: #d1fae5;
+  background: var(--success-200);
   color: #059669;
-  border: 1px solid #a7f3d0;
+  border: 1px solid var(--success-300);
 }
 
 .error-icon,
@@ -245,7 +245,7 @@
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #111827;
+  color: var(--gray-900);
 }
 
 .profile-edit-btn {
@@ -253,7 +253,7 @@
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: #0F766E;
+  background: var(--primary-700);
   color: white;
   border: none;
   border-radius: 6px;
@@ -288,7 +288,7 @@
   gap: 8px;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: var(--gray-700);
 }
 
 .field-icon {
@@ -297,7 +297,7 @@
 
 .profile-input {
   padding: 8px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--gray-300);
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -311,11 +311,11 @@
 
 .profile-value {
   padding: 8px 12px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
   border-radius: 8px;
   font-size: 14px;
-  color: #111827;
+  color: var(--gray-900);
   min-height: 36px;
   display: flex;
   align-items: center;
@@ -323,7 +323,7 @@
 
 .profile-value:empty::before {
   content: 'Not set';
-  color: #9ca3af;
+  color: var(--gray-400);
 }
 
 .profile-role {
@@ -343,13 +343,13 @@
 }
 
 .role-staff {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--info-100);
+  color: var(--info-700);
 }
 
 .role-manager {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--warning-100);
+  color: var(--warning-800);
 }
 
 .role-owner {
@@ -364,7 +364,7 @@
   justify-content: flex-end;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--gray-200);
 }
 
 .profile-btn {
@@ -386,18 +386,18 @@
 }
 
 .profile-btn-cancel {
-  background: #f3f4f6;
-  color: #374151;
-  border: 1px solid #e5e7eb;
+  background: var(--gray-100);
+  color: var(--gray-700);
+  border: 1px solid var(--gray-200);
 }
 
 .profile-btn-cancel:hover:not(:disabled) {
-  background: #e5e7eb;
-  border-color: #d1d5db;
+  background: var(--gray-200);
+  border-color: var(--gray-300);
 }
 
 .profile-btn-save {
-  background: #0F766E;
+  background: var(--primary-700);
   color: white;
 }
 
@@ -411,18 +411,18 @@
 .profile-logout-section {
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--gray-200);
 }
 
 .profile-btn-logout {
-  background: #dc2626;
+  background: var(--error-600);
   color: white;
   width: 100%;
   justify-content: center;
 }
 
 .profile-btn-logout:hover {
-  background: #b91c1c;
+  background: var(--error-700);
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(220, 38, 38, 0.3);
 }

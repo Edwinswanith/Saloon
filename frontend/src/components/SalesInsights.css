@@ -2,7 +2,7 @@
   width: 100%;
   margin: 20px 0;
   background: white;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
   border-radius: 12px;
   padding: 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -18,7 +18,7 @@
 .sales-insights-section .section-title {
   font-size: 20px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gray-800);
   margin: 0;
 }
 
@@ -26,7 +26,7 @@
 .sales-insights-tabs {
   display: flex;
   gap: 8px;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--gray-200);
   margin-bottom: 20px;
   overflow-x: auto;
   scrollbar-width: thin;
@@ -57,7 +57,7 @@
   background: none;
   border: none;
   border-bottom: 3px solid transparent;
-  color: #6b7280;
+  color: var(--gray-500);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -70,7 +70,7 @@
 
 .sales-insights-tab:hover:not(.disabled) {
   color: #4f46e5;
-  background: #f3f4f6;
+  background: var(--gray-100);
 }
 
 .sales-insights-tab.active {
@@ -86,7 +86,7 @@
 
 .sales-insights-tab.disabled:hover {
   background: none;
-  color: #6b7280;
+  color: var(--gray-500);
 }
 
 /* Loading Indicator */
@@ -117,10 +117,10 @@
 .sales-insights-error {
   padding: 40px 20px;
   text-align: center;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--error-50);
+  border: 1px solid var(--error-200);
   border-radius: 8px;
-  color: #dc2626;
+  color: var(--error-600);
 }
 
 .sales-insights-error p {
@@ -130,7 +130,7 @@
 
 .retry-button {
   padding: 8px 16px;
-  background: #dc2626;
+  background: var(--error-600);
   color: white;
   border: none;
   border-radius: 6px;
@@ -141,7 +141,7 @@
 }
 
 .retry-button:hover {
-  background: #b91c1c;
+  background: var(--error-700);
 }
 
 /* Mobile Responsive */

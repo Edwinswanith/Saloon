@@ -50,7 +50,7 @@
 
 .logo-box {
   padding: 6px 12px;
-  background: #f3f4f6;
+  background: var(--gray-100);
   border-radius: 6px;
   border: 1px solid var(--border-light);
 }
@@ -111,29 +111,29 @@
 
 .download-btn {
   background: white;
-  color: #0F766E;
-  border: 1px solid #0F766E;
+  color: var(--primary-700);
+  border: 1px solid var(--primary-700);
 }
 
 .download-btn:hover {
-  background: #f0fdfa;
+  background: var(--primary-50);
   box-shadow: 0 2px 8px rgba(15, 118, 110, 0.15);
 }
 
 .manage-btn {
   background: white;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  color: var(--gray-700);
+  border: 1px solid var(--gray-300);
 }
 
 .manage-btn:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
+  background: var(--gray-50);
+  border-color: var(--gray-400);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .import-btn {
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
   color: white;
   border: none;
 }
@@ -144,7 +144,7 @@
 }
 
 .add-btn {
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
   color: white;
   border: none;
 }
@@ -163,7 +163,7 @@
   width: 100%;
   max-width: 400px;
   padding: 10px 16px;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--gray-200);
   border-radius: 10px;
   font-size: 14px;
   transition: all 0.2s ease;
@@ -172,19 +172,19 @@
 
 .search-input:focus {
   outline: none;
-  border-color: #0F766E;
+  border-color: var(--primary-700);
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
 }
 
 .search-input::placeholder {
-  color: #9ca3af;
+  color: var(--gray-400);
 }
 
 /* Table Wrapper */
 .table-wrapper {
   overflow-x: auto;
   margin-bottom: 20px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
   border-radius: 12px;
 }
 
@@ -196,14 +196,14 @@
 
 .customer-table thead {
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--gray-200);
 }
 
 .customer-table th {
   padding: 14px 16px;
   text-align: left;
   font-weight: 600;
-  color: #374151;
+  color: var(--gray-700);
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -212,13 +212,13 @@
 
 .customer-table td {
   padding: 14px 16px;
-  color: #4b5563;
-  border-bottom: 1px solid #f3f4f6;
+  color: var(--gray-600);
+  border-bottom: 1px solid var(--gray-100);
   font-weight: 500;
 }
 
 .customer-table tbody tr:hover {
-  background: #f0fdfa;
+  background: var(--primary-50);
 }
 
 .customer-table tbody tr:last-child td {
@@ -228,12 +228,12 @@
 .source-badge {
   display: inline-block;
   padding: 5px 10px;
-  background: #f0fdfa;
-  color: #0F766E;
+  background: var(--primary-50);
+  color: var(--primary-700);
   border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
-  border: 1px solid #99f6e4;
+  border: 1px solid var(--primary-200);
 }
 
 .referral-code-cell {
@@ -245,25 +245,25 @@
 .referral-code-cell span {
   font-family: 'Monaco', 'Menlo', monospace;
   font-size: 13px;
-  color: #374151;
+  color: var(--gray-700);
   font-weight: 600;
 }
 
 .copy-btn {
   padding: 5px 10px;
-  background: #f0fdfa;
-  border: 1px solid #99f6e4;
+  background: var(--primary-50);
+  border: 1px solid var(--primary-200);
   border-radius: 6px;
   font-size: 11px;
-  color: #0F766E;
+  color: var(--primary-700);
   cursor: pointer;
   transition: all 0.2s ease;
   font-weight: 600;
 }
 
 .copy-btn:hover {
-  background: #ccfbf1;
-  border-color: #0F766E;
+  background: var(--primary-100);
+  border-color: var(--primary-700);
   box-shadow: 0 2px 4px rgba(15, 118, 110, 0.15);
 }
 
@@ -276,7 +276,7 @@
 .icon-btn {
   width: 34px;
   height: 34px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--gray-300);
   border-radius: 8px;
   cursor: pointer;
   font-size: 16px;
@@ -302,48 +302,48 @@
 }
 
 .view-btn {
-  color: #0F766E !important;
-  border-color: #99f6e4;
+  color: var(--primary-700) !important;
+  border-color: var(--primary-200);
 }
 
 .view-btn svg {
-  fill: #0F766E !important;
-  color: #0F766E !important;
+  fill: var(--primary-700) !important;
+  color: var(--primary-700) !important;
 }
 
 .view-btn:hover {
-  background: #f0fdfa;
-  border-color: #0F766E;
+  background: var(--primary-50);
+  border-color: var(--primary-700);
 }
 
 .edit-btn {
-  color: #3b82f6 !important;
+  color: var(--info-500) !important;
   border-color: #bfdbfe;
 }
 
 .edit-btn svg {
-  fill: #3b82f6 !important;
-  color: #3b82f6 !important;
+  fill: var(--info-500) !important;
+  color: var(--info-500) !important;
 }
 
 .edit-btn:hover {
-  background: #eff6ff;
-  border-color: #3b82f6;
+  background: var(--info-50);
+  border-color: var(--info-500);
 }
 
 .delete-btn {
-  color: #ef4444 !important;
-  border-color: #fecaca;
+  color: var(--error-500) !important;
+  border-color: var(--error-200);
 }
 
 .delete-btn svg {
-  fill: #ef4444 !important;
-  color: #ef4444 !important;
+  fill: var(--error-500) !important;
+  color: var(--error-500) !important;
 }
 
 .delete-btn:hover {
-  background: #fef2f2;
-  border-color: #ef4444;
+  background: var(--error-50);
+  border-color: var(--error-500);
 }
 
 /* Pagination */
@@ -357,10 +357,10 @@
 
 .page-btn {
   padding: 8px 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
   border-radius: 8px;
   background: white;
-  color: #374151;
+  color: var(--gray-700);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -369,26 +369,26 @@
 }
 
 .page-btn:hover:not(:disabled):not(.active) {
-  background: #f9fafb;
-  border-color: #0F766E;
-  color: #0F766E;
+  background: var(--gray-50);
+  border-color: var(--primary-700);
+  color: var(--primary-700);
 }
 
 .page-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  background: #f9fafb;
+  background: var(--gray-50);
 }
 
 .page-btn.active {
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
   color: white;
-  border-color: #0F766E;
+  border-color: var(--primary-700);
   box-shadow: 0 2px 4px rgba(15, 118, 110, 0.2);
 }
 
 .page-btn.active:hover {
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
   color: white;
 }
 
@@ -649,7 +649,7 @@
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #0F766E;
+  border-color: var(--primary-700);
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
 }
 
@@ -675,7 +675,7 @@
 }
 
 .btn-cancel:hover {
-  background: #f9fafb;
+  background: var(--gray-50);
   border-color: var(--text-muted);
 }
 
@@ -683,7 +683,7 @@
   padding: 10px 20px;
   border: none;
   border-radius: 8px;
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
   color: white;
   font-size: 14px;
   font-weight: 500;
@@ -704,7 +704,7 @@
 
 .sources-list li {
   padding: 8px 12px;
-  background: #f9fafb;
+  background: var(--gray-50);
   border-radius: 4px;
   margin-bottom: 8px;
   color: var(--text-secondary);
@@ -723,7 +723,7 @@
 .import-instructions ul {
   margin: 10px 0;
   padding-left: 20px;
-  color: #6b7280;
+  color: var(--gray-500);
 }
 
 .import-instructions li {
@@ -732,7 +732,7 @@
 
 /* Merge Styles */
 .merge-btn {
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
   color: white;
   border: none;
 }
@@ -743,12 +743,12 @@
 }
 
 .merge-active-btn {
-  background: #dc2626;
+  background: var(--error-600);
   color: white;
 }
 
 .merge-active-btn:hover {
-  background: #b91c1c;
+  background: var(--error-700);
 }
 
 .merge-action-bar {
@@ -756,12 +756,12 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 16px;
-  background: #eff6ff;
+  background: var(--info-50);
   border: 1px solid #bfdbfe;
   border-radius: 8px;
   margin-bottom: 12px;
   font-size: 14px;
-  color: #1e40af;
+  color: var(--info-700);
 }
 
 .merge-action-bar.merge-hint {
@@ -771,7 +771,7 @@
 }
 
 .merge-selected-row {
-  background: #eff6ff !important;
+  background: var(--info-50) !important;
 }
 
 .merge-preview-modal {
@@ -788,7 +788,7 @@
 
 .merge-card {
   flex: 1;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--gray-200);
   border-radius: 10px;
   padding: 16px;
   background: #fafafa;
@@ -802,12 +802,12 @@
 }
 
 .merge-primary {
-  border-color: #22c55e;
-  background: #f0fdf4;
+  border-color: var(--success-500);
+  background: var(--success-50);
 }
 
 .merge-primary h3 {
-  color: #16a34a;
+  color: var(--success-600);
 }
 
 .merge-secondary {
@@ -822,13 +822,13 @@
 .merge-card-details p {
   margin: 6px 0;
   font-size: 13px;
-  color: #374151;
+  color: var(--gray-700);
 }
 
 .merge-card-details strong {
   display: inline-block;
   width: 90px;
-  color: #6b7280;
+  color: var(--gray-500);
 }
 
 .merge-swap-btn {
@@ -836,7 +836,7 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  border: 2px solid #d1d5db;
+  border: 2px solid var(--gray-300);
   background: white;
   font-size: 20px;
   cursor: pointer;
@@ -848,7 +848,7 @@
 }
 
 .merge-swap-btn:hover {
-  background: #f3f4f6;
+  background: var(--gray-100);
   border-color: #7c3aed;
   color: #7c3aed;
 }
@@ -859,7 +859,7 @@
 
 .merge-records-summary h4 {
   font-size: 14px;
-  color: #374151;
+  color: var(--gray-700);
   margin-bottom: 8px;
 }
 
@@ -870,7 +870,7 @@
 
 .merge-stats-table td {
   padding: 6px 12px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--gray-100);
   font-size: 13px;
 }
 
@@ -880,21 +880,21 @@
 }
 
 .merge-warning {
-  background: #fef3c7;
-  border: 1px solid #f59e0b;
+  background: var(--warning-100);
+  border: 1px solid var(--warning-500);
   border-radius: 8px;
   padding: 12px 16px;
   font-size: 13px;
-  color: #92400e;
+  color: var(--warning-800);
   margin: 16px 0;
   line-height: 1.5;
 }
 
 .merge-confirm-btn {
-  background: #dc2626 !important;
+  background: var(--error-600) !important;
 }
 
 .merge-confirm-btn:hover {
-  background: #b91c1c !important;
+  background: var(--error-700) !important;
 }
 

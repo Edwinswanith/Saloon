@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
 import './BranchSelector.css';
 
@@ -47,9 +48,19 @@ const BranchSelector = () => {
   const handleToggle = () => {
     if (!isOpen && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const margin = 8;
+      const dropdownWidth = Math.min(400, vw - margin * 2);
+      // Anchor right edge to button, but clamp so it never overflows viewport
+      let right = vw - rect.right;
+      const left = vw - right - dropdownWidth;
+      if (left < margin) {
+        right = vw - dropdownWidth - margin;
+      }
       setDropdownPosition({
         top: rect.bottom + 8,
-        right: window.innerWidth - rect.right
+        right: Math.max(margin, right),
+        width: dropdownWidth
       });
     }
     setIsOpen(!isOpen);
@@ -67,14 +78,15 @@ const BranchSelector = () => {
         <span className="branch-arrow">{isOpen ? '▲' : '▼'}</span>
       </button>
       
-      {isOpen && (
+      {isOpen && typeof document !== 'undefined' && createPortal(
         <>
           <div className="branch-overlay" onClick={() => setIsOpen(false)} />
           <div 
             className="branch-dropdown"
             style={{
               top: `${dropdownPosition.top}px`,
-              right: `${dropdownPosition.right}px`
+              right: `${dropdownPosition.right}px`,
+              width: `${dropdownPosition.width}px`
             }}
           >
             <div className="branch-dropdown-header">
@@ -104,7 +116,8 @@ const BranchSelector = () => {
               )}
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   );

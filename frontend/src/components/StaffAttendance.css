@@ -126,7 +126,7 @@
   align-items: center;
   padding: 20px 24px;
   background: white;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--gray-200);
   flex-wrap: wrap;
   gap: 16px;
 }
@@ -134,7 +134,7 @@
 .section-title {
   font-size: 18px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--gray-800);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -149,7 +149,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
   color: white;
   border-radius: 8px;
   font-size: 14px;
@@ -173,7 +173,7 @@
 .date-label {
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: var(--gray-700);
 }
 
 .date-input-wrapper {
@@ -181,7 +181,7 @@
   display: flex;
   align-items: center;
   background: white;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--gray-200);
   border-radius: 10px;
   padding: 0;
   transition: all 0.2s ease;
@@ -189,11 +189,11 @@
 }
 
 .date-input-wrapper:hover {
-  border-color: #0F766E;
+  border-color: var(--primary-700);
 }
 
 .date-input-wrapper:focus-within {
-  border-color: #0F766E;
+  border-color: var(--primary-700);
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
 }
 
@@ -224,7 +224,7 @@
   padding: 10px 16px;
   font-size: 14px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gray-800);
   white-space: nowrap;
   pointer-events: none;
   z-index: 1;
@@ -235,10 +235,10 @@
   align-items: center;
   justify-content: center;
   padding: 10px 14px;
-  background: #f0fdfa;
-  color: #0F766E;
+  background: var(--primary-50);
+  color: var(--primary-700);
   font-size: 16px;
-  border-left: 2px solid #e5e7eb;
+  border-left: 2px solid var(--gray-200);
   pointer-events: none;
   z-index: 1;
 }
@@ -264,23 +264,23 @@
 }
 
 .mark-all-btn {
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
   color: white;
 }
 
 .mark-all-btn:hover {
-  background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+  background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .download-btn {
-  background: linear-gradient(135deg, #0F766E 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
   color: white;
 }
 
 .download-btn:hover {
-  background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+  background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -301,7 +301,7 @@
 }
 
 .attendance-table thead tr {
-  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  background: linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
   border-bottom: none;
 }
 
@@ -310,7 +310,7 @@
   text-align: left;
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: var(--gray-700);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   white-space: nowrap;
@@ -329,12 +329,12 @@
 
 .attendance-table tbody tr {
   transition: all 0.2s ease;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--gray-100);
   background: white;
 }
 
 .attendance-table tbody tr:hover {
-  background: #f9fafb;
+  background: var(--gray-50);
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
@@ -342,7 +342,7 @@
 .attendance-table td {
   padding: 16px 20px;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--gray-500);
   vertical-align: middle;
 }
 
@@ -360,7 +360,7 @@
 
 .staff-name {
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gray-800);
   font-size: 14px;
 }
 
@@ -386,15 +386,15 @@
   display: inline-block;
 }
 .status-btn.present {
-  background: linear-gradient(135deg, #ccfbf1 0%, #99f6e4 100%);
-  color: #0F766E;
-  border-color: #0d9488;
+  background: linear-gradient(135deg, var(--primary-100) 0%, var(--primary-200) 100%);
+  color: var(--primary-700);
+  border-color: var(--primary-600);
 }
 
 .status-btn.absent {
-  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-  color: #b91c1c;
-  border-color: #dc2626;
+  background: linear-gradient(135deg, var(--error-100) 0%, var(--error-200) 100%);
+  color: var(--error-700);
+  border-color: var(--error-600);
 }
 
 .status-btn.leave {
@@ -404,9 +404,9 @@
 }
 
 .status-btn.not-marked {
-  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-  color: #4b5563;
-  border-color: #9ca3af;
+  background: linear-gradient(135deg, var(--gray-100) 0%, var(--gray-200) 100%);
+  color: var(--gray-600);
+  border-color: var(--gray-400);
 }
 
 /* ========== MONTHLY SUMMARY ========== */
@@ -429,15 +429,15 @@
 }
 
 .summary-badge.present {
-  background: linear-gradient(135deg, #ccfbf1 0%, #99f6e4 100%);
-  color: #0F766E;
-  border-color: #0d9488;
+  background: linear-gradient(135deg, var(--primary-100) 0%, var(--primary-200) 100%);
+  color: var(--primary-700);
+  border-color: var(--primary-600);
 }
 
 .summary-badge.absent {
-  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-  color: #b91c1c;
-  border-color: #dc2626;
+  background: linear-gradient(135deg, var(--error-100) 0%, var(--error-200) 100%);
+  color: var(--error-700);
+  border-color: var(--error-600);
 }
 
 .summary-badge.leave {
@@ -481,30 +481,30 @@
 }
 
 .present-btn {
-  background: #0F766E;
+  background: var(--primary-700);
   color: white;
 }
 
 .present-btn:hover {
-  background: #0d9488;
+  background: var(--primary-600);
 }
 
 .absent-btn {
-  background: #dc2626;
+  background: var(--error-600);
   color: white;
 }
 
 .absent-btn:hover {
-  background: #b91c1c;
+  background: var(--error-700);
 }
 
 .leave-btn {
-  background: #f59e0b;
+  background: var(--warning-500);
   color: white;
 }
 
 .leave-btn:hover {
-  background: #d97706;
+  background: var(--warning-600);
 }
 
 /* ========== EMPTY STATE ========== */
@@ -595,7 +595,7 @@
     flex-direction: column;
     padding: 16px;
     background: white;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--gray-200);
     border-radius: 12px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     gap: 12px;
@@ -618,7 +618,7 @@
     content: attr(data-label);
     font-size: 10px;
     font-weight: 600;
-    color: #6b7280;
+    color: var(--gray-500);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
@@ -626,7 +626,7 @@
   /* Staff Name - Header style */
   .attendance-table td[data-label="Staff Member"] {
     padding-bottom: 12px !important;
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid var(--gray-100);
   }
 
   .attendance-table td[data-label="Staff Member"]::before {
@@ -636,7 +636,7 @@
   .attendance-table td[data-label="Staff Member"].staff-name {
     font-size: 16px;
     font-weight: 600;
-    color: #1f2937;
+    color: var(--gray-800);
   }
 
   /* Status and Monthly Summary - Side by side */
@@ -648,7 +648,7 @@
   /* Actions - Full width at bottom */
   .attendance-table td[data-label="Actions"] {
     padding-top: 12px !important;
-    border-top: 1px solid #f3f4f6;
+    border-top: 1px solid var(--gray-100);
   }
 
   .attendance-table td[data-label="Actions"]::before {
@@ -688,7 +688,7 @@
   .attendance-table .empty-row {
     text-align: center;
     padding: 24px !important;
-    color: #9ca3af;
+    color: var(--gray-400);
   }
 }
 

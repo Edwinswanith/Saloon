@@ -389,8 +389,8 @@ const ListOfBills = ({ setActivePage }) => {
                   {billDetails?.items && Array.isArray(billDetails.items) && billDetails.items.length > 0 && (
                     <div className="customer-details-section">
                       <h3>Bill Items</h3>
-                      <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                      <div className="bill-items-table-wrapper" style={{ overflowX: 'auto' }}>
+                        <table className="bill-items-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                           <thead>
                             <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
                               <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Item</th>

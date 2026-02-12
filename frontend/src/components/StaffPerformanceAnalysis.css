@@ -13,7 +13,7 @@
   align-items: center;
   padding: 16px 24px;
   background: white;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--gray-200);
   margin-bottom: 24px;
   width: 100%;
   box-sizing: border-box;
@@ -31,18 +31,18 @@
   font-size: 20px;
   cursor: pointer;
   padding: 4px;
-  color: #374151;
+  color: var(--gray-700);
   transition: color 0.2s ease;
 }
 
 .menu-icon:hover {
-  color: #0d9488;
+  color: var(--primary-600);
 }
 
 .header-title {
   font-size: 20px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gray-800);
   margin: 0;
 }
 
@@ -55,7 +55,7 @@
 .user-icon {
   width: 36px;
   height: 36px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
   border-radius: 50%;
   background: white;
   cursor: pointer;
@@ -67,21 +67,21 @@
 }
 
 .user-icon:hover {
-  background: #f9fafb;
-  border-color: #0d9488;
+  background: var(--gray-50);
+  border-color: var(--primary-600);
 }
 
 .logo-box {
   padding: 6px 12px;
-  background: #f3f4f6;
+  background: var(--gray-100);
   border-radius: 6px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
 }
 
 .logo-text {
   font-size: 11px;
   font-weight: 600;
-  color: #374151;
+  color: var(--gray-700);
   letter-spacing: 0.5px;
 }
 
@@ -109,7 +109,7 @@
 }
 
 .back-button {
-  background: #0d9488;
+  background: var(--primary-600);
   color: white;
   border: none;
   padding: 10px 20px;
@@ -125,7 +125,7 @@
 }
 
 .back-button:hover {
-  background: #0f766e;
+  background: var(--primary-700);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
 }
@@ -139,17 +139,17 @@
 .date-range-label {
   font-size: 11px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--gray-500);
   letter-spacing: 0.5px;
 }
 
 .date-range-select {
   padding: 8px 36px 8px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--gray-300);
   border-radius: 6px;
   background: white;
   font-size: 14px;
-  color: #374151;
+  color: var(--gray-700);
   cursor: pointer;
   transition: all 0.2s ease;
   appearance: none;
@@ -160,12 +160,12 @@
 }
 
 .date-range-select:hover {
-  border-color: #0d9488;
+  border-color: var(--primary-600);
 }
 
 .date-range-select:focus {
   outline: none;
-  border-color: #0d9488;
+  border-color: var(--primary-600);
   box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
 }
 
@@ -205,17 +205,17 @@
 }
 
 .performer-icon.star {
-  background: #fef3c7;
-  color: #f59e0b;
+  background: var(--warning-100);
+  color: var(--warning-500);
 }
 
 .performer-icon.service {
-  background: #dbeafe;
-  color: #3b82f6;
+  background: var(--info-100);
+  color: var(--info-500);
 }
 
 .performer-icon.retail {
-  background: #d1fae5;
+  background: var(--success-200);
   color: #10b981;
 }
 
@@ -232,14 +232,14 @@
 .performer-name {
   font-size: 18px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--gray-800);
   margin: 0 0 4px 0;
 }
 
 .performer-label {
   font-size: 11px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--gray-500);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin: 0;
@@ -252,7 +252,7 @@
   padding: 24px;
   margin-bottom: 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
 }
 
 .chart-section-header {
@@ -263,13 +263,13 @@
   flex-wrap: wrap;
   gap: 16px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--gray-200);
 }
 
 .section-title {
   font-size: 16px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gray-800);
   margin: 0;
   letter-spacing: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -287,10 +287,10 @@
   justify-content: center;
   gap: 6px;
   padding: 8px 14px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--gray-300);
   border-radius: 6px;
   background: white;
-  color: #6b7280;
+  color: var(--gray-500);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -300,9 +300,9 @@
 }
 
 .action-btn:hover {
-  background: #f9fafb;
-  border-color: #0d9488;
-  color: #0d9488;
+  background: var(--gray-50);
+  border-color: var(--primary-600);
+  color: var(--primary-600);
 }
 
 .action-btn svg {
@@ -311,11 +311,11 @@
 }
 
 .refresh-btn:hover {
-  background: #f0fdfa;
+  background: var(--primary-50);
 }
 
 .download-btn:hover {
-  background: #f0fdfa;
+  background: var(--primary-50);
 }
 
 .chart-container {
@@ -352,7 +352,7 @@
   top: 0;
   bottom: 40px;
   width: 2px;
-  background: #d1d5db;
+  background: var(--gray-300);
   z-index: 0;
 }
 
@@ -366,7 +366,7 @@
 
 .y-axis-label {
   font-size: 12px;
-  color: #374151;
+  color: var(--gray-700);
   text-align: left;
   font-weight: 500;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -384,7 +384,7 @@
   left: 70px;
   right: -28px;
   height: 1px;
-  border-top: 1px dashed #d1d5db;
+  border-top: 1px dashed var(--gray-300);
   z-index: 0;
   pointer-events: none;
   top: 50%;
@@ -397,13 +397,13 @@
   align-items: flex-end;
   justify-content: space-around;
   gap: 20px;
-  border-left: 2px solid #d1d5db;
-  border-bottom: 2px solid #d1d5db;
+  border-left: 2px solid var(--gray-300);
+  border-bottom: 2px solid var(--gray-300);
   padding: 16px 28px 50px 28px;
   position: relative;
   min-height: 320px;
   height: 100%;
-  background: linear-gradient(to top, #f9fafb 0%, #ffffff 100%);
+  background: linear-gradient(to top, var(--gray-50) 0%, #ffffff 100%);
   border-radius: 0 0 8px 0;
   overflow: visible;
   order: 2;
@@ -493,7 +493,7 @@
 }
 
 .product-bar {
-  background: #3b82f6; /* Medium blue */
+  background: var(--info-500); /* Medium blue */
 }
 
 .package-bar {
@@ -501,13 +501,13 @@
 }
 
 .membership-bar {
-  background: #5eead4; /* Light teal - matches image */
+  background: var(--primary-300); /* Light teal - matches image */
 }
 
 .bar-label {
   font-size: 12px;
   font-weight: 600;
-  color: #374151;
+  color: var(--gray-700);
   text-align: center;
   white-space: nowrap;
   position: absolute;
@@ -534,7 +534,7 @@
   align-items: center;
   padding: 20px 0;
   margin-top: 24px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--gray-200);
   background: white;
 }
 
@@ -565,7 +565,7 @@
 }
 
 .legend-color.membership {
-  background: #5eead4; /* Light teal - matches bar */
+  background: var(--primary-300); /* Light teal - matches bar */
 }
 
 .legend-color.package {
@@ -573,7 +573,7 @@
 }
 
 .legend-color.product {
-  background: #3b82f6; /* Medium blue - matches bar */
+  background: var(--info-500); /* Medium blue - matches bar */
 }
 
 .legend-color.service {
@@ -582,7 +582,7 @@
 
 .legend-label {
   font-size: 13px;
-  color: #374151;
+  color: var(--gray-700);
   font-weight: 500;
   text-transform: capitalize;
   letter-spacing: 0;
@@ -601,7 +601,7 @@
 .table-container {
   overflow-x: auto;
   border-radius: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
 }
 
 .leaderboard-table {
@@ -630,18 +630,18 @@
 }
 
 .leaderboard-table thead {
-  background: #f9fafb;
+  background: var(--gray-50);
 }
 
 .leaderboard-table th {
   padding: 14px 16px;
   text-align: left;
   font-weight: 600;
-  color: #374151;
+  color: var(--gray-700);
   font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--gray-200);
   vertical-align: middle;
 }
 
@@ -658,12 +658,12 @@
 }
 
 .leaderboard-table tbody tr {
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--gray-200);
   transition: all 0.2s ease;
 }
 
 .leaderboard-table tbody tr:hover {
-  background: #f9fafb;
+  background: var(--gray-50);
 }
 
 .leaderboard-table tbody tr:last-child {
@@ -672,7 +672,7 @@
 
 .leaderboard-table td {
   padding: 14px 16px;
-  color: #4b5563;
+  color: var(--gray-600);
   vertical-align: middle;
 }
 
@@ -697,7 +697,7 @@
 
 .staff-name {
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gray-800);
 }
 
 .text-center {
@@ -715,7 +715,7 @@
 
 .total-revenue {
   font-weight: 700;
-  color: #1f2937;
+  color: var(--gray-800);
   font-size: 15px;
 }
 
