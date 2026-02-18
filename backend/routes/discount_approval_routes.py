@@ -2,8 +2,9 @@ from flask import Blueprint, request, jsonify
 from mongoengine import Q
 from mongoengine.errors import DoesNotExist
 from datetime import datetime, timedelta
-from models import DiscountApprovalRequest, ApprovalCode, Bill, Staff, Manager
+from models import DiscountApprovalRequest, ApprovalCode, Bill, Staff, Manager, Owner
 from utils.auth import require_auth, require_role, get_current_user
+from utils.branch_filter import get_selected_branch
 from utils.approval_codes import (
     generate_approval_code, hash_approval_code, verify_approval_code,
     is_code_expired, can_use_code
@@ -26,13 +27,17 @@ def list_approvals(current_user=None):
     try:
         status = request.args.get('status', 'pending')
         requested_by_id = request.args.get('requested_by_id')
-        
+
         query = Q(approval_status=status)
-        
-        # Only owners can see all requests
+
+        # Filter by branch
+        branch = get_selected_branch(request, current_user)
+        if branch:
+            query &= (Q(branch=branch) | Q(branch=None))
+
         if requested_by_id:
             query &= Q(requested_by=requested_by_id)
-        
+
         approvals = DiscountApprovalRequest.objects(query).order_by('-created_at')
         
         result = []
@@ -40,15 +45,17 @@ def list_approvals(current_user=None):
             try:
                 data = to_dict(approval)
                 
-                # Safely get requested_by name
+                # Get requested_by name — try Staff reference first, fall back to stored name
+                data['requested_by_name'] = approval.requested_by_name or None
+                data['requested_by_role'] = approval.requested_by_role or None
                 if approval.requested_by:
                     try:
                         if hasattr(approval.requested_by, 'reload'):
                             approval.requested_by.reload()
                         if hasattr(approval.requested_by, 'first_name'):
-                            data['requested_by_name'] = f"{approval.requested_by.first_name or ''} {approval.requested_by.last_name or ''}".strip() or None
+                            data['requested_by_name'] = f"{approval.requested_by.first_name or ''} {approval.requested_by.last_name or ''}".strip() or data['requested_by_name']
                     except (DoesNotExist, AttributeError, Exception):
-                        data['requested_by_name'] = None
+                        pass
                 
                 # Safely get approved_by name
                 if approval.approved_by:
@@ -127,11 +134,17 @@ def approve_request(approval_id, current_user=None):
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 400
         
-        # Only owners can approve - no additional checks needed
-        
+        # Record who approved
+        if current_user:
+            user_type = current_user.get('user_type', '')
+            user_id = current_user.get('user_id') or current_user.get('id')
+            if user_type == 'manager':
+                approval.approved_by = Manager.objects(id=user_id).first()
+
         approval.approval_status = 'approved'
         approval.approval_method = 'in_app'
         approval.approved_at = datetime.utcnow()
+        approval.updated_at = datetime.utcnow()
         approval.save()
         
         # Update bill
@@ -159,47 +172,51 @@ def approve_with_code(approval_id, current_user=None):
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 404
         
+        if approval.approval_status != 'pending':
+            response = jsonify({'error': 'Approval request already processed'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
+
         data = request.json
         code = data.get('code')
-        
+
         if not code:
             response = jsonify({'error': 'Approval code required'})
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 400
-        
-        # Find matching approval code
-        approval_codes = ApprovalCode.objects(is_active=True)
-        matched_code = None
-        
-        for approval_code in approval_codes:
-            if verify_approval_code(code, approval_code.code_hash):
-                # Check expiration
-                if is_code_expired(approval_code.expires_at):
-                    continue
-                
-                # Check usage limits
-                if not can_use_code(approval_code.usage_count, approval_code.max_uses):
-                    continue
-                
-                # Only owners can use approval codes
-                user_role = current_user.get('role') if current_user else None
-                if user_role != 'owner':
-                    continue
-                
-                matched_code = approval_code
-                break
-        
+
+        # Hash once and query directly instead of iterating all codes
+        code_hash = hash_approval_code(code)
+        matched_code = ApprovalCode.objects(code_hash=code_hash, is_active=True).first()
+
         if not matched_code:
             response = jsonify({'error': 'Invalid or expired approval code'})
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 400
-        
-        # Approve the request - only owners can approve
-        
+
+        # Validate expiration and usage
+        if is_code_expired(matched_code.expires_at):
+            response = jsonify({'error': 'Approval code has expired'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
+
+        if not can_use_code(matched_code.usage_count, matched_code.max_uses):
+            response = jsonify({'error': 'Approval code has reached its usage limit'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
+
+        # Record who approved
+        if current_user:
+            user_type = current_user.get('user_type', '')
+            user_id = current_user.get('user_id') or current_user.get('id')
+            if user_type == 'manager':
+                approval.approved_by = Manager.objects(id=user_id).first()
+
         approval.approval_status = 'approved'
         approval.approval_method = 'code'
         approval.approval_code_used = matched_code.code_hash
         approval.approved_at = datetime.utcnow()
+        approval.updated_at = datetime.utcnow()
         approval.save()
         
         # Update code usage
@@ -230,12 +247,18 @@ def reject_request(approval_id, current_user=None):
             response = jsonify({'error': 'Approval request not found'})
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 404
-        
+
+        if approval.approval_status != 'pending':
+            response = jsonify({'error': 'Approval request already processed'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
+
         data = request.json
         notes = data.get('notes', '')
-        
+
         approval.approval_status = 'rejected'
         approval.notes = notes
+        approval.updated_at = datetime.utcnow()
         approval.save()
         
         # Update bill
@@ -272,15 +295,18 @@ def create_approval_code(current_user=None):
         if expires_in_days:
             expires_at = datetime.utcnow() + timedelta(days=expires_in_days)
         
-        # Get creator
-        manager = None
-        if current_user and current_user.get('user_type') == 'manager':
-            manager = Manager.objects(id=current_user['id']).first()
-        
+        # Get creator — try Manager first, Owner creates codes too but isn't a Manager
+        creator_ref = None
+        if current_user:
+            user_type = current_user.get('user_type', '')
+            user_id = current_user.get('user_id') or current_user.get('id')
+            if user_type == 'manager':
+                creator_ref = Manager.objects(id=user_id).first()
+
         approval_code = ApprovalCode(
             code_hash=code_hash,
             role=role,
-            created_by=manager,
+            created_by=creator_ref,
             max_uses=max_uses,
             expires_at=expires_at
         )

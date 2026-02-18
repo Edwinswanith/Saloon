@@ -57,6 +57,12 @@ def get_staffs(current_user=None):
         
         permanent_staffs = list(query.order_by(order_field))
         
+        # Auto-complete any assignments that have passed their end date
+        StaffTempAssignment.objects(
+            status='active',
+            end_date__lt=today
+        ).update(set__status='completed', set__updated_at=datetime.utcnow())
+
         # Get temp-assigned staff for this branch (currently active) - force evaluation
         temp_assigned_staffs = []
         if branch:

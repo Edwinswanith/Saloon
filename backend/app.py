@@ -13,6 +13,7 @@ Compress(app)
 app.config['COMPRESS_MIMETYPES'] = [
     'text/html', 'text/css', 'text/xml', 'text/javascript',
     'application/json', 'application/javascript',
+    'application/pdf',  # Add PDF compression for faster downloads
 ]
 app.config['COMPRESS_MIN_SIZE'] = 500
 
@@ -53,24 +54,39 @@ try:
         else:
             base_uri = f"{base_uri}/{MONGODB_DB}"
     
-    # Add retry parameters if not present
+    # Add retry and SSL/TLS parameters if not present
+    separator = '&' if '?' in base_uri else '?'
+    params_to_add = []
+    
     if 'retryWrites' not in base_uri:
-        separator = '&' if '?' in base_uri else '?'
-        base_uri = f"{base_uri}{separator}retryWrites=true&w=majority"
+        params_to_add.append('retryWrites=true')
+    if 'w=' not in base_uri:
+        params_to_add.append('w=majority')
+    if 'tls=' not in base_uri and 'ssl=' not in base_uri:
+        params_to_add.append('tls=true')
+    
+    if params_to_add:
+        base_uri = f"{base_uri}{separator}{'&'.join(params_to_add)}"
     
     # Connect with increased timeouts to handle SSL handshake
     # Explicitly specify the database name to avoid defaulting to 'test'
+    # Note: SSL/TLS is handled via connection string parameters (tls=true)
     connect(host=base_uri, alias='default', db=MONGODB_DB,
-            maxPoolSize=10,
-            minPoolSize=2,
-            serverSelectionTimeoutMS=10000,
-            connectTimeoutMS=10000,
-            socketTimeoutMS=20000,
-            maxIdleTimeMS=60000)
-    print(f"Connected to MongoDB: {MONGODB_DB}")
+            maxPoolSize=50,  # Increased from 10 to 50 for better concurrency
+            minPoolSize=5,   # Increased from 2 to 5 for faster initial connections
+            serverSelectionTimeoutMS=30000,  # Increased for SSL handshake
+            connectTimeoutMS=30000,  # Increased for SSL handshake
+            socketTimeoutMS=30000,  # Increased for SSL handshake
+            maxIdleTimeMS=60000,
+            waitQueueTimeoutMS=10000)  # Increased wait queue timeout
+    print(f"✓ Connected to MongoDB: {MONGODB_DB}")
+    print(f"✓ Connection URI: {base_uri.split('@')[0]}@***")
 except Exception as e:
-    print(f"Warning: MongoDB connection failed: {e}")
-    print("App will continue but database operations may fail.")
+    print(f"✗ CRITICAL: MongoDB connection failed: {e}")
+    print(f"✗ Database: {MONGODB_DB}")
+    print(f"✗ URI: {MONGODB_URI.split('@')[0] if '@' in MONGODB_URI else '***'}@***")
+    print("✗ App will continue but ALL database operations will fail!")
+    print("✗ Check: 1) MONGODB_URI env var, 2) MongoDB Atlas IP whitelist, 3) Network connectivity")
 
 app.config['JSON_SORT_KEYS'] = False
 
@@ -105,6 +121,14 @@ except Exception as e:
 from routes import register_routes
 register_routes(app)
 
+# Register public invoice routes directly on app (without /api prefix)
+# These routes are for customer-facing invoice links and should be accessible without /api
+from routes.bill_routes import short_invoice_view, short_invoice_pdf, public_invoice_view, public_invoice_pdf
+app.add_url_rule('/i/<share_code>', 'short_invoice_view', short_invoice_view, methods=['GET'])
+app.add_url_rule('/i/<share_code>/pdf', 'short_invoice_pdf', short_invoice_pdf, methods=['GET'])
+app.add_url_rule('/invoice/view/<token>', 'public_invoice_view', public_invoice_view, methods=['GET'])
+app.add_url_rule('/invoice/pdf/<token>', 'public_invoice_pdf', public_invoice_pdf, methods=['GET'])
+
 # One-time migration: drop old global unique index on customers.mobile
 # (replaced with compound index on mobile+branch for multi-branch support)
 try:
@@ -117,13 +141,24 @@ try:
     if 'referral_code_1' in indexes:
         db.customers.drop_index('referral_code_1')
         print("[MIGRATION] Dropped old unique index 'referral_code_1' on customers collection")
+    # Drop duplicate appointment index that conflicts with MongoEngine auto-index
+    appt_indexes = db.appointments.index_information()
+    if 'idx_appointments_staff_date_status_perf' in appt_indexes:
+        db.appointments.drop_index('idx_appointments_staff_date_status_perf')
+        print("[MIGRATION] Dropped duplicate index 'idx_appointments_staff_date_status_perf' on appointments collection")
 except Exception as e:
     pass  # Index may not exist or DB not connected yet
 
 # Serve React static files
+# Note: Public invoice routes (/i/<share_code>, /invoice/view/<token>, etc.) are handled separately
+# and will match before this catch-all route due to Flask's routing specificity
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve(path):
+    # Skip invoice routes - these are handled by dedicated routes
+    if path.startswith('i/') or path.startswith('invoice/'):
+        return jsonify({'error': 'Not found'}), 404
+    
     if path != "":
         decoded_path = unquote(path)
         file_path = os.path.join(app.static_folder, decoded_path)

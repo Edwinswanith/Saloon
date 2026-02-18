@@ -7,7 +7,7 @@ import {
 } from 'react-icons/fa'
 import * as XLSX from 'xlsx'
 import './Tax.css'
-import { API_BASE_URL } from '../config'
+import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 const Tax = () => {
   const [settings, setSettings] = useState({
     gstNumber: '',
@@ -37,7 +37,7 @@ const Tax = () => {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/tax/settings`)
+      const response = await apiGet('/api/tax/settings')
       if (response.ok) {
         const data = await response.json()
         setSettings({
@@ -55,7 +55,7 @@ const Tax = () => {
 
   const fetchTaxSlabs = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/tax/slabs`)
+      const response = await apiGet('/api/tax/slabs?status=active')
       if (response.ok) {
         const data = await response.json()
         setTaxSlabs(data.slabs || [])
@@ -75,13 +75,7 @@ const Tax = () => {
     setMessage('')
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/tax/settings`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(settings),
-      })
+      const response = await apiPut('/api/tax/settings', settings)
 
       if (response.ok) {
         setMessage('Tax settings saved successfully!')
@@ -126,9 +120,7 @@ const Tax = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/tax/slabs/${slabId}`, {
-        method: 'DELETE',
-      })
+      const response = await apiDelete(`/api/tax/slabs/${slabId}`)
 
       if (response.ok) {
         fetchTaxSlabs()
@@ -146,24 +138,16 @@ const Tax = () => {
     e.preventDefault()
 
     try {
-      const url = editingSlab
-        ? `${API_BASE_URL}/api/tax/slabs/${editingSlab.id}`
-        : `${API_BASE_URL}/api/tax/slabs`
-      
-      const method = editingSlab ? 'PUT' : 'POST'
+      const slabPayload = {
+        name: slabFormData.name,
+        rate: parseFloat(slabFormData.rate),
+        applyToServices: slabFormData.applyToServices,
+        applyToProducts: slabFormData.applyToProducts,
+      }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: slabFormData.name,
-          rate: parseFloat(slabFormData.rate),
-          applyToServices: slabFormData.applyToServices,
-          applyToProducts: slabFormData.applyToProducts,
-        }),
-      })
+      const response = editingSlab
+        ? await apiPut(`/api/tax/slabs/${editingSlab.id}`, slabPayload)
+        : await apiPost('/api/tax/slabs', slabPayload)
 
       if (response.ok) {
         setShowSlabModal(false)
@@ -278,11 +262,7 @@ const Tax = () => {
 
         if (slabData.name && slabData.rate >= 0) {
           try {
-            const response = await fetch(`${API_BASE_URL}/api/tax/slabs`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(slabData),
-            })
+            const response = await apiPost('/api/tax/slabs', slabData)
             if (response.ok) {
               successCount++
             } else {
@@ -405,8 +385,8 @@ const Tax = () => {
                 Define tax rates and assign them to categories.
               </p>
             </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button className="action-btn import-btn" onClick={() => setShowImportModal(true)} style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="slabs-header-actions">
+              <button className="import-btn" onClick={() => setShowImportModal(true)}>
                 <FaCloudUploadAlt /> Import Tax Slabs
               </button>
               <button className="add-slab-button" onClick={handleAddSlab}>

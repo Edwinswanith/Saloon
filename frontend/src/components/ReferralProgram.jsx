@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import './ReferralProgram.css'
-import { API_BASE_URL } from '../config'
+import { apiGet, apiPut } from '../utils/api'
 
 const ReferralProgram = () => {
   const [settings, setSettings] = useState({
@@ -20,7 +20,7 @@ const ReferralProgram = () => {
   const fetchSettings = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE_URL}/api/referral-program/settings`)
+      const response = await apiGet('/api/referral-program/settings')
       if (response.ok) {
         const data = await response.json()
         setSettings({
@@ -51,17 +51,11 @@ const ReferralProgram = () => {
     setMessage('')
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/referral-program/settings`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          enabled: settings.enabled,
-          rewardType: settings.rewardType,
-          referrerRewardPercentage: parseFloat(settings.referrerRewardPercentage),
-          refereeRewardPercentage: parseFloat(settings.refereeRewardPercentage),
-        }),
+      const response = await apiPut('/api/referral-program/settings', {
+        enabled: settings.enabled,
+        rewardType: settings.rewardType,
+        referrerRewardPercentage: parseFloat(settings.referrerRewardPercentage),
+        refereeRewardPercentage: parseFloat(settings.refereeRewardPercentage),
       })
 
       if (response.ok) {
@@ -135,7 +129,7 @@ const ReferralProgram = () => {
                   Referrer Reward ({settings.rewardType === 'percentage' ? '%' : '₹'})
                 </label>
                 <p className="field-note">
-                  Bonus credited to the existing customer's wallet.
+                  Reward earned by the existing customer who referred. Tracked per referral.
                 </p>
                 <input
                   type="number"
@@ -156,7 +150,7 @@ const ReferralProgram = () => {
               {/* Referee Reward */}
               <div className="form-group">
                 <label htmlFor="refereeRewardPercentage">
-                  Referee Reward ({settings.rewardType === 'percentage' ? '%' : '₹'})
+                  Referee Discount ({settings.rewardType === 'percentage' ? '%' : '₹'})
                 </label>
                 <p className="field-note">
                   Discount applied to the new customer's first bill.

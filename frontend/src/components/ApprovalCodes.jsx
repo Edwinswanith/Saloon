@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../config';
 import Header from './Header';
-import { FaExclamationTriangle } from 'react-icons/fa';
+import { FaExclamationTriangle, FaTimes } from 'react-icons/fa';
 import './ApprovalCodes.css';
+import { apiGet, apiPost, apiPut } from '../utils/api';
+import { showSuccess, showError, showWarning } from '../utils/toast.jsx';
 
 const ApprovalCodes = () => {
   const [codes, setCodes] = useState([]);
@@ -22,15 +23,13 @@ const ApprovalCodes = () => {
   const fetchCodes = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/api/discount-approvals/approval-codes`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
-      });
+      const response = await apiGet('/api/discount-approvals/approval-codes');
+      if (!response.ok) throw new Error('Failed to fetch codes');
       const data = await response.json();
       setCodes(data.codes || []);
     } catch (error) {
       console.error('Error fetching codes:', error);
+      showError('Failed to load approval codes');
     } finally {
       setLoading(false);
     }
@@ -39,51 +38,44 @@ const ApprovalCodes = () => {
   const handleGenerate = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`${API_BASE_URL}/api/discount-approvals/approval-codes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify({
-          role: formData.role,
-          max_uses: formData.max_uses ? parseInt(formData.max_uses) : null,
-          expires_in_days: formData.expires_in_days ? parseInt(formData.expires_in_days) : null
-        })
+      const response = await apiPost('/api/discount-approvals/approval-codes', {
+        role: formData.role,
+        max_uses: formData.max_uses ? parseInt(formData.max_uses) : null,
+        expires_in_days: formData.expires_in_days ? parseInt(formData.expires_in_days) : null
       });
 
       if (response.ok) {
         const data = await response.json();
         setGeneratedCode(data.code);
         setFormData({ role: 'manager', max_uses: '', expires_in_days: '' });
+        setShowGenerateModal(false);
         fetchCodes();
       } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to generate code');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        showError(errorData.error || 'Failed to generate code');
       }
     } catch (error) {
       console.error('Error generating code:', error);
-      alert('Error generating approval code');
+      showError('Error generating approval code');
     }
   };
 
   const handleDeactivate = async (codeId) => {
-    if (!confirm('Are you sure you want to deactivate this code?')) return;
+    if (!window.confirm('Are you sure you want to deactivate this code?')) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/discount-approvals/approval-codes/${codeId}/deactivate`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
-      });
+      const response = await apiPut(`/api/discount-approvals/approval-codes/${codeId}/deactivate`);
 
       if (response.ok) {
-        alert('Code deactivated');
+        showSuccess('Code deactivated');
         fetchCodes();
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        showError(errorData.error || 'Failed to deactivate code');
       }
     } catch (error) {
       console.error('Error deactivating code:', error);
+      showError('Error deactivating code');
     }
   };
 
@@ -93,7 +85,7 @@ const ApprovalCodes = () => {
       <div className="page-content">
         <div className="page-header">
           <h2>Discount Approval Codes</h2>
-          <button onClick={() => setShowGenerateModal(true)} className="btn-primary">
+          <button onClick={(e) => { e.stopPropagation(); setShowGenerateModal(true); }} className="btn-primary">
             Generate New Code
           </button>
         </div>
@@ -108,7 +100,7 @@ const ApprovalCodes = () => {
             <p>This code will not be shown again. Copy it now!</p>
             <button onClick={() => {
               navigator.clipboard.writeText(generatedCode);
-              alert('Code copied to clipboard!');
+              showSuccess('Code copied to clipboard!');
             }} className="btn-copy">
               Copy Code
             </button>
@@ -171,41 +163,53 @@ const ApprovalCodes = () => {
         {showGenerateModal && (
           <div className="modal-overlay" onClick={() => { setShowGenerateModal(false); setFormData({ role: 'manager', max_uses: '', expires_in_days: '' }); }}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <h2>Generate Approval Code</h2>
+              <div className="modal-header">
+                <h2>Generate Approval Code</h2>
+                <button
+                  type="button"
+                  className="modal-close-btn"
+                  onClick={() => { setShowGenerateModal(false); setFormData({ role: 'manager', max_uses: '', expires_in_days: '' }); }}
+                  aria-label="Close"
+                >
+                  <FaTimes />
+                </button>
+              </div>
               <form onSubmit={handleGenerate}>
-                <div className="form-group">
-                  <label>Role *</label>
-                  <select
-                    value={formData.role}
-                    onChange={(e) => setFormData({...formData, role: e.target.value})}
-                    required
-                  >
-                    <option value="manager">Manager</option>
-                    <option value="owner">Owner</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Max Uses (Optional)</label>
-                  <input
-                    type="number"
-                    value={formData.max_uses}
-                    onChange={(e) => setFormData({...formData, max_uses: e.target.value})}
-                    placeholder="Leave empty for unlimited"
-                    min="1"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Expires In Days (Optional)</label>
-                  <input
-                    type="number"
-                    value={formData.expires_in_days}
-                    onChange={(e) => setFormData({...formData, expires_in_days: e.target.value})}
-                    placeholder="Leave empty for no expiration"
-                    min="1"
-                  />
+                <div className="modal-form-fields">
+                  <div className="form-group">
+                    <label>Role *</label>
+                    <select
+                      value={formData.role}
+                      onChange={(e) => setFormData({...formData, role: e.target.value})}
+                      required
+                    >
+                      <option value="manager">Manager</option>
+                      <option value="owner">Owner</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Max Uses (Optional)</label>
+                    <input
+                      type="number"
+                      value={formData.max_uses}
+                      onChange={(e) => setFormData({...formData, max_uses: e.target.value})}
+                      placeholder="Leave empty for unlimited"
+                      min="1"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Expires In Days (Optional)</label>
+                    <input
+                      type="number"
+                      value={formData.expires_in_days}
+                      onChange={(e) => setFormData({...formData, expires_in_days: e.target.value})}
+                      placeholder="Leave empty for no expiration"
+                      min="1"
+                    />
+                  </div>
                 </div>
                 <div className="modal-actions">
-                  <button type="button" onClick={() => { setShowGenerateModal(false); setFormData({ role: 'manager', max_uses: '', expires_in_days: '' }); }}>
+                  <button type="button" className="btn-cancel" onClick={() => { setShowGenerateModal(false); setFormData({ role: 'manager', max_uses: '', expires_in_days: '' }); }}>
                     Cancel
                   </button>
                   <button type="submit" className="btn-primary">Generate Code</button>
@@ -220,4 +224,3 @@ const ApprovalCodes = () => {
 };
 
 export default ApprovalCodes;
-

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { FaWhatsapp } from 'react-icons/fa'
 import { apiGet, apiPost } from '../utils/api'
-import { API_BASE_URL } from '../config'
+import { PUBLIC_BASE_URL } from '../config'
 import './InvoicePreview.css'
 
 // Branch information mapping
@@ -218,16 +218,14 @@ const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
       phoneNumber = '91' + phoneNumber
     }
 
-    // Try to generate shareable invoice links
+    // Generate shareable invoice link (single URL for viewing and downloading)
     let invoiceLink = ''
-    let pdfLink = ''
     if (billId) {
       try {
         const res = await apiPost(`/api/bills/${billId}/share-link`)
         if (res.ok) {
           const data = await res.json()
-          invoiceLink = `${API_BASE_URL}/api/invoice/view/${data.token}`
-          pdfLink = `${API_BASE_URL}/api/invoice/pdf/${data.token}`
+          invoiceLink = `${PUBLIC_BASE_URL}/i/${data.share_code}/pdf`
         }
       } catch (e) {
         // Fallback to text-only if link generation fails
@@ -239,10 +237,7 @@ const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
     message += `Total: ${formatCurrencyNoDecimals(summary?.total || 0)}\n\n`
 
     if (invoiceLink) {
-      message += `View invoice: ${invoiceLink}\n\n`
-    }
-    if (pdfLink) {
-      message += `Download PDF: ${pdfLink}\n\n`
+      message += `Download your invoice:\n${invoiceLink}\n\n`
     }
 
     message += `Thank you for your visit!`
@@ -355,6 +350,12 @@ const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
           <span className="summary-label">Discount</span>
           <span className="summary-value">{formatCurrency(summary?.discount || 0)}</span>
         </div>
+        {summary?.referral_discount > 0 && (
+          <div className="summary-row">
+            <span className="summary-label">Referral Discount</span>
+            <span className="summary-value">{formatCurrency(summary.referral_discount)}</span>
+          </div>
+        )}
         <div className="summary-row">
           <span className="summary-label">Net</span>
           <span className="summary-value">{formatCurrency(summary?.net || 0)}</span>

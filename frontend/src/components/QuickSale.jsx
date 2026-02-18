@@ -14,10 +14,11 @@ import { EmptyList } from './shared/EmptyStates'
 import InvoicePreview from './InvoicePreview'
 
 const QuickSale = () => {
-  const { user, getMaxDiscountPercent, currentBranch } = useAuth()
+  const { user, currentBranch } = useAuth()
   const [pendingApproval, setPendingApproval] = useState(null)
   const [showApprovalForm, setShowApprovalForm] = useState(false)
   const [approvalReason, setApprovalReason] = useState('')
+  const [approvalCode, setApprovalCode] = useState('')
 
   const [discountType, setDiscountType] = useState('fix')
   const [paymentMode, setPaymentMode] = useState('cash')
@@ -56,8 +57,11 @@ const QuickSale = () => {
     name: '',
     gender: '',
     source: 'Walk-in',
-    dobRange: ''
+    dobRange: '',
+    referralCode: ''
   })
+  const [referralInfo, setReferralInfo] = useState(null) // { enabled, rewardType, referrerReward, refereeReward }
+  const [referralValidation, setReferralValidation] = useState(null) // { valid, referrerName } or null
 
   // Inventory modal state
   const [showInventoryModal, setShowInventoryModal] = useState(false)
@@ -100,7 +104,7 @@ const QuickSale = () => {
   // Tax configuration from Tax Settings
   const [taxSettings, setTaxSettings] = useState({
     gstNumber: '',
-    servicePricingType: 'exclusive',
+    servicePricingType: 'inclusive',
     productPricingType: 'exclusive'
   })
   const [serviceTaxRate, setServiceTaxRate] = useState(0)
@@ -125,6 +129,7 @@ const QuickSale = () => {
     fetchStaff()
     fetchServices()
     fetchTaxConfig()
+    fetchReferralSettings()
   }, [])
 
   // Auto-select logged-in staff when staff members are loaded
@@ -579,7 +584,7 @@ const QuickSale = () => {
         const settings = await settingsRes.json()
         setTaxSettings({
           gstNumber: settings.gstNumber || '',
-          servicePricingType: settings.servicePricingType || 'exclusive',
+          servicePricingType: settings.servicePricingType || 'inclusive',
           productPricingType: settings.productPricingType || 'exclusive'
         })
       }
@@ -592,6 +597,41 @@ const QuickSale = () => {
       }
     } catch (error) {
       console.error('Error fetching tax config:', error)
+    }
+  }
+
+  const fetchReferralSettings = async () => {
+    try {
+      const response = await apiGet('/api/referral-program/settings')
+      if (response.ok) {
+        const data = await response.json()
+        setReferralInfo({
+          enabled: data.enabled || false,
+          rewardType: data.rewardType || 'percentage',
+          referrerReward: data.referrerRewardPercentage || 0,
+          refereeReward: data.refereeRewardPercentage || 0
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching referral settings:', error)
+    }
+  }
+
+  const validateReferralCode = async (code) => {
+    if (!code || !code.trim()) {
+      setReferralValidation(null)
+      return
+    }
+    try {
+      const response = await apiGet(`/api/referral-program/validate-code?code=${encodeURIComponent(code.trim())}`)
+      const data = await response.json()
+      if (response.ok && data.valid) {
+        setReferralValidation({ valid: true, referrerName: data.referrerName })
+      } else {
+        setReferralValidation({ valid: false, error: data.error || 'Invalid code' })
+      }
+    } catch (error) {
+      setReferralValidation({ valid: false, error: 'Could not validate code' })
     }
   }
 
@@ -1306,7 +1346,9 @@ const QuickSale = () => {
         lastVisit: data.last_visit || null,
         totalVisits: data.total_visits || 0,
         totalRevenue: data.total_revenue || 0,
-        notes: data.notes || 'N/A'
+        notes: data.notes || 'N/A',
+        referredBy: data.referredBy || null,
+        referralRewardUsed: data.referralRewardUsed || false
       })
     } catch (error) {
       console.error('Error fetching customer details:', error)
@@ -1367,14 +1409,19 @@ const QuickSale = () => {
 
     setCreatingCustomer(true)
     try {
-      const response = await apiPost('/api/customers', {
+      const customerPayload = {
         mobile: cleanMobile,
         firstName: firstName,
         lastName: lastName,
         gender: newCustomerData.gender,
         source: newCustomerData.source,
         dobRange: newCustomerData.dobRange || ''
-      })
+      }
+      // Include referral code if provided and validated
+      if (newCustomerData.referralCode && referralValidation?.valid) {
+        customerPayload.referralCode = newCustomerData.referralCode.trim()
+      }
+      const response = await apiPost('/api/customers', customerPayload)
 
       const data = await response.json()
 
@@ -1398,7 +1445,7 @@ const QuickSale = () => {
 
       // Reset form
       setShowNewCustomerForm(false)
-      setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '' })
+      setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '', referralCode: '' }); setReferralValidation(null)
 
       // Show appropriate message based on backend response
       if (data.created) {
@@ -1496,8 +1543,20 @@ const QuickSale = () => {
     return 0
   }
 
+  // Calculate referral discount for referee's first bill
+  const calculateReferralDiscount = () => {
+    if (!referralInfo?.enabled || !customerDetails?.referredBy || customerDetails?.referralRewardUsed) return 0
+    const subtotal = calculateSubtotal()
+    if (subtotal <= 0) return 0
+    if (referralInfo.rewardType === 'percentage') {
+      return subtotal * (referralInfo.refereeReward / 100)
+    }
+    // Fixed amount — cap at subtotal
+    return Math.min(referralInfo.refereeReward, subtotal)
+  }
+
   const calculateNet = () => {
-    return calculateSubtotal() - calculateDiscount()
+    return calculateSubtotal() - calculateDiscount() - calculateReferralDiscount()
   }
 
   // Tax calculation respecting inclusive/exclusive pricing per category
@@ -1623,10 +1682,15 @@ const QuickSale = () => {
     setDiscountAmount(0)
     setDiscountType('fix')
     setMembershipInfo(null)
+    setCustomerDetails(null)
     setBookingNote('')
     setBookingStatus('confirmed')
     appointmentCreatedRef.current = false
     setEditingAppointmentId(null)
+    setPendingApproval(null)
+    setApprovalReason('')
+    setApprovalCode('')
+    setShowApprovalForm(false)
   }
 
   const handleCheckout = async () => {
@@ -1653,6 +1717,75 @@ const QuickSale = () => {
       if (!paymentMode) {
         showWarning('Please select a payment mode')
         return
+      }
+
+      // Phase 5: Non-owner applying ANY discount → needs approval reason BEFORE bill creation
+      const hasBillDiscount = discountType !== 'membership' && parseFloat(discountAmount) > 0
+      const hasItemDiscount = services.some(s => parseFloat(s.discount) > 0) ||
+                              packages.some(p => parseFloat(p.discount) > 0) ||
+                              products.some(p => parseFloat(p.discount) > 0)
+      const hasManualDiscount = hasBillDiscount || hasItemDiscount
+      if (hasManualDiscount && user && user.role !== 'owner') {
+        if (!approvalReason.trim()) {
+          setShowApprovalForm(true)
+          showWarning('Please provide a reason for the discount approval request')
+          return
+        }
+      }
+
+      // If retrying after approval was granted, reuse the existing bill
+      if (pendingApproval && pendingApproval.billId) {
+        const billId = pendingApproval.billId
+        // Go straight to checkout with the existing bill
+        const checkoutBillDate = formatLocalDate(selectedDate)
+        const checkoutResponse = await apiPost(`/api/bills/${billId}/checkout`, {
+          bill_date: checkoutBillDate,
+          discount_amount: membershipInfo && membershipInfo.plan && discountType === 'membership'
+            ? membershipInfo.plan.allocated_discount
+            : parseFloat(discountAmount) || 0,
+          discount_type: discountType === 'membership' ? 'membership' : (discountType === '%' ? 'percentage' : 'fix'),
+          discount_reason: approvalReason || undefined,
+          approval_code: approvalCode.trim() || undefined,
+          referral_discount: calculateReferralDiscount(),
+          tax_rate: getDisplayTaxRate(),
+          tax_amount: calculateTax(),
+          final_amount: calculateFinalAmount(),
+          payment_mode: paymentMode,
+          booking_status: bookingStatus,
+        })
+
+        if (checkoutResponse.ok) {
+          setPendingApproval(null)
+          setApprovalReason('')
+          setApprovalCode('')
+          celebrateBig()
+          showSuccess('Checkout successful!')
+          handleReset()
+          fetchProducts()
+          setCurrentBillId(billId)
+          await fetchInvoiceData(billId)
+          setShowInvoiceModal(true)
+          return
+        } else {
+          let errorMessage = 'Failed to complete checkout. Please try again.'
+          try {
+            const error = await checkoutResponse.json()
+            errorMessage = error.error || errorMessage
+            if (error.code_invalid) {
+              showError(error.error || 'Invalid approval code')
+              setApprovalCode('')
+              return
+            }
+            if (error.requires_approval) {
+              showWarning(error.message || 'Discount still pending owner approval')
+              return
+            }
+          } catch (e) {
+            errorMessage = `Server error: ${checkoutResponse.status} ${checkoutResponse.statusText}`
+          }
+          showError(errorMessage)
+          return
+        }
       }
 
       // Create bill with selected date
@@ -1736,7 +1869,7 @@ const QuickSale = () => {
 
       // Collect membership items
       memberships.forEach(membership => {
-        if (membership.membership_id) {
+        if (membership.membership_id || membership.name) {
           allItems.push({
             item_type: 'membership',
             membership_id: membership.membership_id,
@@ -1758,25 +1891,7 @@ const QuickSale = () => {
         }
       }
 
-      // Phase 5: Check if approval is needed
-      if (pendingApproval && pendingApproval.approval_status === 'pending') {
-        showInfo('Discount approval is pending. Please wait for approval before checkout.')
-        return
-      }
 
-      // Phase 5: Check discount limit
-      if (discountType === '%' && user) {
-        const maxDiscount = getMaxDiscountPercent()
-        const discountPercent = parseFloat(discountAmount) || 0
-        
-        if (discountPercent > maxDiscount) {
-          if (!approvalReason.trim()) {
-            setShowApprovalForm(true)
-            showWarning('Please provide a reason for the discount approval request')
-            return
-          }
-        }
-      }
 
       // Calculate discount amount for membership (if applicable)
       let finalDiscountAmount = discountAmount
@@ -1800,11 +1915,13 @@ const QuickSale = () => {
       const checkoutBillDate = formatLocalDate(selectedDate) // Format as YYYY-MM-DD
       const checkoutResponse = await apiPost(`/api/bills/${billId}/checkout`, {
         bill_date: checkoutBillDate, // Send selected date to update bill_date during checkout
-        discount_amount: membershipInfo && membershipInfo.plan && discountType === 'membership' 
-          ? membershipInfo.plan.allocated_discount 
+        discount_amount: membershipInfo && membershipInfo.plan && discountType === 'membership'
+          ? membershipInfo.plan.allocated_discount
           : parseFloat(discountAmount) || 0,
         discount_type: discountType === 'membership' ? 'membership' : (discountType === '%' ? 'percentage' : 'fix'),
-        discount_reason: approvalReason || undefined, // Phase 5: Include reason
+        discount_reason: approvalReason || undefined,
+        approval_code: approvalCode.trim() || undefined,
+        referral_discount: calculateReferralDiscount(),
         tax_rate: getDisplayTaxRate(),
         tax_amount: calculateTax(),
         final_amount: calculateFinalAmount(),
@@ -1879,12 +1996,20 @@ const QuickSale = () => {
         try {
           const error = await checkoutResponse.json()
           errorMessage = error.error || errorMessage
-          
-          // Phase 5: Handle approval required
+
+          // Handle invalid approval code
+          if (error.code_invalid) {
+            showError(error.error || 'Invalid approval code')
+            setApprovalCode('')
+            setPendingApproval({ id: error.approval_id || null, approval_status: 'pending', billId })
+            return
+          }
+
+          // Handle approval required - store billId for retry
           if (error.requires_approval && error.approval_id) {
-            setPendingApproval({ id: error.approval_id, approval_status: 'pending' })
-            setShowApprovalForm(true)
-            errorMessage = error.message || 'Discount approval required before checkout'
+            setPendingApproval({ id: error.approval_id, approval_status: 'pending', billId })
+            showInfo(error.message || 'Discount approval request submitted. Ask the owner to approve, then retry.')
+            return
           }
         } catch (e) {
           errorMessage = `Server error: ${checkoutResponse.status} ${checkoutResponse.statusText}`
@@ -2557,6 +2682,24 @@ const QuickSale = () => {
                     </>
                   ) : null}
 
+                  {/* Referral Discount */}
+                  {calculateReferralDiscount() > 0 && (
+                    <>
+                      <div className="summary-divider"></div>
+                      <div className="summary-group">
+                        <div className="summary-row referral-discount-row">
+                          <span className="summary-label discount-label">
+                            <FaGift style={{ fontSize: '14px', marginRight: '6px' }} />
+                            Referral Discount ({referralInfo.rewardType === 'percentage' ? `${referralInfo.refereeReward}%` : `₹${referralInfo.refereeReward}`})
+                          </span>
+                          <span className="summary-value discount-value">
+                            − ₹ {calculateReferralDiscount().toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
                   {/* Net Amount */}
                   <div className="summary-divider"></div>
                   <div className="summary-group">
@@ -2609,17 +2752,28 @@ const QuickSale = () => {
                 {appointmentCreatedRef.current ? '✓ Saved' : 'Confirm Booking'}
               </button>
             ) : (
-              <button 
-                className="checkout-button" 
-                onClick={handleCheckout}
-                disabled={
-                  (pendingApproval && pendingApproval.approval_status === 'pending')
-                }
-              >
-                {pendingApproval && pendingApproval.approval_status === 'pending' 
-                  ? 'Approval Pending...' 
-                  : 'Checkout'}
-              </button>
+              <>
+                {pendingApproval && pendingApproval.approval_status === 'pending' && (
+                  <div className="approval-code-inline">
+                    <input
+                      type="text"
+                      className="approval-code-input-inline"
+                      value={approvalCode}
+                      onChange={(e) => setApprovalCode(e.target.value.toUpperCase())}
+                      placeholder="Enter approval code from owner"
+                      maxLength={12}
+                    />
+                  </div>
+                )}
+                <button
+                  className="checkout-button"
+                  onClick={handleCheckout}
+                >
+                  {pendingApproval && pendingApproval.approval_status === 'pending'
+                    ? (approvalCode.trim() ? 'Approve & Checkout' : 'Retry Checkout (Pending Approval)')
+                    : 'Checkout'}
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -2630,36 +2784,51 @@ const QuickSale = () => {
         <div className="modal-overlay" onClick={() => setShowApprovalForm(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h2>Discount Approval Required</h2>
-            <p>Your discount exceeds your role limit. Please provide a reason for approval.</p>
+            <p>Discounts (including per-item discounts) require owner approval. Provide a reason, and enter an approval code if you have one.</p>
             <div className="form-group">
               <label>Reason for Discount *</label>
               <textarea
                 value={approvalReason}
                 onChange={(e) => setApprovalReason(e.target.value)}
-                rows="4"
+                rows="3"
                 placeholder="Enter reason for discount approval request"
                 required
               />
+            </div>
+            <div className="form-group">
+              <label>Approval Code (optional)</label>
+              <input
+                type="text"
+                className="approval-code-input"
+                value={approvalCode}
+                onChange={(e) => setApprovalCode(e.target.value.toUpperCase())}
+                placeholder="e.g. KX7H3NP2"
+                maxLength={12}
+              />
+              <span style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px', display: 'block' }}>
+                Enter the code from your owner to approve instantly
+              </span>
             </div>
             <div className="modal-actions">
               <button type="button" onClick={() => {
                 setShowApprovalForm(false)
                 setApprovalReason('')
+                setApprovalCode('')
               }}>
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={() => {
                   if (approvalReason.trim()) {
                     setShowApprovalForm(false)
-                    // Approval request will be created during checkout
+                    handleCheckout()
                   } else {
                     showWarning('Please provide a reason')
                   }
                 }}
                 className="btn-primary"
               >
-                Submit for Approval
+                {approvalCode.trim() ? 'Approve & Checkout' : 'Submit for Approval'}
               </button>
             </div>
           </div>
@@ -2670,7 +2839,7 @@ const QuickSale = () => {
       {showNewCustomerForm && (
         <div className="new-customer-modal-overlay" onClick={() => {
           setShowNewCustomerForm(false)
-          setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '' })
+          setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '', referralCode: '' }); setReferralValidation(null)
         }}>
           <div className="new-customer-modal" onClick={(e) => e.stopPropagation()}>
             <div className="new-customer-modal-header">
@@ -2679,7 +2848,7 @@ const QuickSale = () => {
                 className="modal-close-btn"
                 onClick={() => {
                   setShowNewCustomerForm(false)
-                  setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '' })
+                  setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '', referralCode: '' }); setReferralValidation(null)
                 }}
                 disabled={creatingCustomer}
               >
@@ -2766,6 +2935,33 @@ const QuickSale = () => {
                     <option value="Senior">Senior (51+)</option>
                   </select>
                 </div>
+                {referralInfo?.enabled && (
+                  <div className="form-field-modal">
+                    <label className="modal-label">
+                      Referral Code
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Enter referral code (optional)"
+                      value={newCustomerData.referralCode}
+                      onChange={(e) => {
+                        const val = e.target.value.toUpperCase()
+                        setNewCustomerData({ ...newCustomerData, referralCode: val })
+                        setReferralValidation(null)
+                      }}
+                      onBlur={(e) => validateReferralCode(e.target.value)}
+                      className="modal-input"
+                      disabled={creatingCustomer}
+                    />
+                    {referralValidation && (
+                      <span className={`referral-validation ${referralValidation.valid ? 'valid' : 'invalid'}`}>
+                        {referralValidation.valid
+                          ? `Referred by: ${referralValidation.referrerName}`
+                          : referralValidation.error}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
             <div className="new-customer-modal-footer">
@@ -2773,7 +2969,7 @@ const QuickSale = () => {
                 className="modal-btn-cancel"
                 onClick={() => {
                   setShowNewCustomerForm(false)
-                  setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '' })
+                  setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '', referralCode: '' }); setReferralValidation(null)
                 }}
                 disabled={creatingCustomer}
               >

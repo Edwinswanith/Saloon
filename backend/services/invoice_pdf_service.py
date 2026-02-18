@@ -47,13 +47,14 @@ def register_template_filters(app):
     app.jinja_env.filters['format_mobile'] = format_mobile
 
 
-def render_invoice_html(invoice_data, show_actions=False):
+def render_invoice_html(invoice_data, show_actions=False, download_url=None):
     """
     Render invoice HTML from template
 
     Args:
         invoice_data: Dictionary containing invoice information
         show_actions: Whether to show action buttons (True for viewing, False for PDF)
+        download_url: Optional URL for downloading PDF (for public invoice views)
 
     Returns:
         str: Rendered HTML string
@@ -69,7 +70,8 @@ def render_invoice_html(invoice_data, show_actions=False):
         items=invoice_data.get('items', []),
         summary=invoice_data.get('summary', {}),
         payment=invoice_data.get('payment', {}),
-        show_actions=show_actions
+        show_actions=show_actions,
+        download_url=download_url
     )
 
 
@@ -315,12 +317,12 @@ def generate_invoice_pdf_reportlab(invoice_data):
         table_data.append([
             Paragraph(item.get('name', 'Item'), cell_style),
             Paragraph(item.get('staff_name', 'N/A'), cell_style),
-            (item.get('type', 'service') or 'service').title(),
-            str(item.get('quantity', 1)),
-            f"Rs.{item.get('price', 0):,.2f}",
-            f"Rs.{item.get('tax', 0):,.2f}",
-            f"Rs.{item.get('discount', 0):,.2f}",
-            f"Rs.{item.get('total', 0):,.2f}"
+            Paragraph((item.get('type', 'service') or 'service').title(), cell_style),
+            Paragraph(str(item.get('quantity', 1)), cell_style),
+            Paragraph(f"Rs.{item.get('price', 0):,.2f}", cell_style),
+            Paragraph(f"Rs.{item.get('tax', 0):,.2f}", cell_style),
+            Paragraph(f"Rs.{item.get('discount', 0):,.2f}", cell_style),
+            Paragraph(f"Rs.{item.get('total', 0):,.2f}", cell_style)
         ])
 
     if not items:

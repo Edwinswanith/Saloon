@@ -111,6 +111,17 @@ const StaffPerformanceAnalysis = ({ setActivePage }) => {
   const fetchStaffPerformanceData = async () => {
     try {
       setLoading(true)
+
+      // Reset state to defaults to clear stale branch data
+      setPerformanceData({
+        topPerformerRevenue: { name: 'N/A', value: '\u20B90.00', label: 'TOP PERFORMER (REVENUE)' },
+        topServiceSeller: { name: 'N/A', value: '0 items', label: 'TOP SERVICE SELLER' },
+        topRetailSeller: { name: 'N/A', value: '0 items', label: 'TOP RETAIL SELLER' },
+        busiestStaff: { name: 'N/A', value: '0 items', label: 'BUSIEST STAFF (ITEMS)' },
+      })
+      setRevenueBreakdownData([])
+      setStaffLeaderboardData([])
+
       const dateRangeParams = getDateRangeForAPI()
       const params = new URLSearchParams({
         start_date: dateRangeParams.start_date,
@@ -185,7 +196,18 @@ const StaffPerformanceAnalysis = ({ setActivePage }) => {
 
         // Set top performers
         if (data.length > 0) {
+          // Top performer by total revenue (data is already sorted by total_revenue desc)
           const topPerformer = data[0]
+
+          // Top service seller: highest service_revenue
+          const topServiceSeller = [...data].sort((a, b) => (b.service_revenue || 0) - (a.service_revenue || 0))[0]
+
+          // Top retail seller: highest product_revenue
+          const topRetailSeller = [...data].sort((a, b) => (b.product_revenue || 0) - (a.product_revenue || 0))[0]
+
+          // Busiest staff: highest total_services (item count)
+          const busiestStaff = [...data].sort((a, b) => (b.total_services || 0) - (a.total_services || 0))[0]
+
           setPerformanceData({
             topPerformerRevenue: {
               name: topPerformer.staff_name || 'N/A',
@@ -193,18 +215,18 @@ const StaffPerformanceAnalysis = ({ setActivePage }) => {
               label: 'TOP PERFORMER (REVENUE)',
             },
             topServiceSeller: {
-              name: topPerformer.staff_name || 'N/A',
-              value: `${topPerformer.total_services || 0} items`,
+              name: topServiceSeller.staff_name || 'N/A',
+              value: formatCurrency(topServiceSeller.service_revenue || 0),
               label: 'TOP SERVICE SELLER',
             },
             topRetailSeller: {
-              name: data.length > 1 ? (data[1].staff_name || 'N/A') : 'N/A',
-              value: data.length > 1 ? `${data[1].total_services || 0} items` : '0 items',
+              name: topRetailSeller.staff_name || 'N/A',
+              value: formatCurrency(topRetailSeller.product_revenue || 0),
               label: 'TOP RETAIL SELLER',
             },
             busiestStaff: {
-              name: topPerformer.staff_name || 'N/A',
-              value: `${topPerformer.total_services || 0} items`,
+              name: busiestStaff.staff_name || 'N/A',
+              value: `${busiestStaff.total_services || 0} items`,
               label: 'BUSIEST STAFF (ITEMS)',
             },
           })
@@ -220,18 +242,7 @@ const StaffPerformanceAnalysis = ({ setActivePage }) => {
 
   useEffect(() => {
     fetchStaffPerformanceData()
-  }, [dateRange, currentBranch])
-
-  // Listen for branch changes
-  useEffect(() => {
-    const handleBranchChange = () => {
-      console.log('[StaffPerformanceAnalysis] Branch changed, refreshing data...')
-      fetchStaffPerformanceData()
-    }
-    
-    window.addEventListener('branchChanged', handleBranchChange)
-    return () => window.removeEventListener('branchChanged', handleBranchChange)
-  }, [currentBranch])
+  }, [dateRange])
 
   const formatCurrency = (value) => {
     return `₹${value.toLocaleString('en-IN', {

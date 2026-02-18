@@ -3,7 +3,7 @@ from models import StaffTempAssignment, Staff, Branch, StaffLeave
 from datetime import datetime, date
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
-from utils.auth import require_role
+from utils.auth import require_role, require_auth
 
 temp_assignment_bp = Blueprint('temp_assignments', __name__)
 
@@ -82,6 +82,12 @@ def get_temp_assignments(current_user=None):
 def create_temp_assignment(current_user=None):
     """Create a new temp assignment"""
     try:
+        # Auto-complete any expired assignments before overlap check
+        StaffTempAssignment.objects(
+            status='active',
+            end_date__lt=date.today()
+        ).update(set__status='completed', set__updated_at=datetime.utcnow())
+
         data = request.get_json()
         
         # Validate required fields
@@ -372,6 +378,7 @@ def get_coverage_dashboard(current_user=None):
         return response, 500
 
 @temp_assignment_bp.route('/active-today', methods=['GET'])
+@require_auth
 def get_active_assignments_today(current_user=None):
     """Get all assignments active today"""
     try:

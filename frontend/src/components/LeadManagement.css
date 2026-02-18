@@ -370,6 +370,21 @@
   border-color: var(--primary-700);
 }
 
+.convert-btn {
+  color: #7c3aed;
+  border-color: #ddd6fe;
+}
+
+.convert-btn:hover {
+  background: #f5f3ff;
+  border-color: #7c3aed;
+}
+
+.convert-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .delete-btn {
   color: var(--error-500);
   border-color: var(--error-200);

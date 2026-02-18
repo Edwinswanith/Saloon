@@ -1,4 +1,4 @@
-from mongoengine import connect, Document, ReferenceField, StringField, IntField, FloatField, DateTimeField, BooleanField, DateField, ListField, EmbeddedDocument, EmbeddedDocumentField, DictField
+from mongoengine import connect, Document, ReferenceField, StringField, IntField, FloatField, DateTimeField, BooleanField, DateField, ListField, EmbeddedDocument, EmbeddedDocumentField, DictField, ObjectIdField
 from datetime import datetime
 from bson import ObjectId
 import os
@@ -58,6 +58,8 @@ class Customer(Document):
     dob = DateField()
     dob_range = StringField(max_length=20)  # Young, Mid, Old
     referral_code = StringField(max_length=50)
+    referred_by = ReferenceField('self', default=None)  # Customer who referred this customer
+    referral_reward_used = BooleanField(default=False)  # Whether referee discount was applied on first bill
     whatsapp_consent = BooleanField(default=False)  # Phase 4: WhatsApp consent
     last_visit_date = DateField()  # Phase 4: Computed from bills
     total_visits = IntField(default=0)  # Phase 4: Computed
@@ -247,6 +249,7 @@ class Bill(Document):
     subtotal = FloatField(default=0.0)
     discount_amount = FloatField(default=0.0)
     discount_type = StringField(max_length=10)  # fix, percentage
+    referral_discount = FloatField(default=0.0)  # Referral program discount applied to referee's first bill
     tax_amount = FloatField(default=0.0)
     tax_rate = FloatField(default=0.0)
     final_amount = FloatField(required=True)
@@ -260,6 +263,40 @@ class Bill(Document):
     discount_approval_status = StringField(max_length=20, choices=['none', 'pending', 'approved', 'rejected'], default='none')  # Phase 5
     discount_approval_request = ReferenceField('DiscountApprovalRequest')  # Phase 5
     items = ListField(EmbeddedDocumentField(BillItemEmbedded), default=list)
+    created_at = DateTimeField(default=datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.utcnow)
+    # PDF storage fields
+    pdf_file_id = ObjectIdField()  # GridFS file ID reference
+    pdf_generated_at = DateTimeField()  # When PDF was generated
+    pdf_file_size = IntField()  # PDF file size in bytes
+    invoice = ReferenceField('Invoice')  # Reference to Invoice document
+
+# Invoice Model
+class Invoice(Document):
+    meta = {
+        'collection': 'invoices',
+        'indexes': [
+            {'fields': ['invoice_number'], 'unique': True},  # Unique invoice number
+            {'fields': ['bill']},  # Find invoice by bill
+            {'fields': ['customer', 'generated_at']},  # Customer invoice history
+            {'fields': ['branch', 'generated_at']},  # Branch invoice queries
+            {'fields': ['status', 'generated_at']},  # Status-based queries
+            {'fields': ['share_code'], 'unique': True, 'sparse': True},  # Short URL lookup
+        ]
+    }
+
+    bill = ReferenceField('Bill', required=True)  # Reference to the bill
+    invoice_number = StringField(required=True, unique=True, max_length=50)  # Unique invoice number (e.g., INV-000400)
+    customer = ReferenceField('Customer')  # Customer reference for easy querying
+    branch = ReferenceField('Branch')  # Branch reference for easy querying
+    pdf_file_id = ObjectIdField(required=True)  # GridFS file ID reference
+    invoice_data = DictField(required=True)  # Full invoice data snapshot for historical reference
+    generated_at = DateTimeField(required=True, default=datetime.utcnow)  # When invoice was generated
+    status = StringField(max_length=20, default='generated', choices=['generated', 'shared', 'viewed', 'downloaded'])  # Invoice status
+    share_code = StringField(max_length=10)  # Short code for public sharing URLs
+    shared_at = DateTimeField()  # When invoice was shared via WhatsApp
+    viewed_at = DateTimeField()  # When invoice was first viewed by customer
+    downloaded_at = DateTimeField()  # When invoice was downloaded
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
 
@@ -453,6 +490,26 @@ class ReferralProgramSettings(Document):
             settings.save()
         return settings
 
+# Referral Tracking Model
+class Referral(Document):
+    meta = {
+        'collection': 'referrals',
+        'indexes': [
+            {'fields': ['branch', '-created_at']},
+            {'fields': ['referrer']},
+            {'fields': ['referee'], 'unique': True},  # One referral per referee
+        ]
+    }
+
+    referrer = ReferenceField('Customer', required=True)  # Existing customer who referred
+    referee = ReferenceField('Customer', required=True)  # New customer who was referred
+    bill = ReferenceField('Bill', default=None)  # The bill that triggered the reward
+    referee_discount = FloatField(default=0.0)  # Discount applied to referee's first bill
+    referrer_reward = FloatField(default=0.0)  # Reward earned by referrer
+    referrer_reward_redeemed = BooleanField(default=False)  # Whether referrer has used their reward
+    branch = ReferenceField('Branch')
+    created_at = DateTimeField(default=datetime.utcnow)
+
 # Tax Settings Model
 class TaxSettings(Document):
     meta = {'collection': 'tax_settings'}
@@ -602,9 +659,11 @@ class WhatsAppMessage(Document):
 # Discount Approval Request Model (Phase 5)
 class DiscountApprovalRequest(Document):
     meta = {'collection': 'discount_approval_requests'}
-    
+
     bill = ReferenceField('Bill', required=True)
-    requested_by = ReferenceField('Staff', required=True)
+    requested_by = ReferenceField('Staff')  # Staff reference (if requester is staff)
+    requested_by_name = StringField(max_length=100)  # Name of requester (any role)
+    requested_by_role = StringField(max_length=20)  # staff, manager
     branch = ReferenceField('Branch')  # Multi-branch: Discount approval's branch
     requested_discount_percent = FloatField(required=True)
     requested_discount_amount = FloatField(required=True)
@@ -624,7 +683,7 @@ class ApprovalCode(Document):
     
     code_hash = StringField(required=True, max_length=255)  # Hashed approval code
     role = StringField(required=True, max_length=20, choices=['manager', 'owner'])
-    created_by = ReferenceField('Manager', required=True)
+    created_by = ReferenceField('Manager')  # Optional — owners don't have a Manager record
     is_active = BooleanField(default=True)
     usage_count = IntField(default=0)
     max_uses = IntField()  # Optional limit

@@ -5,7 +5,7 @@ import {
   FaPlus,
 } from 'react-icons/fa'
 import './Manager.css'
-import { API_BASE_URL } from '../config'
+import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 
 const Manager = () => {
   const [managers, setManagers] = useState([])
@@ -19,6 +19,7 @@ const Manager = () => {
     mobile: '',
     salon: '',
     status: 'active',
+    password: '',
   })
 
   useEffect(() => {
@@ -28,7 +29,7 @@ const Manager = () => {
   const fetchManagers = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE_URL}/api/managers`)
+      const response = await apiGet('/api/managers')
       const data = await response.json()
       setManagers(data.managers || [])
     } catch (error) {
@@ -47,6 +48,7 @@ const Manager = () => {
       mobile: '',
       salon: '',
       status: 'active',
+      password: '',
     })
     setShowAddModal(true)
   }
@@ -60,6 +62,7 @@ const Manager = () => {
       mobile: manager.mobile,
       salon: manager.salon || '',
       status: manager.status,
+      password: '',
     })
     setShowAddModal(true)
   }
@@ -70,9 +73,7 @@ const Manager = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/managers/${managerId}`, {
-        method: 'DELETE',
-      })
+      const response = await apiDelete(`/api/managers/${managerId}`)
 
       if (response.ok) {
         fetchManagers()
@@ -89,29 +90,40 @@ const Manager = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    try {
-      const url = editingManager
-        ? `${API_BASE_URL}/api/managers/${editingManager.id}`
-        : `${API_BASE_URL}/api/managers`
-      
-      const method = editingManager ? 'PUT' : 'POST'
+    if (!formData.mobile.trim()) {
+      alert('Mobile number is required')
+      return
+    }
+    if (!formData.firstName.trim()) {
+      alert('First name is required')
+      return
+    }
+    if (!editingManager && !formData.password.trim()) {
+      alert('Password is required')
+      return
+    }
+    if (!editingManager && formData.password.trim().length < 6) {
+      alert('Password must be at least 6 characters')
+      return
+    }
 
+    try {
       const payload = {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        mobile: formData.mobile,
-        salon: formData.salon,
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email.trim(),
+        mobile: formData.mobile.trim(),
+        salon: formData.salon.trim(),
         status: formData.status,
       }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      })
+      if (!editingManager) {
+        payload.password = formData.password.trim()
+      }
+
+      const response = editingManager
+        ? await apiPut(`/api/managers/${editingManager.id}`, payload)
+        : await apiPost('/api/managers', payload)
 
       if (response.ok) {
         setShowAddModal(false)
@@ -213,17 +225,10 @@ const Manager = () => {
       {showAddModal && (
         <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>{editingManager ? 'Edit Manager' : 'Add Manager'}</h3>
-              <button
-                className="modal-close"
-                onClick={() => setShowAddModal(false)}
-              >
-                ×
-              </button>
-            </div>
-            <form onSubmit={handleSubmit} className="manager-form">
-              <div className="form-group">
+            <h2>{editingManager ? 'Edit Manager' : 'Add Manager'}</h2>
+            <div className="modal-form-container">
+              <form onSubmit={handleSubmit}>
+                <div className="form-group">
                 <label>First Name *</label>
                 <input
                   type="text"
@@ -290,6 +295,21 @@ const Manager = () => {
                   <option value="inactive">Inactive</option>
                 </select>
               </div>
+              {!editingManager && (
+                <div className="form-group">
+                  <label>Password *</label>
+                  <input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
+                    placeholder="Enter initial password (min 6 characters)"
+                    required
+                    minLength={6}
+                  />
+                </div>
+              )}
               <div className="modal-actions">
                 <button
                   type="button"
@@ -298,11 +318,12 @@ const Manager = () => {
                 >
                   Cancel
                 </button>
-                <button type="submit" className="btn-submit">
-                  {editingManager ? 'Update' : 'Create'}
+                <button type="submit" className="btn-save">
+                  Save
                 </button>
               </div>
             </form>
+            </div>
           </div>
         </div>
       )}

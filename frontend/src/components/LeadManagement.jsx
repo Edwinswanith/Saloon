@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { FaCloudUploadAlt, FaPlus, FaDownload, FaEdit, FaTrash, FaChevronDown } from 'react-icons/fa'
+import React, { useState, useEffect, useRef } from 'react'
+import { FaCloudUploadAlt, FaPlus, FaDownload, FaEdit, FaTrash, FaChevronDown, FaUserPlus } from 'react-icons/fa'
 import { Modal, Input, Select, DatePicker, Button, Form } from 'antd'
 import dayjs from 'dayjs'
 import './LeadManagement.css'
@@ -8,10 +8,12 @@ import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
 import { useAuth } from '../contexts/AuthContext'
 
 const { TextArea } = Input
+const ITEMS_PER_PAGE = 15
 
 const LeadManagement = () => {
   const { currentBranch } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [leads, setLeads] = useState([])
@@ -19,6 +21,7 @@ const LeadManagement = () => {
   const [showLeadModal, setShowLeadModal] = useState(false)
   const [editingLead, setEditingLead] = useState(null)
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [convertingId, setConvertingId] = useState(null)
   const [leadFormData, setLeadFormData] = useState({
     name: '',
     mobile: '',
@@ -28,29 +31,33 @@ const LeadManagement = () => {
     notes: '',
     follow_up_date: ''
   })
+  const debounceTimer = useRef(null)
 
+  // Debounce search input
+  useEffect(() => {
+    debounceTimer.current = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+    }, 400)
+    return () => clearTimeout(debounceTimer.current)
+  }, [searchQuery])
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [statusFilter, debouncedSearch])
+
+  // Fetch leads when filters or branch change
   useEffect(() => {
     fetchLeads()
-  }, [statusFilter, searchQuery, currentBranch])
-
-  // Listen for branch changes
-  useEffect(() => {
-    const handleBranchChange = () => {
-      console.log('[LeadManagement] Branch changed, refreshing leads...')
-      fetchLeads()
-    }
-    
-    window.addEventListener('branchChanged', handleBranchChange)
-    return () => window.removeEventListener('branchChanged', handleBranchChange)
-  }, [currentBranch])
+  }, [statusFilter, debouncedSearch, currentBranch])
 
   const fetchLeads = async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams()
       if (statusFilter !== 'all') params.append('status', statusFilter)
-      if (searchQuery) params.append('search', searchQuery)
-      
+      if (debouncedSearch) params.append('search', debouncedSearch)
+
       const endpoint = `/api/leads${params.toString() ? `?${params.toString()}` : ''}`
       const response = await apiGet(endpoint)
       if (!response.ok) {
@@ -163,8 +170,64 @@ const LeadManagement = () => {
     }
   }
 
+  const handleConvertToCustomer = async (lead) => {
+    if (!lead.mobile) {
+      showWarning('Lead must have a mobile number before converting to customer')
+      return
+    }
+    if (lead.converted_to_customer) {
+      showWarning('Lead is already converted to a customer')
+      return
+    }
+    if (!window.confirm(`Convert "${lead.name}" to a customer?`)) {
+      return
+    }
+    try {
+      setConvertingId(lead.id)
+      const response = await apiPost(`/api/leads/${lead.id}/convert`)
+      if (response.ok) {
+        const data = await response.json()
+        showSuccess(data.message || 'Lead converted to customer successfully')
+        fetchLeads()
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        showError(errorData.error || 'Failed to convert lead')
+      }
+    } catch (error) {
+      console.error('Error converting lead:', error)
+      showError(`Error converting lead: ${error.message}`)
+    } finally {
+      setConvertingId(null)
+    }
+  }
+
   const handleUploadLeads = () => {
     setShowUploadModal(true)
+  }
+
+  // Parse a CSV line handling quoted fields with commas
+  const parseCsvLine = (line) => {
+    const values = []
+    let current = ''
+    let inQuotes = false
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i]
+      if (char === '"') {
+        if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {
+          current += '"'
+          i++ // skip escaped quote
+        } else {
+          inQuotes = !inQuotes
+        }
+      } else if (char === ',' && !inQuotes) {
+        values.push(current.trim())
+        current = ''
+      } else {
+        current += char
+      }
+    }
+    values.push(current.trim())
+    return values
   }
 
   const handleFileUpload = (e) => {
@@ -176,8 +239,8 @@ const LeadManagement = () => {
       try {
         const text = event.target.result
         const lines = text.split('\n')
-        const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
-        
+        const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase())
+
         // Find column indices
         const nameIdx = headers.findIndex(h => h.includes('name'))
         const mobileIdx = headers.findIndex(h => h.includes('mobile'))
@@ -197,8 +260,8 @@ const LeadManagement = () => {
         // Skip header row and process data
         for (let i = 1; i < lines.length; i++) {
           if (!lines[i].trim()) continue
-          const values = lines[i].split(',').map(v => v.trim())
-          
+          const values = parseCsvLine(lines[i])
+
           const leadData = {
             name: values[nameIdx] || '',
             mobile: values[mobileIdx] || '',
@@ -222,7 +285,7 @@ const LeadManagement = () => {
             }
           }
         }
-        
+
         showSuccess(`Leads imported: ${successCount} successful, ${errorCount} failed`)
         setShowUploadModal(false)
         fetchLeads()
@@ -291,6 +354,7 @@ const LeadManagement = () => {
                   <option value="contacted">Contacted</option>
                   <option value="follow-up">Follow-up</option>
                   <option value="completed">Completed</option>
+                  <option value="lost">Lost</option>
                 </select>
                 <span className="dropdown-arrow"><FaChevronDown /></span>
               </div>
@@ -324,93 +388,123 @@ const LeadManagement = () => {
           </div>
 
           {/* Leads Table */}
-          <div className="table-wrapper">
-            <table className="leads-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Mobile</th>
-                  <th>Source</th>
-                  <th>Status</th>
-                  <th>Date Added</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan="6" className="empty-row">Loading...</td>
-                  </tr>
-                ) : leads.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" className="empty-row">No leads found</td>
-                  </tr>
-                ) : (
-                  leads.map((lead) => (
-                    <tr key={lead.id}>
-                      <td>{lead.name}</td>
-                      <td>{lead.mobile}</td>
-                      <td>
-                        <span className="source-badge">{lead.source || 'N/A'}</span>
-                      </td>
-                      <td>
-                        <span className={`status-badge ${getStatusClass(lead.status)}`}>
-                          {lead.status}
-                        </span>
-                      </td>
-                      <td>{lead.created_at ? new Date(lead.created_at).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : 'N/A'}</td>
-                      <td>
-                        <div className="action-icons">
-                          <button 
-                            className="icon-btn edit-btn" 
-                            title="Edit"
-                            onClick={() => handleEditLead(lead)}
-                          >
-                            <FaEdit />
-                          </button>
-                          <button
-                            className="icon-btn delete-btn"
-                            title="Delete"
-                            onClick={() => handleDelete(lead.id)}
-                          >
-                            <FaTrash />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          {(() => {
+            const totalPages = Math.max(1, Math.ceil(leads.length / ITEMS_PER_PAGE))
+            const safePage = Math.min(currentPage, totalPages)
+            const startIdx = (safePage - 1) * ITEMS_PER_PAGE
+            const paginatedLeads = leads.slice(startIdx, startIdx + ITEMS_PER_PAGE)
 
-          {/* Pagination */}
-          <div className="pagination">
-            <button
-              className="page-btn"
-              onClick={() => setCurrentPage(1)}
-              disabled={currentPage === 1}
-            >
-              First
-            </button>
-            <button
-              className="page-btn"
-              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </button>
-            <button className="page-btn active">
-              Page {currentPage} of 1
-            </button>
-            <button
-              className="page-btn"
-              onClick={() => setCurrentPage((prev) => prev + 1)}
-            >
-              Next
-            </button>
-            <button className="page-btn">Last</button>
-          </div>
+            return (
+              <>
+                <div className="table-wrapper">
+                  <table className="leads-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Mobile</th>
+                        <th>Source</th>
+                        <th>Status</th>
+                        <th>Date Added</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loading ? (
+                        <tr>
+                          <td colSpan="6" className="empty-row">Loading...</td>
+                        </tr>
+                      ) : paginatedLeads.length === 0 ? (
+                        <tr>
+                          <td colSpan="6" className="empty-row">No leads found</td>
+                        </tr>
+                      ) : (
+                        paginatedLeads.map((lead) => (
+                          <tr key={lead.id}>
+                            <td>{lead.name}</td>
+                            <td>{lead.mobile}</td>
+                            <td>
+                              <span className="source-badge">{lead.source || 'N/A'}</span>
+                            </td>
+                            <td>
+                              <span className={`status-badge ${getStatusClass(lead.status)}`}>
+                                {lead.status}
+                              </span>
+                            </td>
+                            <td>{lead.created_at ? new Date(lead.created_at).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : 'N/A'}</td>
+                            <td>
+                              <div className="action-icons">
+                                {!lead.converted_to_customer && (
+                                  <button
+                                    className="icon-btn convert-btn"
+                                    title="Convert to Customer"
+                                    onClick={() => handleConvertToCustomer(lead)}
+                                    disabled={convertingId === lead.id}
+                                  >
+                                    <FaUserPlus />
+                                  </button>
+                                )}
+                                <button
+                                  className="icon-btn edit-btn"
+                                  title="Edit"
+                                  onClick={() => handleEditLead(lead)}
+                                >
+                                  <FaEdit />
+                                </button>
+                                <button
+                                  className="icon-btn delete-btn"
+                                  title="Delete"
+                                  onClick={() => handleDelete(lead.id)}
+                                >
+                                  <FaTrash />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                {leads.length > ITEMS_PER_PAGE && (
+                  <div className="pagination">
+                    <button
+                      className="page-btn"
+                      onClick={() => setCurrentPage(1)}
+                      disabled={safePage === 1}
+                    >
+                      First
+                    </button>
+                    <button
+                      className="page-btn"
+                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                      disabled={safePage === 1}
+                    >
+                      Previous
+                    </button>
+                    <button className="page-btn active">
+                      Page {safePage} of {totalPages}
+                    </button>
+                    <button
+                      className="page-btn"
+                      onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                      disabled={safePage === totalPages}
+                    >
+                      Next
+                    </button>
+                    <button
+                      className="page-btn"
+                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={safePage === totalPages}
+                    >
+                      Last
+                    </button>
+                  </div>
+                )}
+              </>
+            )
+          })()}
         </div>
       </div>
 

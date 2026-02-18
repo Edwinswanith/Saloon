@@ -152,15 +152,14 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--border-light);
-  transition: all var(--transition-base);
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--gray-100);
+  transition: background 0.2s ease;
   background: white;
 }
 
 .product-category-row:hover {
   background: var(--gray-50);
-  transform: translateX(4px);
 }
 
 .product-category-row:last-child {
@@ -175,9 +174,9 @@
 }
 
 .category-name {
-  font-size: var(--text-base);
-  font-weight: var(--font-semibold);
-  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-700);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -198,34 +197,33 @@
 }
 
 .icon-btn {
-  width: 36px !important;
-  height: 36px !important;
-  min-width: 36px !important;
-  min-height: 36px !important;
-  max-width: 36px !important;
-  max-height: 36px !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  max-width: 32px !important;
+  max-height: 32px !important;
   padding: 0 !important;
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--gray-300);
+  border-radius: 4px;
   background: white;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--transition-base);
-  color: var(--text-secondary);
-  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+  color: var(--gray-500);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   flex-shrink: 0;
 }
 
 .icon-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .icon-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 
 .icon-btn svg,
@@ -289,7 +287,7 @@
 }
 
 .expand-btn {
-  transition: transform var(--transition-base);
+  transition: transform 0.3s ease;
 }
 
 .expand-btn.expanded {
@@ -323,8 +321,8 @@
 .products-list {
   background: var(--gray-50);
   padding: 20px 24px;
-  border-top: 1px solid var(--border-light);
-  animation: slideDown var(--transition-base) ease-out;
+  border-top: 1px solid var(--gray-200);
+  animation: slideDown 0.3s ease-out;
   overflow: visible;
   max-height: none;
   display: block;
@@ -370,9 +368,9 @@
 }
 
 .product-item-name {
-  font-size: var(--text-base);
-  font-weight: var(--font-semibold);
-  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-700);
   display: block;
 }
 
@@ -385,10 +383,9 @@
 }
 
 .product-item-price {
-  font-size: var(--text-lg);
-  font-weight: var(--font-bold);
+  font-size: 14px;
+  font-weight: 700;
   color: var(--primary-700);
-  font-family: 'Courier New', monospace;
 }
 
 .product-item-stock {
@@ -468,8 +465,9 @@
   background: white;
   border-radius: 12px;
   padding: 0;
-  max-width: 500px;
-  width: 90%;
+  max-width: 450px;
+  width: calc(100% - 40px);
+  margin: 0 auto;
   overflow: hidden;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   animation: slideUp 0.3s ease-out;
@@ -727,7 +725,8 @@
   }
 
   .modal-content {
-    max-width: 90%;
+    max-width: 450px;
+    width: calc(100% - 32px);
   }
 }
 

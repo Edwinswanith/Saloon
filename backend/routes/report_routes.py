@@ -654,31 +654,33 @@ def business_growth_report():
         return response, 500
 
 @report_bp.route('/staff-performance', methods=['GET'])
-def staff_performance_analysis():
+@require_role('manager', 'owner')
+def staff_performance_analysis(current_user=None):
     """Staff performance analysis - OPTIMIZED with aggregation"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
 
-        # Build date filter for bills
-        if start_date:
-            start = datetime.strptime(start_date, '%Y-%m-%d')
+        # Use proper IST-to-UTC date conversion
+        if start_date and end_date:
+            start, end = get_ist_date_range(start_date, end_date)
+        elif start_date:
+            start, end = get_ist_date_range(start_date, datetime.now().strftime('%Y-%m-%d'))
         else:
-            start = datetime.now() - timedelta(days=90)
+            default_start = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
+            default_end = datetime.now().strftime('%Y-%m-%d')
+            start, end = get_ist_date_range(default_start, default_end)
         
-        if end_date:
-            end = datetime.strptime(end_date, '%Y-%m-%d')
-            # Set end to end of day to include all data from the end date
-            end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
-        else:
-            end = datetime.now()
-
         # OPTIMIZED: Use aggregation pipeline instead of loading all bills
+        # Company-wide: No branch filtering - show all staff performance
         match_stage = {
             "is_deleted": False,
             "bill_date": {"$gte": start, "$lte": end},
             "items.staff": {"$ne": None}
         }
+
+        # Build staff match condition (only filter by active status, not branch)
+        staff_match_condition = {"staff_doc.status": "active"}
 
         # Aggregation pipeline for staff performance
         pipeline = [
@@ -692,7 +694,7 @@ def staff_performance_analysis():
                 "service_revenue": {
                     "$sum": {
                         "$cond": [
-                            {"$eq": [{"$ifNull": ["$items.item_type", "service"]}, "service"]},
+                            {"$eq": ["$items.item_type", "service"]},
                             {"$ifNull": ["$items.total", 0]},
                             0
                         ]
@@ -701,7 +703,7 @@ def staff_performance_analysis():
                 "package_revenue": {
                     "$sum": {
                         "$cond": [
-                            {"$eq": [{"$ifNull": ["$items.item_type", "service"]}, "package"]},
+                            {"$eq": ["$items.item_type", "package"]},
                             {"$ifNull": ["$items.total", 0]},
                             0
                         ]
@@ -710,7 +712,7 @@ def staff_performance_analysis():
                 "product_revenue": {
                     "$sum": {
                         "$cond": [
-                            {"$eq": [{"$ifNull": ["$items.item_type", "service"]}, "product"]},
+                            {"$eq": ["$items.item_type", "product"]},
                             {"$ifNull": ["$items.total", 0]},
                             0
                         ]
@@ -719,7 +721,7 @@ def staff_performance_analysis():
                 "membership_revenue": {
                     "$sum": {
                         "$cond": [
-                            {"$eq": [{"$ifNull": ["$items.item_type", "service"]}, "membership"]},
+                            {"$eq": ["$items.item_type", "membership"]},
                             {"$ifNull": ["$items.total", 0]},
                             0
                         ]
@@ -728,7 +730,7 @@ def staff_performance_analysis():
                 "service_items": {
                     "$push": {
                         "$cond": [
-                            {"$eq": [{"$ifNull": ["$items.item_type", "service"]}, "service"]},
+                            {"$eq": ["$items.item_type", "service"]},
                             {
                                 "service_id": "$items.service",
                                 "quantity": {"$ifNull": ["$items.quantity", 1]},
@@ -746,7 +748,7 @@ def staff_performance_analysis():
                 "as": "staff_doc"
             }},
             {"$unwind": {"path": "$staff_doc", "preserveNullAndEmptyArrays": True}},
-            {"$match": {"staff_doc.status": "active"}},
+            {"$match": staff_match_condition},
             {"$project": {
                 "staff_id": {"$toString": "$_id"},
                 "staff_name": {
@@ -803,19 +805,20 @@ def staff_performance_analysis():
 
         # Build performance list with service breakdown
         performance = []
+        staff_names_with_revenue = set()
         for result in staff_performance_results:
             # Calculate service breakdown by group
             service_breakdown = {}
             for item in result.get('service_items', []):
                 if not item or not item.get('service_id'):
                     continue
-                
+
                 service_id = str(item['service_id'])
                 group_name = service_group_map.get(service_id, 'Other')
-                
+
                 if group_name not in service_breakdown:
                     service_breakdown[group_name] = {'count': 0, 'revenue': 0.0}
-                
+
                 service_breakdown[group_name]['count'] += item.get('quantity', 1)
                 service_breakdown[group_name]['revenue'] += item.get('revenue', 0.0)
 
@@ -825,9 +828,11 @@ def staff_performance_analysis():
 
             total_revenue = result.get('total_revenue', 0.0)
             item_count = result.get('item_count', 0)
+            staff_name = result.get('staff_name', '').strip()
+            staff_names_with_revenue.add(result.get('staff_id', ''))
 
             performance.append({
-                'staff_name': result.get('staff_name', '').strip(),
+                'staff_name': staff_name,
                 'total_revenue': total_revenue,
                 'total_services': int(item_count),
                 'service_revenue': result.get('service_revenue', 0.0),
@@ -837,6 +842,28 @@ def staff_performance_analysis():
                 'service_breakdown': service_breakdown,
                 'average_per_service': round(total_revenue / item_count, 2) if item_count > 0 else 0
             })
+
+        # Include all active staff in the selected branch (even those with zero revenue in this period)
+        from models import Staff as StaffModel
+        all_active_staff_query = StaffModel.objects(status='active')
+        if branch:
+            all_active_staff_query = all_active_staff_query.filter(branch=branch)
+        all_active_staff = list(all_active_staff_query)
+        
+        for staff in all_active_staff:
+            if str(staff.id) not in staff_names_with_revenue:
+                name = f"{staff.first_name or ''} {staff.last_name or ''}".strip()
+                performance.append({
+                    'staff_name': name,
+                    'total_revenue': 0.0,
+                    'total_services': 0,
+                    'service_revenue': 0.0,
+                    'package_revenue': 0.0,
+                    'product_revenue': 0.0,
+                    'membership_revenue': 0.0,
+                    'service_breakdown': {},
+                    'average_per_service': 0
+                })
 
         # Sort by total revenue
         performance.sort(key=lambda x: x['total_revenue'], reverse=True)

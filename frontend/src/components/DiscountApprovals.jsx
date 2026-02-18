@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../config';
 import Header from './Header';
 import './DiscountApprovals.css';
 import { useAuth } from '../contexts/AuthContext';
+import { apiGet, apiPost } from '../utils/api';
+import { showSuccess, showError, showWarning } from '../utils/toast.jsx';
 
 const DiscountApprovals = () => {
   const { user, currentBranch } = useAuth()
@@ -10,14 +11,88 @@ const DiscountApprovals = () => {
   const [loading, setLoading] = useState(true);
   const [selectedApproval, setSelectedApproval] = useState(null);
   const [showApproveModal, setShowApproveModal] = useState(false);
-  const [approvalMethod, setApprovalMethod] = useState('in_app'); // 'in_app' or 'code'
+  const [approvalMethod, setApprovalMethod] = useState('in_app');
   const [approvalCode, setApprovalCode] = useState('');
-  
-  // Restrict access to owners only
+
+  // All hooks must be called before any conditional return
+  useEffect(() => {
+    if (user && user.role === 'owner') {
+      fetchApprovals();
+    }
+  }, [currentBranch]);
+
+  const fetchApprovals = async () => {
+    try {
+      setLoading(true);
+      const response = await apiGet('/api/discount-approvals?status=pending');
+      if (!response.ok) throw new Error('Failed to fetch approvals');
+      const data = await response.json();
+      setApprovals(data.approvals || []);
+    } catch (error) {
+      console.error('Error fetching approvals:', error);
+      showError('Failed to load discount approvals');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!selectedApproval) return;
+
+    try {
+      let response;
+      if (approvalMethod === 'code') {
+        if (!approvalCode) {
+          showWarning('Please enter approval code');
+          return;
+        }
+        response = await apiPost(`/api/discount-approvals/${selectedApproval.id}/approve-with-code`, {
+          code: approvalCode
+        });
+      } else {
+        response = await apiPost(`/api/discount-approvals/${selectedApproval.id}/approve`);
+      }
+
+      if (response.ok) {
+        showSuccess('Discount approved successfully');
+        setShowApproveModal(false);
+        setSelectedApproval(null);
+        setApprovalCode('');
+        fetchApprovals();
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        showError(errorData.error || 'Failed to approve discount');
+      }
+    } catch (error) {
+      console.error('Error approving discount:', error);
+      showError('Error approving discount');
+    }
+  };
+
+  const handleReject = async (approvalId) => {
+    if (!window.confirm('Are you sure you want to reject this discount request?')) return;
+
+    try {
+      const response = await apiPost(`/api/discount-approvals/${approvalId}/reject`, { notes: '' });
+
+      if (response.ok) {
+        showSuccess('Discount request rejected');
+        fetchApprovals();
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        showError(errorData.error || 'Failed to reject discount');
+      }
+    } catch (error) {
+      console.error('Error rejecting discount:', error);
+      showError('Error rejecting discount');
+    }
+  };
+
+  // Restrict access to owners only — after all hooks
   if (!user || user.role !== 'owner') {
     return (
-      <div style={{ 
-        padding: '40px', 
+      <div style={{
+        padding: '40px',
         textAlign: 'center',
         display: 'flex',
         flexDirection: 'column',
@@ -32,104 +107,6 @@ const DiscountApprovals = () => {
       </div>
     );
   }
-
-  useEffect(() => {
-    fetchApprovals();
-  }, [currentBranch]);
-
-  // Listen for branch changes
-  useEffect(() => {
-    const handleBranchChange = () => {
-      console.log('[DiscountApprovals] Branch changed, refreshing approvals...')
-      fetchApprovals()
-    }
-    
-    window.addEventListener('branchChanged', handleBranchChange)
-    return () => window.removeEventListener('branchChanged', handleBranchChange)
-  }, [currentBranch])
-
-  const fetchApprovals = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/api/discount-approvals?status=pending`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
-      });
-      const data = await response.json();
-      setApprovals(data.approvals || []);
-    } catch (error) {
-      console.error('Error fetching approvals:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleApprove = async () => {
-    if (!selectedApproval) return;
-
-    try {
-      let response;
-      if (approvalMethod === 'code') {
-        if (!approvalCode) {
-          alert('Please enter approval code');
-          return;
-        }
-        response = await fetch(`${API_BASE_URL}/api/discount-approvals/${selectedApproval.id}/approve-with-code`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-          },
-          body: JSON.stringify({ code: approvalCode })
-        });
-      } else {
-        response = await fetch(`${API_BASE_URL}/api/discount-approvals/${selectedApproval.id}/approve`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-          }
-        });
-      }
-
-      if (response.ok) {
-        alert('Discount approved successfully');
-        setShowApproveModal(false);
-        setSelectedApproval(null);
-        setApprovalCode('');
-        fetchApprovals();
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to approve discount');
-      }
-    } catch (error) {
-      console.error('Error approving discount:', error);
-      alert('Error approving discount');
-    }
-  };
-
-  const handleReject = async (approvalId, notes = '') => {
-    if (!confirm('Are you sure you want to reject this discount request?')) return;
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/discount-approvals/${approvalId}/reject`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify({ notes })
-      });
-
-      if (response.ok) {
-        alert('Discount request rejected');
-        fetchApprovals();
-      }
-    } catch (error) {
-      console.error('Error rejecting discount:', error);
-    }
-  };
 
   return (
     <div className="discount-approvals-page">
@@ -159,7 +136,7 @@ const DiscountApprovals = () => {
                     <td>{approval.bill_number || '-'}</td>
                     <td>{approval.requested_by_name || '-'}</td>
                     <td>{approval.requested_discount_percent?.toFixed(2)}%</td>
-                    <td>₹{approval.requested_discount_amount?.toFixed(2)}</td>
+                    <td>{approval.requested_discount_amount?.toFixed(2)}</td>
                     <td>{approval.reason || '-'}</td>
                     <td>{new Date(approval.created_at).toLocaleDateString()}</td>
                     <td>
@@ -194,7 +171,7 @@ const DiscountApprovals = () => {
               <div className="approval-details">
                 <p><strong>Bill Number:</strong> {selectedApproval.bill_number}</p>
                 <p><strong>Requested By:</strong> {selectedApproval.requested_by_name}</p>
-                <p><strong>Discount:</strong> {selectedApproval.requested_discount_percent?.toFixed(2)}% (₹{selectedApproval.requested_discount_amount?.toFixed(2)})</p>
+                <p><strong>Discount:</strong> {selectedApproval.requested_discount_percent?.toFixed(2)}% ({selectedApproval.requested_discount_amount?.toFixed(2)})</p>
                 <p><strong>Reason:</strong> {selectedApproval.reason}</p>
               </div>
               <div className="form-group">
@@ -231,4 +208,3 @@ const DiscountApprovals = () => {
 };
 
 export default DiscountApprovals;
-

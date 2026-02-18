@@ -80,23 +80,32 @@ def get_dashboard_stats(current_user=None):
 
         # OPTIMIZED: Use MongoDB aggregation for bills stats instead of loading all into memory
         try:
-            match_stage = {
-                "is_deleted": False,
+            date_match = {
                 "bill_date": {"$gte": start, "$lte": end}
             }
             if branch:
-                # Convert branch.id to ObjectId for MongoDB aggregation
-                match_stage["branch"] = ObjectId(str(branch.id))
+                date_match["branch"] = ObjectId(str(branch.id))
 
+            # Active bills: revenue, transactions, tax
+            active_match = {**date_match, "is_deleted": False}
             bills_pipeline = [
-                {"$match": match_stage},
+                {"$match": active_match},
                 {"$group": {
                     "_id": None,
                     "total_revenue": {"$sum": "$final_amount"},
                     "total_transactions": {"$sum": 1},
                     "total_tax": {"$sum": {"$ifNull": ["$tax_amount", 0]}},
-                    "deleted_count": {"$sum": {"$cond": ["$is_deleted", 1, 0]}},
-                    "deleted_amount": {"$sum": {"$cond": ["$is_deleted", "$final_amount", 0]}}
+                }}
+            ]
+
+            # Deleted bills: separate pipeline
+            deleted_match = {**date_match, "is_deleted": True}
+            deleted_pipeline = [
+                {"$match": deleted_match},
+                {"$group": {
+                    "_id": None,
+                    "deleted_count": {"$sum": 1},
+                    "deleted_amount": {"$sum": {"$ifNull": ["$final_amount", 0]}}
                 }}
             ]
 
@@ -105,12 +114,16 @@ def get_dashboard_stats(current_user=None):
                 total_revenue = bills_result[0].get('total_revenue', 0) or 0
                 total_transactions = bills_result[0].get('total_transactions', 0)
                 total_tax = bills_result[0].get('total_tax', 0) or 0
-                deleted_bills_count = bills_result[0].get('deleted_count', 0) or 0
-                deleted_bills_amount = bills_result[0].get('deleted_amount', 0) or 0
             else:
                 total_revenue = 0
                 total_transactions = 0
                 total_tax = 0
+
+            deleted_result = list(Bill.objects.aggregate(deleted_pipeline))
+            if deleted_result:
+                deleted_bills_count = deleted_result[0].get('deleted_count', 0) or 0
+                deleted_bills_amount = deleted_result[0].get('deleted_amount', 0) or 0
+            else:
                 deleted_bills_count = 0
                 deleted_bills_amount = 0
         except Exception as e:
@@ -131,12 +144,10 @@ def get_dashboard_stats(current_user=None):
 
         # OPTIMIZED: Use aggregation for expenses
         try:
-            # Convert to datetime (not date) for MongoDB aggregation
+            # Convert to datetime for MongoDB aggregation (BSON requires datetime, not date)
             ist_start_datetime = datetime.strptime(start_date, '%Y-%m-%d')
-            ist_end_datetime = datetime.strptime(end_date, '%Y-%m-%d')
-            # Set end datetime to end of day
-            ist_end_datetime = ist_end_datetime.replace(hour=23, minute=59, second=59)
-
+            ist_end_datetime = datetime.strptime(end_date, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+            
             expenses_match = {
                 "expense_date": {"$gte": ist_start_datetime, "$lte": ist_end_datetime}
             }
@@ -276,6 +287,11 @@ def get_staff_performance(current_user=None):
             # Convert branch.id to ObjectId for MongoDB aggregation
             match_stage["branch"] = ObjectId(str(branch.id))
 
+        # Build staff match condition (filter staff by branch after $lookup)
+        staff_match_condition = {"staff_doc.status": "active"}
+        if branch:
+            staff_match_condition["staff_doc.branch"] = ObjectId(str(branch.id))
+
         pipeline = [
             {"$match": match_stage},
             {"$unwind": "$items"},
@@ -316,7 +332,7 @@ def get_staff_performance(current_user=None):
                 "as": "staff_doc"
             }},
             {"$unwind": {"path": "$staff_doc", "preserveNullAndEmptyArrays": True}},
-            {"$match": {"staff_doc.status": "active"}},
+            {"$match": staff_match_condition},
             {"$project": {
                 "staff_id": {"$toString": "$_id"},
                 "staff_name": {
@@ -474,7 +490,7 @@ def get_top_customers(current_user=None):
         return jsonify(formatted_results)
     except Exception as e:
         error_trace = traceback.format_exc()
-        print(f"[DASHBOARD STATS] Error in get_staff_performance: {str(e)}")
+        print(f"[DASHBOARD STATS] Error in get_top_customers: {str(e)}")
         print(f"[DASHBOARD STATS] Traceback: {error_trace}")
         return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
@@ -588,7 +604,7 @@ def get_top_offerings(current_user=None):
         return jsonify(result)
     except Exception as e:
         error_trace = traceback.format_exc()
-        print(f"[DASHBOARD STATS] Error in get_staff_performance: {str(e)}")
+        print(f"[DASHBOARD STATS] Error in get_top_offerings: {str(e)}")
         print(f"[DASHBOARD STATS] Traceback: {error_trace}")
         return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
@@ -714,7 +730,7 @@ def get_offering_clients(current_user=None):
         })
     except Exception as e:
         error_trace = traceback.format_exc()
-        print(f"[DASHBOARD STATS] Error in get_staff_performance: {str(e)}")
+        print(f"[DASHBOARD STATS] Error in get_offering_clients: {str(e)}")
         print(f"[DASHBOARD STATS] Traceback: {error_trace}")
         return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
@@ -1213,9 +1229,16 @@ def get_client_funnel(current_user=None):
         returning_result = list(Bill.objects.aggregate(returning_pipeline))
         returning_customers = returning_result[0]['returning_customers'] if returning_result else 0
 
-        # Leads
-        total_leads = Lead.objects.count()
-        converted_leads = Lead.objects(converted_to_customer=True).count()
+        # Leads - count by status
+        leads_query = Lead.objects
+        if branch:
+            leads_query = leads_query.filter(branch=branch)
+        total_leads = leads_query.count()
+        contacted_leads = leads_query.filter(status='contacted').count()
+        followup_leads = leads_query.filter(status='follow-up').count()
+        completed_leads = leads_query.filter(status='completed').count()
+        lost_leads = leads_query.filter(status='lost').count()
+        converted_leads = leads_query.filter(converted_to_customer=True).count()
         conversion_rate = (converted_leads / total_leads * 100) if total_leads > 0 else 0
 
         return jsonify({
@@ -1226,6 +1249,10 @@ def get_client_funnel(current_user=None):
             },
             'leads': {
                 'total': total_leads,
+                'contacted': contacted_leads,
+                'followups': followup_leads,
+                'completed': completed_leads,
+                'lost': lost_leads,
                 'converted': converted_leads,
                 'conversion_rate': round(conversion_rate, 2)
             }
@@ -1296,7 +1323,12 @@ def get_client_source(current_user=None):
         
         bills = list(bills_query)
         for bill in bills:
-            customer_info = get_safe_customer_info(bill.customer)
+            try:
+                customer_info = get_safe_customer_info(bill.customer)
+            except DoesNotExist:
+                # Customer was deleted, use default
+                customer_info = {'name': 'Walk-in', 'mobile': None, 'id': None, 'source': None, 'email': None}
+            
             if customer_info['source']:
                 source = customer_info['source']
                 if source in source_stats:
@@ -1325,7 +1357,7 @@ def get_client_source(current_user=None):
         })
     except Exception as e:
         error_trace = traceback.format_exc()
-        print(f"[DASHBOARD STATS] Error in get_staff_performance: {str(e)}")
+        print(f"[DASHBOARD STATS] Error in get_client_source: {str(e)}")
         print(f"[DASHBOARD STATS] Traceback: {error_trace}")
         return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
@@ -1404,7 +1436,7 @@ def get_operational_alerts(current_user=None):
         return jsonify(alerts)
     except Exception as e:
         error_trace = traceback.format_exc()
-        print(f"[DASHBOARD STATS] Error in get_staff_performance: {str(e)}")
+        print(f"[DASHBOARD STATS] Error in get_operational_alerts: {str(e)}")
         print(f"[DASHBOARD STATS] Traceback: {error_trace}")
         return jsonify({'error': str(e), 'traceback': error_trace}), 500
 

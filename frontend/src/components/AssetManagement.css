@@ -329,10 +329,14 @@
 }
 
 .modal-content h2 {
-  margin: 0 0 20px 0;
-  font-size: 20px;
+  margin: -24px -24px 0 -24px;
+  padding: 12px 20px;
+  font-size: 18px;
   font-weight: 600;
-  color: var(--gray-800);
+  color: white;
+  background: var(--primary-700);
+  border-radius: 12px 12px 0 0;
+  flex-shrink: 0;
 }
 
 .form-group {

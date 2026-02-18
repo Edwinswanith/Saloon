@@ -148,15 +148,14 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--border-light);
-  transition: all var(--transition-base);
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--gray-100);
+  transition: background 0.2s ease;
   background: white;
 }
 
 .service-group-row:hover {
   background: var(--gray-50);
-  transform: translateX(4px);
 }
 
 .service-group-row:last-child {
@@ -171,9 +170,9 @@
 }
 
 .group-name {
-  font-size: var(--text-base);
-  font-weight: var(--font-semibold);
-  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-700);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -194,15 +193,15 @@
 }
 
 .icon-btn {
-  width: 36px !important;
-  height: 36px !important;
-  min-width: 36px !important;
-  min-height: 36px !important;
-  max-width: 36px !important;
-  max-height: 36px !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  max-width: 32px !important;
+  max-height: 32px !important;
   padding: 0 !important;
   border: 1px solid var(--gray-300);
-  border-radius: 8px;
+  border-radius: 4px;
   background: white;
   cursor: pointer;
   display: flex;
@@ -220,8 +219,8 @@
 }
 
 .icon-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 
 .icon-btn svg,
@@ -277,7 +276,7 @@
 
 .expand-btn {
   color: var(--primary-700);
-  transition: all 0.2s ease;
+  transition: transform 0.3s ease;
 }
 
 .expand-btn svg,
@@ -316,8 +315,8 @@
 .services-list {
   background: var(--gray-50);
   padding: 20px 24px;
-  border-top: 1px solid var(--border-light);
-  animation: slideDown var(--transition-base) ease-out;
+  border-top: 1px solid var(--gray-200);
+  animation: slideDown 0.3s ease-out;
   overflow: visible;
   max-height: none;
   display: block;
@@ -363,9 +362,9 @@
 }
 
 .service-card-name {
-  font-size: var(--text-base);
-  font-weight: var(--font-semibold);
-  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-700);
   display: block;
 }
 
@@ -378,10 +377,9 @@
 }
 
 .service-card-price {
-  font-size: var(--text-lg);
-  font-weight: var(--font-bold);
+  font-size: 14px;
+  font-weight: 700;
   color: var(--primary-700);
-  font-family: 'Courier New', monospace;
 }
 
 .service-card-duration {

@@ -28,7 +28,10 @@ def get_leads(current_user=None):
         status = request.args.get('status')
         source = request.args.get('source')
         search = request.args.get('search')
-        converted = request.args.get('converted', type=bool)
+        converted_param = request.args.get('converted')
+        converted = None
+        if converted_param is not None:
+            converted = converted_param.lower() in ('true', '1', 'yes')
 
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
@@ -75,12 +78,13 @@ def get_leads(current_user=None):
         return response, 500
 
 @lead_bp.route('/<id>', methods=['GET'])
-def get_lead(id):
+@require_auth
+def get_lead(id, current_user=None):
     """Get a single lead by ID"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid lead ID format'}), 400
-        
+
         lead = Lead.objects.get(id=id)
         response = jsonify({
             'id': str(lead.id),
@@ -153,12 +157,13 @@ def create_lead(current_user=None):
         return response, 500
 
 @lead_bp.route('/<id>', methods=['PUT'])
-def update_lead(id):
+@require_auth
+def update_lead(id, current_user=None):
     """Update a lead"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid lead ID format'}), 400
-        
+
         lead = Lead.objects.get(id=id)
         data = request.get_json()
 
@@ -193,12 +198,13 @@ def update_lead(id):
         return response, 500
 
 @lead_bp.route('/<id>', methods=['DELETE'])
-def delete_lead(id):
+@require_auth
+def delete_lead(id, current_user=None):
     """Delete a lead"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid lead ID format'}), 400
-        
+
         lead = Lead.objects.get(id=id)
         lead.delete()
 
@@ -213,12 +219,13 @@ def delete_lead(id):
         return response, 500
 
 @lead_bp.route('/<id>/convert', methods=['POST'])
-def convert_lead_to_customer(id):
+@require_auth
+def convert_lead_to_customer(id, current_user=None):
     """Convert a lead to a customer"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid lead ID format'}), 400
-        
+
         lead = Lead.objects.get(id=id)
 
         if lead.converted_to_customer:
@@ -226,23 +233,27 @@ def convert_lead_to_customer(id):
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 400
 
-        # Check if customer with this mobile already exists
-        if lead.mobile:
-            existing_customer = Customer.objects(mobile=lead.mobile).first()
-            if existing_customer:
-                # Link to existing customer
-                lead.customer = existing_customer
-                lead.converted_to_customer = True
-                lead.status = 'completed'
-                lead.updated_at = datetime.utcnow()
-                lead.save()
+        if not lead.mobile:
+            response = jsonify({'error': 'Lead must have a mobile number before converting to customer'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
 
-                response = jsonify({
-                    'message': 'Lead linked to existing customer',
-                    'customer_id': str(existing_customer.id)
-                })
-                response.headers.add('Access-Control-Allow-Origin', '*')
-                return response
+        # Check if customer with this mobile already exists in the same branch
+        existing_customer = Customer.objects(mobile=lead.mobile, branch=lead.branch).first()
+        if existing_customer:
+            # Link to existing customer
+            lead.customer = existing_customer
+            lead.converted_to_customer = True
+            lead.status = 'completed'
+            lead.updated_at = datetime.utcnow()
+            lead.save()
+
+            response = jsonify({
+                'message': 'Lead linked to existing customer',
+                'customer_id': str(existing_customer.id)
+            })
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response
 
         # Create new customer
         # Extract first and last name
@@ -251,7 +262,7 @@ def convert_lead_to_customer(id):
         last_name = name_parts[1] if len(name_parts) > 1 else ''
 
         customer = Customer(
-            mobile=lead.mobile or '',
+            mobile=lead.mobile,
             first_name=first_name,
             last_name=last_name,
             email=lead.email,
@@ -287,25 +298,34 @@ def get_lead_stats(current_user=None):
     try:
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
-        query = Lead.objects
+        match_stage = {}
         if branch:
-            query = query.filter(branch=branch)
-        # Get all leads
-        all_leads = list(query)
-        
-        # Count leads by status
-        status_counts = {}
-        for lead in all_leads:
-            status = lead.status or 'unknown'
-            status_counts[status] = status_counts.get(status, 0) + 1
+            match_stage['branch'] = branch.id
 
-        # Total leads
-        total = len(all_leads)
+        # Use aggregation pipeline instead of loading all docs
+        pipeline = [
+            {'$match': match_stage} if match_stage else {'$match': {}},
+            {'$group': {
+                '_id': None,
+                'total': {'$sum': 1},
+                'converted': {'$sum': {'$cond': ['$converted_to_customer', 1, 0]}},
+                'status_list': {'$push': {'$ifNull': ['$status', 'unknown']}}
+            }}
+        ]
+        result = list(Lead.objects.aggregate(*pipeline))
 
-        # Converted leads
-        converted = len([l for l in all_leads if l.converted_to_customer])
+        if result:
+            agg = result[0]
+            total = agg['total']
+            converted = agg['converted']
+            status_counts = {}
+            for s in agg['status_list']:
+                status_counts[s] = status_counts.get(s, 0) + 1
+        else:
+            total = 0
+            converted = 0
+            status_counts = {}
 
-        # Conversion rate
         conversion_rate = (converted / total * 100) if total > 0 else 0
 
         response = jsonify({

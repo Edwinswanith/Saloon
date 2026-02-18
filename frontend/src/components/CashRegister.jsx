@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { FaCalendarAlt, FaCloudDownloadAlt, FaEdit, FaTrash } from 'react-icons/fa'
 import './CashRegister.css'
-import { API_BASE_URL } from '../config'
 import { useAuth } from '../contexts/AuthContext'
+import { apiGet, apiPost, apiDelete } from '../utils/api'
 
 const CashRegister = () => {
   const { currentBranch } = useAuth()
@@ -40,12 +40,12 @@ const CashRegister = () => {
     try {
       setLoading(true)
       const params = new URLSearchParams({ date: selectedDate })
-      const response = await fetch(`${API_BASE_URL}/api/cash/transactions?${params}`)
-      
+      const response = await apiGet(`/api/cash/transactions?${params}`)
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
-      
+
       const data = await response.json()
       setTransactions(data.transactions || data || [])
     } catch (error) {
@@ -59,12 +59,12 @@ const CashRegister = () => {
   const fetchSummary = async () => {
     try {
       const params = new URLSearchParams({ date: selectedDate })
-      const response = await fetch(`${API_BASE_URL}/api/cash/summary?${params}`)
-      
+      const response = await apiGet(`/api/cash/summary?${params}`)
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
-      
+
       const data = await response.json()
       setSummary({
         totalIn: data.total_in || data.cash_in || 0,
@@ -81,15 +81,11 @@ const CashRegister = () => {
     e.preventDefault()
     try {
       const endpoint = transactionType === 'in' ? '/api/cash/in' : '/api/cash/out'
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: parseFloat(formData.amount),
-          reason: formData.reason,
-          notes: formData.notes,
-          transaction_date: selectedDate,
-        }),
+      const response = await apiPost(endpoint, {
+        amount: parseFloat(formData.amount),
+        reason: formData.reason,
+        notes: formData.notes,
+        transaction_date: selectedDate,
       })
       if (response.ok) {
         setShowAddModal(false)
@@ -110,9 +106,7 @@ const CashRegister = () => {
       return
     }
     try {
-      const response = await fetch(`${API_BASE_URL}/api/cash/transactions/${transactionId}`, {
-        method: 'DELETE',
-      })
+      const response = await apiDelete(`/api/cash/transactions/${transactionId}`)
       if (response.ok) {
         fetchTransactions()
         fetchSummary()
@@ -155,6 +149,49 @@ const CashRegister = () => {
     return `${day} ${month}, ${year}`
   }
 
+  const handleDownloadReport = () => {
+    try {
+      const csvContent = [
+        ['Date', 'Time', 'Type', 'Reason', 'Amount', 'Notes'],
+        ...transactions.map(transaction => [
+          transaction.transaction_date || 'N/A',
+          transaction.transaction_time || 'N/A',
+          transaction.transaction_type === 'in' ? 'Cash In' : 'Cash Out',
+          transaction.reason || 'N/A',
+          `₹${(transaction.amount || 0).toFixed(2)}`,
+          transaction.notes || '',
+        ]),
+        [],
+        ['Summary', '', '', '', '', ''],
+        ['Total Cash In', '', '', '', `₹${summary.totalIn.toFixed(2)}`, ''],
+        ['Total Cash Out', '', '', '', `₹${summary.totalOut.toFixed(2)}`, ''],
+        ['Net Cash Flow', '', '', '', `₹${summary.netFlow.toFixed(2)}`, ''],
+      ].map(row => {
+        return row.map(cell => {
+          const cellStr = String(cell || '')
+          if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+            return `"${cellStr.replace(/"/g, '""')}"`
+          }
+          return cellStr
+        }).join(',')
+      }).join('\n')
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const fileName = `cash-register-${selectedDate}-${new Date().toISOString().split('T')[0]}.csv`
+      a.download = fileName
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Error downloading report:', error)
+      alert('Error downloading report. Please try again.')
+    }
+  }
+
   return (
     <div className="cash-register-page">
       <div className="cash-register-container">
@@ -189,7 +226,7 @@ const CashRegister = () => {
             </div>
           </div>
 
-          <button className="download-btn">
+          <button className="download-btn" onClick={handleDownloadReport}>
             <span className="cloud-icon"><FaCloudDownloadAlt /></span>
             Download Report
           </button>

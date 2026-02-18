@@ -118,23 +118,11 @@ def create_staff_performance_indexes():
     # ===========================================
     print("\n[3] Appointments Collection - Staff Performance Indexes:")
 
-    # Index already exists (idx_appointments_staff_date_status) but verify
-    # This is for staff performance appointment counts
-    try:
-        # Check if index exists by trying to create it
-        db.appointments.create_index(
-            [("staff", ASCENDING), ("appointment_date", ASCENDING), ("status", ASCENDING)],
-            name="idx_appointments_staff_date_status_perf",
-            background=True
-        )
-        created.append("appointments: idx_appointments_staff_date_status_perf")
-        print("  + Created: staff + appointment_date + status (performance)")
-    except Exception as e:
-        if "already exists" in str(e) or "duplicate key" in str(e).lower():
-            skipped.append("appointments: idx_appointments_staff_date_status_perf")
-            print("  ~ Skipped: staff + appointment_date + status (exists)")
-        else:
-            print(f"  ! Error: {e}")
+    # Index (staff, appointment_date, status) already created by create_indexes.py
+    # as idx_appointments_staff_date_status. MongoEngine also manages it via meta.
+    # Skipping duplicate creation to avoid IndexOptionsConflict.
+    skipped.append("appointments: staff+date+status (managed by MongoEngine)")
+    print("  ~ Skipped: staff + appointment_date + status (managed by MongoEngine)")
 
     # ===========================================
     # SUMMARY

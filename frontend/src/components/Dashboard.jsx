@@ -307,10 +307,10 @@ const Dashboard = () => {
           newClients: data.customers?.new || 0,
           returningClients: data.customers?.returning || 0,
           totalLeads: data.leads?.total || 0,
-          contacted: 0,
-          followups: 0,
-          completed: data.leads?.converted || 0,
-          lost: 0,
+          contacted: data.leads?.contacted || 0,
+          followups: data.leads?.followups || 0,
+          completed: data.leads?.completed || 0,
+          lost: data.leads?.lost || 0,
         }
       }
       setClientFunnel(clientFunnelData)

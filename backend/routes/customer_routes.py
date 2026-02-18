@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from models import Customer, Bill, Membership
+from models import Customer, Bill, Membership, ReferralProgramSettings, Referral
 from datetime import datetime
 from mongoengine import Q
 from mongoengine.errors import NotUniqueError
@@ -174,6 +174,8 @@ def get_customer(customer_id, current_user=None):
             'dob': customer.dob.isoformat() if customer.dob else None,
             'dobRange': customer.dob_range,
             'referralCode': customer.referral_code,
+            'referredBy': str(customer._data.get('referred_by')) if customer._data.get('referred_by') else None,
+            'referralRewardUsed': getattr(customer, 'referral_reward_used', False),
             'membership': membership_data,
             'last_visit': last_visit.isoformat() if last_visit else None,
             'total_visits': total_visits,
@@ -247,25 +249,49 @@ def create_customer(current_user=None):
                 response.headers.add('Access-Control-Allow-Origin', '*')
                 return response, 400
 
+        # Look up referrer if referral code provided
+        referrer = None
+        applied_referral_code = data.get('referralCode', '').strip()
+        if applied_referral_code:
+            settings = ReferralProgramSettings.get_settings()
+            if settings.enabled:
+                referrer = Customer.objects(referral_code=applied_referral_code).first()
+
         customer = Customer(
             mobile=mobile,
             first_name=data.get('firstName', ''),
             last_name=data.get('lastName', ''),
             email=data.get('email', ''),
-            source=data.get('source', 'Walk-in'),
+            source=data.get('source', 'Walk-in') if not referrer else 'Referral',
             gender=data.get('gender', ''),
             dob=dob,
             dob_range=data.get('dobRange', ''),
             referral_code=generate_referral_code(data.get('firstName', '')),
+            referred_by=referrer,
             branch=branch
         )
         customer.save()
+
+        # Create referral tracking record
+        referral_created = False
+        if referrer:
+            try:
+                ref = Referral(
+                    referrer=referrer,
+                    referee=customer,
+                    branch=branch
+                )
+                ref.save()
+                referral_created = True
+            except Exception as e:
+                print(f"[CUSTOMER CREATE] Warning: Failed to create referral record: {e}")
 
         response = jsonify({
             'id': str(customer.id),
             'created': True,
             'reason': 'created_new',
-            'message': 'Customer created successfully'
+            'message': 'Customer created successfully',
+            'referralApplied': referral_created
         })
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 201

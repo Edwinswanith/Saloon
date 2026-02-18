@@ -4,10 +4,12 @@ from datetime import datetime
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
 from utils.auth import require_role
+from utils.redis_cache import cache_response
 
 membership_plan_bp = Blueprint('membership_plans', __name__)
 
 @membership_plan_bp.route('/', methods=['GET'])
+@cache_response(ttl=300)  # Cache for 5 minutes
 def get_membership_plans():
     """Get all membership plans"""
     try:

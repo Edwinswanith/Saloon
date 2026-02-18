@@ -108,6 +108,12 @@
         <span class="summary-label">Discount</span>
         <span class="summary-value">{{ summary.discount | format_currency }}</span>
       </div>
+      {% if summary.referral_discount and summary.referral_discount > 0 %}
+      <div class="summary-row">
+        <span class="summary-label">Referral Discount</span>
+        <span class="summary-value">{{ summary.referral_discount | format_currency }}</span>
+      </div>
+      {% endif %}
       <div class="summary-row">
         <span class="summary-label">Net</span>
         <span class="summary-value">{{ summary.net | format_currency }}</span>
@@ -142,7 +148,11 @@
         Send via WhatsApp
       </button>
       <button class="invoice-action-btn download-btn" onclick="handleDownload()">
-        Download Invoice
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+          <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+          <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+        </svg>
+        Save Invoice as PDF
       </button>
     </div>
     {% endif %}
@@ -164,9 +174,19 @@
     }
 
     function handleDownload() {
+      // Check if we have a direct download URL (for public invoice views)
+      {% if download_url %}
+      // Mobile-friendly download approach - navigate directly to let server handle it
+      const downloadUrl = '{{ download_url }}';
+      // Simply navigate to the URL - server will set proper Content-Disposition header
+      // This works better on mobile than programmatic link clicking
+      window.location.href = downloadUrl;
+      {% else %}
+      // Fallback to parent window action (for embedded views)
       if (window.parent && window.parent.invoiceActions) {
         window.parent.invoiceActions.download();
       }
+      {% endif %}
     }
   </script>
   {% endif %}

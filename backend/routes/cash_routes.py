@@ -3,29 +3,36 @@ from models import CashTransaction
 from datetime import datetime, date
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
+from utils.auth import require_auth, require_role
+from utils.branch_filter import get_selected_branch
 
 cash_bp = Blueprint('cash', __name__)
 
 @cash_bp.route('/transactions', methods=['GET'])
-def get_cash_transactions():
+@require_auth
+def get_cash_transactions(current_user=None):
     """Get cash transactions with optional filters"""
     try:
         # Query parameters
         transaction_type = request.args.get('transaction_type')
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
-        date = request.args.get('date')  # Single date filter (for daily view)
-        view = request.args.get('view', 'daily')  # daily or monthly
+        date_param = request.args.get('date')  # Single date filter (for daily view)
 
         query = CashTransaction.objects
 
-        # Apply filters
+        # Branch filter
+        branch = get_selected_branch(request, current_user)
+        if branch:
+            query = query.filter(branch=branch)
+
+        # Apply type filter
         if transaction_type:
             query = query.filter(transaction_type=transaction_type)
-        
+
         # Handle single date filter (for daily view)
-        if date:
-            target_date = datetime.strptime(date, '%Y-%m-%d').date()
+        if date_param:
+            target_date = datetime.strptime(date_param, '%Y-%m-%d').date()
             query = query.filter(transaction_date=target_date)
         else:
             if start_date:
@@ -45,7 +52,7 @@ def get_cash_transactions():
                 'reason': t.reason,
                 'notes': t.notes,
                 'transaction_date': t.transaction_date.isoformat() if t.transaction_date else None,
-                'transaction_time': t.transaction_time if t.transaction_time else None,  # Already a string
+                'transaction_time': t.transaction_time if t.transaction_time else None,
                 'created_at': t.created_at.isoformat() if t.created_at else None
             } for t in transactions]
         })
@@ -53,7 +60,8 @@ def get_cash_transactions():
         return jsonify({'error': str(e)}), 500
 
 @cash_bp.route('/transactions/<id>', methods=['GET'])
-def get_cash_transaction(id):
+@require_auth
+def get_cash_transaction(id, current_user=None):
     """Get a single cash transaction by ID"""
     try:
         if not ObjectId.is_valid(id):
@@ -66,7 +74,7 @@ def get_cash_transaction(id):
             'reason': transaction.reason,
             'notes': transaction.notes,
             'transaction_date': transaction.transaction_date.isoformat() if transaction.transaction_date else None,
-            'transaction_time': transaction.transaction_time if transaction.transaction_time else None,  # Already a string
+            'transaction_time': transaction.transaction_time if transaction.transaction_time else None,
             'created_at': transaction.created_at.isoformat() if transaction.created_at else None
         })
     except DoesNotExist:
@@ -75,17 +83,17 @@ def get_cash_transaction(id):
         return jsonify({'error': str(e)}), 500
 
 @cash_bp.route('/in', methods=['POST'])
-def add_cash_in():
+@require_auth
+def add_cash_in(current_user=None):
     """Add cash in transaction"""
     try:
         data = request.get_json()
 
-        # Parse date and time (time should be string in HH:MM:SS format)
+        branch = get_selected_branch(request, current_user)
+
         transaction_date = datetime.strptime(data['transaction_date'], '%Y-%m-%d').date() if 'transaction_date' in data else date.today()
         transaction_time = data.get('transaction_time', datetime.now().strftime('%H:%M:%S'))
-        # Ensure time is string, not time object
         if isinstance(transaction_time, str):
-            # Clean up time string
             if '.' in transaction_time:
                 transaction_time = transaction_time.split('.')[0]
         else:
@@ -93,11 +101,12 @@ def add_cash_in():
 
         transaction = CashTransaction(
             transaction_type='in',
+            branch=branch,
             amount=data['amount'],
             reason=data.get('reason'),
             notes=data.get('notes'),
             transaction_date=transaction_date,
-            transaction_time=transaction_time  # Store as string
+            transaction_time=transaction_time
         )
         transaction.save()
 
@@ -113,17 +122,17 @@ def add_cash_in():
         return jsonify({'error': str(e)}), 500
 
 @cash_bp.route('/out', methods=['POST'])
-def add_cash_out():
+@require_auth
+def add_cash_out(current_user=None):
     """Add cash out transaction"""
     try:
         data = request.get_json()
 
-        # Parse date and time (time should be string in HH:MM:SS format)
+        branch = get_selected_branch(request, current_user)
+
         transaction_date = datetime.strptime(data['transaction_date'], '%Y-%m-%d').date() if 'transaction_date' in data else date.today()
         transaction_time = data.get('transaction_time', datetime.now().strftime('%H:%M:%S'))
-        # Ensure time is string, not time object
         if isinstance(transaction_time, str):
-            # Clean up time string
             if '.' in transaction_time:
                 transaction_time = transaction_time.split('.')[0]
         else:
@@ -131,11 +140,12 @@ def add_cash_out():
 
         transaction = CashTransaction(
             transaction_type='out',
+            branch=branch,
             amount=data['amount'],
             reason=data.get('reason'),
             notes=data.get('notes'),
             transaction_date=transaction_date,
-            transaction_time=transaction_time  # Store as string
+            transaction_time=transaction_time
         )
         transaction.save()
 
@@ -151,7 +161,8 @@ def add_cash_out():
         return jsonify({'error': str(e)}), 500
 
 @cash_bp.route('/transactions/<id>', methods=['PUT'])
-def update_cash_transaction(id):
+@require_auth
+def update_cash_transaction(id, current_user=None):
     """Update a cash transaction"""
     try:
         if not ObjectId.is_valid(id):
@@ -164,11 +175,9 @@ def update_cash_transaction(id):
         transaction.reason = data.get('reason', transaction.reason)
         transaction.notes = data.get('notes', transaction.notes)
 
-        # Update date and time if provided
         if 'transaction_date' in data:
             transaction.transaction_date = datetime.strptime(data['transaction_date'], '%Y-%m-%d').date()
         if 'transaction_time' in data:
-            # Ensure time is string
             time_str = data['transaction_time']
             if isinstance(time_str, str):
                 if '.' in time_str:
@@ -189,8 +198,9 @@ def update_cash_transaction(id):
         return jsonify({'error': str(e)}), 500
 
 @cash_bp.route('/transactions/<id>', methods=['DELETE'])
-def delete_cash_transaction(id):
-    """Delete a cash transaction"""
+@require_role('manager', 'owner')
+def delete_cash_transaction(id, current_user=None):
+    """Delete a cash transaction (Manager and Owner only)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid transaction ID format'}), 400
@@ -204,18 +214,23 @@ def delete_cash_transaction(id):
         return jsonify({'error': str(e)}), 500
 
 @cash_bp.route('/summary', methods=['GET'])
-def get_cash_summary():
+@require_auth
+def get_cash_summary(current_user=None):
     """Get cash flow summary"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
-        date = request.args.get('date')  # Single date filter (for daily view)
+        date_param = request.args.get('date')
 
         query = CashTransaction.objects
 
-        # Handle single date filter (for daily view)
-        if date:
-            target_date = datetime.strptime(date, '%Y-%m-%d').date()
+        # Branch filter
+        branch = get_selected_branch(request, current_user)
+        if branch:
+            query = query.filter(branch=branch)
+
+        if date_param:
+            target_date = datetime.strptime(date_param, '%Y-%m-%d').date()
             query = query.filter(transaction_date=target_date)
         else:
             if start_date:
@@ -235,7 +250,7 @@ def get_cash_summary():
             'total_in': cash_in,
             'total_out': cash_out,
             'net_flow': net_cash,
-            'cash_in': cash_in,  # Keep for backward compatibility
+            'cash_in': cash_in,
             'cash_out': cash_out,
             'net_cash': net_cash,
             'total_transactions': len(transactions),
@@ -246,13 +261,19 @@ def get_cash_summary():
         return jsonify({'error': str(e)}), 500
 
 @cash_bp.route('/daily-summary', methods=['GET'])
-def get_daily_cash_summary():
+@require_auth
+def get_daily_cash_summary(current_user=None):
     """Get daily cash summary grouped by date"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
 
         query = CashTransaction.objects
+
+        # Branch filter
+        branch = get_selected_branch(request, current_user)
+        if branch:
+            query = query.filter(branch=branch)
 
         if start_date:
             start = datetime.strptime(start_date, '%Y-%m-%d').date()
@@ -263,7 +284,6 @@ def get_daily_cash_summary():
 
         transactions = list(query)
 
-        # Group by date
         daily_summary = {}
         for t in transactions:
             date_key = t.transaction_date.isoformat() if t.transaction_date else None
@@ -294,15 +314,21 @@ def get_daily_cash_summary():
         return jsonify({'error': str(e)}), 500
 
 @cash_bp.route('/balance', methods=['GET'])
-def get_cash_balance():
-    """Get current cash balance (all-time)"""
+@require_auth
+def get_cash_balance(current_user=None):
+    """Get current cash balance"""
     try:
-        cash_in_transactions = CashTransaction.objects(transaction_type='in')
-        cash_out_transactions = CashTransaction.objects(transaction_type='out')
-        
-        cash_in = sum([float(t.amount) for t in cash_in_transactions]) if cash_in_transactions else 0.0
-        cash_out = sum([float(t.amount) for t in cash_out_transactions]) if cash_out_transactions else 0.0
+        query_in = CashTransaction.objects(transaction_type='in')
+        query_out = CashTransaction.objects(transaction_type='out')
 
+        # Branch filter
+        branch = get_selected_branch(request, current_user)
+        if branch:
+            query_in = query_in.filter(branch=branch)
+            query_out = query_out.filter(branch=branch)
+
+        cash_in = sum([float(t.amount) for t in query_in]) if query_in else 0.0
+        cash_out = sum([float(t.amount) for t in query_out]) if query_out else 0.0
         balance = cash_in - cash_out
 
         return jsonify({

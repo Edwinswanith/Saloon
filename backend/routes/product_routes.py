@@ -5,6 +5,7 @@ from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
 from utils.auth import require_auth, require_role
 from utils.branch_filter import get_selected_branch
+from utils.redis_cache import cache_response
 
 product_bp = Blueprint('product', __name__)
 
@@ -158,6 +159,7 @@ def delete_product_category(id, current_user=None):
 
 @product_bp.route('/', methods=['GET'])
 @require_auth
+@cache_response(ttl=300)  # Cache for 5 minutes
 def get_products(current_user=None):
     """Get all products with optional filters, filtered by branch"""
     try:
@@ -204,6 +206,22 @@ def get_products(current_user=None):
         # Apply pagination
         products = list(query.skip((page - 1) * per_page).limit(per_page))
         
+        # OPTIMIZE: Batch fetch categories to avoid N+1 queries
+        category_ids = set()
+        for p in products:
+            if p.category:
+                # Get raw ObjectId from _data to avoid lazy loading
+                cat_ref = p._data.get('category')
+                if cat_ref:
+                    cat_id = cat_ref.id if hasattr(cat_ref, 'id') else cat_ref
+                    category_ids.add(cat_id)
+        
+        category_map = {}
+        if category_ids:
+            categories = ProductCategory.objects(id__in=list(category_ids))
+            for cat in categories:
+                category_map[str(cat.id)] = cat.name
+        
         # Apply low_stock filter in Python (complex logic requires checking each product)
         if low_stock:
             products = [p for p in products if p.stock_quantity and p.min_stock_level and p.stock_quantity <= p.min_stock_level]
@@ -215,7 +233,7 @@ def get_products(current_user=None):
                 'id': str(p.id),
                 'name': p.name,
                 'category_id': str(p.category.id) if p.category else None,
-                'category_name': p.category.name if p.category else None,
+                'category_name': category_map.get(str(p.category.id), None) if p.category else None,
                 'price': p.price,
                 'cost': p.cost,
                 'stock_quantity': p.stock_quantity,

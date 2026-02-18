@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, make_response
-from models import Bill, Customer, Product, BillItemEmbedded, DiscountApprovalRequest, Staff, Membership, Branch, CashTransaction, Service, Package, MembershipPlan
+from models import Bill, Customer, Product, BillItemEmbedded, DiscountApprovalRequest, ApprovalCode, Staff, Membership, Branch, CashTransaction, Service, Package, MembershipPlan, ReferralProgramSettings, Referral, Invoice
 from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 from mongoengine import Q
@@ -7,6 +7,8 @@ from utils.auth import get_current_user, require_auth, JWT_SECRET
 from utils.branch_filter import get_selected_branch
 from utils.date_utils import get_ist_date_range
 import uuid
+import re
+from utils.approval_codes import hash_approval_code, is_code_expired, can_use_code
 
 # Discount limits by role - Only owner can apply discounts
 DISCOUNT_LIMITS = {
@@ -16,6 +18,16 @@ DISCOUNT_LIMITS = {
 }
 
 bill_bp = Blueprint('bill', __name__)
+
+def is_mobile_device():
+    """Detect if the request is from a mobile device based on User-Agent"""
+    user_agent = request.headers.get('User-Agent', '').lower()
+    mobile_patterns = [
+        r'android', r'iphone', r'ipad', r'ipod',
+        r'blackberry', r'windows phone', r'mobile',
+        r'opera mini', r'opera mobi', r'fennec'
+    ]
+    return any(re.search(pattern, user_agent) for pattern in mobile_patterns)
 
 def get_safe_customer_info(customer_ref):
     """Safely extract customer info, handling deleted references"""
@@ -52,19 +64,28 @@ def generate_bill_number():
 def generate_invoice_number():
     """Generate sequential invoice number in format INV-000400"""
     try:
-        # Get the last invoice number from bills
-        last_bill = Bill.objects.order_by('-created_at').first()
-        
-        if last_bill and last_bill.bill_number:
-            # Try to extract invoice number from bill_number or use a counter
-            # For now, we'll use a simple counter based on total bills
-            total_bills = Bill.objects.count()
-            invoice_num = total_bills + 1
+        # Find the highest existing invoice number to avoid duplicates
+        last_invoice = Invoice.objects.order_by('-invoice_number').first()
+        if last_invoice and last_invoice.invoice_number:
+            # Extract number from last invoice (e.g., "INV-000015" -> 15)
+            try:
+                last_num = int(last_invoice.invoice_number.replace('INV-', '').lstrip('0') or '0')
+                invoice_num = last_num + 1
+            except (ValueError, AttributeError):
+                # Fallback: count existing invoices
+                invoice_num = Invoice.objects.count() + 1
         else:
+            # No invoices exist, start from 1
             invoice_num = 1
         
-        # Format as INV-000400 (6-digit zero-padded)
-        return f"INV-{invoice_num:06d}"
+        invoice_number = f"INV-{invoice_num:06d}"
+        
+        # Double-check for duplicates (race condition protection)
+        while Invoice.objects(invoice_number=invoice_number).first():
+            invoice_num += 1
+            invoice_number = f"INV-{invoice_num:06d}"
+        
+        return invoice_number
     except Exception as e:
         # Fallback to timestamp-based if error occurs
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
@@ -104,6 +125,7 @@ def _resolve_bill_items(bill):
     service_ids = set()
     package_ids = set()
     product_ids = set()
+    membership_ids = set()
     staff_ids = set()
 
     for item in items_raw:
@@ -116,6 +138,9 @@ def _resolve_bill_items(bill):
         ref_id = _get_raw_ref_id(item, 'product')
         if ref_id:
             product_ids.add(ref_id)
+        ref_id = _get_raw_ref_id(item, 'membership')
+        if ref_id:
+            membership_ids.add(ref_id)
         ref_id = _get_raw_ref_id(item, 'staff')
         if ref_id:
             staff_ids.add(ref_id)
@@ -135,6 +160,11 @@ def _resolve_bill_items(bill):
     if product_ids:
         for prod in Product.objects(id__in=list(product_ids)):
             product_map[str(prod.id)] = prod.name
+
+    membership_map = {}
+    if membership_ids:
+        for m in Membership.objects(id__in=list(membership_ids)):
+            membership_map[str(m.id)] = m.name
 
     staff_map = {}
     if staff_ids:
@@ -158,8 +188,11 @@ def _resolve_bill_items(bill):
             ref_id = _get_raw_ref_id(item, 'product')
             if item_type == 'product' and ref_id:
                 item_name = product_map.get(str(ref_id), 'Product')
+            ref_id = _get_raw_ref_id(item, 'membership')
+            if item_type == 'membership' and ref_id:
+                item_name = membership_map.get(str(ref_id), 'Membership')
         if not item_name:
-            item_name = 'Item'
+            item_name = 'Membership' if item_type == 'membership' else 'Item'
 
         # Resolve staff name
         staff_name = 'N/A'
@@ -229,9 +262,26 @@ def _build_invoice_data(bill):
     invoice_number = getattr(bill, 'invoice_number', None)
     if not invoice_number:
         try:
-            bills_before = Bill.objects(created_at__lt=bill.created_at).count()
-            invoice_num = bills_before + 1
+            # Find the highest existing invoice number to avoid duplicates
+            last_invoice = Invoice.objects.order_by('-invoice_number').first()
+            if last_invoice and last_invoice.invoice_number:
+                # Extract number from last invoice (e.g., "INV-000015" -> 15)
+                try:
+                    last_num = int(last_invoice.invoice_number.replace('INV-', '').lstrip('0') or '0')
+                    invoice_num = last_num + 1
+                except (ValueError, AttributeError):
+                    # Fallback: count existing invoices
+                    invoice_num = Invoice.objects.count() + 1
+            else:
+                # No invoices exist, start from 1
+                invoice_num = 1
+            
             invoice_number = f"INV-{invoice_num:06d}"
+            
+            # Double-check for duplicates (race condition protection)
+            while Invoice.objects(invoice_number=invoice_number).first():
+                invoice_num += 1
+                invoice_number = f"INV-{invoice_num:06d}"
         except Exception:
             invoice_number = f"INV-{bill.bill_number[-6:]}" if bill.bill_number else generate_invoice_number()
 
@@ -268,7 +318,8 @@ def _build_invoice_data(bill):
         'summary': {
             'subtotal': float(bill.subtotal) if bill.subtotal else 0.0,
             'discount': float(bill.discount_amount) if bill.discount_amount else 0.0,
-            'net': float(bill.subtotal or 0) - float(bill.discount_amount or 0),
+            'referral_discount': float(bill.referral_discount) if bill.referral_discount else 0.0,
+            'net': float(bill.subtotal or 0) - float(bill.discount_amount or 0) - float(bill.referral_discount or 0),
             'tax': float(bill.tax_amount) if bill.tax_amount else 0.0,
             'tax_rate': float(bill.tax_rate) if bill.tax_rate else 0.0,
             'total': float(bill.final_amount) if bill.final_amount else 0.0
@@ -421,6 +472,14 @@ def get_bills(current_user=None):
                             item_data['membership_id'] = str(item.membership.id)
                             if item.membership.name:
                                 item_data['name'] = item.membership.name
+                        elif item.item_type == 'membership' and item.name:
+                            # Before checkout, membership ref is None; look up plan by name
+                            try:
+                                plan = MembershipPlan.objects(name=item.name).first()
+                                if plan:
+                                    item_data['membership_id'] = str(plan.id)
+                            except:
+                                pass
                         if item.staff:
                             item_data['staff_id'] = str(item.staff.id)
                         # Fallback for membership items with missing names (legacy data)
@@ -698,6 +757,10 @@ def create_bill():
 def add_bill_item(id):
     """Add item to bill"""
     try:
+        # Validate bill ID format
+        if not id or len(id) < 10:
+            return jsonify({'error': f'Invalid bill ID format: {id}'}), 400
+        
         bill = Bill.objects.get(id=id)
         data = request.get_json()
 
@@ -766,9 +829,32 @@ def add_bill_item(id):
                 membership_plan = MembershipPlan.objects.get(id=data['membership_id'])
                 item_name = membership_plan.name
             except MembershipPlan.DoesNotExist:
-                return jsonify({'error': 'Membership plan not found'}), 404
-            except Exception:
-                pass
+                # Try to find by name if ID lookup fails
+                if data.get('name'):
+                    membership_plan = MembershipPlan.objects(name=data['name'], status='active').first()
+                    if membership_plan:
+                        item_name = membership_plan.name
+                    else:
+                        return jsonify({'error': f'Membership plan not found: {data.get("name", "unknown")}'}), 404
+                else:
+                    return jsonify({'error': 'Membership plan not found'}), 404
+            except Exception as e:
+                # If ID lookup fails with other error, try name fallback
+                if data.get('name'):
+                    membership_plan = MembershipPlan.objects(name=data['name'], status='active').first()
+                    if membership_plan:
+                        item_name = membership_plan.name
+                    else:
+                        return jsonify({'error': f'Membership plan not found: {data.get("name", "unknown")}'}), 404
+                else:
+                    return jsonify({'error': f'Membership plan lookup error: {str(e)}'}), 500
+        elif data.get('item_type') == 'membership' and data.get('name') and not data.get('membership_id'):
+            # Handle case where only name is provided (no membership_id)
+            membership_plan = MembershipPlan.objects(name=data['name'], status='active').first()
+            if membership_plan:
+                item_name = membership_plan.name
+            else:
+                return jsonify({'error': f'Membership plan not found: {data.get("name", "unknown")}'}), 404
         if data.get('staff_id'):
             try:
                 staff = StaffModel.objects.get(id=data['staff_id'])
@@ -824,8 +910,11 @@ def add_bill_item(id):
             'product_stock_validated': product is not None
         }), 201
     except Bill.DoesNotExist:
-        return jsonify({'error': 'Bill not found'}), 404
+        return jsonify({'error': f'Bill not found with ID: {id}'}), 404
     except Exception as e:
+        import traceback
+        print(f"[ADD_ITEM] Error adding item to bill {id}: {str(e)}")
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @bill_bp.route('/bills/<bill_id>/items/<int:item_id>', methods=['DELETE'])
@@ -882,52 +971,205 @@ def checkout_bill(id):
         
         print(f"[CHECKOUT] Bill {id} subtotal: {subtotal}, items count: {len(bill.items)}")
 
+        # Resolve bill branch early — must happen before any approval request is created
+        # so that DiscountApprovalRequest.branch is set correctly and owners can find it
+        # via the branch filter in the Discount Approvals page.
+        if not bill.branch:
+            _appointment = None
+            if bill.appointment:
+                try:
+                    bill.appointment.reload()
+                    _appointment = bill.appointment
+                except Exception:
+                    _appointment = bill.appointment
+            _resolved_branch = resolve_bill_branch(
+                current_user=current_user,
+                appointment=_appointment,
+                customer=bill.customer
+            )
+            if _resolved_branch:
+                bill.branch = _resolved_branch
+                print(f"[CHECKOUT] Resolved bill branch early: {_resolved_branch.name} (ID: {_resolved_branch.id})")
+
         # Check for active membership discount first (automatic, cannot be overridden)
         membership_discount_applied = False
         discount_amount = 0.0
         discount_type = 'fix'
         
         if bill.customer:
-            # Get customer's active membership
+            # OPTIMIZE: Use indexed query for faster lookup
+            bill.customer.reload()
             active_membership = Membership.objects(
                 customer=bill.customer,
                 status='active',
                 expiry_date__gte=datetime.utcnow()
             ).first()
             
-            if active_membership and active_membership.plan and active_membership.plan.allocated_discount > 0:
-                # Apply membership discount automatically
-                membership_discount_percent = float(active_membership.plan.allocated_discount)
-                discount_amount = float(subtotal) * (membership_discount_percent / 100.0)
-                discount_type = 'membership'
-                membership_discount_applied = True
+            if active_membership and active_membership.plan:
+                # Reload plan to get allocated_discount
+                active_membership.plan.reload()
+                if active_membership.plan.allocated_discount > 0:
+                    # Apply membership discount automatically
+                    membership_discount_percent = float(active_membership.plan.allocated_discount)
+                    discount_amount = float(subtotal) * (membership_discount_percent / 100.0)
+                    discount_type = 'membership'
+                    membership_discount_applied = True
         
-        # If no membership discount, check for manual discount (owner only)
+        # If no membership discount, check for manual discount
         if not membership_discount_applied:
             # Get discount from request
             discount_amount = float(data.get('discount_amount', 0) or 0)
             discount_type = data.get('discount_type', 'fix')
-            
-            # SECURITY: Only owners can apply manual discounts
-            if discount_amount > 0 and user_role != 'owner':
-                response = jsonify({
-                    'error': 'Insufficient permissions',
-                    'message': 'Only owners can apply discounts. Please contact the owner to apply a discount.'
-                })
-                response.headers.add('Access-Control-Allow-Origin', '*')
-                return response, 403
-            
+
             # Calculate discount percentage for manual discounts
+            discount_percent = 0
             if discount_type == 'percentage':
                 discount_percent = float(discount_amount)
                 discount_amount = float(subtotal) * (float(discount_amount) / 100.0)
             elif discount_amount > 0 and subtotal > 0:
                 discount_percent = (discount_amount / subtotal) * 100
-        
-        # Owners don't need approval - they have unlimited discount access
-        needs_approval = False
-        
-        # No approval needed for owners - they have full discount access
+
+            # Calculate item-level discounts (per-service/package/product discount %)
+            item_level_discount = 0
+            for item in (bill.items or []):
+                item_disc = float(item.discount or 0)
+                item_price = float(item.price or 0)
+                if item_disc > 0 and item_price > 0:
+                    item_level_discount += item_price * item_disc / 100.0
+
+            # Total discount = bill-level + item-level
+            total_discount_for_approval = discount_amount + item_level_discount
+
+            # If only item-level discount, compute combined percent for the approval record
+            if total_discount_for_approval > 0 and discount_percent == 0 and subtotal > 0:
+                discount_percent = (total_discount_for_approval / subtotal) * 100
+
+            # Non-owner applying ANY discount → needs approval
+            if total_discount_for_approval > 0 and user_role != 'owner':
+                approval_code_input = (data.get('approval_code') or '').strip()
+
+                # ALWAYS validate approval code first if one was provided,
+                # regardless of whether the discount was already approved.
+                # This prevents checkout with a wrong code even when the
+                # owner already approved the discount from the approvals page.
+                matched_code = None
+                if approval_code_input:
+                    code_hash = hash_approval_code(approval_code_input)
+                    matched_code = ApprovalCode.objects(code_hash=code_hash, is_active=True).first()
+
+                    code_error = None
+                    if not matched_code:
+                        code_error = 'Invalid approval code'
+                    elif is_code_expired(matched_code.expires_at):
+                        code_error = 'Approval code has expired'
+                    elif not can_use_code(matched_code.usage_count, matched_code.max_uses):
+                        code_error = 'Approval code has reached its usage limit'
+
+                    if code_error:
+                        print(f"[CHECKOUT] Approval code rejected for bill {id}: {code_error}")
+                        response = jsonify({
+                            'error': code_error,
+                            'code_invalid': True,
+                            'requires_approval': True,
+                            'message': code_error
+                        })
+                        response.headers.add('Access-Control-Allow-Origin', '*')
+                        return response, 400
+
+                # Check if an approved approval already exists for this bill
+                approved = DiscountApprovalRequest.objects(
+                    bill=bill, approval_status='approved'
+                ).first()
+
+                if not approved:
+                    if approval_code_input and matched_code:
+                        # Code is valid — create or update approval as approved
+                        staff_ref = None
+                        if current_user.get('user_type') == 'staff':
+                            try:
+                                staff_ref = Staff.objects(id=current_user['user_id']).first()
+                            except Exception:
+                                pass
+
+                        # Find existing pending request or create new one
+                        approval_req = DiscountApprovalRequest.objects(
+                            bill=bill, approval_status='pending'
+                        ).first()
+
+                        if approval_req:
+                            approval_req.approval_status = 'approved'
+                            approval_req.approval_method = 'code'
+                            approval_req.approval_code_used = matched_code.code_hash
+                            approval_req.approved_at = datetime.utcnow()
+                            approval_req.updated_at = datetime.utcnow()
+                            approval_req.save()
+                        else:
+                            approval_req = DiscountApprovalRequest(
+                                bill=bill,
+                                requested_by=staff_ref,
+                                requested_by_name=current_user.get('name', 'Unknown'),
+                                requested_by_role=user_role,
+                                branch=bill.branch,
+                                requested_discount_percent=discount_percent,
+                                requested_discount_amount=total_discount_for_approval,
+                                reason=data.get('discount_reason', 'Discount requested'),
+                                approval_status='approved',
+                                approval_method='code',
+                                approval_code_used=matched_code.code_hash,
+                                approved_at=datetime.utcnow(),
+                            )
+                            approval_req.save()
+
+                        # Increment code usage
+                        matched_code.usage_count += 1
+                        matched_code.save()
+
+                        bill.discount_approval_status = 'approved'
+                        bill.discount_approval_request = approval_req
+                        bill.save()
+                        print(f"[CHECKOUT] Discount approved via code for bill {id}")
+                        # Fall through to normal checkout below
+
+                    elif not approval_code_input:
+                        # No code provided — existing pending flow
+                        pending = DiscountApprovalRequest.objects(
+                            bill=bill, approval_status='pending'
+                        ).first()
+
+                        if not pending:
+                            # Get staff reference if user is staff
+                            staff_ref = None
+                            if current_user.get('user_type') == 'staff':
+                                try:
+                                    staff_ref = Staff.objects(id=current_user['user_id']).first()
+                                except Exception:
+                                    pass
+
+                            pending = DiscountApprovalRequest(
+                                bill=bill,
+                                requested_by=staff_ref,
+                                requested_by_name=current_user.get('name', 'Unknown'),
+                                requested_by_role=user_role,
+                                branch=bill.branch,
+                                requested_discount_percent=discount_percent,
+                                requested_discount_amount=total_discount_for_approval,
+                                reason=data.get('discount_reason', 'Discount requested'),
+                            )
+                            pending.save()
+
+                            bill.discount_approval_status = 'pending'
+                            bill.discount_approval_request = pending
+                            bill.save()
+                            print(f"[CHECKOUT] Created discount approval request {pending.id} for bill {id}")
+
+                        response = jsonify({
+                            'error': 'Discount requires owner approval',
+                            'requires_approval': True,
+                            'approval_id': str(pending.id),
+                            'message': 'Discount approval request submitted. Owner must approve before checkout.'
+                        })
+                        response.headers.add('Access-Control-Allow-Origin', '*')
+                        return response, 403
 
         # Calculate tax on amount after membership discount
         tax_rate = float(data.get('tax_rate', 0) or 0)
@@ -961,33 +1203,23 @@ def checkout_bill(id):
                 # If parsing fails, keep existing bill_date
                 pass
 
-        if not bill.branch:
-            appointment = None
-            if bill.appointment:
-                try:
-                    bill.appointment.reload()
-                    appointment = bill.appointment
-                except Exception:
-                    appointment = bill.appointment
-            branch = resolve_bill_branch(
-                current_user=current_user,
-                appointment=appointment,
-                customer=bill.customer
-            )
-            if branch:
-                bill.branch = branch
+        # Store referral discount if provided by frontend
+        referral_discount = float(data.get('referral_discount', 0) or 0)
 
         # Update bill
         bill.subtotal = subtotal
         bill.discount_amount = discount_amount
         bill.discount_type = discount_type
+        bill.referral_discount = referral_discount
         bill.tax_amount = tax_amount
         bill.tax_rate = tax_rate
         bill.final_amount = final_amount
         bill.payment_mode = data['payment_mode']
         # Always set to 'service-completed' when checkout happens to mark as paid
         bill.booking_status = 'service-completed'
-        bill.discount_approval_status = 'none'  # Owners don't need approval
+        # Only reset approval status if owner is checking out without prior approval flow
+        if bill.discount_approval_status not in ('approved',):
+            bill.discount_approval_status = 'none'
         bill.updated_at = datetime.utcnow()
 
         # Update product stock - validate and reduce for all products in bill
@@ -1085,12 +1317,118 @@ def checkout_bill(id):
             except Exception as e:
                 print(f"[CHECKOUT] Warning: Failed to record cash transaction: {e}")
 
+        # Process referral rewards (only for new checkouts)
+        referral_info = None
+        if not is_already_checked_out and bill.customer:
+            try:
+                customer = bill.customer
+                customer.reload()
+                # Check if customer was referred and hasn't used referral reward yet
+                if customer.referred_by and not customer.referral_reward_used:
+                    referral_settings = ReferralProgramSettings.get_settings()
+                    if referral_settings.enabled:
+                        # Calculate referee discount (already applied via frontend) and referrer reward
+                        if referral_settings.reward_type == 'percentage':
+                            referrer_reward_amount = float(subtotal) * (referral_settings.referrer_reward_percentage / 100.0)
+                            referee_discount_amount = float(subtotal) * (referral_settings.referee_reward_percentage / 100.0)
+                        else:
+                            referrer_reward_amount = referral_settings.referrer_reward_percentage
+                            referee_discount_amount = referral_settings.referee_reward_percentage
+
+                        # Update the Referral record with bill and reward amounts
+                        referral_record = Referral.objects(referee=customer).first()
+                        if referral_record:
+                            referral_record.bill = bill
+                            referral_record.referee_discount = referee_discount_amount
+                            referral_record.referrer_reward = referrer_reward_amount
+                            referral_record.save()
+
+                        # Mark customer as having used referral reward
+                        customer.referral_reward_used = True
+                        customer.save()
+
+                        referral_info = {
+                            'referrerReward': referrer_reward_amount,
+                            'refereeDiscount': referee_discount_amount
+                        }
+                        print(f"[CHECKOUT] Referral reward processed: referee discount ₹{referee_discount_amount:.2f}, referrer reward ₹{referrer_reward_amount:.2f}")
+            except Exception as e:
+                print(f"[CHECKOUT] Warning: Failed to process referral reward: {e}")
+
+        # Generate and save invoice PDF to GridFS (only for new checkouts)
+        # MANDATORY: PDF generation must succeed or checkout fails
+        if not is_already_checked_out:
+            from services.invoice_pdf_service import generate_invoice_pdf
+            from services.pdf_storage_service import save_pdf_to_gridfs
+            
+            # Build invoice data
+            invoice_data = _build_invoice_data(bill)
+            
+            # Generate PDF - this must succeed
+            pdf_bytes = generate_invoice_pdf(invoice_data)
+            if not pdf_bytes:
+                error_msg = 'Failed to generate invoice PDF'
+                print(f"[CHECKOUT] Error: {error_msg}")
+                return jsonify({'error': error_msg}), 500
+            
+            # Save to GridFS - this must succeed
+            try:
+                pdf_file_id = save_pdf_to_gridfs(
+                    pdf_bytes=pdf_bytes,
+                    bill_id=str(bill.id),
+                    invoice_number=invoice_data.get('invoice_number', bill.bill_number),
+                    bill_number=bill.bill_number,
+                    bill_date=bill.bill_date
+                )
+                print(f"[CHECKOUT] PDF saved to GridFS: file_id={pdf_file_id}, size={len(pdf_bytes)} bytes")
+            except Exception as e:
+                error_msg = f'Failed to save invoice PDF to storage: {str(e)}'
+                print(f"[CHECKOUT] Error: {error_msg}")
+                import traceback
+                traceback.print_exc()
+                return jsonify({'error': error_msg}), 500
+            
+            # Store PDF metadata in bill
+            bill.pdf_file_id = pdf_file_id
+            bill.pdf_generated_at = datetime.utcnow()
+            bill.pdf_file_size = len(pdf_bytes)
+            
+            # Create Invoice document in MongoDB
+            try:
+                invoice = Invoice(
+                    bill=bill,
+                    invoice_number=invoice_data.get('invoice_number', bill.bill_number),
+                    customer=bill.customer,
+                    branch=bill.branch,
+                    pdf_file_id=pdf_file_id,
+                    invoice_data=invoice_data,
+                    generated_at=datetime.utcnow(),
+                    status='generated'
+                )
+                invoice.save()
+                
+                # Link Invoice to Bill
+                bill.invoice = invoice
+                
+                print(f"[CHECKOUT] Invoice document created: invoice_id={invoice.id}, invoice_number={invoice.invoice_number}, pdf_file_id={pdf_file_id}")
+            except Exception as e:
+                error_msg = f'Failed to create invoice document: {str(e)}'
+                print(f"[CHECKOUT] Error: {error_msg}")
+                import traceback
+                traceback.print_exc()
+                return jsonify({'error': error_msg}), 500
+            
+            # PDF already logged above when saved to GridFS
+
         print(f"[CHECKOUT] Success: Bill {id} checked out successfully. Final amount: {bill.final_amount}")
-        return jsonify({
+        checkout_result = {
             'message': 'Checkout completed successfully',
             'bill_number': bill.bill_number,
             'final_amount': bill.final_amount
-        })
+        }
+        if referral_info:
+            checkout_result['referral'] = referral_info
+        return jsonify(checkout_result)
     except Bill.DoesNotExist:
         print(f"[CHECKOUT] Error: Bill {id} not found")
         return jsonify({'error': 'Bill not found'}), 404
@@ -1286,16 +1624,71 @@ def get_invoice_html(bill_id, current_user=None):
 @bill_bp.route('/bills/<bill_id>/invoice/pdf', methods=['GET'])
 @require_auth
 def download_invoice_pdf(bill_id, current_user=None):
-    """Generate and download invoice as PDF - OPTIMIZED with batch fetching"""
+    """Generate and download invoice as PDF - Uses stored PDF from GridFS if available"""
     try:
         from services.invoice_pdf_service import generate_invoice_pdf
+        from services.pdf_storage_service import get_pdf_from_gridfs
+        
         bill = Bill.objects.get(id=bill_id)
-        invoice_data = _build_invoice_data(bill)
-        pdf_bytes = generate_invoice_pdf(invoice_data)
+        
+        # Try to retrieve PDF from GridFS - check Invoice first (most reliable), then Bill
+        pdf_bytes = None
+        pdf_source = None
+        invoice_number = bill.bill_number
+        
+        # First, try Invoice's pdf_file_id (most reliable - stored during checkout)
+        try:
+            invoice = Invoice.objects(bill=bill).first()
+            if invoice and invoice.pdf_file_id:
+                try:
+                    pdf_bytes = get_pdf_from_gridfs(invoice.pdf_file_id)
+                    if pdf_bytes:
+                        invoice_number = invoice.invoice_number
+                        pdf_source = 'Invoice GridFS'
+                        print(f"[DOWNLOAD PDF] Retrieved PDF from Invoice GridFS: file_id={invoice.pdf_file_id}, size={len(pdf_bytes)} bytes")
+                        
+                        # Update invoice status to downloaded
+                        if invoice.status in ['generated', 'viewed']:
+                            invoice.status = 'downloaded'
+                            invoice.downloaded_at = datetime.utcnow()
+                            invoice.save()
+                except Exception as e:
+                    print(f"[DOWNLOAD PDF] Warning: Failed to retrieve PDF from Invoice GridFS (file_id={invoice.pdf_file_id}): {e}")
+        except Exception as e:
+            print(f"[DOWNLOAD PDF] Warning: Failed to query Invoice collection: {e}")
+        
+        # Fallback to Bill's pdf_file_id
+        if not pdf_bytes and bill.pdf_file_id:
+            try:
+                pdf_bytes = get_pdf_from_gridfs(bill.pdf_file_id)
+                if pdf_bytes:
+                    pdf_source = 'Bill GridFS'
+                    print(f"[DOWNLOAD PDF] Retrieved PDF from Bill GridFS: file_id={bill.pdf_file_id}, size={len(pdf_bytes)} bytes")
+            except Exception as e:
+                print(f"[DOWNLOAD PDF] Warning: Failed to retrieve PDF from Bill GridFS (file_id={bill.pdf_file_id}): {e}")
+        
+        # Fallback to on-demand generation if PDF not in GridFS
+        if not pdf_bytes:
+            print(f"[DOWNLOAD PDF] PDF not in GridFS, generating on-demand for bill {bill_id}")
+            invoice_data = _build_invoice_data(bill)
+            pdf_bytes = generate_invoice_pdf(invoice_data)
+            invoice_number = invoice_data.get('invoice_number', bill.bill_number)
+            pdf_source = 'On-demand generation'
+            print(f"[DOWNLOAD PDF] Generated PDF on-demand, size={len(pdf_bytes)} bytes")
 
         response = make_response(pdf_bytes)
         response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = f'attachment; filename=invoice_{invoice_data["invoice_number"]}.pdf'
+        response.headers['Content-Disposition'] = f'attachment; filename=invoice_{invoice_number}.pdf'
+        
+        # Add caching headers for better performance
+        if pdf_source and 'GridFS' in pdf_source:
+            # Cache PDFs from GridFS for 1 hour (they don't change)
+            response.headers['Cache-Control'] = 'public, max-age=3600'
+        else:
+            # Don't cache on-demand generated PDFs
+            response.headers['Cache-Control'] = 'no-cache'
+        
+        print(f"[DOWNLOAD PDF] Serving PDF: source={pdf_source}, invoice={invoice_number}")
         return response
     except Bill.DoesNotExist:
         return jsonify({'error': 'Bill not found'}), 404
@@ -1306,16 +1699,43 @@ def download_invoice_pdf(bill_id, current_user=None):
 @bill_bp.route('/bills/<bill_id>/share-link', methods=['POST'])
 @require_auth
 def generate_share_link(bill_id, current_user=None):
-    """Generate a public shareable link for an invoice"""
+    """Generate a short shareable link for an invoice"""
     try:
-        import jwt as pyjwt
+        import secrets
 
         bill = Bill.objects.get(id=bill_id)
-        token = pyjwt.encode(
-            {'bill_id': str(bill.id), 'exp': datetime.utcnow() + timedelta(days=30)},
-            JWT_SECRET, algorithm='HS256'
-        )
-        response = jsonify({'token': token})
+
+        # Find invoice for this bill
+        invoice = Invoice.objects(bill=bill).first()
+        if not invoice:
+            response = jsonify({'error': 'Invoice not found for this bill'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 404
+
+        # Reuse existing share_code if already generated (idempotent)
+        if invoice.share_code:
+            response = jsonify({'share_code': invoice.share_code})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response
+
+        # Generate a unique 8-char URL-safe code
+        for _ in range(5):
+            code = secrets.token_urlsafe(6)  # 8 chars
+            if not Invoice.objects(share_code=code).first():
+                break
+        else:
+            response = jsonify({'error': 'Failed to generate unique share code'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 500
+
+        invoice.share_code = code
+        if invoice.status == 'generated':
+            invoice.status = 'shared'
+        invoice.shared_at = datetime.utcnow()
+        invoice.save()
+        print(f"[SHARE LINK] Generated share_code={code} for invoice {invoice.invoice_number}")
+
+        response = jsonify({'share_code': code})
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
     except Bill.DoesNotExist:
@@ -1328,18 +1748,25 @@ def generate_share_link(bill_id, current_user=None):
         return response, 500
 
 
-@bill_bp.route('/invoice/view/<token>', methods=['GET'])
+# Public invoice routes - registered directly on app (not via blueprint) to avoid /api prefix
 def public_invoice_view(token):
     """Public invoice view via signed token — no auth required. OPTIMIZED with batch fetching."""
     try:
         import jwt as pyjwt
         from services.invoice_pdf_service import render_invoice_html
+        from flask import request
 
         payload = pyjwt.decode(token, JWT_SECRET, algorithms=['HS256'])
         bill_id = payload['bill_id']
         bill = Bill.objects.get(id=bill_id)
         invoice_data = _build_invoice_data(bill)
-        html_content = render_invoice_html(invoice_data, show_actions=False)
+        
+        # Generate download URL for the PDF
+        base_url = request.url_root.rstrip('/')
+        download_url = f"{base_url}/invoice/pdf/{token}"
+        
+        # Show actions (including download button) for public view
+        html_content = render_invoice_html(invoice_data, show_actions=True, download_url=download_url)
         return html_content, 200, {'Content-Type': 'text/html; charset=utf-8'}
 
     except Exception as e:
@@ -1353,22 +1780,82 @@ def public_invoice_view(token):
         return f'<h1>Error loading invoice</h1>', 500, {'Content-Type': 'text/html'}
 
 
-@bill_bp.route('/invoice/pdf/<token>', methods=['GET'])
+# Public invoice routes - registered directly on app (not via blueprint) to avoid /api prefix
 def public_invoice_pdf(token):
-    """Public invoice PDF download via signed token — no auth required. OPTIMIZED with batch fetching."""
+    """Public invoice PDF download via signed token — no auth required. Uses stored PDF from GridFS if available."""
     try:
         import jwt as pyjwt
         from services.invoice_pdf_service import generate_invoice_pdf
+        from services.pdf_storage_service import get_pdf_from_gridfs
 
         payload = pyjwt.decode(token, JWT_SECRET, algorithms=['HS256'])
         bill_id = payload['bill_id']
         bill = Bill.objects.get(id=bill_id)
-        invoice_data = _build_invoice_data(bill)
-        pdf_bytes = generate_invoice_pdf(invoice_data)
+        
+        # Try to retrieve PDF from GridFS - check Invoice first (most reliable), then Bill
+        pdf_bytes = None
+        pdf_file_id = None
+        pdf_source = None
+        invoice_number = bill.bill_number
+        
+        # First, try Invoice's pdf_file_id (most reliable - stored during checkout)
+        try:
+            invoice = Invoice.objects(bill=bill).first()
+            if invoice and invoice.pdf_file_id:
+                try:
+                    pdf_bytes = get_pdf_from_gridfs(invoice.pdf_file_id)
+                    if pdf_bytes:
+                        pdf_file_id = invoice.pdf_file_id
+                        invoice_number = invoice.invoice_number
+                        pdf_source = 'Invoice GridFS'
+                        print(f"[PUBLIC PDF] Retrieved PDF from Invoice GridFS: file_id={invoice.pdf_file_id}, size={len(pdf_bytes)} bytes")
+                        
+                        # Update invoice status to viewed if not already
+                        if invoice.status == 'generated':
+                            invoice.status = 'viewed'
+                            invoice.viewed_at = datetime.utcnow()
+                            invoice.save()
+                except Exception as e:
+                    print(f"[PUBLIC PDF] Warning: Failed to retrieve PDF from Invoice GridFS (file_id={invoice.pdf_file_id}): {e}")
+        except Exception as e:
+            print(f"[PUBLIC PDF] Warning: Failed to query Invoice collection: {e}")
+        
+        # Fallback to Bill's pdf_file_id
+        if not pdf_bytes and bill.pdf_file_id:
+            try:
+                pdf_bytes = get_pdf_from_gridfs(bill.pdf_file_id)
+                if pdf_bytes:
+                    pdf_file_id = bill.pdf_file_id
+                    pdf_source = 'Bill GridFS'
+                    print(f"[PUBLIC PDF] Retrieved PDF from Bill GridFS: file_id={bill.pdf_file_id}, size={len(pdf_bytes)} bytes")
+            except Exception as e:
+                print(f"[PUBLIC PDF] Warning: Failed to retrieve PDF from Bill GridFS (file_id={bill.pdf_file_id}): {e}")
+        
+        # Fallback to on-demand generation if PDF not in GridFS
+        if not pdf_bytes:
+            print(f"[PUBLIC PDF] PDF not in GridFS, generating on-demand for bill {bill_id}")
+            invoice_data = _build_invoice_data(bill)
+            pdf_bytes = generate_invoice_pdf(invoice_data)
+            invoice_number = invoice_data.get('invoice_number', bill.bill_number)
+            pdf_source = 'On-demand generation'
+            print(f"[PUBLIC PDF] Generated PDF on-demand, size={len(pdf_bytes)} bytes")
 
         response = make_response(pdf_bytes)
         response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = f'inline; filename=invoice_{invoice_data["invoice_number"]}.pdf'
+        
+        # Use 'attachment' for mobile devices (better download behavior), 'inline' for desktop (better UX)
+        disposition = 'attachment' if is_mobile_device() else 'inline'
+        response.headers['Content-Disposition'] = f'{disposition}; filename=invoice_{invoice_number}.pdf'
+        
+        # Add caching headers for better performance
+        if pdf_source and 'GridFS' in pdf_source:
+            # Cache PDFs from GridFS for 1 hour (they don't change)
+            response.headers['Cache-Control'] = 'public, max-age=3600'
+        else:
+            # Don't cache on-demand generated PDFs
+            response.headers['Cache-Control'] = 'no-cache'
+        
+        print(f"[PUBLIC PDF] Serving PDF: source={pdf_source}, invoice={invoice_number}, disposition={disposition}")
         return response
 
     except Exception as e:
@@ -1380,3 +1867,310 @@ def public_invoice_pdf(token):
         if isinstance(e, Bill.DoesNotExist):
             return '<h1>Invoice not found</h1>', 404, {'Content-Type': 'text/html'}
         return f'<h1>Error generating PDF</h1>', 500, {'Content-Type': 'text/html'}
+
+
+# Public invoice routes - registered directly on app (not via blueprint) to avoid /api prefix
+def short_invoice_view(share_code):
+    """Public invoice view via short share code — no auth required."""
+    try:
+        from services.invoice_pdf_service import render_invoice_html
+        from flask import request
+
+        invoice = Invoice.objects(share_code=share_code).first()
+        if not invoice:
+            return '<h1>Invoice not found</h1><p>This link is not valid.</p>', 404, {'Content-Type': 'text/html'}
+
+        # Invoice links remain accessible permanently unless manually deleted
+        bill = invoice.bill
+        invoice_data = _build_invoice_data(bill)
+        
+        # Generate download URL for the PDF
+        base_url = request.url_root.rstrip('/')
+        download_url = f"{base_url}/i/{share_code}/pdf"
+        
+        # Show actions (including download button) for public view
+        html_content = render_invoice_html(invoice_data, show_actions=True, download_url=download_url)
+
+        # Track view
+        if invoice.status in ('generated', 'shared'):
+            invoice.status = 'viewed'
+            invoice.viewed_at = datetime.utcnow()
+            invoice.save()
+
+        return html_content, 200, {'Content-Type': 'text/html; charset=utf-8'}
+    except Exception as e:
+        print(f"[SHORT LINK] Error viewing invoice: {e}")
+        return '<h1>Error loading invoice</h1>', 500, {'Content-Type': 'text/html'}
+
+
+# Public invoice routes - registered directly on app (not via blueprint) to avoid /api prefix
+def short_invoice_pdf(share_code):
+    """Public invoice PDF download via short share code — no auth required."""
+    try:
+        from services.invoice_pdf_service import generate_invoice_pdf
+        from services.pdf_storage_service import get_pdf_from_gridfs
+
+        invoice = Invoice.objects(share_code=share_code).first()
+        if not invoice:
+            return '<h1>Invoice not found</h1><p>This link is not valid.</p>', 404, {'Content-Type': 'text/html'}
+
+        # Invoice links remain accessible permanently unless manually deleted
+        bill = invoice.bill
+        invoice_number = invoice.invoice_number
+
+        # Try to retrieve stored PDF from GridFS with better error handling
+        pdf_bytes = None
+        pdf_source = None
+        
+        # First, try Invoice's pdf_file_id (most reliable - stored during checkout)
+        if invoice.pdf_file_id:
+            try:
+                pdf_bytes = get_pdf_from_gridfs(invoice.pdf_file_id)
+                if pdf_bytes:
+                    pdf_source = 'Invoice GridFS'
+                    print(f"[SHORT PDF] Retrieved PDF from Invoice GridFS: file_id={invoice.pdf_file_id}, size={len(pdf_bytes)} bytes")
+            except Exception as e:
+                print(f"[SHORT PDF] Warning: Failed to retrieve PDF from Invoice GridFS (file_id={invoice.pdf_file_id}): {e}")
+        
+        # Fallback to Bill's pdf_file_id
+        if not pdf_bytes and bill.pdf_file_id:
+            try:
+                pdf_bytes = get_pdf_from_gridfs(bill.pdf_file_id)
+                if pdf_bytes:
+                    pdf_source = 'Bill GridFS'
+                    print(f"[SHORT PDF] Retrieved PDF from Bill GridFS: file_id={bill.pdf_file_id}, size={len(pdf_bytes)} bytes")
+            except Exception as e:
+                print(f"[SHORT PDF] Warning: Failed to retrieve PDF from Bill GridFS (file_id={bill.pdf_file_id}): {e}")
+
+        # Fallback to on-demand generation (slow but works)
+        if not pdf_bytes:
+            print(f"[SHORT PDF] PDF not in GridFS, generating on-demand for invoice {invoice.invoice_number}")
+            invoice_data = _build_invoice_data(bill)
+            pdf_bytes = generate_invoice_pdf(invoice_data)
+            invoice_number = invoice_data.get('invoice_number', bill.bill_number)
+            pdf_source = 'On-demand generation'
+            print(f"[SHORT PDF] Generated PDF on-demand, size={len(pdf_bytes)} bytes")
+
+        # Track download
+        if invoice.status in ('generated', 'shared', 'viewed'):
+            invoice.status = 'downloaded'
+            invoice.downloaded_at = datetime.utcnow()
+            invoice.save()
+
+        response = make_response(pdf_bytes)
+        response.headers['Content-Type'] = 'application/pdf'
+        
+        # Use 'attachment' for mobile devices (better download behavior), 'inline' for desktop (better UX)
+        disposition = 'attachment' if is_mobile_device() else 'inline'
+        response.headers['Content-Disposition'] = f'{disposition}; filename=invoice_{invoice_number}.pdf'
+        
+        # Add caching headers for better performance
+        if pdf_source and 'GridFS' in pdf_source:
+            # Cache PDFs from GridFS for 1 hour (they don't change)
+            response.headers['Cache-Control'] = 'public, max-age=3600'
+        else:
+            # Don't cache on-demand generated PDFs
+            response.headers['Cache-Control'] = 'no-cache'
+        
+        print(f"[SHORT PDF] Serving PDF: source={pdf_source}, invoice={invoice_number}, disposition={disposition}")
+        return response
+    except Exception as e:
+        print(f"[SHORT LINK] Error serving PDF: {e}")
+        import traceback
+        traceback.print_exc()
+        return '<h1>Error generating PDF</h1>', 500, {'Content-Type': 'text/html'}
+
+
+@bill_bp.route('/invoices', methods=['GET'])
+@require_auth
+def get_invoices(current_user=None):
+    """Get all invoices with optional filters"""
+    try:
+        # Query parameters
+        customer_id = request.args.get('customer_id')
+        branch_id = request.args.get('branch_id')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        status = request.args.get('status')
+        
+        # Pagination
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 50, type=int), 100)
+        
+        # Build query
+        query = Invoice.objects
+        
+        # Apply filters
+        if customer_id:
+            try:
+                customer = Customer.objects.get(id=customer_id)
+                query = query.filter(customer=customer)
+            except Customer.DoesNotExist:
+                pass
+        
+        if branch_id:
+            try:
+                branch = Branch.objects.get(id=branch_id)
+                query = query.filter(branch=branch)
+            except Branch.DoesNotExist:
+                pass
+        else:
+            # Filter by user's selected branch if no branch_id provided
+            branch = get_selected_branch(request, current_user)
+            if branch:
+                query = query.filter(branch=branch)
+        
+        if start_date or end_date:
+            start, end = get_ist_date_range(start_date, end_date)
+            if start:
+                query = query.filter(generated_at__gte=start)
+            if end:
+                query = query.filter(generated_at__lte=end)
+        
+        if status:
+            query = query.filter(status=status)
+        
+        # Get count and paginate
+        total = query.count()
+        invoices = list(query.order_by('-generated_at').skip((page - 1) * per_page).limit(per_page))
+        
+        result = []
+        for inv in invoices:
+            result.append({
+                'id': str(inv.id),
+                'invoice_number': inv.invoice_number,
+                'bill_id': str(inv.bill.id) if inv.bill else None,
+                'bill_number': inv.bill.bill_number if inv.bill else None,
+                'customer_id': str(inv.customer.id) if inv.customer else None,
+                'customer_name': f"{inv.customer.first_name or ''} {inv.customer.last_name or ''}".strip() if inv.customer else 'Walk-in',
+                'branch_id': str(inv.branch.id) if inv.branch else None,
+                'branch_name': inv.branch.name if inv.branch else None,
+                'pdf_file_id': str(inv.pdf_file_id) if inv.pdf_file_id else None,
+                'status': inv.status,
+                'generated_at': inv.generated_at.isoformat() if inv.generated_at else None,
+                'shared_at': inv.shared_at.isoformat() if inv.shared_at else None,
+                'viewed_at': inv.viewed_at.isoformat() if inv.viewed_at else None,
+                'downloaded_at': inv.downloaded_at.isoformat() if inv.downloaded_at else None,
+                'total': inv.invoice_data.get('summary', {}).get('total', 0) if inv.invoice_data else 0
+            })
+        
+        return jsonify({
+            'invoices': result,
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'pages': (total + per_page - 1) // per_page if per_page > 0 else 0
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@bill_bp.route('/invoices/<id>', methods=['GET'])
+@require_auth
+def get_invoice(id, current_user=None):
+    """Get a specific invoice by ID"""
+    try:
+        invoice = Invoice.objects.get(id=id)
+        
+        return jsonify({
+            'id': str(invoice.id),
+            'invoice_number': invoice.invoice_number,
+            'bill_id': str(invoice.bill.id) if invoice.bill else None,
+            'bill_number': invoice.bill.bill_number if invoice.bill else None,
+            'customer_id': str(invoice.customer.id) if invoice.customer else None,
+            'customer_name': f"{invoice.customer.first_name or ''} {invoice.customer.last_name or ''}".strip() if invoice.customer else 'Walk-in',
+            'branch_id': str(invoice.branch.id) if invoice.branch else None,
+            'branch_name': invoice.branch.name if invoice.branch else None,
+            'pdf_file_id': str(invoice.pdf_file_id) if invoice.pdf_file_id else None,
+            'invoice_data': invoice.invoice_data,
+            'status': invoice.status,
+            'generated_at': invoice.generated_at.isoformat() if invoice.generated_at else None,
+            'shared_at': invoice.shared_at.isoformat() if invoice.shared_at else None,
+            'viewed_at': invoice.viewed_at.isoformat() if invoice.viewed_at else None,
+            'downloaded_at': invoice.downloaded_at.isoformat() if invoice.downloaded_at else None,
+            'created_at': invoice.created_at.isoformat() if invoice.created_at else None,
+            'updated_at': invoice.updated_at.isoformat() if invoice.updated_at else None
+        })
+    except Invoice.DoesNotExist:
+        return jsonify({'error': 'Invoice not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@bill_bp.route('/invoices/bill/<bill_id>', methods=['GET'])
+@require_auth
+def get_invoice_by_bill(bill_id, current_user=None):
+    """Get invoice by bill ID"""
+    try:
+        bill = Bill.objects.get(id=bill_id)
+        invoice = Invoice.objects(bill=bill).first()
+        
+        if not invoice:
+            return jsonify({'error': 'Invoice not found for this bill'}), 404
+        
+        return jsonify({
+            'id': str(invoice.id),
+            'invoice_number': invoice.invoice_number,
+            'bill_id': str(invoice.bill.id) if invoice.bill else None,
+            'bill_number': invoice.bill.bill_number if invoice.bill else None,
+            'customer_id': str(invoice.customer.id) if invoice.customer else None,
+            'customer_name': f"{invoice.customer.first_name or ''} {invoice.customer.last_name or ''}".strip() if invoice.customer else 'Walk-in',
+            'branch_id': str(invoice.branch.id) if invoice.branch else None,
+            'branch_name': invoice.branch.name if invoice.branch else None,
+            'pdf_file_id': str(invoice.pdf_file_id) if invoice.pdf_file_id else None,
+            'invoice_data': invoice.invoice_data,
+            'status': invoice.status,
+            'generated_at': invoice.generated_at.isoformat() if invoice.generated_at else None,
+            'shared_at': invoice.shared_at.isoformat() if invoice.shared_at else None,
+            'viewed_at': invoice.viewed_at.isoformat() if invoice.viewed_at else None,
+            'downloaded_at': invoice.downloaded_at.isoformat() if invoice.downloaded_at else None
+        })
+    except Bill.DoesNotExist:
+        return jsonify({'error': 'Bill not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@bill_bp.route('/invoices/customer/<customer_id>', methods=['GET'])
+@require_auth
+def get_customer_invoices(customer_id, current_user=None):
+    """Get all invoices for a specific customer"""
+    try:
+        customer = Customer.objects.get(id=customer_id)
+        
+        # Pagination
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 50, type=int), 100)
+        
+        query = Invoice.objects.filter(customer=customer)
+        
+        # Get count and paginate
+        total = query.count()
+        invoices = list(query.order_by('-generated_at').skip((page - 1) * per_page).limit(per_page))
+        
+        result = []
+        for inv in invoices:
+            result.append({
+                'id': str(inv.id),
+                'invoice_number': inv.invoice_number,
+                'bill_id': str(inv.bill.id) if inv.bill else None,
+                'bill_number': inv.bill.bill_number if inv.bill else None,
+                'branch_id': str(inv.branch.id) if inv.branch else None,
+                'branch_name': inv.branch.name if inv.branch else None,
+                'pdf_file_id': str(inv.pdf_file_id) if inv.pdf_file_id else None,
+                'status': inv.status,
+                'generated_at': inv.generated_at.isoformat() if inv.generated_at else None,
+                'total': inv.invoice_data.get('summary', {}).get('total', 0) if inv.invoice_data else 0
+            })
+        
+        return jsonify({
+            'invoices': result,
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'pages': (total + per_page - 1) // per_page if per_page > 0 else 0
+        })
+    except Customer.DoesNotExist:
+        return jsonify({'error': 'Customer not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

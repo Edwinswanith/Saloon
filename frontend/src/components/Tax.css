@@ -207,6 +207,35 @@
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 1.5rem;
+  gap: 1rem;
+}
+
+.slabs-header-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.import-btn {
+  background-color: var(--surface-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.import-btn:hover {
+  background-color: var(--border-light);
+  border-color: var(--text-muted);
 }
 
 .add-slab-button {
@@ -222,10 +251,12 @@
   align-items: center;
   gap: 0.5rem;
   transition: background-color 0.2s;
+  white-space: nowrap;
 }
 
 .add-slab-button:hover {
   background-color: var(--status-info);
+  opacity: 0.9;
 }
 
 .table-wrapper {
@@ -341,8 +372,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border-light);
+  padding: 12px 20px;
+  background: var(--primary-700);
+  border-radius: 12px 12px 0 0;
   min-height: 56px;
   box-sizing: border-box;
 }
@@ -351,17 +383,17 @@
   margin: 0;
   font-size: 1.125rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: white;
   flex: 1;
   line-height: 1.4;
 }
 
 .modal-close {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.2);
   border: none;
   font-size: 16px;
   cursor: pointer;
-  color: var(--text-muted);
+  color: white;
   padding: 0;
   width: 32px;
   height: 32px;
@@ -377,8 +409,8 @@
 }
 
 .modal-close:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.1);
-  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.3);
+  color: white;
 }
 
 .modal-close:active:not(:disabled) {
@@ -443,5 +475,172 @@
 
 .btn-submit:hover {
   background-color: var(--status-info);
+}
+
+/* ========== RESPONSIVE DESIGN ========== */
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .tax-container {
+    padding: 1.5rem;
+  }
+
+  .tax-settings-card,
+  .tax-slabs-card {
+    padding: 1.5rem;
+  }
+
+  .slabs-header {
+    flex-wrap: wrap;
+  }
+
+  .slabs-header-actions {
+    width: 100%;
+    margin-top: 1rem;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .tax-container {
+    padding: 1rem;
+  }
+
+  .tax-settings-card,
+  .tax-slabs-card {
+    padding: 1rem;
+  }
+
+  .section-title {
+    font-size: 1.25rem;
+  }
+
+  .section-description {
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+  }
+
+  .slabs-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .slabs-header-actions {
+    width: 100%;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 0;
+  }
+
+  .import-btn,
+  .add-slab-button {
+    width: 100%;
+    justify-content: center;
+    padding: 0.875rem 1.25rem;
+    min-height: 48px;
+    font-size: 1rem;
+    white-space: normal;
+  }
+
+  .import-btn {
+    order: 2;
+  }
+
+  .add-slab-button {
+    order: 1;
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tax-slabs-table {
+    min-width: 600px;
+    font-size: 0.875rem;
+  }
+
+  .tax-slabs-table th,
+  .tax-slabs-table td {
+    padding: 0.75rem 0.5rem;
+  }
+
+  .modal-content {
+    width: 95%;
+    max-width: 95%;
+    margin: 1rem;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+    gap: 0.75rem;
+  }
+
+  .btn-cancel,
+  .btn-submit {
+    width: 100%;
+    padding: 0.875rem;
+    min-height: 48px;
+  }
+}
+
+/* Small Mobile */
+@media (max-width: 480px) {
+  .tax-container {
+    padding: 0.75rem;
+  }
+
+  .tax-settings-card,
+  .tax-slabs-card {
+    padding: 0.75rem;
+    border-radius: 8px;
+  }
+
+  .section-title {
+    font-size: 1.125rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .section-description {
+    font-size: 0.8125rem;
+  }
+
+  .slabs-header-actions {
+    gap: 0.625rem;
+  }
+
+  .import-btn,
+  .add-slab-button {
+    padding: 1rem 1.25rem;
+    min-height: 50px;
+    font-size: 0.9375rem;
+  }
+
+  .tax-slabs-table {
+    min-width: 500px;
+    font-size: 0.8125rem;
+  }
+
+  .tax-slabs-table th,
+  .tax-slabs-table td {
+    padding: 0.625rem 0.375rem;
+  }
+
+  .modal-content {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    border-radius: 16px 16px 0 0;
+    max-height: 95vh;
+  }
+
+  .icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
