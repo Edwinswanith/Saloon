@@ -332,6 +332,131 @@
   font-weight: bold;
 }
 
+/* Payment Method Breakdown Cards */
+.payment-method-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.method-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+  padding: 16px 20px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease;
+}
+
+.method-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06);
+}
+
+.method-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.method-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.method-label {
+  font-size: 11px;
+  color: var(--gray-500);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 2px;
+}
+
+.method-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--gray-800);
+}
+
+/* Cash method card */
+.method-card.method-cash {
+  border-left: 3px solid var(--success-500);
+}
+
+.method-card.method-cash .method-icon {
+  background: var(--success-100);
+  color: var(--success-700);
+}
+
+/* UPI method card */
+.method-card.method-upi {
+  border-left: 3px solid #a855f7;
+}
+
+.method-card.method-upi .method-icon {
+  background: #fae8ff;
+  color: #86198f;
+}
+
+/* Card method card */
+.method-card.method-card-pay {
+  border-left: 3px solid var(--status-info);
+}
+
+.method-card.method-card-pay .method-icon {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+/* Payment Method Badge (in table) */
+.method-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.method-badge.cash {
+  background: var(--success-100);
+  color: var(--success-700);
+}
+
+.method-badge.upi {
+  background: #fae8ff;
+  color: #86198f;
+}
+
+.method-badge.card {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+/* Auto-generated entry badge */
+.auto-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: var(--gray-100);
+  color: var(--gray-500);
+}
+
 /* Transactions Section */
 .transactions-section {
   background: white;
@@ -488,6 +613,15 @@
     flex-direction: row;
   }
 
+  .payment-method-cards {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .method-value {
+    font-size: 18px;
+  }
+
   /* Modal - Tablet */
   .modal-overlay {
     padding: 24px;
@@ -605,6 +739,37 @@
     font-size: 24px;
   }
 
+  /* Payment Method Cards - Mobile */
+  .payment-method-cards {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .method-card {
+    padding: 14px 16px;
+    gap: 12px;
+  }
+
+  .method-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+
+  .method-value {
+    font-size: 18px;
+  }
+
+  .method-badge {
+    padding: 3px 8px;
+    font-size: 9px;
+  }
+
+  .auto-badge {
+    padding: 3px 8px;
+    font-size: 9px;
+  }
+
   /* Modal - Mobile */
   .modal-overlay {
     padding: 12px;
@@ -666,6 +831,65 @@
     padding: 12px;
     min-height: 44px;
     font-size: 16px;
+  }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+  .cash-register-container {
+    padding: 0 12px 12px;
+  }
+
+  .summary-card {
+    padding: 16px;
+  }
+
+  .card-value {
+    font-size: 20px;
+  }
+
+  .card-label {
+    font-size: 11px;
+  }
+
+  .payment-method-cards {
+    gap: 8px;
+  }
+
+  .method-card {
+    padding: 12px 14px;
+  }
+
+  .method-value {
+    font-size: 16px;
+  }
+
+  .method-label {
+    font-size: 10px;
+  }
+
+  .transactions-section {
+    padding: 12px;
+  }
+
+  .transactions-title {
+    font-size: 15px;
+  }
+
+  .transactions-table th,
+  .transactions-table td {
+    padding: 8px 8px;
+    font-size: 11px;
+  }
+
+  .type-badge {
+    padding: 3px 8px;
+    font-size: 9px;
+  }
+
+  .action-btn {
+    padding: 10px 16px;
+    font-size: 13px;
   }
 }
 

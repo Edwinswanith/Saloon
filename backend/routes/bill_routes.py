@@ -936,7 +936,8 @@ def remove_bill_item(bill_id, item_id):
         return jsonify({'error': str(e)}), 500
 
 @bill_bp.route('/bills/<id>/checkout', methods=['POST'])
-def checkout_bill(id):
+@require_auth
+def checkout_bill(id, current_user=None):
     """Complete checkout process for a bill"""
     try:
         bill = Bill.objects.get(id=id)
@@ -1300,21 +1301,27 @@ def checkout_bill(id):
             if membership_items_updated:
                 bill.save()
 
-        # Record cash transaction in cash register (only for new checkouts)
-        if not is_already_checked_out and data['payment_mode'] == 'cash' and final_amount > 0:
+        # Record payment transaction in cash register (all payment modes, only for new checkouts)
+        cash_txn_warning = None
+        if not is_already_checked_out and final_amount > 0:
             try:
                 from datetime import date as date_type
+                payment_mode = data['payment_mode']
                 cash_txn = CashTransaction(
                     transaction_type='in',
                     branch=bill.branch,
                     amount=final_amount,
+                    payment_method=payment_mode,
+                    source='bill',
+                    bill_ref=bill,
                     reason=f'Bill #{bill.bill_number}',
-                    notes=f'Cash payment for bill {bill.bill_number}',
+                    notes=f'{payment_mode.upper()} payment for bill {bill.bill_number}',
                     transaction_date=date_type.today(),
                     transaction_time=datetime.now().strftime('%H:%M:%S')
                 )
                 cash_txn.save()
             except Exception as e:
+                cash_txn_warning = f'Payment recorded but cash register entry failed: {e}'
                 print(f"[CHECKOUT] Warning: Failed to record cash transaction: {e}")
 
         # Process referral rewards (only for new checkouts)
@@ -1428,6 +1435,8 @@ def checkout_bill(id):
         }
         if referral_info:
             checkout_result['referral'] = referral_info
+        if cash_txn_warning:
+            checkout_result['cash_register_warning'] = cash_txn_warning
         return jsonify(checkout_result)
     except Bill.DoesNotExist:
         print(f"[CHECKOUT] Error: Bill {id} not found")
@@ -1500,6 +1509,12 @@ def delete_bill(id):
                         continue
 
         bill.save()
+
+        # Remove associated cash register entry when bill is deleted
+        try:
+            CashTransaction.objects(bill_ref=bill).delete()
+        except Exception as e:
+            print(f"Warning: Could not remove cash transaction for bill {getattr(bill, 'bill_number', 'unknown')}: {e}")
 
         return jsonify({'message': 'Bill deleted successfully'})
     except Bill.DoesNotExist:

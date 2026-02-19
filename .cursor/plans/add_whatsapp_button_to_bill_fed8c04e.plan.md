@@ -20,6 +20,7 @@ todos:
 # Add WhatsApp Button to Bill
 
 ## Overview
+
 Add a WhatsApp button to the invoice preview that appears after checkout. The button will open WhatsApp with a pre-filled message containing bill details.
 
 ## Implementation Details
@@ -27,6 +28,7 @@ Add a WhatsApp button to the invoice preview that appears after checkout. The bu
 ### Files to Modify
 
 1. **[frontend/src/components/InvoicePreview.jsx](frontend/src/components/InvoicePreview.jsx)**
+
    - Add a `handleSendWhatsApp` function that:
      - Formats the customer mobile number (removes +91, spaces, etc. to get just digits)
      - Creates a formatted bill message template with:
@@ -42,12 +44,15 @@ Add a WhatsApp button to the invoice preview that appears after checkout. The bu
    - Use WhatsApp icon (can use react-icons FaWhatsapp if available, or text)
 
 2. **[frontend/src/components/InvoicePreview.css](frontend/src/components/InvoicePreview.css)**
+
    - Add styling for `.whatsapp-btn` class
    - Use WhatsApp brand color (#25D366) for the button
    - Match existing button styles from `.download-btn` and `.review-btn`
 
 ### Message Template Format
+
 The WhatsApp message should be formatted as:
+
 ```
 *Bill Details*
 
@@ -71,6 +76,7 @@ Thank you for your visit!
 ```
 
 ### Technical Notes
+
 - Use `encodeURIComponent()` to encode the message for the URL
 - Handle mobile number formatting: remove +91 prefix, spaces, and non-digits
 - WhatsApp web URL format: `https://wa.me/{country_code}{number}` (e.g., `https://wa.me/919876543210`)
@@ -78,6 +84,7 @@ Thank you for your visit!
 - Ensure the message is concise and readable on mobile devices
 
 ## Testing Considerations
+
 - Test with valid mobile numbers (with/without +91 prefix)
 - Test with missing customer mobile (button should not appear)
 - Verify message formatting and encoding

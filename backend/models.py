@@ -454,11 +454,20 @@ class Asset(Document):
 
 # Cash Transaction Model
 class CashTransaction(Document):
-    meta = {'collection': 'cash_transactions'}
-    
+    meta = {
+        'collection': 'cash_transactions',
+        'indexes': [
+            {'fields': ['branch', 'transaction_date']},
+            {'fields': ['bill_ref']},
+        ]
+    }
+
     transaction_type = StringField(required=True, max_length=20)  # in, out
     branch = ReferenceField('Branch')  # Multi-branch: Transaction's branch
     amount = FloatField(required=True)
+    payment_method = StringField(max_length=20, default='cash')  # cash, upi, card
+    source = StringField(max_length=20, default='manual')  # manual, bill
+    bill_ref = ReferenceField('Bill')  # Link to bill (null for manual entries)
     reason = StringField(max_length=200)
     notes = StringField()
     transaction_date = DateField(required=True)

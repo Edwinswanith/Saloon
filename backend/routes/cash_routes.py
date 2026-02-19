@@ -8,6 +8,21 @@ from utils.branch_filter import get_selected_branch
 
 cash_bp = Blueprint('cash', __name__)
 
+def _serialize_transaction(t):
+    """Serialize a CashTransaction to dict"""
+    return {
+        'id': str(t.id),
+        'transaction_type': t.transaction_type,
+        'amount': t.amount,
+        'payment_method': t.payment_method or 'cash',
+        'source': t.source or 'manual',
+        'reason': t.reason,
+        'notes': t.notes,
+        'transaction_date': t.transaction_date.isoformat() if t.transaction_date else None,
+        'transaction_time': t.transaction_time if t.transaction_time else None,
+        'created_at': t.created_at.isoformat() if t.created_at else None
+    }
+
 @cash_bp.route('/transactions', methods=['GET'])
 @require_auth
 def get_cash_transactions(current_user=None):
@@ -15,6 +30,7 @@ def get_cash_transactions(current_user=None):
     try:
         # Query parameters
         transaction_type = request.args.get('transaction_type')
+        payment_method = request.args.get('payment_method')
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         date_param = request.args.get('date')  # Single date filter (for daily view)
@@ -29,6 +45,10 @@ def get_cash_transactions(current_user=None):
         # Apply type filter
         if transaction_type:
             query = query.filter(transaction_type=transaction_type)
+
+        # Apply payment method filter
+        if payment_method:
+            query = query.filter(payment_method=payment_method)
 
         # Handle single date filter (for daily view)
         if date_param:
@@ -45,16 +65,7 @@ def get_cash_transactions(current_user=None):
         transactions = query.order_by('-transaction_date', '-transaction_time')
 
         return jsonify({
-            'transactions': [{
-                'id': str(t.id),
-                'transaction_type': t.transaction_type,
-                'amount': t.amount,
-                'reason': t.reason,
-                'notes': t.notes,
-                'transaction_date': t.transaction_date.isoformat() if t.transaction_date else None,
-                'transaction_time': t.transaction_time if t.transaction_time else None,
-                'created_at': t.created_at.isoformat() if t.created_at else None
-            } for t in transactions]
+            'transactions': [_serialize_transaction(t) for t in transactions]
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -67,16 +78,7 @@ def get_cash_transaction(id, current_user=None):
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid transaction ID format'}), 400
         transaction = CashTransaction.objects.get(id=id)
-        return jsonify({
-            'id': str(transaction.id),
-            'transaction_type': transaction.transaction_type,
-            'amount': transaction.amount,
-            'reason': transaction.reason,
-            'notes': transaction.notes,
-            'transaction_date': transaction.transaction_date.isoformat() if transaction.transaction_date else None,
-            'transaction_time': transaction.transaction_time if transaction.transaction_time else None,
-            'created_at': transaction.created_at.isoformat() if transaction.created_at else None
-        })
+        return jsonify(_serialize_transaction(transaction))
     except DoesNotExist:
         return jsonify({'error': 'Transaction not found'}), 404
     except Exception as e:
@@ -103,6 +105,8 @@ def add_cash_in(current_user=None):
             transaction_type='in',
             branch=branch,
             amount=data['amount'],
+            payment_method='cash',
+            source='manual',
             reason=data.get('reason'),
             notes=data.get('notes'),
             transaction_date=transaction_date,
@@ -142,6 +146,8 @@ def add_cash_out(current_user=None):
             transaction_type='out',
             branch=branch,
             amount=data['amount'],
+            payment_method='cash',
+            source='manual',
             reason=data.get('reason'),
             notes=data.get('notes'),
             transaction_date=transaction_date,
@@ -168,6 +174,13 @@ def update_cash_transaction(id, current_user=None):
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid transaction ID format'}), 400
         transaction = CashTransaction.objects.get(id=id)
+
+        # Prevent editing bill-sourced entries
+        if (transaction.source or 'manual') == 'bill':
+            response = jsonify({'error': 'Cannot edit bill payment entries. Delete the bill instead.'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 403
+
         data = request.get_json()
 
         transaction.transaction_type = data.get('transaction_type', transaction.transaction_type)
@@ -205,6 +218,13 @@ def delete_cash_transaction(id, current_user=None):
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid transaction ID format'}), 400
         transaction = CashTransaction.objects.get(id=id)
+
+        # Prevent deleting bill-sourced entries
+        if (transaction.source or 'manual') == 'bill':
+            response = jsonify({'error': 'Cannot delete bill payment entries. Delete the bill instead.'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 403
+
         transaction.delete()
 
         return jsonify({'message': 'Cash transaction deleted successfully'})
@@ -216,7 +236,7 @@ def delete_cash_transaction(id, current_user=None):
 @cash_bp.route('/summary', methods=['GET'])
 @require_auth
 def get_cash_summary(current_user=None):
-    """Get cash flow summary"""
+    """Get cash flow summary with payment method breakdown"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
@@ -246,6 +266,14 @@ def get_cash_summary(current_user=None):
         cash_out = sum([float(t.amount) for t in transactions if t.transaction_type == 'out'])
         net_cash = cash_in - cash_out
 
+        # Payment method breakdown (only for 'in' transactions)
+        method_totals = {'cash': 0.0, 'upi': 0.0, 'card': 0.0}
+        for t in transactions:
+            if t.transaction_type == 'in':
+                method = t.payment_method or 'cash'
+                if method in method_totals:
+                    method_totals[method] += float(t.amount)
+
         return jsonify({
             'total_in': cash_in,
             'total_out': cash_out,
@@ -255,7 +283,10 @@ def get_cash_summary(current_user=None):
             'net_cash': net_cash,
             'total_transactions': len(transactions),
             'in_transactions': len([t for t in transactions if t.transaction_type == 'in']),
-            'out_transactions': len([t for t in transactions if t.transaction_type == 'out'])
+            'out_transactions': len([t for t in transactions if t.transaction_type == 'out']),
+            'cash_total': method_totals['cash'],
+            'upi_total': method_totals['upi'],
+            'card_total': method_totals['card'],
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500

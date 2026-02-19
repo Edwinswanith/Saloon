@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { FaCalendarAlt, FaCloudDownloadAlt, FaEdit, FaTrash } from 'react-icons/fa'
+import { FaCalendarAlt, FaCloudDownloadAlt, FaEdit, FaTrash, FaMoneyBillWave, FaMobileAlt, FaCreditCard } from 'react-icons/fa'
 import './CashRegister.css'
 import { useAuth } from '../contexts/AuthContext'
 import { apiGet, apiPost, apiDelete } from '../utils/api'
@@ -8,9 +8,14 @@ const CashRegister = () => {
   const { currentBranch } = useAuth()
   const [viewMode, setViewMode] = useState('daily')
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)) // YYYY-MM
   const [transactions, setTransactions] = useState([])
-  const [summary, setSummary] = useState({ totalIn: 0, totalOut: 0, netFlow: 0 })
+  const [summary, setSummary] = useState({
+    totalIn: 0, totalOut: 0, netFlow: 0,
+    cashTotal: 0, upiTotal: 0, cardTotal: 0,
+  })
   const [loading, setLoading] = useState(true)
+  const [authError, setAuthError] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [transactionType, setTransactionType] = useState('in')
   const [formData, setFormData] = useState({
@@ -19,10 +24,22 @@ const CashRegister = () => {
     notes: '',
   })
 
+  // Build date params based on view mode
+  const getDateParams = () => {
+    if (viewMode === 'monthly') {
+      const [year, month] = selectedMonth.split('-').map(Number)
+      const start = `${selectedMonth}-01`
+      const lastDay = new Date(year, month, 0).getDate()
+      const end = `${selectedMonth}-${String(lastDay).padStart(2, '0')}`
+      return { start_date: start, end_date: end }
+    }
+    return { date: selectedDate }
+  }
+
   useEffect(() => {
     fetchTransactions()
     fetchSummary()
-  }, [selectedDate, viewMode, currentBranch])
+  }, [selectedDate, selectedMonth, viewMode, currentBranch])
 
   // Listen for branch changes
   useEffect(() => {
@@ -31,7 +48,7 @@ const CashRegister = () => {
       fetchTransactions()
       fetchSummary()
     }
-    
+
     window.addEventListener('branchChanged', handleBranchChange)
     return () => window.removeEventListener('branchChanged', handleBranchChange)
   }, [currentBranch])
@@ -39,8 +56,15 @@ const CashRegister = () => {
   const fetchTransactions = async () => {
     try {
       setLoading(true)
-      const params = new URLSearchParams({ date: selectedDate })
+      setAuthError(false)
+      const params = new URLSearchParams(getDateParams())
       const response = await apiGet(`/api/cash/transactions?${params}`)
+
+      if (response.status === 401) {
+        setAuthError(true)
+        setTransactions([])
+        return
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -58,8 +82,13 @@ const CashRegister = () => {
 
   const fetchSummary = async () => {
     try {
-      const params = new URLSearchParams({ date: selectedDate })
+      const params = new URLSearchParams(getDateParams())
       const response = await apiGet(`/api/cash/summary?${params}`)
+
+      if (response.status === 401) {
+        setAuthError(true)
+        return
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -70,10 +99,13 @@ const CashRegister = () => {
         totalIn: data.total_in || data.cash_in || 0,
         totalOut: data.total_out || data.cash_out || 0,
         netFlow: data.net_flow || data.net_cash || 0,
+        cashTotal: data.cash_total || 0,
+        upiTotal: data.upi_total || 0,
+        cardTotal: data.card_total || 0,
       })
     } catch (error) {
       console.error('Error fetching summary:', error)
-      setSummary({ totalIn: 0, totalOut: 0, netFlow: 0 })
+      setSummary({ totalIn: 0, totalOut: 0, netFlow: 0, cashTotal: 0, upiTotal: 0, cardTotal: 0 })
     }
   }
 
@@ -111,7 +143,8 @@ const CashRegister = () => {
         fetchTransactions()
         fetchSummary()
       } else {
-        alert('Failed to delete transaction')
+        const data = await response.json().catch(() => ({}))
+        alert(data.error || 'Failed to delete transaction')
       }
     } catch (error) {
       console.error('Error deleting transaction:', error)
@@ -131,41 +164,44 @@ const CashRegister = () => {
     const date = new Date(dateString)
     const day = date.getDate()
     const monthNames = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ]
     const month = monthNames[date.getMonth()]
     const year = date.getFullYear()
     return `${day} ${month}, ${year}`
   }
 
+  const getMethodLabel = (method) => {
+    const m = method || 'cash'
+    if (m === 'upi') return 'UPI'
+    if (m === 'card') return 'Card'
+    return 'Cash'
+  }
+
   const handleDownloadReport = () => {
     try {
       const csvContent = [
-        ['Date', 'Time', 'Type', 'Reason', 'Amount', 'Notes'],
+        ['Date', 'Time', 'Type', 'Payment Method', 'Source', 'Reason', 'Amount', 'Notes'],
         ...transactions.map(transaction => [
           transaction.transaction_date || 'N/A',
           transaction.transaction_time || 'N/A',
           transaction.transaction_type === 'in' ? 'Cash In' : 'Cash Out',
+          getMethodLabel(transaction.payment_method),
+          (transaction.source || 'manual') === 'bill' ? 'Bill Payment' : 'Manual',
           transaction.reason || 'N/A',
           `₹${(transaction.amount || 0).toFixed(2)}`,
           transaction.notes || '',
         ]),
         [],
-        ['Summary', '', '', '', '', ''],
-        ['Total Cash In', '', '', '', `₹${summary.totalIn.toFixed(2)}`, ''],
-        ['Total Cash Out', '', '', '', `₹${summary.totalOut.toFixed(2)}`, ''],
-        ['Net Cash Flow', '', '', '', `₹${summary.netFlow.toFixed(2)}`, ''],
+        ['Summary', '', '', '', '', '', '', ''],
+        ['Total Cash In', '', '', '', '', '', `₹${summary.totalIn.toFixed(2)}`, ''],
+        ['Total Cash Out', '', '', '', '', '', `₹${summary.totalOut.toFixed(2)}`, ''],
+        ['Net Cash Flow', '', '', '', '', '', `₹${summary.netFlow.toFixed(2)}`, ''],
+        ['', '', '', '', '', '', '', ''],
+        ['Cash Payments', '', '', '', '', '', `₹${summary.cashTotal.toFixed(2)}`, ''],
+        ['UPI Payments', '', '', '', '', '', `₹${summary.upiTotal.toFixed(2)}`, ''],
+        ['Card Payments', '', '', '', '', '', `₹${summary.cardTotal.toFixed(2)}`, ''],
       ].map(row => {
         return row.map(cell => {
           const cellStr = String(cell || '')
@@ -175,12 +211,13 @@ const CashRegister = () => {
           return cellStr
         }).join(',')
       }).join('\n')
-      
+
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      const fileName = `cash-register-${selectedDate}-${new Date().toISOString().split('T')[0]}.csv`
+      const fileLabel = viewMode === 'monthly' ? selectedMonth : selectedDate
+      const fileName = `cash-register-${fileLabel}-${new Date().toISOString().split('T')[0]}.csv`
       a.download = fileName
       document.body.appendChild(a)
       a.click()
@@ -213,15 +250,23 @@ const CashRegister = () => {
           </div>
 
           <div className="date-filter">
-            <label className="date-label">Date:</label>
+            <label className="date-label">{viewMode === 'monthly' ? 'Month:' : 'Date:'}</label>
             <div className="date-input-wrapper">
-              <input
-                type="date"
-                className="date-picker"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-              />
-              <span className="date-display">{formatDate(selectedDate)}</span>
+              {viewMode === 'monthly' ? (
+                <input
+                  type="month"
+                  className="date-picker"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                />
+              ) : (
+                <input
+                  type="date"
+                  className="date-picker"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                />
+              )}
               <span className="calendar-icon"><FaCalendarAlt /></span>
             </div>
           </div>
@@ -273,10 +318,37 @@ const CashRegister = () => {
           </div>
         </div>
 
+        {/* Payment Method Breakdown */}
+        <div className="payment-method-cards">
+          <div className="method-card method-cash">
+            <div className="method-icon"><FaMoneyBillWave /></div>
+            <div className="method-info">
+              <div className="method-label">Cash</div>
+              <div className="method-value">₹{summary.cashTotal.toFixed(2)}</div>
+            </div>
+          </div>
+          <div className="method-card method-upi">
+            <div className="method-icon"><FaMobileAlt /></div>
+            <div className="method-info">
+              <div className="method-label">UPI</div>
+              <div className="method-value">₹{summary.upiTotal.toFixed(2)}</div>
+            </div>
+          </div>
+          <div className="method-card method-card-pay">
+            <div className="method-icon"><FaCreditCard /></div>
+            <div className="method-info">
+              <div className="method-label">Card</div>
+              <div className="method-value">₹{summary.cardTotal.toFixed(2)}</div>
+            </div>
+          </div>
+        </div>
+
         {/* Transactions Section */}
         <div className="transactions-section">
           <h2 className="transactions-title">
-            Transactions for {formatDisplayDate(selectedDate)}
+            {viewMode === 'monthly'
+              ? `Transactions for ${new Date(selectedMonth + '-01').toLocaleString('default', { month: 'long', year: 'numeric' })}`
+              : `Transactions for ${formatDisplayDate(selectedDate)}`}
           </h2>
 
           <div className="table-container">
@@ -286,6 +358,7 @@ const CashRegister = () => {
                   <th>Date</th>
                   <th>Time</th>
                   <th>Type</th>
+                  <th>Method</th>
                   <th>Reason / Notes</th>
                   <th>Amount</th>
                   <th>Actions</th>
@@ -294,11 +367,17 @@ const CashRegister = () => {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="6" className="empty-message">Loading...</td>
+                    <td colSpan="7" className="empty-message">Loading...</td>
+                  </tr>
+                ) : authError ? (
+                  <tr>
+                    <td colSpan="7" className="empty-message" style={{ color: 'var(--error-600)' }}>
+                      Session expired. Please log in again to view transactions.
+                    </td>
                   </tr>
                 ) : transactions.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="empty-message">
+                    <td colSpan="7" className="empty-message">
                       No transactions recorded for this period.
                     </td>
                   </tr>
@@ -312,23 +391,32 @@ const CashRegister = () => {
                           {transaction.transaction_type === 'in' ? 'Cash In' : 'Cash Out'}
                         </span>
                       </td>
+                      <td>
+                        <span className={`method-badge ${transaction.payment_method || 'cash'}`}>
+                          {getMethodLabel(transaction.payment_method)}
+                        </span>
+                      </td>
                       <td>{transaction.reason || 'N/A'}</td>
                       <td className={transaction.transaction_type === 'in' ? 'amount-in' : 'amount-out'}>
                         ₹{transaction.amount.toFixed(2)}
                       </td>
                       <td>
-                        <div className="action-icons">
-                          <button className="icon-btn edit-btn" title="Edit">
-                            <FaEdit />
-                          </button>
-                          <button
-                            className="icon-btn delete-btn"
-                            title="Delete"
-                            onClick={() => handleDelete(transaction.id)}
-                          >
-                            <FaTrash />
-                          </button>
-                        </div>
+                        {(transaction.source || 'manual') === 'bill' ? (
+                          <span className="auto-badge" title="Auto-created from bill checkout">Auto</span>
+                        ) : (
+                          <div className="action-icons">
+                            <button className="icon-btn edit-btn" title="Edit">
+                              <FaEdit />
+                            </button>
+                            <button
+                              className="icon-btn delete-btn"
+                              title="Delete"
+                              onClick={() => handleDelete(transaction.id)}
+                            >
+                              <FaTrash />
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -388,4 +476,3 @@ const CashRegister = () => {
 }
 
 export default CashRegister
-

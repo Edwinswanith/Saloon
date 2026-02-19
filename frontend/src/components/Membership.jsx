@@ -216,7 +216,7 @@ const Membership = () => {
         <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header-wrapper">
-              <h2>{editingPlan ? 'Edit Membership' : 'Add New Membership'}</h2>
+            <h2>{editingPlan ? 'Edit Membership' : 'Add New Membership'}</h2>
               <button
                 type="button"
                 className="modal-close-button"
@@ -228,79 +228,79 @@ const Membership = () => {
             </div>
             <form onSubmit={handleSubmit}>
               <div className="modal-form-fields">
-                <div className="form-group">
-                  <label>Name *</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Validity (Days) *</label>
-                  <input
-                    type="number"
-                    value={formData.validity}
-                    onChange={(e) =>
-                      setFormData({ ...formData, validity: e.target.value })
-                    }
-                    required
-                    min="1"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Price (₹) *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.price}
-                    onChange={(e) =>
-                      setFormData({ ...formData, price: e.target.value })
-                    }
-                    required
-                    min="0"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Allocated Discount (%)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={formData.allocatedDiscount}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        allocatedDiscount: e.target.value,
-                      })
-                    }
-                    min="0"
-                    max="100"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Status</label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) =>
-                      setFormData({ ...formData, status: e.target.value })
-                    }
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Description</label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
-                    }
-                    rows="3"
-                  />
+              <div className="form-group">
+                <label>Name *</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Validity (Days) *</label>
+                <input
+                  type="number"
+                  value={formData.validity}
+                  onChange={(e) =>
+                    setFormData({ ...formData, validity: e.target.value })
+                  }
+                  required
+                  min="1"
+                />
+              </div>
+              <div className="form-group">
+                <label>Price (₹) *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.price}
+                  onChange={(e) =>
+                    setFormData({ ...formData, price: e.target.value })
+                  }
+                  required
+                  min="0"
+                />
+              </div>
+              <div className="form-group">
+                <label>Allocated Discount (%)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={formData.allocatedDiscount}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      allocatedDiscount: e.target.value,
+                    })
+                  }
+                  min="0"
+                  max="100"
+                />
+              </div>
+              <div className="form-group">
+                <label>Status</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) =>
+                    setFormData({ ...formData, status: e.target.value })
+                  }
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Description</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
+                  rows="3"
+                />
                 </div>
               </div>
               <div className="modal-actions">

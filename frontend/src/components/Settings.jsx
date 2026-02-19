@@ -5,12 +5,13 @@ import {
   FaDownload,
   FaUsers,
   FaKey,
+  FaUserTie,
 } from 'react-icons/fa'
 import { useAuth } from '../contexts/AuthContext'
 import './Settings.css'
 
 const Settings = ({ setActivePage }) => {
-  const { user } = useAuth()
+  const { user, hasAnyRole } = useAuth()
   const isOwner = user && user.role === 'owner'
   const settingsOptions = [
     {
@@ -29,7 +30,14 @@ const Settings = ({ setActivePage }) => {
       id: 4,
       title: 'Manager',
       description: 'Manage your Managers',
+      icon: <FaUserTie />,
+    },
+    {
+      id: 6,
+      title: 'Staff',
+      description: 'Manage your Staff members',
       icon: <FaUsers />,
+      requiresRole: ['manager', 'owner']
     },
   ]
 
@@ -51,7 +59,9 @@ const Settings = ({ setActivePage }) => {
 
         {/* Settings Cards Grid */}
         <div className="settings-grid">
-          {settingsOptions.map((option) => (
+          {settingsOptions
+            .filter((option) => !option.requiresRole || hasAnyRole(...option.requiresRole))
+            .map((option) => (
             <div
               key={option.id}
               className="settings-card"
@@ -68,6 +78,9 @@ const Settings = ({ setActivePage }) => {
                 } else if (option.id === 5 && setActivePage) {
                   // Owner Settings card clicked
                   setActivePage('owner-settings')
+                } else if (option.id === 6 && setActivePage) {
+                  // Staff card clicked
+                  setActivePage('staffs')
                 }
                 // Add other navigation handlers here for other options
               }}

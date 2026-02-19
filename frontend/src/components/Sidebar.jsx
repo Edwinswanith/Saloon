@@ -7,7 +7,6 @@ import {
   FaUsers,
   FaBox,
   FaClipboardList,
-  FaUser,
   FaCheckCircle,
   FaBriefcase,
   FaDollarSign,
@@ -143,20 +142,14 @@ const Sidebar = ({
               requiresRole: ['owner']
             },
             {
-              id: 'settings', 
+              id: 'settings',
               label: 'Settings',
               requiresRole: ['manager', 'owner']
             },
           ],
           expanded: expandedItems['salon-settings'],
         },
-        { 
-          id: 'staffs', 
-          label: 'Staffs', 
-          icon: <FaUser />,
-          requiresRole: ['manager', 'owner']
-        },
-        { 
+        {
           id: 'staff-attendance', 
           label: 'Staff Attendance', 
           icon: <FaCheckCircle />,
