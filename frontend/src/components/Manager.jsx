@@ -6,8 +6,10 @@ import {
 } from 'react-icons/fa'
 import './Manager.css'
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
+import { useAuth } from '../contexts/AuthContext'
 
 const Manager = () => {
+  const { user, branches, fetchBranches } = useAuth()
   const [managers, setManagers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -20,11 +22,16 @@ const Manager = () => {
     salon: '',
     status: 'active',
     password: '',
+    branch: '',
   })
 
   useEffect(() => {
     fetchManagers()
-  }, [])
+    // Fetch branches if user is owner or manager
+    if (user && (user.role === 'owner' || user.role === 'manager')) {
+      fetchBranches()
+    }
+  }, [user])
 
   const fetchManagers = async () => {
     try {
@@ -49,6 +56,7 @@ const Manager = () => {
       salon: '',
       status: 'active',
       password: '',
+      branch: '',
     })
     setShowAddModal(true)
   }
@@ -63,6 +71,7 @@ const Manager = () => {
       salon: manager.salon || '',
       status: manager.status,
       password: '',
+      branch: manager.branchId || '',
     })
     setShowAddModal(true)
   }
@@ -119,6 +128,11 @@ const Manager = () => {
 
       if (!editingManager) {
         payload.password = formData.password.trim()
+      }
+
+      // Add branch_id if owner or manager selected a branch
+      if (user && (user.role === 'owner' || user.role === 'manager') && formData.branch) {
+        payload.branch_id = formData.branch
       }
 
       const response = editingManager
@@ -295,6 +309,25 @@ const Manager = () => {
                   <option value="inactive">Inactive</option>
                 </select>
               </div>
+              {user && (user.role === 'owner' || user.role === 'manager') && (
+                <div className="form-group">
+                  <label>Branch *</label>
+                  <select
+                    value={formData.branch}
+                    onChange={(e) =>
+                      setFormData({ ...formData, branch: e.target.value })
+                    }
+                    required
+                  >
+                    <option value="">Select Branch</option>
+                    {branches.map((branch) => (
+                      <option key={branch.id} value={branch.id}>
+                        {branch.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               {!editingManager && (
                 <div className="form-group">
                   <label>Password *</label>

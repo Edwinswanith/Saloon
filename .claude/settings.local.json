@@ -31,7 +31,8 @@
       "mcp__chrome-devtools__emulate",
       "Bash(grep:*)",
       "Bash(npm install:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "mcp__chrome-devtools__type_text"
     ]
   }
 }

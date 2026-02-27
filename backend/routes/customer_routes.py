@@ -141,6 +141,15 @@ def get_customer(customer_id, current_user=None):
             total_revenue = 0.0
             last_visit = None
         
+        # Get last service from most recent bill
+        last_service = None
+        latest_bill = Bill.objects(**match_stage).order_by('-bill_date').first()
+        if latest_bill:
+            for item in latest_bill.items or []:
+                if item.item_type in ('service', 'package') and item.name:
+                    last_service = item.name
+                    break
+        
         # Get active membership info
         active_membership = Membership.objects(
             customer=customer,
@@ -180,6 +189,7 @@ def get_customer(customer_id, current_user=None):
             'last_visit': last_visit.isoformat() if last_visit else None,
             'total_visits': total_visits,
             'total_revenue': total_revenue,
+            'last_service': last_service,
             'notes': getattr(customer, 'notes', 'N/A')
         })
         response.headers.add('Access-Control-Allow-Origin', '*')

@@ -16,7 +16,7 @@ const DiscountApprovals = () => {
 
   // All hooks must be called before any conditional return
   useEffect(() => {
-    if (user && user.role === 'owner') {
+    if (user && (user.role === 'owner' || user.role === 'manager')) {
       fetchApprovals();
     }
   }, [currentBranch]);
@@ -88,8 +88,8 @@ const DiscountApprovals = () => {
     }
   };
 
-  // Restrict access to owners only — after all hooks
-  if (!user || user.role !== 'owner') {
+  // Restrict access to managers and owners only — after all hooks
+  if (!user || (user.role !== 'owner' && user.role !== 'manager')) {
     return (
       <div style={{
         padding: '40px',
@@ -102,7 +102,7 @@ const DiscountApprovals = () => {
       }}>
         <h2 style={{ color: '#dc2626', marginBottom: '16px' }}>Access Denied</h2>
         <p style={{ color: '#6b7280', fontSize: '16px' }}>
-          Only owners can access discount approvals.
+          Only managers and owners can access discount approvals.
         </p>
       </div>
     );

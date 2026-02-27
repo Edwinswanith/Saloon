@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from models import Manager
+from models import Manager, Branch
 from datetime import datetime
 from bson import ObjectId
 from utils.branch_filter import get_selected_branch
@@ -57,6 +57,7 @@ def get_managers(current_user=None):
         managers_list = []
         for m in managers:
             try:
+                branch = getattr(m, 'branch', None)
                 managers_list.append({
                     'id': str(m.id),
                     'name': f"{getattr(m, 'first_name', '')} {getattr(m, 'last_name', '') or ''}".strip(),
@@ -66,7 +67,9 @@ def get_managers(current_user=None):
                     'mobile': getattr(m, 'mobile', ''),
                     'salon': getattr(m, 'salon', '') or '',
                     'status': getattr(m, 'status', 'active'),
-                    'role': getattr(m, 'role', 'manager')
+                    'role': getattr(m, 'role', 'manager'),
+                    'branchId': str(branch.id) if branch else None,
+                    'branchName': branch.name if branch else None
                 })
             except Exception as e:
                 print(f"Warning: Failed to serialize manager {getattr(m, 'id', 'unknown')}: {e}")
@@ -103,6 +106,7 @@ def get_manager(manager_id, current_user=None):
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 404
         
+        branch = getattr(manager, 'branch', None)
         response = jsonify({
             'id': str(manager.id),
             'firstName': manager.first_name,
@@ -111,7 +115,9 @@ def get_manager(manager_id, current_user=None):
             'mobile': manager.mobile,
             'salon': manager.salon or '',
             'status': manager.status,
-            'role': manager.role
+            'role': manager.role,
+            'branchId': str(branch.id) if branch else None,
+            'branchName': branch.name if branch else None
         })
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
@@ -153,8 +159,24 @@ def create_manager(current_user=None):
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 400
         
-        # Get branch for assignment
-        branch = get_selected_branch(request, current_user)
+        # Get branch for assignment - check for explicit branch_id first
+        branch = None
+        branch_id = data.get('branch_id')
+        if branch_id:
+            try:
+                if not ObjectId.is_valid(branch_id):
+                    response = jsonify({'error': 'Invalid branch ID format'})
+                    response.headers.add('Access-Control-Allow-Origin', '*')
+                    return response, 400
+                branch = Branch.objects.get(id=branch_id)
+            except DoesNotExist:
+                response = jsonify({'error': 'Branch not found'})
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response, 404
+        else:
+            # Fall back to header-based branch selection
+            branch = get_selected_branch(request, current_user)
+        
         if not branch:
             response = jsonify({'error': 'Branch is required'})
             response.headers.add('Access-Control-Allow-Origin', '*')
@@ -238,6 +260,21 @@ def update_manager(manager_id, current_user=None):
         if 'password' in data and data['password']:
             from utils.auth import hash_password
             manager.password_hash = hash_password(data['password'])
+        
+        # Update branch if branch_id is provided
+        branch_id = data.get('branch_id')
+        if branch_id:
+            try:
+                if not ObjectId.is_valid(branch_id):
+                    response = jsonify({'error': 'Invalid branch ID format'})
+                    response.headers.add('Access-Control-Allow-Origin', '*')
+                    return response, 400
+                branch = Branch.objects.get(id=branch_id)
+                manager.branch = branch
+            except DoesNotExist:
+                response = jsonify({'error': 'Branch not found'})
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response, 404
         
         manager.updated_at = datetime.utcnow()
         manager.save()

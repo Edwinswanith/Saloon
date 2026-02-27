@@ -1207,6 +1207,9 @@ def checkout_bill(id, current_user=None):
         # Store referral discount if provided by frontend
         referral_discount = float(data.get('referral_discount', 0) or 0)
 
+        # Get card bank if payment mode is card
+        card_bank = data.get('card_bank') if data.get('payment_mode') == 'card' else None
+
         # Update bill
         bill.subtotal = subtotal
         bill.discount_amount = discount_amount
@@ -1216,6 +1219,7 @@ def checkout_bill(id, current_user=None):
         bill.tax_rate = tax_rate
         bill.final_amount = final_amount
         bill.payment_mode = data['payment_mode']
+        bill.card_bank = card_bank
         # Always set to 'service-completed' when checkout happens to mark as paid
         bill.booking_status = 'service-completed'
         # Only reset approval status if owner is checking out without prior approval flow
@@ -1312,6 +1316,7 @@ def checkout_bill(id, current_user=None):
                     branch=bill.branch,
                     amount=final_amount,
                     payment_method=payment_mode,
+                    card_bank=card_bank,
                     source='bill',
                     bill_ref=bill,
                     reason=f'Bill #{bill.bill_number}',

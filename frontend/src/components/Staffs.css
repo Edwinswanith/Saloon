@@ -403,10 +403,11 @@
   padding: 0;
   max-width: 500px;
   width: 90%;
+  max-height: 85vh;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
-  overflow: visible;
+  overflow-y: auto;
 }
 
 .modal-content h2 {
@@ -418,6 +419,36 @@
   background: var(--primary-700);
   border-radius: 12px 12px 0 0;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.modal-content > .form-group:first-of-type {
+  padding-top: 16px;
+}
+
+.modal-content .modal-actions {
+  flex-shrink: 0;
+  margin-top: auto;
+  padding-top: 16px;
+}
+
+.modal-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 
 .modal-content > .form-group {

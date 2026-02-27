@@ -394,6 +394,11 @@ const CashRegister = () => {
                       <td>
                         <span className={`method-badge ${transaction.payment_method || 'cash'}`}>
                           {getMethodLabel(transaction.payment_method)}
+                          {transaction.payment_method === 'card' && transaction.card_bank && (
+                            <span className="bank-badge" style={{ marginLeft: '6px', fontSize: '12px', opacity: 0.8 }}>
+                              ({transaction.card_bank})
+                            </span>
+                          )}
                         </span>
                       </td>
                       <td>{transaction.reason || 'N/A'}</td>

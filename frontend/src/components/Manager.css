@@ -220,10 +220,40 @@
   padding: 0;
   max-width: 500px;
   width: 90%;
+  max-height: 85vh;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
-  overflow: visible;
+  overflow: hidden;
+}
+
+.modal-content h2 {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.modal-content .modal-actions {
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
+/* Scrollbar styling */
+.modal-form-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-form-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.modal-form-container::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+.modal-form-container::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 
 .modal-content h2 {
@@ -239,6 +269,8 @@
 
 .modal-form-container {
   padding: 0;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .modal-form-container .form-group {

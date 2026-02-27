@@ -18,6 +18,7 @@ import {
   FaStar,
   FaExchangeAlt,
   FaTimes,
+  FaBullhorn,
 } from 'react-icons/fa'
 import { useAuth } from '../contexts/AuthContext'
 import './Sidebar.css'
@@ -104,13 +105,19 @@ const Sidebar = ({
           id: 'discount-approvals', 
           label: 'Discount Approvals', 
           icon: <FaDollarSign />,
-          requiresRole: ['owner']
+          requiresRole: ['manager', 'owner']
         },
         { 
           id: 'approval-codes', 
           label: 'Approval Codes', 
           icon: <FaKey />,
-          requiresRole: ['owner']
+          requiresRole: ['manager', 'owner']
+        },
+        { 
+          id: 'offer-campaigns', 
+          label: 'Offer Campaigns', 
+          icon: <FaBullhorn />,
+          requiresRole: ['manager', 'owner']
         }
       ],
     },

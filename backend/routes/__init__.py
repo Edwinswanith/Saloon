@@ -30,6 +30,7 @@ from .branch_routes import branch_bp
 from .temp_assignment_routes import temp_assignment_bp
 from .leave_routes import leave_bp
 from .customer_merge_routes import customer_merge_bp
+from .campaign_routes import campaign_bp
 
 def register_routes(app):
     # Register blueprints with /api prefix
@@ -64,4 +65,5 @@ def register_routes(app):
     app.register_blueprint(temp_assignment_bp, url_prefix='/api/temp-assignments')
     app.register_blueprint(leave_bp, url_prefix='/api/leaves')
     app.register_blueprint(customer_merge_bp, url_prefix='/api/customers/merge')
+    app.register_blueprint(campaign_bp, url_prefix='/api/campaigns')
 

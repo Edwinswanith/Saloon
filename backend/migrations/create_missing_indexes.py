@@ -146,6 +146,103 @@ def create_missing_indexes():
             print(f"  ! Error: {e}")
 
     # ===========================================
+    # CASH_TRANSACTIONS COLLECTION - Compound Indexes
+    # ===========================================
+    print("\n[4] CashTransactions Collection:")
+
+    # Compound index for summary/balance queries (branch + type + date)
+    try:
+        db.cash_transactions.create_index(
+            [("branch", ASCENDING), ("transaction_type", ASCENDING), ("transaction_date", DESCENDING)],
+            name="idx_cash_branch_type_date",
+            background=True
+        )
+        created.append("cash_transactions: idx_cash_branch_type_date")
+        print("  + Created: branch + transaction_type + transaction_date")
+    except Exception as e:
+        if "already exists" in str(e) or "duplicate" in str(e).lower():
+            skipped.append("cash_transactions: idx_cash_branch_type_date")
+            print("  ~ Skipped: branch + transaction_type + transaction_date (exists)")
+        else:
+            print(f"  ! Error: {e}")
+
+    # Compound index for payment method filter queries
+    try:
+        db.cash_transactions.create_index(
+            [("branch", ASCENDING), ("payment_method", ASCENDING), ("transaction_date", DESCENDING)],
+            name="idx_cash_branch_method_date",
+            background=True
+        )
+        created.append("cash_transactions: idx_cash_branch_method_date")
+        print("  + Created: branch + payment_method + transaction_date")
+    except Exception as e:
+        if "already exists" in str(e) or "duplicate" in str(e).lower():
+            skipped.append("cash_transactions: idx_cash_branch_method_date")
+            print("  ~ Skipped: branch + payment_method + transaction_date (exists)")
+        else:
+            print(f"  ! Error: {e}")
+
+    # ===========================================
+    # MANAGERS COLLECTION
+    # ===========================================
+    print("\n[5] Managers Collection:")
+
+    try:
+        db.managers.create_index(
+            [("branch", ASCENDING), ("status", ASCENDING)],
+            name="idx_managers_branch_status",
+            background=True
+        )
+        created.append("managers: idx_managers_branch_status")
+        print("  + Created: branch + status")
+    except Exception as e:
+        if "already exists" in str(e) or "duplicate" in str(e).lower():
+            skipped.append("managers: idx_managers_branch_status")
+            print("  ~ Skipped: branch + status (exists)")
+        else:
+            print(f"  ! Error: {e}")
+
+    # ===========================================
+    # CUSTOMERS COLLECTION - Merged + Branch Index
+    # ===========================================
+    print("\n[6] Customers Collection - Merged Filter:")
+
+    try:
+        db.customers.create_index(
+            [("merged_into", ASCENDING), ("branch", ASCENDING), ("created_at", DESCENDING)],
+            name="idx_customers_merged_branch_created",
+            background=True
+        )
+        created.append("customers: idx_customers_merged_branch_created")
+        print("  + Created: merged_into + branch + created_at")
+    except Exception as e:
+        if "already exists" in str(e) or "duplicate" in str(e).lower():
+            skipped.append("customers: idx_customers_merged_branch_created")
+            print("  ~ Skipped: merged_into + branch + created_at (exists)")
+        else:
+            print(f"  ! Error: {e}")
+
+    # ===========================================
+    # TAX_SLABS COLLECTION
+    # ===========================================
+    print("\n[7] TaxSlabs Collection:")
+
+    try:
+        db.tax_slabs.create_index(
+            [("status", ASCENDING)],
+            name="idx_tax_slabs_status",
+            background=True
+        )
+        created.append("tax_slabs: idx_tax_slabs_status")
+        print("  + Created: status")
+    except Exception as e:
+        if "already exists" in str(e) or "duplicate" in str(e).lower():
+            skipped.append("tax_slabs: idx_tax_slabs_status")
+            print("  ~ Skipped: status (exists)")
+        else:
+            print(f"  ! Error: {e}")
+
+    # ===========================================
     # SUMMARY
     # ===========================================
     print("\n" + "=" * 60)

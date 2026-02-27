@@ -254,6 +254,7 @@ class Bill(Document):
     tax_rate = FloatField(default=0.0)
     final_amount = FloatField(required=True)
     payment_mode = StringField(max_length=20)  # cash, upi, card
+    card_bank = StringField(max_length=50)  # Bank name for card payments
     booking_status = StringField(max_length=20, default='service-completed')  # service-completed, confirmed, pending, cancelled
     booking_note = StringField()
     is_deleted = BooleanField(default=False)
@@ -415,6 +416,7 @@ class Feedback(Document):
     branch = ReferenceField('Branch')  # Multi-branch: Feedback's branch
     rating = IntField()  # 1-5
     comment = StringField()
+    source = StringField(max_length=20)  # e.g. 'public', 'staff', etc.
     google_review_eligible = BooleanField(default=False)  # Phase 3: Rating >= 4
     google_review_link_clicked = BooleanField(default=False)  # Phase 3
     google_review_link_clicked_at = DateTimeField()  # Phase 3
@@ -466,6 +468,7 @@ class CashTransaction(Document):
     branch = ReferenceField('Branch')  # Multi-branch: Transaction's branch
     amount = FloatField(required=True)
     payment_method = StringField(max_length=20, default='cash')  # cash, upi, card
+    card_bank = StringField(max_length=50)  # Bank name for card payments
     source = StringField(max_length=20, default='manual')  # manual, bill
     bill_ref = ReferenceField('Bill')  # Link to bill (null for manual entries)
     reason = StringField(max_length=200)
@@ -526,6 +529,7 @@ class TaxSettings(Document):
     gst_number = StringField(max_length=50)
     service_pricing_type = StringField(max_length=20, default='inclusive')  # inclusive, exclusive
     product_pricing_type = StringField(max_length=20, default='exclusive')  # inclusive, exclusive
+    prepaid_pricing_type = StringField(max_length=20, default='inclusive')  # inclusive, exclusive
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
     
@@ -685,6 +689,23 @@ class DiscountApprovalRequest(Document):
     notes = StringField(max_length=500)
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
+
+# Offer Campaign Model
+class OfferCampaign(Document):
+    meta = {'collection': 'offer_campaigns'}
+    
+    name = StringField(max_length=100)
+    message_text = StringField(required=True)
+    image_data = StringField()  # base64 encoded image
+    image_mime_type = StringField()  # e.g. 'image/jpeg'
+    filter_type = StringField()  # 'all', 'top10_revenue', 'top10_visits', 'gender_female', 'gender_male', 'inactive'
+    campaign_type = StringField(max_length=20, choices=['general', 'birthday'], default='general')
+    branch = ReferenceField('Branch')
+    sent_count = IntField(default=0)
+    failed_count = IntField(default=0)
+    status = StringField(default='pending')  # pending, completed, failed
+    created_by_name = StringField()
+    created_at = DateTimeField(default=datetime.utcnow)
 
 # Approval Code Model (Phase 5)
 class ApprovalCode(Document):

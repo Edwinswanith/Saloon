@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, render_template
 from models import Feedback, Customer, Bill, ServiceRecoveryCase
 from datetime import datetime
 from mongoengine.errors import DoesNotExist, ValidationError
@@ -469,6 +469,134 @@ def get_recent_feedback(current_user=None):
         } for f in feedbacks])
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
+    except Exception as e:
+        response = jsonify({'error': str(e)})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
+
+
+# ========== Public Feedback Endpoints (no auth required) ==========
+# These are standalone functions registered directly on the Flask app in app.py
+
+def public_feedback_page():
+    """Serve the public feedback form page - no auth required"""
+    return render_template('feedback/feedback.html',
+        account_name='Priyanka Nature Cure',
+        google_review_url=''
+    )
+
+
+def public_feedback_lookup():
+    """Look up a customer by mobile number - no auth required"""
+    try:
+        data = request.get_json()
+        mobile = (data.get('mobile') or '').strip()
+
+        if not mobile:
+            return jsonify({'error': 'Mobile number is required'}), 400
+
+        # Clean mobile - remove non-digits, strip leading 91 if 12 digits
+        clean_mobile = ''.join(c for c in mobile if c.isdigit())
+        if len(clean_mobile) == 12 and clean_mobile.startswith('91'):
+            clean_mobile = clean_mobile[2:]
+
+        # Look up customer by mobile
+        customer = Customer.objects(mobile=clean_mobile).first()
+        if not customer:
+            # Also try with original input in case stored format differs
+            customer = Customer.objects(mobile=mobile).first()
+
+        if not customer:
+            response = jsonify({'found': False})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response
+
+        # Build customer name
+        name = f"{customer.first_name or ''} {customer.last_name or ''}".strip() or 'Customer'
+
+        response = jsonify({
+            'found': True,
+            'customer_id': str(customer.id),
+            'name': name
+        })
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
+
+    except Exception as e:
+        response = jsonify({'error': str(e)})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
+
+
+def public_feedback_submit():
+    """Submit feedback from the public page - no auth required"""
+    try:
+        data = request.get_json()
+
+        # Validate customer_id
+        customer_id = data.get('customer_id')
+        if not customer_id or not ObjectId.is_valid(customer_id):
+            return jsonify({'error': 'Valid customer ID is required'}), 400
+
+        try:
+            customer = Customer.objects.get(id=customer_id)
+        except DoesNotExist:
+            return jsonify({'error': 'Customer not found'}), 404
+
+        # Validate rating
+        rating = data.get('rating')
+        if not rating or not isinstance(rating, int) or rating < 1 or rating > 5:
+            response = jsonify({'error': 'Rating must be between 1 and 5'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
+
+        comment = (data.get('comment') or '').strip()
+
+        # Get branch from customer
+        branch = customer.branch if hasattr(customer, 'branch') and customer.branch else None
+
+        # Phase 3: Google Review Gating Logic
+        google_review_eligible = rating >= 4
+        service_recovery_required = rating <= 3
+
+        feedback = Feedback(
+            customer=customer,
+            branch=branch,
+            rating=rating,
+            comment=comment if comment else None,
+            source='public',
+            google_review_eligible=google_review_eligible,
+            service_recovery_required=service_recovery_required
+        )
+        feedback.save()
+
+        # Phase 3: Create Service Recovery Case if rating <= 3
+        if service_recovery_required:
+            try:
+                ServiceRecoveryCase(
+                    feedback=feedback,
+                    customer=customer,
+                    branch=branch,
+                    issue_type='service_quality',
+                    description=f"Low rating ({rating}/5) from public feedback: {comment or 'No comment provided'}",
+                    status='open'
+                ).save()
+            except Exception:
+                pass  # Don't fail the feedback submission if recovery case creation fails
+
+        response = jsonify({
+            'success': True,
+            'feedback_id': str(feedback.id),
+            'google_review_eligible': google_review_eligible,
+            'service_recovery_required': service_recovery_required
+        })
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 201
+
+    except ValidationError as e:
+        response = jsonify({'error': f'Validation error: {str(e)}'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 400
     except Exception as e:
         response = jsonify({'error': str(e)})
         response.headers.add('Access-Control-Allow-Origin', '*')

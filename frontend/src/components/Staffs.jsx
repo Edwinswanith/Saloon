@@ -10,7 +10,7 @@ import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
 import { useAuth } from '../contexts/AuthContext'
 
 const Staffs = () => {
-  const { getBranchId, currentBranch } = useAuth()
+  const { getBranchId, currentBranch, user, branches, fetchBranches } = useAuth()
   const [currentPage, setCurrentPage] = useState(1)
   const [staffs, setStaffs] = useState([])
   const [loading, setLoading] = useState(true)
@@ -25,12 +25,17 @@ const Staffs = () => {
     email: '',
     salary: '',
     commissionRate: '',
-    password: ''
+    password: '',
+    branch: ''
   })
 
   useEffect(() => {
     fetchStaffs()
-  }, [currentBranch])
+    // Fetch branches if user is owner or manager
+    if (user && (user.role === 'owner' || user.role === 'manager')) {
+      fetchBranches()
+    }
+  }, [currentBranch, user])
 
   // Listen for branch changes
   useEffect(() => {
@@ -69,7 +74,8 @@ const Staffs = () => {
       email: '',
       salary: '',
       commissionRate: '',
-      password: ''
+      password: '',
+      branch: ''
     })
     setShowStaffModal(true)
   }
@@ -83,7 +89,8 @@ const Staffs = () => {
       email: staff.email || '',
       salary: staff.salary || '',
       commissionRate: staff.commissionRate || '',
-      password: ''
+      password: '',
+      branch: staff.branchId || ''
     })
     setShowStaffModal(true)
   }
@@ -137,6 +144,11 @@ const Staffs = () => {
         staffData.password = staffFormData.password.trim()
       }
 
+      // Add branch_id if owner or manager selected a branch
+      if (user && (user.role === 'owner' || user.role === 'manager') && staffFormData.branch) {
+        staffData.branch_id = staffFormData.branch
+      }
+
       const response = editingStaff
         ? await apiPut(`/api/staffs/${editingStaff.id}`, staffData)
         : await apiPost('/api/staffs', staffData)
@@ -153,7 +165,8 @@ const Staffs = () => {
           email: '',
           salary: '',
           commissionRate: '',
-          password: ''
+          password: '',
+          branch: ''
         })
         showSuccess(data.message || (editingStaff ? 'Staff updated successfully!' : 'Staff added successfully!'))
       } else {
@@ -325,6 +338,23 @@ const Staffs = () => {
                 placeholder="Enter commission rate"
               />
             </div>
+            {user && (user.role === 'owner' || user.role === 'manager') && (
+              <div className="form-group">
+                <label>Branch *</label>
+                <select
+                  value={staffFormData.branch}
+                  onChange={(e) => setStaffFormData({ ...staffFormData, branch: e.target.value })}
+                  required
+                >
+                  <option value="">Select Branch</option>
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             {!editingStaff && (
               <div className="form-group">
                 <label>Password *</label>

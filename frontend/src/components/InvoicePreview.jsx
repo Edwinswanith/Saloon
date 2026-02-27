@@ -209,14 +209,48 @@ const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
   }
 
   const handleSendWhatsApp = async () => {
-    if (!customer?.mobile) return
+    if (!invoiceData?.customer?.mobile) return
 
-    let phoneNumber = customer.mobile.replace(/[^0-9]/g, '')
+    let phoneNumber = invoiceData.customer.mobile.replace(/[^0-9]/g, '')
     if (phoneNumber.startsWith('91') && phoneNumber.length > 10) {
       phoneNumber = phoneNumber
     } else if (phoneNumber.length === 10) {
       phoneNumber = '91' + phoneNumber
     }
+
+    // Extract customer name
+    const customer = invoiceData.customer
+    const customerName = customer?.name || 
+      (customer?.first_name ? 
+        `${customer.first_name}${customer.last_name ? ' ' + customer.last_name : ''}`.trim() : 
+        'Customer')
+
+    // Get branch phone number dynamically
+    let signoffPhone = '+91 xyx' // Default fallback
+    if (invoiceData?.branch?.name) {
+      const branchName = invoiceData.branch.name.trim()
+      const branchKey = Object.keys(BRANCH_INFO).find(
+        key => key.toLowerCase() === branchName.toLowerCase()
+      )
+      if (branchKey && BRANCH_INFO[branchKey]?.phone) {
+        // Get first phone number if multiple are listed (comma-separated)
+        const branchPhone = BRANCH_INFO[branchKey].phone.split(',')[0].trim()
+        // Format phone number - add +91 if it's a 10-digit number
+        if (branchPhone.match(/^\d{10}$/)) {
+          signoffPhone = `+91 ${branchPhone}`
+        } else if (branchPhone.match(/^\+91/)) {
+          signoffPhone = branchPhone
+        } else {
+          signoffPhone = branchPhone
+        }
+      }
+    }
+
+    // Communication settings (hardcoded defaults)
+    const businessName = 'Priyanka Nature Cure'
+    const supportPhone = '8095851126'
+    const feedbackLink = `${PUBLIC_BASE_URL}/feedback`
+    const signoffName = 'Priyanka Nature Cure'
 
     // Generate shareable invoice link (single URL for viewing and downloading)
     let invoiceLink = ''
@@ -232,15 +266,21 @@ const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
       }
     }
 
-    let message = `*Invoice from ${branch?.name || 'Priyanka Nature Cure'}*\n\n`
-    message += `Bill: ${invoice_number || 'N/A'}\n`
-    message += `Total: ${formatCurrencyNoDecimals(summary?.total || 0)}\n\n`
-
+    // Build message in exact format as requested
+    let message = `Dear ${customerName},\n\n`
+    message += `Thank you for visiting *${businessName}*!\n\n`
+    message += `View your *invoice* here:\n\n`
+    
     if (invoiceLink) {
-      message += `Download your invoice:\n${invoiceLink}\n\n`
+      message += `${invoiceLink}\n\n`
     }
-
-    message += `Thank you for your visit!`
+    
+    message += `Need help or want to book your next visit? Call or WhatsApp us at *${supportPhone}*\n\n`
+    message += `We'd love to hear from you! Share your *feedback* here:\n\n`
+    message += `${feedbackLink}\n\n`
+    message += `Thanks\n`
+    message += `${signoffName}\n`
+    message += `${signoffPhone}`
 
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, '_blank')

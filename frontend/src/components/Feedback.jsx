@@ -99,8 +99,8 @@ const Feedback = () => {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       const data = await response.json()
-      // Backend returns array directly
-      setFeedbacks(Array.isArray(data) ? data : (data.feedbacks || []))
+      // Backend returns { data: [...], pagination: {...} }
+      setFeedbacks(Array.isArray(data) ? data : (data.data || data.feedbacks || []))
     } catch (error) {
       console.error('Error fetching feedbacks:', error)
       setFeedbacks([])

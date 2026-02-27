@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Share Your Feedback - {{ account_name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/feedback.css') }}">
+</head>
+<body>
+  <div class="feedback-container">
+    <!-- Header -->
+    <div class="feedback-header">
+      <div class="header-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#6c5ce7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+      </div>
+      <h1>{{ account_name }}</h1>
+      <p class="subtitle">We value your feedback</p>
+    </div>
+
+    <!-- Step 1: Mobile Number Input -->
+    <div id="step-identify" class="step">
+      <p class="step-label">Enter your mobile number to get started</p>
+      <div class="input-group">
+        <span class="input-prefix">+91</span>
+        <input type="tel" id="mobile-input" placeholder="Enter mobile number" maxlength="10" inputmode="numeric" pattern="[0-9]*" autocomplete="tel">
+      </div>
+      <p id="lookup-error" class="error-text" style="display:none;"></p>
+      <button id="continue-btn" class="btn-primary" onclick="lookupCustomer()">Continue</button>
+    </div>
+
+    <!-- Step 2: Rating Form -->
+    <div id="step-rate" class="step" style="display:none;">
+      <p class="greeting" id="greeting-text"></p>
+      <p class="prompt">How was your experience?</p>
+
+      <div class="star-rating" id="star-rating">
+        <button class="star" data-value="1" onclick="selectStar(1)" onmouseenter="hoverStar(1)" onmouseleave="resetHover()">
+          <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </button>
+        <button class="star" data-value="2" onclick="selectStar(2)" onmouseenter="hoverStar(2)" onmouseleave="resetHover()">
+          <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </button>
+        <button class="star" data-value="3" onclick="selectStar(3)" onmouseenter="hoverStar(3)" onmouseleave="resetHover()">
+          <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </button>
+        <button class="star" data-value="4" onclick="selectStar(4)" onmouseenter="hoverStar(4)" onmouseleave="resetHover()">
+          <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </button>
+        <button class="star" data-value="5" onclick="selectStar(5)" onmouseenter="hoverStar(5)" onmouseleave="resetHover()">
+          <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </button>
+      </div>
+      <p class="rating-label" id="rating-label">Tap a star to rate</p>
+
+      <textarea id="comment-input" placeholder="Tell us more about your experience (optional)" maxlength="500" rows="3"></textarea>
+
+      <button id="submit-btn" class="btn-primary" onclick="submitFeedback()" disabled>Submit Feedback</button>
+    </div>
+
+    <!-- Post-submit: Google Review Prompt -->
+    <div id="step-google-review" class="step" style="display:none;">
+      <div class="result-icon">&#11088;</div>
+      <h2>Thank You!</h2>
+      <p>We're thrilled you had a great experience!</p>
+      <p>Would you mind sharing a review on Google? It really helps us.</p>
+      {% if google_review_url %}
+      <a href="{{ google_review_url }}" target="_blank" rel="noopener" class="btn-google" id="google-review-link" onclick="markReviewClicked()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Review on Google
+      </a>
+      {% endif %}
+      <button class="btn-secondary" onclick="showThankYou()">Maybe Later</button>
+    </div>
+
+    <!-- Post-submit: Service Recovery -->
+    <div id="step-recovery" class="step" style="display:none;">
+      <div class="result-icon">&#128172;</div>
+      <h2>We Hear You</h2>
+      <p>We're sorry your experience wasn't great. Our team will reach out to you shortly to make things right.</p>
+      <p class="muted">Thank you for helping us improve!</p>
+    </div>
+
+    <!-- Post-submit: Simple Thank You -->
+    <div id="step-thankyou" class="step" style="display:none;">
+      <div class="result-icon">&#10004;&#65039;</div>
+      <h2>Thank You!</h2>
+      <p>Your feedback helps us serve you better.</p>
+    </div>
+  </div>
+
+  <script>
+    let selectedRating = 0;
+    let customerId = null;
+    let feedbackId = null;
+
+    const ratingLabels = {
+      1: 'Poor',
+      2: 'Fair',
+      3: 'Good',
+      4: 'Very Good',
+      5: 'Excellent'
+    };
+
+    // Mobile input: digits only
+    document.getElementById('mobile-input').addEventListener('input', function(e) {
+      this.value = this.value.replace(/[^0-9]/g, '');
+    });
+
+    // Enter key on mobile input
+    document.getElementById('mobile-input').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') lookupCustomer();
+    });
+
+    function showStep(stepId) {
+      document.querySelectorAll('.step').forEach(s => s.style.display = 'none');
+      document.getElementById(stepId).style.display = 'block';
+    }
+
+    async function lookupCustomer() {
+      const mobile = document.getElementById('mobile-input').value.trim();
+      const errorEl = document.getElementById('lookup-error');
+      const btn = document.getElementById('continue-btn');
+
+      if (!mobile || mobile.length < 10) {
+        errorEl.textContent = 'Please enter a valid 10-digit mobile number';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      errorEl.style.display = 'none';
+      btn.disabled = true;
+      btn.textContent = 'Looking up...';
+
+      try {
+        const res = await fetch('/feedback/lookup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mobile: mobile })
+        });
+        const data = await res.json();
+
+        if (data.found) {
+          customerId = data.customer_id;
+          document.getElementById('greeting-text').textContent = 'Hi ' + data.name + '!';
+          showStep('step-rate');
+        } else {
+          errorEl.textContent = 'We couldn\'t find your record. Please check your mobile number.';
+          errorEl.style.display = 'block';
+        }
+      } catch (e) {
+        errorEl.textContent = 'Something went wrong. Please try again.';
+        errorEl.style.display = 'block';
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Continue';
+    }
+
+    function updateStars(rating, className) {
+      document.querySelectorAll('.star').forEach((star, i) => {
+        if (i < rating) {
+          star.classList.add(className);
+        } else {
+          star.classList.remove(className);
+        }
+      });
+    }
+
+    function selectStar(rating) {
+      selectedRating = rating;
+      updateStars(rating, 'selected');
+      document.getElementById('rating-label').textContent = ratingLabels[rating];
+      document.getElementById('submit-btn').disabled = false;
+    }
+
+    function hoverStar(rating) {
+      updateStars(rating, 'hovered');
+    }
+
+    function resetHover() {
+      document.querySelectorAll('.star').forEach(s => s.classList.remove('hovered'));
+    }
+
+    async function submitFeedback() {
+      const comment = document.getElementById('comment-input').value.trim();
+      const btn = document.getElementById('submit-btn');
+
+      btn.disabled = true;
+      btn.textContent = 'Submitting...';
+
+      try {
+        const res = await fetch('/feedback/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customer_id: customerId,
+            rating: selectedRating,
+            comment: comment || null
+          })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          feedbackId = data.feedback_id;
+
+          if (data.google_review_eligible) {
+            showStep('step-google-review');
+          } else if (data.service_recovery_required) {
+            showStep('step-recovery');
+          } else {
+            showStep('step-thankyou');
+          }
+        } else {
+          alert(data.error || 'Something went wrong. Please try again.');
+          btn.disabled = false;
+          btn.textContent = 'Submit Feedback';
+        }
+      } catch (e) {
+        alert('Network error. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Submit Feedback';
+      }
+    }
+
+    async function markReviewClicked() {
+      if (feedbackId) {
+        try {
+          await fetch('/api/feedback/' + feedbackId + '/mark-review-clicked', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' }
+          });
+        } catch (e) { /* ignore */ }
+      }
+    }
+
+    function showThankYou() {
+      showStep('step-thankyou');
+    }
+  </script>
+</body>
+</html>

@@ -15,6 +15,7 @@ def _serialize_transaction(t):
         'transaction_type': t.transaction_type,
         'amount': t.amount,
         'payment_method': t.payment_method or 'cash',
+        'card_bank': t.card_bank or None,
         'source': t.source or 'manual',
         'reason': t.reason,
         'notes': t.notes,

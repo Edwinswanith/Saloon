@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from models import Staff, StaffTempAssignment
+from models import Staff, StaffTempAssignment, Branch
 from datetime import datetime, date
 from mongoengine.errors import DoesNotExist, NotUniqueError, ValidationError
 from bson import ObjectId
@@ -180,8 +180,24 @@ def create_staff(current_user=None):
     try:
         data = request.get_json()
         
-        # Get branch for assignment
-        branch = get_selected_branch(request, current_user)
+        # Get branch for assignment - check for explicit branch_id first
+        branch = None
+        branch_id = data.get('branch_id')
+        if branch_id:
+            try:
+                if not ObjectId.is_valid(branch_id):
+                    response = jsonify({'error': 'Invalid branch ID format'})
+                    response.headers.add('Access-Control-Allow-Origin', '*')
+                    return response, 400
+                branch = Branch.objects.get(id=branch_id)
+            except DoesNotExist:
+                response = jsonify({'error': 'Branch not found'})
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response, 404
+        else:
+            # Fall back to header-based branch selection
+            branch = get_selected_branch(request, current_user)
+        
         if not branch:
             response = jsonify({'error': 'Branch is required'})
             response.headers.add('Access-Control-Allow-Origin', '*')
@@ -256,6 +272,22 @@ def update_staff(staff_id, current_user=None):
         staff.salary = data.get('salary', staff.salary)
         staff.commission_rate = data.get('commissionRate', staff.commission_rate)
         staff.status = data.get('status', staff.status)
+        
+        # Update branch if branch_id is provided
+        branch_id = data.get('branch_id')
+        if branch_id:
+            try:
+                if not ObjectId.is_valid(branch_id):
+                    response = jsonify({'error': 'Invalid branch ID format'})
+                    response.headers.add('Access-Control-Allow-Origin', '*')
+                    return response, 400
+                branch = Branch.objects.get(id=branch_id)
+                staff.branch = branch
+            except DoesNotExist:
+                response = jsonify({'error': 'Branch not found'})
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response, 404
+        
         staff.updated_at = datetime.utcnow()
         staff.save()
         

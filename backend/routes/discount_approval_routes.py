@@ -13,17 +13,17 @@ from models import to_dict
 
 discount_approval_bp = Blueprint('discount_approval', __name__)
 
-# Discount limits by role - Only owner can apply discounts
+# Discount limits by role - staff cannot apply discounts; manager/owner can approve
 DISCOUNT_LIMITS = {
     'staff': 0,      # No discount access
-    'manager': 0,   # No discount access
-    'owner': 100     # Unlimited (only owner)
+    'manager': 0,    # Can approve but not self-apply without approval
+    'owner': 100     # Unlimited
 }
 
 @discount_approval_bp.route('/', methods=['GET'])
-@require_role('owner')
+@require_role('owner', 'manager')
 def list_approvals(current_user=None):
-    """List discount approval requests - Owner only"""
+    """List discount approval requests - Owner and Manager"""
     try:
         status = request.args.get('status', 'pending')
         requested_by_id = request.args.get('requested_by_id')
@@ -119,9 +119,9 @@ def get_approval(approval_id, current_user=None):
         return response, 500
 
 @discount_approval_bp.route('/<approval_id>/approve', methods=['POST'])
-@require_role('owner')
+@require_role('owner', 'manager')
 def approve_request(approval_id, current_user=None):
-    """Approve a discount request via in-app - Owner only"""
+    """Approve a discount request via in-app - Owner and Manager"""
     try:
         approval = DiscountApprovalRequest.objects(id=approval_id).first()
         if not approval:
@@ -162,7 +162,7 @@ def approve_request(approval_id, current_user=None):
         return response, 500
 
 @discount_approval_bp.route('/<approval_id>/approve-with-code', methods=['POST'])
-@require_role('owner')
+@require_role('owner', 'manager')
 def approve_with_code(approval_id, current_user=None):
     """Approve a discount request using an approval code"""
     try:
@@ -238,7 +238,7 @@ def approve_with_code(approval_id, current_user=None):
         return response, 500
 
 @discount_approval_bp.route('/<approval_id>/reject', methods=['POST'])
-@require_role('owner')
+@require_role('owner', 'manager')
 def reject_request(approval_id, current_user=None):
     """Reject a discount request"""
     try:
@@ -275,9 +275,9 @@ def reject_request(approval_id, current_user=None):
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 500
 
-# Approval Code Routes (Owner only)
+# Approval Code Routes (Owner and Manager can generate codes)
 @discount_approval_bp.route('/approval-codes', methods=['POST'])
-@require_role('owner')
+@require_role('owner', 'manager')
 def create_approval_code(current_user=None):
     """Generate a new approval code"""
     try:
@@ -295,13 +295,15 @@ def create_approval_code(current_user=None):
         if expires_in_days:
             expires_at = datetime.utcnow() + timedelta(days=expires_in_days)
         
-        # Get creator — try Manager first, Owner creates codes too but isn't a Manager
+        # Get creator — handle both Manager and Owner
+        # Note: created_by field only accepts Manager reference, so Owner references are stored as None
         creator_ref = None
         if current_user:
             user_type = current_user.get('user_type', '')
             user_id = current_user.get('user_id') or current_user.get('id')
             if user_type == 'manager':
                 creator_ref = Manager.objects(id=user_id).first()
+            # For owners, creator_ref remains None since ApprovalCode.created_by only accepts Manager references
 
         approval_code = ApprovalCode(
             code_hash=code_hash,
@@ -329,7 +331,7 @@ def create_approval_code(current_user=None):
         return response, 500
 
 @discount_approval_bp.route('/approval-codes', methods=['GET'])
-@require_role('owner')
+@require_role('owner', 'manager')
 def list_approval_codes(current_user=None):
     """List all approval codes"""
     try:
@@ -352,7 +354,7 @@ def list_approval_codes(current_user=None):
         return response, 500
 
 @discount_approval_bp.route('/approval-codes/<code_id>/deactivate', methods=['PUT'])
-@require_role('owner')
+@require_role('owner', 'manager')
 def deactivate_code(code_id, current_user=None):
     """Deactivate an approval code"""
     try:

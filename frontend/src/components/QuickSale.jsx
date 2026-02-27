@@ -22,6 +22,7 @@ const QuickSale = () => {
 
   const [discountType, setDiscountType] = useState('fix')
   const [paymentMode, setPaymentMode] = useState('cash')
+  const [cardBank, setCardBank] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [selectedCustomer, setSelectedCustomer] = useState(null)
@@ -29,6 +30,7 @@ const QuickSale = () => {
   const [loadingCustomerDetails, setLoadingCustomerDetails] = useState(false)
   const [bookingStatus, setBookingStatus] = useState('service-completed')
   const [bookingNote, setBookingNote] = useState('')
+  const [customerDob, setCustomerDob] = useState(null)
   const [discountAmount, setDiscountAmount] = useState(0)
   const [membershipInfo, setMembershipInfo] = useState(null)
   const appointmentCreatedRef = useRef(false)
@@ -58,6 +60,7 @@ const QuickSale = () => {
     gender: '',
     source: 'Walk-in',
     dobRange: '',
+    dob: '',
     referralCode: ''
   })
   const [referralInfo, setReferralInfo] = useState(null) // { enabled, rewardType, referrerReward, refereeReward }
@@ -187,6 +190,13 @@ const QuickSale = () => {
       setDiscountType('fix')
     }
   }, [selectedCustomer])
+
+  // Reset card bank when payment mode changes away from card
+  useEffect(() => {
+    if (paymentMode !== 'card') {
+      setCardBank('')
+    }
+  }, [paymentMode])
 
   // Pre-fill form with appointment data - immediate population with parallel API calls
   const prefillAppointmentData = async (appointmentData) => {
@@ -1346,10 +1356,13 @@ const QuickSale = () => {
         lastVisit: data.last_visit || null,
         totalVisits: data.total_visits || 0,
         totalRevenue: data.total_revenue || 0,
+        lastService: data.last_service || 'N/A',
+        dob: data.dob || null,
         notes: data.notes || 'N/A',
         referredBy: data.referredBy || null,
         referralRewardUsed: data.referralRewardUsed || false
       })
+      setCustomerDob(data.dob ? new Date(data.dob) : null)
     } catch (error) {
       console.error('Error fetching customer details:', error)
       setCustomerDetails(null)
@@ -1415,7 +1428,8 @@ const QuickSale = () => {
         lastName: lastName,
         gender: newCustomerData.gender,
         source: newCustomerData.source,
-        dobRange: newCustomerData.dobRange || ''
+        dobRange: newCustomerData.dobRange || '',
+        dob: newCustomerData.dob || ''
       }
       // Include referral code if provided and validated
       if (newCustomerData.referralCode && referralValidation?.valid) {
@@ -1445,7 +1459,7 @@ const QuickSale = () => {
 
       // Reset form
       setShowNewCustomerForm(false)
-      setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '', referralCode: '' }); setReferralValidation(null)
+      setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '', dob: '', referralCode: '' }); setReferralValidation(null)
 
       // Show appropriate message based on backend response
       if (data.created) {
@@ -1683,6 +1697,7 @@ const QuickSale = () => {
     setDiscountType('fix')
     setMembershipInfo(null)
     setCustomerDetails(null)
+    setCustomerDob(null)
     setBookingNote('')
     setBookingStatus('confirmed')
     appointmentCreatedRef.current = false
@@ -1751,6 +1766,7 @@ const QuickSale = () => {
           tax_amount: calculateTax(),
           final_amount: calculateFinalAmount(),
           payment_mode: paymentMode,
+          card_bank: paymentMode === 'card' ? cardBank : undefined,
           booking_status: bookingStatus,
         })
 
@@ -1926,6 +1942,7 @@ const QuickSale = () => {
         tax_amount: calculateTax(),
         final_amount: calculateFinalAmount(),
         payment_mode: paymentMode,
+        card_bank: paymentMode === 'card' ? cardBank : undefined,
         booking_status: bookingStatus,
       })
 
@@ -1980,9 +1997,16 @@ const QuickSale = () => {
           showSuccess(`Bill created successfully! Bill Number: ${checkoutData.bill_number} | Final Amount: ₹${checkoutData.final_amount.toFixed(2)}`)
         }
         
+        // Save customer DOB if entered/updated
+        if (customerDob && selectedCustomer) {
+          apiPut(`/api/customers/${selectedCustomer.id}`, {
+            dob: customerDob.toISOString().split('T')[0]
+          }).catch(err => console.error('Error saving customer DOB:', err))
+        }
+
         // Celebrate with confetti!
         celebrateBig()
-        
+
         // Refresh products to show updated stock after checkout
         fetchProducts()
         
@@ -2325,12 +2349,30 @@ const QuickSale = () => {
                   <div className="customer-info-header-cell">Last Visit</div>
                   <div className="customer-info-header-cell">Total Visits</div>
                   <div className="customer-info-header-cell">Total Revenue</div>
+                  <div className="customer-info-header-cell">Last Service</div>
+                  <div className="customer-info-header-cell">Date of Birth</div>
                 </div>
                 <div className="customer-info-row">
                   <div className="customer-info-cell">{customerDetails.membership}</div>
                   <div className="customer-info-cell">{customerDetails.lastVisit ? formatDate(customerDetails.lastVisit) : 'N/A'}</div>
                   <div className="customer-info-cell">{customerDetails.totalVisits}</div>
                   <div className="customer-info-cell">₹{customerDetails.totalRevenue.toFixed(2)}</div>
+                  <div className="customer-info-cell">{customerDetails.lastService}</div>
+                  <div className="customer-info-cell">
+                    {customerDetails.dob
+                      ? (() => {
+                          const d = new Date(customerDetails.dob)
+                          const today = new Date()
+                          const isBirthMonth = d.getMonth() === today.getMonth()
+                          return (
+                            <span style={isBirthMonth ? { color: '#be185d', fontWeight: '700' } : {}}>
+                              {d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              {isBirthMonth && ' 🎂'}
+                            </span>
+                          )
+                        })()
+                      : 'N/A'}
+                  </div>
                 </div>
                 <div className="customer-note-row">
                   <span className="customer-note-label">Customer Note:</span>
@@ -2590,8 +2632,51 @@ const QuickSale = () => {
                     Card Payment
                   </button>
                 </div>
+                {paymentMode === 'card' && (
+                  <div className="bank-dropdown-container" style={{ marginTop: '12px' }}>
+                    <label className="form-label" style={{ marginBottom: '8px', display: 'block' }}>Card Bank</label>
+                    <select
+                      className="form-select"
+                      value={cardBank}
+                      onChange={(e) => setCardBank(e.target.value)}
+                      required
+                    >
+                      <option value="">Select Bank</option>
+                      <option value="HDFC">HDFC</option>
+                      <option value="ICICI">ICICI</option>
+                      <option value="SBI">SBI</option>
+                      <option value="Axis">Axis</option>
+                      <option value="Kotak">Kotak</option>
+                      <option value="Yes Bank">Yes Bank</option>
+                      <option value="IndusInd">IndusInd</option>
+                      <option value="PNB">PNB</option>
+                      <option value="BOB">BOB</option>
+                      <option value="Canara">Canara</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                )}
               </div>
               
+              {/* Date of Birth Collection */}
+              {selectedCustomer && (
+                <div className="dob-collection-container" style={{ marginBottom: '16px' }}>
+                  <label className="form-label">Date of Birth</label>
+                  <DatePicker
+                    selected={customerDob}
+                    onChange={(date) => setCustomerDob(date)}
+                    dateFormat="dd-MM-yyyy"
+                    maxDate={new Date()}
+                    placeholderText="Select date of birth"
+                    className="form-input"
+                    showYearDropdown
+                    showMonthDropdown
+                    dropdownMode="select"
+                    isClearable
+                  />
+                </div>
+              )}
+
               <div className="booking-note-membership-wrapper">
                 <div className="booking-note-container">
                   <h3 className="booking-note-title">Booking Note</h3>
@@ -2839,7 +2924,7 @@ const QuickSale = () => {
       {showNewCustomerForm && (
         <div className="new-customer-modal-overlay" onClick={() => {
           setShowNewCustomerForm(false)
-          setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '', referralCode: '' }); setReferralValidation(null)
+          setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '', dob: '', referralCode: '' }); setReferralValidation(null)
         }}>
           <div className="new-customer-modal" onClick={(e) => e.stopPropagation()}>
             <div className="new-customer-modal-header">
@@ -2848,7 +2933,7 @@ const QuickSale = () => {
                 className="modal-close-btn"
                 onClick={() => {
                   setShowNewCustomerForm(false)
-                  setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '', referralCode: '' }); setReferralValidation(null)
+                  setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '', dob: '', referralCode: '' }); setReferralValidation(null)
                 }}
                 disabled={creatingCustomer}
               >
@@ -2935,6 +3020,23 @@ const QuickSale = () => {
                     <option value="Senior">Senior (51+)</option>
                   </select>
                 </div>
+                <div className="form-field-modal">
+                  <label className="modal-label">
+                    Date of Birth (Optional)
+                  </label>
+                  <DatePicker
+                    selected={newCustomerData.dob ? new Date(newCustomerData.dob) : null}
+                    onChange={(date) => setNewCustomerData({ ...newCustomerData, dob: date ? date.toISOString().split('T')[0] : '' })}
+                    dateFormat="yyyy-MM-dd"
+                    maxDate={new Date()}
+                    placeholderText="Select date of birth"
+                    className="modal-input"
+                    disabled={creatingCustomer}
+                    showYearDropdown
+                    showMonthDropdown
+                    dropdownMode="select"
+                  />
+                </div>
                 {referralInfo?.enabled && (
                   <div className="form-field-modal">
                     <label className="modal-label">
@@ -2969,7 +3071,7 @@ const QuickSale = () => {
                 className="modal-btn-cancel"
                 onClick={() => {
                   setShowNewCustomerForm(false)
-                  setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '', referralCode: '' }); setReferralValidation(null)
+                  setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '', dob: '', referralCode: '' }); setReferralValidation(null)
                 }}
                 disabled={creatingCustomer}
               >

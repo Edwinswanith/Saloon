@@ -16,7 +16,8 @@ def get_tax_settings():
         return jsonify({
             'gstNumber': settings.gst_number or '',
             'servicePricingType': settings.service_pricing_type,
-            'productPricingType': settings.product_pricing_type
+            'productPricingType': settings.product_pricing_type,
+            'prepaidPricingType': settings.prepaid_pricing_type
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -41,6 +42,11 @@ def update_tax_settings(current_user=None):
             if pricing_type not in ['inclusive', 'exclusive']:
                 return jsonify({'error': 'Pricing type must be "inclusive" or "exclusive"'}), 400
             settings.product_pricing_type = pricing_type
+        if 'prepaidPricingType' in data:
+            pricing_type = data['prepaidPricingType'].lower()
+            if pricing_type not in ['inclusive', 'exclusive']:
+                return jsonify({'error': 'Pricing type must be "inclusive" or "exclusive"'}), 400
+            settings.prepaid_pricing_type = pricing_type
         settings.updated_at = datetime.utcnow()
         settings.save()
         
@@ -48,7 +54,8 @@ def update_tax_settings(current_user=None):
             'message': 'Tax settings updated successfully',
             'gstNumber': settings.gst_number,
             'servicePricingType': settings.service_pricing_type,
-            'productPricingType': settings.product_pricing_type
+            'productPricingType': settings.product_pricing_type,
+            'prepaidPricingType': settings.prepaid_pricing_type
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500

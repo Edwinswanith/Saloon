@@ -25,6 +25,7 @@ const Settings = ({ setActivePage }) => {
       title: 'Tax',
       description: 'Customize tax groups and taxes that align with business needs',
       icon: <FaDownload />,
+      requiresRole: ['owner'],
     },
     {
       id: 4,

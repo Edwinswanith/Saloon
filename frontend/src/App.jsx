@@ -25,6 +25,7 @@ const Feedback = lazy(() => import('./components/Feedback'))
 const ServiceRecovery = lazy(() => import('./components/ServiceRecovery'))
 const DiscountApprovals = lazy(() => import('./components/DiscountApprovals'))
 const ApprovalCodes = lazy(() => import('./components/ApprovalCodes'))
+const OfferCampaigns = lazy(() => import('./components/OfferCampaigns'))
 const Inventory = lazy(() => import('./components/Inventory'))
 const ReportsAnalytics = lazy(() => import('./components/ReportsAnalytics'))
 const Service = lazy(() => import('./components/Service'))
@@ -177,13 +178,18 @@ function AppContent() {
               </RequireRole>
             )}
             {activePage === 'discount-approvals' && (
-              <RequireRole roles={['owner']}>
+              <RequireRole roles={['manager', 'owner']}>
                 <DiscountApprovals key="discount-approvals" />
               </RequireRole>
             )}
             {activePage === 'approval-codes' && (
-              <RequireRole roles={['owner']}>
+              <RequireRole roles={['manager', 'owner']}>
                 <ApprovalCodes key="approval-codes" />
+              </RequireRole>
+            )}
+            {activePage === 'offer-campaigns' && (
+              <RequireRole roles={['manager', 'owner']}>
+                <OfferCampaigns key="offer-campaigns" />
               </RequireRole>
             )}
             {activePage === 'inventory' && <Inventory key="inventory" />}

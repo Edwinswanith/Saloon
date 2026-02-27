@@ -3,7 +3,7 @@ import { FaTimes, FaEdit, FaShare, FaDownload, FaArrowLeft } from 'react-icons/f
 import './Appointment.css'
 import { API_BASE_URL } from '../config'
 import { useAuth } from '../contexts/AuthContext'
-import { apiGet, apiPost, apiDelete } from '../utils/api'
+import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
 import InvoicePreview from './InvoicePreview'
 import CalendarHeader from './calendar/CalendarHeader'
@@ -40,6 +40,7 @@ const Appointment = ({ setActivePage }) => {
     appointment_date: new Date().toISOString().split('T')[0],
     start_time: '',
     notes: '',
+    dob: '',
   })
   const [customers, setCustomers] = useState([])
   const [services, setServices] = useState([])
@@ -121,6 +122,31 @@ const Appointment = ({ setActivePage }) => {
     window.addEventListener('branchChanged', handleBranchChange)
     return () => window.removeEventListener('branchChanged', handleBranchChange)
   }, [])
+
+  // Fetch customer DOB when customer is selected
+  useEffect(() => {
+    if (bookingForm.customer_id) {
+      apiGet(`/api/customers/${bookingForm.customer_id}`)
+        .then(response => {
+          if (response.ok) {
+            return response.json()
+          }
+          return null
+        })
+        .then(data => {
+          if (data && data.dob) {
+            setBookingForm(prev => ({ ...prev, dob: data.dob }))
+          } else {
+            setBookingForm(prev => ({ ...prev, dob: '' }))
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching customer DOB:', error)
+        })
+    } else {
+      setBookingForm(prev => ({ ...prev, dob: '' }))
+    }
+  }, [bookingForm.customer_id])
 
   const fetchStaff = async () => {
     try {
@@ -234,6 +260,17 @@ const Appointment = ({ setActivePage }) => {
       
       if (response.ok) {
         showSuccess('Appointment booked successfully!')
+        
+        // Save DOB if provided
+        if (bookingForm.dob && bookingForm.customer_id) {
+          try {
+            await apiPut(`/api/customers/${bookingForm.customer_id}`, { dob: bookingForm.dob })
+          } catch (error) {
+            console.error('Error saving customer DOB:', error)
+            // Non-blocking - don't show error to user as appointment was already created
+          }
+        }
+        
         setShowBookingModal(false)
         setBookingForm({
           customer_id: '',
@@ -242,6 +279,7 @@ const Appointment = ({ setActivePage }) => {
           appointment_date: selectedDate,
           start_time: '',
           notes: '',
+          dob: '',
         })
         // Refresh appointments immediately
         await fetchAppointments()
@@ -328,6 +366,7 @@ const Appointment = ({ setActivePage }) => {
       staff_id: staffId,
       appointment_date: date || selectedDate,
       start_time: hour ? `${String(hour).padStart(2, '0')}:00` : '',
+      dob: '', // Reset DOB when opening modal
     })
     setShowBookingModal(true)
   }
@@ -871,6 +910,14 @@ const Appointment = ({ setActivePage }) => {
                   value={bookingForm.notes}
                   onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })}
                   rows="3"
+                />
+              </div>
+              <div className="form-group">
+                <label>Date of Birth (optional)</label>
+                <input
+                  type="date"
+                  value={bookingForm.dob}
+                  onChange={(e) => setBookingForm({ ...bookingForm, dob: e.target.value })}
                 />
               </div>
               <div className="modal-actions">

@@ -129,6 +129,12 @@ app.add_url_rule('/i/<share_code>/pdf', 'short_invoice_pdf', short_invoice_pdf, 
 app.add_url_rule('/invoice/view/<token>', 'public_invoice_view', public_invoice_view, methods=['GET'])
 app.add_url_rule('/invoice/pdf/<token>', 'public_invoice_pdf', public_invoice_pdf, methods=['GET'])
 
+# Register public feedback routes (no /api prefix, no auth required)
+from routes.feedback_routes import public_feedback_page, public_feedback_lookup, public_feedback_submit
+app.add_url_rule('/feedback', 'public_feedback_page', public_feedback_page, methods=['GET'])
+app.add_url_rule('/feedback/lookup', 'public_feedback_lookup', public_feedback_lookup, methods=['POST'])
+app.add_url_rule('/feedback/submit', 'public_feedback_submit', public_feedback_submit, methods=['POST'])
+
 # One-time migration: drop old global unique index on customers.mobile
 # (replaced with compound index on mobile+branch for multi-branch support)
 try:
@@ -155,8 +161,8 @@ except Exception as e:
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve(path):
-    # Skip invoice routes - these are handled by dedicated routes
-    if path.startswith('i/') or path.startswith('invoice/'):
+    # Skip public routes - these are handled by dedicated routes
+    if path.startswith('i/') or path.startswith('invoice/') or path.startswith('feedback'):
         return jsonify({'error': 'Not found'}), 404
     
     if path != "":
