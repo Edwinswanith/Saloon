@@ -5,17 +5,17 @@ import { API_BASE_URL } from '../config';
 import NProgress from 'nprogress';
 
 /**
- * Get auth token from localStorage
+ * Get auth token from sessionStorage
  */
 const getAuthToken = () => {
-  return localStorage.getItem('auth_token');
+  return sessionStorage.getItem('auth_token');
 };
 
 /**
- * Get current branch ID from localStorage or context
+ * Get current branch ID from sessionStorage or context
  */
 const getBranchId = () => {
-  const storedBranch = localStorage.getItem('current_branch');
+  const storedBranch = sessionStorage.getItem('current_branch');
   if (storedBranch) {
     try {
       const branch = JSON.parse(storedBranch);
@@ -30,7 +30,7 @@ const getBranchId = () => {
   }
   
   // Fallback: try to get from user data
-  const storedUser = localStorage.getItem('auth_user');
+  const storedUser = sessionStorage.getItem('auth_user');
   if (storedUser) {
     try {
       const user = JSON.parse(storedUser);
@@ -148,13 +148,13 @@ export const apiDelete = async (endpoint, options = {}) => {
 };
 
 /**
- * Update branch ID in localStorage (called when branch is switched)
+ * Update branch ID in sessionStorage (called when branch is switched)
  */
 export const updateBranchId = (branch) => {
   if (branch) {
-    localStorage.setItem('current_branch', JSON.stringify(branch));
+    sessionStorage.setItem('current_branch', JSON.stringify(branch));
   } else {
-    localStorage.removeItem('current_branch');
+    sessionStorage.removeItem('current_branch');
   }
 };
 

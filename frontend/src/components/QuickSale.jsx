@@ -907,16 +907,43 @@ const QuickSale = () => {
     }
   }
 
+  // Add minutes to a "HH:MM" time string, wrapping at midnight
+  const addMinutesToTime = (timeStr, minutes) => {
+    const parts = (timeStr || '00:00').split(':').map(Number)
+    const totalMins = parts[0] * 60 + (parts[1] || 0) + minutes
+    const h = Math.floor(totalMins / 60) % 24
+    const m = totalMins % 60
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  }
+
   const updateService = (id, field, value) => {
+    // When the FIRST service's start time changes, cascade to all subsequent services
+    if (field === 'startTime' && services.length > 1 && services[0]?.id === id) {
+      let cursor = String(value).trim()
+      const updated = services.map((s) => {
+        const updatedS = { ...s }
+        updatedS.startTime = cursor
+        const price = parseFloat(updatedS.price) || 0
+        const discount = parseFloat(updatedS.discount) || 0
+        updatedS.total = price - (price * discount / 100)
+        // Advance cursor by this service's duration for the next service
+        cursor = addMinutesToTime(cursor, parseInt(s.duration) || 30)
+        return updatedS
+      })
+      setServices(updated)
+      return
+    }
+
     const updated = services.map((s) => {
       if (s.id === id) {
         const updatedService = { ...s, [field]: value }
 
-        // Auto-fill price when service is selected
+        // Auto-fill price and duration when service is selected
         if (field === 'service_id' && value) {
           const selectedService = availableServices.find(service => service.id === value)
           if (selectedService) {
             updatedService.price = selectedService.price
+            updatedService.duration = parseInt(selectedService.duration) || 30
           }
         }
 
@@ -949,7 +976,7 @@ const QuickSale = () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/customers/${customerId}/active-membership`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`
         }
       })
       
@@ -1524,19 +1551,44 @@ const QuickSale = () => {
   }
 
   // Subtotal helpers split by category
+  // These use gross price (before item-level discount) so the summary shows the right breakdown
   const getServiceSubtotal = () => {
-    const servicesTotal = services.reduce((sum, service) => sum + (parseFloat(service.total) || 0), 0)
-    const packagesTotal = packages.reduce((sum, pkg) => sum + (parseFloat(pkg.total) || 0), 0)
+    const servicesTotal = services.reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0)
+    const packagesTotal = packages.reduce((sum, pkg) => sum + (parseFloat(pkg.price) || 0), 0)
     const membershipsTotal = memberships.reduce((sum, m) => sum + (parseFloat(m.price) || 0), 0)
     return servicesTotal + packagesTotal + membershipsTotal
   }
 
   const getProductSubtotal = () => {
-    return products.reduce((sum, product) => sum + (parseFloat(product.total) || 0), 0)
+    return products.reduce((sum, product) => {
+      const qty = parseFloat(product.quantity) || 1
+      return sum + (parseFloat(product.price) || 0) * qty
+    }, 0)
   }
 
   const calculateSubtotal = () => {
     return getServiceSubtotal() + getProductSubtotal()
+  }
+
+  // Sum of item-level discounts (entered as % per item)
+  const calculateItemLevelDiscount = () => {
+    const servicesDisc = services.reduce((sum, s) => {
+      const price = parseFloat(s.price) || 0
+      const disc = parseFloat(s.discount) || 0
+      return sum + price * disc / 100
+    }, 0)
+    const packagesDisc = packages.reduce((sum, pkg) => {
+      const price = parseFloat(pkg.price) || 0
+      const disc = parseFloat(pkg.discount) || 0
+      return sum + price * disc / 100
+    }, 0)
+    const productsDisc = products.reduce((sum, p) => {
+      const price = parseFloat(p.price) || 0
+      const qty = parseFloat(p.quantity) || 1
+      const disc = parseFloat(p.discount) || 0
+      return sum + price * qty * disc / 100
+    }, 0)
+    return servicesDisc + packagesDisc + productsDisc
   }
 
   const calculateDiscount = () => {
@@ -1570,7 +1622,7 @@ const QuickSale = () => {
   }
 
   const calculateNet = () => {
-    return calculateSubtotal() - calculateDiscount() - calculateReferralDiscount()
+    return calculateSubtotal() - calculateItemLevelDiscount() - calculateDiscount() - calculateReferralDiscount()
   }
 
   // Tax calculation respecting inclusive/exclusive pricing per category
@@ -2088,17 +2140,18 @@ const QuickSale = () => {
     }
   }
 
-  const handleDownloadInvoice = async () => {
-    if (!currentBillId) {
+  const handleDownloadInvoice = async (billIdArg) => {
+    const billId = billIdArg || currentBillId
+    if (!billId) {
       showError('No bill found')
       return
     }
 
     try {
-      const token = localStorage.getItem('auth_token') || localStorage.getItem('token')
+      const token = sessionStorage.getItem('auth_token') || sessionStorage.getItem('token')
       let branchId = currentBranch?.id
       if (!branchId) {
-        const storedBranch = localStorage.getItem('current_branch')
+        const storedBranch = sessionStorage.getItem('current_branch')
         if (storedBranch) {
           try {
             const branch = JSON.parse(storedBranch)
@@ -2114,7 +2167,7 @@ const QuickSale = () => {
         return
       }
       
-      const response = await fetch(`${API_BASE_URL}/api/bills/${currentBillId}/invoice/pdf`, {
+      const response = await fetch(`${API_BASE_URL}/api/bills/${billId}/invoice/pdf`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -2737,11 +2790,22 @@ const QuickSale = () => {
                   </div>
 
                   {/* Discounts Group */}
-                  {(membershipInfo && membershipInfo.plan && discountType === 'membership' && calculateDiscount() > 0) ||
+                  {(calculateItemLevelDiscount() > 0) ||
+                   (membershipInfo && membershipInfo.plan && discountType === 'membership' && calculateDiscount() > 0) ||
                    (discountType !== 'membership' && discountAmount > 0) ? (
                     <>
                       <div className="summary-divider"></div>
                       <div className="summary-group">
+                        {calculateItemLevelDiscount() > 0 && (
+                          <div className="summary-row manual-discount-row">
+                            <span className="summary-label discount-label">
+                              Item Discount
+                            </span>
+                            <span className="summary-value discount-value">
+                              − ₹ {calculateItemLevelDiscount().toFixed(2)}
+                            </span>
+                          </div>
+                        )}
                         {membershipInfo && membershipInfo.plan && discountType === 'membership' && calculateDiscount() > 0 && (
                           <div className="summary-row membership-discount-row">
                             <span className="summary-label discount-label">

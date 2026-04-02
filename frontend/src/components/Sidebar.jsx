@@ -19,6 +19,7 @@ import {
   FaExchangeAlt,
   FaTimes,
   FaBullhorn,
+  FaHistory,
 } from 'react-icons/fa'
 import { useAuth } from '../contexts/AuthContext'
 import './Sidebar.css'
@@ -86,6 +87,7 @@ const Sidebar = ({
       items: [
         { id: 'quick-sale', label: 'Quick Sale', icon: <FaCreditCard /> },
         { id: 'cash-register', label: 'Cash Register', icon: <FaMoneyBillWave /> },
+        { id: 'bill-history', label: 'Bill History', icon: <FaHistory /> },
         { id: 'appointment', label: 'Appointment', icon: <FaCalendarAlt /> },
         {
           id: 'customers',

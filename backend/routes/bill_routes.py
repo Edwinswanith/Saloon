@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, make_response
-from models import Bill, Customer, Product, BillItemEmbedded, DiscountApprovalRequest, ApprovalCode, Staff, Membership, Branch, CashTransaction, Service, Package, MembershipPlan, ReferralProgramSettings, Referral, Invoice
+from models import Bill, Customer, Product, BillItemEmbedded, DiscountApprovalRequest, ApprovalCode, Staff, Membership, Branch, CashTransaction, Service, Package, MembershipPlan, ReferralProgramSettings, Referral, Invoice, Notification
 from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 from mongoengine import Q
@@ -213,7 +213,7 @@ def _resolve_bill_items(bill):
             'quantity': int(item.quantity) if item.quantity else 1,
             'price': float(item.price) if item.price else 0.0,
             'tax': round(item_tax, 2),
-            'discount': float(item.discount) if item.discount else 0.0,
+            'discount': round(float(item.price or 0) * float(item.quantity or 1) * float(item.discount or 0) / 100.0, 2),
             'total': float(item.total) if item.total else 0.0,
             'start_time': item.start_time if item.start_time else None
         })
@@ -306,6 +306,16 @@ def _build_invoice_data(bill):
         else:
             booking_time_str = bill_date.strftime('%I:%M %p').lower()
 
+    gross_subtotal = sum(
+        float(i.price or 0) * float(i.quantity or 1) for i in (bill.items or [])
+    )
+    item_discount_total = sum(
+        float(i.price or 0) * float(i.quantity or 1) * float(i.discount or 0) / 100.0
+        for i in (bill.items or [])
+    )
+    total_discount = item_discount_total + float(bill.discount_amount or 0)
+    referral = float(bill.referral_discount or 0)
+
     return {
         'invoice_number': invoice_number,
         'bill_number': bill.bill_number,
@@ -316,10 +326,10 @@ def _build_invoice_data(bill):
         'branch': branch_data,
         'items': items,
         'summary': {
-            'subtotal': float(bill.subtotal) if bill.subtotal else 0.0,
-            'discount': float(bill.discount_amount) if bill.discount_amount else 0.0,
-            'referral_discount': float(bill.referral_discount) if bill.referral_discount else 0.0,
-            'net': float(bill.subtotal or 0) - float(bill.discount_amount or 0) - float(bill.referral_discount or 0),
+            'subtotal': round(gross_subtotal, 2),
+            'discount': round(total_discount, 2),
+            'referral_discount': referral,
+            'net': round(gross_subtotal - total_discount - referral, 2),
             'tax': float(bill.tax_amount) if bill.tax_amount else 0.0,
             'tax_rate': float(bill.tax_rate) if bill.tax_rate else 0.0,
             'total': float(bill.final_amount) if bill.final_amount else 0.0
@@ -966,11 +976,15 @@ def checkout_bill(id, current_user=None):
             print(f"[CHECKOUT] Error: Bill {id} has no items")
             return jsonify({'error': 'Bill must have at least one item before checkout'}), 400
 
-        # Calculate subtotal from items
+        # Calculate subtotal from items (post item-level discount)
         subtotal = sum([float(item.total) if item.total else 0.0 for item in bill.items])
         subtotal = float(subtotal) if subtotal else 0.0
+        # Gross total before any item-level discounts (for correct percentage calculations)
+        gross_total = sum(
+            float(item.price or 0) * float(item.quantity or 1) for item in bill.items
+        )
         
-        print(f"[CHECKOUT] Bill {id} subtotal: {subtotal}, items count: {len(bill.items)}")
+        print(f"[CHECKOUT] Bill {id} subtotal: {subtotal}, gross: {gross_total}, items count: {len(bill.items)}")
 
         # Resolve bill branch early — must happen before any approval request is created
         # so that DiscountApprovalRequest.branch is set correctly and owners can find it
@@ -1016,7 +1030,16 @@ def checkout_bill(id, current_user=None):
                     discount_type = 'membership'
                     membership_discount_applied = True
         
-        # If no membership discount, check for manual discount
+        # Always calculate item-level discounts regardless of membership
+        # (membership covers bill-level discount; item discounts are always manual)
+        item_level_discount = 0
+        for item in (bill.items or []):
+            item_disc = float(item.discount or 0)
+            item_price = float(item.price or 0)
+            if item_disc > 0 and item_price > 0:
+                item_level_discount += item_price * item_disc / 100.0
+
+        # If no membership discount, also handle manual bill-level discount
         if not membership_discount_applied:
             # Get discount from request
             discount_amount = float(data.get('discount_amount', 0) or 0)
@@ -1027,64 +1050,108 @@ def checkout_bill(id, current_user=None):
             if discount_type == 'percentage':
                 discount_percent = float(discount_amount)
                 discount_amount = float(subtotal) * (float(discount_amount) / 100.0)
-            elif discount_amount > 0 and subtotal > 0:
-                discount_percent = (discount_amount / subtotal) * 100
+            elif discount_amount > 0 and gross_total > 0:
+                discount_percent = (discount_amount / gross_total) * 100
+        else:
+            # Membership discount already set; no bill-level manual discount
+            discount_percent = 0
 
-            # Calculate item-level discounts (per-service/package/product discount %)
-            item_level_discount = 0
-            for item in (bill.items or []):
-                item_disc = float(item.discount or 0)
-                item_price = float(item.price or 0)
-                if item_disc > 0 and item_price > 0:
-                    item_level_discount += item_price * item_disc / 100.0
+        # Total discount subject to approval = bill-level manual + item-level manual
+        # (membership discount is automatic and never needs staff approval)
+        total_discount_for_approval = (0 if membership_discount_applied else discount_amount) + item_level_discount
 
-            # Total discount = bill-level + item-level
-            total_discount_for_approval = discount_amount + item_level_discount
+        # Compute overall percent for the approval record
+        if total_discount_for_approval > 0 and gross_total > 0:
+            discount_percent = (total_discount_for_approval / gross_total) * 100
 
-            # If only item-level discount, compute combined percent for the approval record
-            if total_discount_for_approval > 0 and discount_percent == 0 and subtotal > 0:
-                discount_percent = (total_discount_for_approval / subtotal) * 100
+        # Non-owner applying ANY manual discount → needs approval
+        if total_discount_for_approval > 0 and user_role != 'owner':
+            approval_code_input = (data.get('approval_code') or '').strip()
 
-            # Non-owner applying ANY discount → needs approval
-            if total_discount_for_approval > 0 and user_role != 'owner':
-                approval_code_input = (data.get('approval_code') or '').strip()
+            # Validate approval code first if one was provided
+            matched_code = None
+            if approval_code_input:
+                code_hash = hash_approval_code(approval_code_input)
+                matched_code = ApprovalCode.objects(code_hash=code_hash, is_active=True).first()
 
-                # ALWAYS validate approval code first if one was provided,
-                # regardless of whether the discount was already approved.
-                # This prevents checkout with a wrong code even when the
-                # owner already approved the discount from the approvals page.
-                matched_code = None
-                if approval_code_input:
-                    code_hash = hash_approval_code(approval_code_input)
-                    matched_code = ApprovalCode.objects(code_hash=code_hash, is_active=True).first()
+                code_error = None
+                if not matched_code:
+                    code_error = 'Invalid approval code'
+                elif is_code_expired(matched_code.expires_at):
+                    code_error = 'Approval code has expired'
+                elif not can_use_code(matched_code.usage_count, matched_code.max_uses):
+                    code_error = 'Approval code has reached its usage limit'
 
-                    code_error = None
-                    if not matched_code:
-                        code_error = 'Invalid approval code'
-                    elif is_code_expired(matched_code.expires_at):
-                        code_error = 'Approval code has expired'
-                    elif not can_use_code(matched_code.usage_count, matched_code.max_uses):
-                        code_error = 'Approval code has reached its usage limit'
+                if code_error:
+                    print(f"[CHECKOUT] Approval code rejected for bill {id}: {code_error}")
+                    response = jsonify({
+                        'error': code_error,
+                        'code_invalid': True,
+                        'requires_approval': True,
+                        'message': code_error
+                    })
+                    response.headers.add('Access-Control-Allow-Origin', '*')
+                    return response, 400
 
-                    if code_error:
-                        print(f"[CHECKOUT] Approval code rejected for bill {id}: {code_error}")
-                        response = jsonify({
-                            'error': code_error,
-                            'code_invalid': True,
-                            'requires_approval': True,
-                            'message': code_error
-                        })
-                        response.headers.add('Access-Control-Allow-Origin', '*')
-                        return response, 400
+            # Check if an approved approval already exists for THIS bill
+            approved = DiscountApprovalRequest.objects(
+                bill=bill, approval_status='approved'
+            ).first()
 
-                # Check if an approved approval already exists for this bill
-                approved = DiscountApprovalRequest.objects(
-                    bill=bill, approval_status='approved'
-                ).first()
+            if not approved:
+                if approval_code_input and matched_code:
+                    # Code is valid — create or update approval as approved
+                    staff_ref = None
+                    if current_user.get('user_type') == 'staff':
+                        try:
+                            staff_ref = Staff.objects(id=current_user['user_id']).first()
+                        except Exception:
+                            pass
 
-                if not approved:
-                    if approval_code_input and matched_code:
-                        # Code is valid — create or update approval as approved
+                    approval_req = DiscountApprovalRequest.objects(
+                        bill=bill, approval_status='pending'
+                    ).first()
+
+                    if approval_req:
+                        approval_req.approval_status = 'approved'
+                        approval_req.approval_method = 'code'
+                        approval_req.approval_code_used = matched_code.code_hash
+                        approval_req.approved_at = datetime.utcnow()
+                        approval_req.updated_at = datetime.utcnow()
+                        approval_req.save()
+                    else:
+                        approval_req = DiscountApprovalRequest(
+                            bill=bill,
+                            requested_by=staff_ref,
+                            requested_by_name=current_user.get('name', 'Unknown'),
+                            requested_by_role=user_role,
+                            branch=bill.branch,
+                            requested_discount_percent=discount_percent,
+                            requested_discount_amount=total_discount_for_approval,
+                            reason=data.get('discount_reason', 'Discount requested'),
+                            approval_status='approved',
+                            approval_method='code',
+                            approval_code_used=matched_code.code_hash,
+                            approved_at=datetime.utcnow(),
+                        )
+                        approval_req.save()
+
+                    matched_code.usage_count += 1
+                    matched_code.save()
+
+                    bill.discount_approval_status = 'approved'
+                    bill.discount_approval_request = approval_req
+                    bill.save()
+                    print(f"[CHECKOUT] Discount approved via code for bill {id}")
+                    # Fall through to normal checkout below
+
+                elif not approval_code_input:
+                    # No code provided — create/reuse pending approval request
+                    pending = DiscountApprovalRequest.objects(
+                        bill=bill, approval_status='pending'
+                    ).first()
+
+                    if not pending:
                         staff_ref = None
                         if current_user.get('user_type') == 'staff':
                             try:
@@ -1092,85 +1159,43 @@ def checkout_bill(id, current_user=None):
                             except Exception:
                                 pass
 
-                        # Find existing pending request or create new one
-                        approval_req = DiscountApprovalRequest.objects(
-                            bill=bill, approval_status='pending'
-                        ).first()
+                        pending = DiscountApprovalRequest(
+                            bill=bill,
+                            requested_by=staff_ref,
+                            requested_by_name=current_user.get('name', 'Unknown'),
+                            requested_by_role=user_role,
+                            branch=bill.branch,
+                            requested_discount_percent=discount_percent,
+                            requested_discount_amount=total_discount_for_approval,
+                            reason=data.get('discount_reason', 'Discount requested'),
+                        )
+                        pending.save()
 
-                        if approval_req:
-                            approval_req.approval_status = 'approved'
-                            approval_req.approval_method = 'code'
-                            approval_req.approval_code_used = matched_code.code_hash
-                            approval_req.approved_at = datetime.utcnow()
-                            approval_req.updated_at = datetime.utcnow()
-                            approval_req.save()
-                        else:
-                            approval_req = DiscountApprovalRequest(
-                                bill=bill,
-                                requested_by=staff_ref,
-                                requested_by_name=current_user.get('name', 'Unknown'),
-                                requested_by_role=user_role,
-                                branch=bill.branch,
-                                requested_discount_percent=discount_percent,
-                                requested_discount_amount=total_discount_for_approval,
-                                reason=data.get('discount_reason', 'Discount requested'),
-                                approval_status='approved',
-                                approval_method='code',
-                                approval_code_used=matched_code.code_hash,
-                                approved_at=datetime.utcnow(),
-                            )
-                            approval_req.save()
-
-                        # Increment code usage
-                        matched_code.usage_count += 1
-                        matched_code.save()
-
-                        bill.discount_approval_status = 'approved'
-                        bill.discount_approval_request = approval_req
+                        bill.discount_approval_status = 'pending'
+                        bill.discount_approval_request = pending
                         bill.save()
-                        print(f"[CHECKOUT] Discount approved via code for bill {id}")
-                        # Fall through to normal checkout below
+                        print(f"[CHECKOUT] Created discount approval request {pending.id} for bill {id}")
 
-                    elif not approval_code_input:
-                        # No code provided — existing pending flow
-                        pending = DiscountApprovalRequest.objects(
-                            bill=bill, approval_status='pending'
-                        ).first()
-
-                        if not pending:
-                            # Get staff reference if user is staff
-                            staff_ref = None
-                            if current_user.get('user_type') == 'staff':
-                                try:
-                                    staff_ref = Staff.objects(id=current_user['user_id']).first()
-                                except Exception:
-                                    pass
-
-                            pending = DiscountApprovalRequest(
-                                bill=bill,
-                                requested_by=staff_ref,
-                                requested_by_name=current_user.get('name', 'Unknown'),
-                                requested_by_role=user_role,
+                        try:
+                            Notification(
+                                type='discount_approval',
+                                title='Discount Approval Request',
+                                message=f"{current_user.get('name', 'Staff')} requested {discount_percent:.0f}% discount on bill {bill.bill_number}",
+                                for_roles=['manager', 'owner'],
                                 branch=bill.branch,
-                                requested_discount_percent=discount_percent,
-                                requested_discount_amount=total_discount_for_approval,
-                                reason=data.get('discount_reason', 'Discount requested'),
-                            )
-                            pending.save()
+                                reference_id=str(pending.id),
+                            ).save()
+                        except Exception as notif_err:
+                            print(f"[CHECKOUT] Warning: Failed to create notification: {notif_err}")
 
-                            bill.discount_approval_status = 'pending'
-                            bill.discount_approval_request = pending
-                            bill.save()
-                            print(f"[CHECKOUT] Created discount approval request {pending.id} for bill {id}")
-
-                        response = jsonify({
-                            'error': 'Discount requires owner approval',
-                            'requires_approval': True,
-                            'approval_id': str(pending.id),
-                            'message': 'Discount approval request submitted. Owner must approve before checkout.'
-                        })
-                        response.headers.add('Access-Control-Allow-Origin', '*')
-                        return response, 403
+                    response = jsonify({
+                        'error': 'Discount requires owner approval',
+                        'requires_approval': True,
+                        'approval_id': str(pending.id),
+                        'message': 'Discount approval request submitted. Owner must approve before checkout.'
+                    })
+                    response.headers.add('Access-Control-Allow-Origin', '*')
+                    return response, 403
 
         # Calculate tax on amount after membership discount
         tax_rate = float(data.get('tax_rate', 0) or 0)
@@ -1644,71 +1669,32 @@ def get_invoice_html(bill_id, current_user=None):
 @bill_bp.route('/bills/<bill_id>/invoice/pdf', methods=['GET'])
 @require_auth
 def download_invoice_pdf(bill_id, current_user=None):
-    """Generate and download invoice as PDF - Uses stored PDF from GridFS if available"""
+    """Generate and download invoice as PDF - always from fresh bill data"""
     try:
         from services.invoice_pdf_service import generate_invoice_pdf
-        from services.pdf_storage_service import get_pdf_from_gridfs
-        
+
         bill = Bill.objects.get(id=bill_id)
-        
-        # Try to retrieve PDF from GridFS - check Invoice first (most reliable), then Bill
-        pdf_bytes = None
-        pdf_source = None
-        invoice_number = bill.bill_number
-        
-        # First, try Invoice's pdf_file_id (most reliable - stored during checkout)
+
+        # Always generate from current bill data so the PDF matches the popup
+        invoice_data = _build_invoice_data(bill)
+        pdf_bytes = generate_invoice_pdf(invoice_data)
+        invoice_number = invoice_data.get('invoice_number', bill.bill_number)
+        print(f"[DOWNLOAD PDF] Generated fresh PDF for bill {bill_id}, size={len(pdf_bytes)} bytes")
+
+        # Update Invoice download status if it exists
         try:
             invoice = Invoice.objects(bill=bill).first()
-            if invoice and invoice.pdf_file_id:
-                try:
-                    pdf_bytes = get_pdf_from_gridfs(invoice.pdf_file_id)
-                    if pdf_bytes:
-                        invoice_number = invoice.invoice_number
-                        pdf_source = 'Invoice GridFS'
-                        print(f"[DOWNLOAD PDF] Retrieved PDF from Invoice GridFS: file_id={invoice.pdf_file_id}, size={len(pdf_bytes)} bytes")
-                        
-                        # Update invoice status to downloaded
-                        if invoice.status in ['generated', 'viewed']:
-                            invoice.status = 'downloaded'
-                            invoice.downloaded_at = datetime.utcnow()
-                            invoice.save()
-                except Exception as e:
-                    print(f"[DOWNLOAD PDF] Warning: Failed to retrieve PDF from Invoice GridFS (file_id={invoice.pdf_file_id}): {e}")
-        except Exception as e:
-            print(f"[DOWNLOAD PDF] Warning: Failed to query Invoice collection: {e}")
-        
-        # Fallback to Bill's pdf_file_id
-        if not pdf_bytes and bill.pdf_file_id:
-            try:
-                pdf_bytes = get_pdf_from_gridfs(bill.pdf_file_id)
-                if pdf_bytes:
-                    pdf_source = 'Bill GridFS'
-                    print(f"[DOWNLOAD PDF] Retrieved PDF from Bill GridFS: file_id={bill.pdf_file_id}, size={len(pdf_bytes)} bytes")
-            except Exception as e:
-                print(f"[DOWNLOAD PDF] Warning: Failed to retrieve PDF from Bill GridFS (file_id={bill.pdf_file_id}): {e}")
-        
-        # Fallback to on-demand generation if PDF not in GridFS
-        if not pdf_bytes:
-            print(f"[DOWNLOAD PDF] PDF not in GridFS, generating on-demand for bill {bill_id}")
-            invoice_data = _build_invoice_data(bill)
-            pdf_bytes = generate_invoice_pdf(invoice_data)
-            invoice_number = invoice_data.get('invoice_number', bill.bill_number)
-            pdf_source = 'On-demand generation'
-            print(f"[DOWNLOAD PDF] Generated PDF on-demand, size={len(pdf_bytes)} bytes")
+            if invoice and invoice.status in ['generated', 'viewed', 'shared']:
+                invoice.status = 'downloaded'
+                invoice.downloaded_at = datetime.utcnow()
+                invoice.save()
+        except Exception:
+            pass
 
         response = make_response(pdf_bytes)
         response.headers['Content-Type'] = 'application/pdf'
         response.headers['Content-Disposition'] = f'attachment; filename=invoice_{invoice_number}.pdf'
-        
-        # Add caching headers for better performance
-        if pdf_source and 'GridFS' in pdf_source:
-            # Cache PDFs from GridFS for 1 hour (they don't change)
-            response.headers['Cache-Control'] = 'public, max-age=3600'
-        else:
-            # Don't cache on-demand generated PDFs
-            response.headers['Cache-Control'] = 'no-cache'
-        
-        print(f"[DOWNLOAD PDF] Serving PDF: source={pdf_source}, invoice={invoice_number}")
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         return response
     except Bill.DoesNotExist:
         return jsonify({'error': 'Bill not found'}), 404

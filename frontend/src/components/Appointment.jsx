@@ -460,10 +460,10 @@ const Appointment = ({ setActivePage }) => {
 
     try {
       // Use the correct token key (auth_token) and branch ID
-      const token = localStorage.getItem('auth_token') || localStorage.getItem('token')
+      const token = sessionStorage.getItem('auth_token') || sessionStorage.getItem('token')
       let branchId = currentBranch?.id
       if (!branchId) {
-        const storedBranch = localStorage.getItem('current_branch')
+        const storedBranch = sessionStorage.getItem('current_branch')
         if (storedBranch) {
           try {
             const branch = JSON.parse(storedBranch)

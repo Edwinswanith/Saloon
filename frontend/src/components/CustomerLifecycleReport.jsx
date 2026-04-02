@@ -44,13 +44,13 @@ const CustomerLifecycleReport = () => {
       // Small delay to ensure localStorage is updated with new branch ID
       setTimeout(() => {
         // Verify branch ID is updated before fetching
-        const storedBranch = localStorage.getItem('current_branch');
+        const storedBranch = sessionStorage.getItem('current_branch');
         if (storedBranch) {
           try {
             const branch = JSON.parse(storedBranch);
             console.log(`[Customer Lifecycle] Fetching data for branch: ${branch.name} (${branch.id})`);
           } catch (e) {
-            console.error('[Customer Lifecycle] Error parsing branch from localStorage:', e);
+            console.error('[Customer Lifecycle] Error parsing branch from sessionStorage:', e);
           }
         }
         
@@ -77,7 +77,7 @@ const CustomerLifecycleReport = () => {
       setLoading(true);
       
       // Debug: Check current branch before making request
-      const storedBranch = localStorage.getItem('current_branch');
+      const storedBranch = sessionStorage.getItem('current_branch');
       if (storedBranch) {
         try {
           const branch = JSON.parse(storedBranch);

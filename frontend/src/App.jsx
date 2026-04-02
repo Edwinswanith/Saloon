@@ -43,6 +43,7 @@ const StaffTempAssignment = lazy(() => import('./components/StaffTempAssignment'
 const AssetManagement = lazy(() => import('./components/AssetManagement'))
 const Expense = lazy(() => import('./components/Expense'))
 const ServiceSalesAnalysis = lazy(() => import('./components/ServiceSalesAnalysis'))
+const BillHistory = lazy(() => import('./components/BillHistory'))
 const ListOfBills = lazy(() => import('./components/ListOfBills'))
 const ListOfDeletedBills = lazy(() => import('./components/ListOfDeletedBills'))
 const SalesByServiceGroup = lazy(() => import('./components/SalesByServiceGroup'))
@@ -192,6 +193,7 @@ function AppContent() {
                 <OfferCampaigns key="offer-campaigns" />
               </RequireRole>
             )}
+            {activePage === 'bill-history' && <BillHistory key="bill-history" />}
             {activePage === 'inventory' && <Inventory key="inventory" />}
             {activePage === 'reports' && (
               <RequireRole roles={['manager', 'owner']}>

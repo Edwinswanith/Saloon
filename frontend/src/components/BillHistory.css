@@ -1,0 +1,988 @@
+/* ============================================================================
+   BILL HISTORY - Base / Desktop (>1024px)
+   ============================================================================ */
+
+.bill-history-page {
+  width: 100%;
+  min-height: 100vh;
+  background: var(--surface-primary);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bill-history-container {
+  padding: 24px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+/* Header */
+.bh-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.bh-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bh-header-icon {
+  font-size: 24px;
+  color: var(--primary-700);
+}
+
+.bh-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.bh-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 2px 0 0 0;
+}
+
+/* Filters */
+.bh-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.bh-filter-top {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.bh-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.bh-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.bh-search-input {
+  width: 100%;
+  padding: 10px 36px 10px 36px;
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--surface-primary);
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.bh-search-input:focus {
+  outline: none;
+  border-color: var(--primary-700);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.08);
+}
+
+.bh-search-clear {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.bh-filter-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bh-date-select {
+  flex: 1;
+  min-width: 140px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  background: var(--surface-primary);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.bh-date-select:focus {
+  outline: none;
+  border-color: var(--primary-700);
+}
+
+.bh-date-picker {
+  flex: 1;
+  min-width: 140px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  background: var(--surface-primary);
+}
+
+.bh-date-picker:focus {
+  outline: none;
+  border-color: var(--primary-700);
+}
+
+/* Bill List */
+.bh-bill-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.bh-empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--text-muted);
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.bh-empty-icon {
+  font-size: 40px;
+  opacity: 0.3;
+}
+
+/* Bill Card */
+.bh-bill-card {
+  background: var(--surface-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.bh-bill-card:hover {
+  border-color: var(--primary-700);
+  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.1);
+}
+
+.bh-bill-card:active {
+  transform: scale(0.98);
+}
+
+.bh-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.bh-card-customer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.bh-card-icon {
+  color: var(--text-muted);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.bh-card-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bh-card-amount {
+  font-size: 16px;
+  font-weight: 700;
+  color: #059669;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.bh-card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bh-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.bh-card-date {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.bh-card-billno {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.bh-payment-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+
+.badge-cash {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.badge-upi {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.badge-card {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.badge-default {
+  background: var(--surface-secondary);
+  color: var(--text-muted);
+}
+
+/* Pagination */
+.bh-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 20px;
+  padding: 12px 0;
+}
+
+.bh-page-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  background: var(--surface-primary);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.bh-page-btn:hover:not(:disabled) {
+  border-color: var(--primary-700);
+  color: var(--primary-700);
+}
+
+.bh-page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.bh-page-info {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ============================================================================
+   MODAL - Base / Desktop
+   ============================================================================ */
+
+.bh-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 10000;
+  padding: 80px 24px 24px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.bh-modal {
+  background: #fff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 600px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 120px);
+  overflow: hidden;
+}
+
+.bh-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+  min-height: 56px;
+  box-sizing: border-box;
+}
+
+.bh-modal-header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+  line-height: 1.4;
+}
+
+.bh-modal-close {
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: background 0.15s;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0;
+}
+
+.bh-modal-close:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.bh-modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+  -webkit-overflow-scrolling: touch;
+}
+
+.bh-modal-loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-muted);
+}
+
+/* Detail Sections */
+.bh-detail-section {
+  margin-bottom: 24px;
+}
+
+.bh-detail-section:last-child {
+  margin-bottom: 0;
+}
+
+.bh-detail-section h3 {
+  margin: 0 0 12px 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border-light);
+}
+
+.bh-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.bh-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bh-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.bh-value {
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  word-break: break-word;
+}
+
+.bh-value a {
+  color: var(--primary-700);
+  text-decoration: none;
+}
+
+.bh-status-badge {
+  color: #059669;
+  text-transform: capitalize;
+}
+
+/* Items List */
+.bh-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bh-item-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: var(--surface-secondary);
+  border-radius: 8px;
+  gap: 12px;
+}
+
+.bh-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.bh-item-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.bh-item-type {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.bh-item-staff {
+  font-size: 12px;
+  color: var(--primary-700);
+  font-weight: 500;
+}
+
+.bh-item-pricing {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.bh-item-qty {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.bh-item-total {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+/* Amount Breakdown */
+.bh-amount-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bh-amount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.bh-amount-total {
+  border-top: 2px solid var(--border-light);
+  padding-top: 10px;
+  margin-top: 4px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #059669;
+}
+
+/* Modal Actions */
+.bh-modal-actions {
+  display: flex;
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border-light);
+  background: var(--surface-secondary);
+  flex-shrink: 0;
+}
+
+.bh-action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  min-height: 44px;
+}
+
+.bh-btn-whatsapp {
+  background: #25d366;
+  color: #fff;
+}
+
+.bh-btn-whatsapp:hover:not(:disabled) {
+  background: #1fb855;
+}
+
+.bh-btn-whatsapp:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bh-btn-download {
+  background: var(--surface-primary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-medium);
+}
+
+.bh-btn-download:hover {
+  border-color: var(--primary-700);
+  color: var(--primary-700);
+}
+
+/* ============================================================================
+   TABLET (769px - 1024px)
+   ============================================================================ */
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .bill-history-container {
+    padding: 20px;
+    max-width: 100%;
+  }
+
+  .bh-title {
+    font-size: 20px;
+  }
+
+  .bh-bill-list {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .bh-bill-card {
+    padding: 14px;
+  }
+
+  /* Modal - Tablet: GlobalHeader is 88px tall */
+  .bh-modal-overlay {
+    padding: 100px 16px 16px;
+  }
+
+  .bh-modal {
+    max-width: 90%;
+    max-height: calc(100vh - 100px);
+  }
+
+  .bh-modal-header {
+    padding: 14px 18px;
+  }
+
+  .bh-modal-body {
+    padding: 18px;
+  }
+
+  .bh-modal-close {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+  }
+
+  .bh-detail-grid {
+    gap: 10px;
+  }
+
+  /* Touch-friendly inputs */
+  .bh-search-input,
+  .bh-date-select,
+  .bh-date-picker {
+    min-height: 44px;
+  }
+
+  .bh-page-btn {
+    min-height: 40px;
+    padding: 8px 20px;
+  }
+
+  .bh-item-row {
+    padding: 12px;
+  }
+
+  .bh-modal-actions {
+    padding: 14px 18px;
+  }
+}
+
+/* ============================================================================
+   MOBILE (<=768px)
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .bill-history-container {
+    padding: 16px;
+    max-width: 100%;
+  }
+
+  .bh-header {
+    margin-bottom: 16px;
+  }
+
+  .bh-title {
+    font-size: 18px;
+  }
+
+  .bh-subtitle {
+    font-size: 12px;
+  }
+
+  .bh-header-icon {
+    font-size: 20px;
+  }
+
+  /* Filters stack on mobile */
+  .bh-filters {
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .bh-filter-top {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .bh-filter-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* 16px font prevents iOS zoom on focus */
+  .bh-search-input {
+    min-height: 44px;
+    font-size: 16px;
+    padding: 10px 36px;
+  }
+
+  .bh-date-select,
+  .bh-date-picker {
+    min-height: 44px;
+    font-size: 16px;
+    width: 100%;
+  }
+
+  /* Single column cards */
+  .bh-bill-list {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .bh-bill-card {
+    padding: 12px 14px;
+  }
+
+  .bh-card-name {
+    font-size: 14px;
+  }
+
+  .bh-card-amount {
+    font-size: 15px;
+  }
+
+  .bh-card-billno {
+    max-width: 120px;
+  }
+
+  /* Pagination */
+  .bh-pagination {
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .bh-page-btn {
+    min-height: 44px;
+    padding: 8px 20px;
+    font-size: 14px;
+  }
+
+  /* Modal - Mobile: GlobalHeader is 88px tall */
+  .bh-modal-overlay {
+    padding: 100px 10px 10px;
+  }
+
+  .bh-modal {
+    max-width: 100%;
+    max-height: calc(100vh - 70px);
+    border-radius: 12px;
+  }
+
+  .bh-modal-header {
+    padding: 14px 16px;
+  }
+
+  .bh-modal-header h2 {
+    font-size: 1.05rem;
+  }
+
+  .bh-modal-close {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+  }
+
+  .bh-modal-body {
+    padding: 16px;
+  }
+
+  .bh-detail-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .bh-detail-section {
+    margin-bottom: 20px;
+  }
+
+  .bh-detail-section h3 {
+    font-size: 0.85rem;
+    margin-bottom: 10px;
+  }
+
+  .bh-item-row {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .bh-item-name {
+    font-size: 13px;
+  }
+
+  .bh-item-total {
+    font-size: 13px;
+  }
+
+  /* Actions stack vertically */
+  .bh-modal-actions {
+    flex-direction: column;
+    padding: 12px 16px;
+    gap: 8px;
+  }
+
+  .bh-action-btn {
+    min-height: 48px;
+    font-size: 15px;
+  }
+
+  .bh-amount-row {
+    font-size: 13px;
+  }
+
+  .bh-amount-total {
+    font-size: 15px;
+  }
+}
+
+/* ============================================================================
+   SMALL MOBILE (<=480px)
+   ============================================================================ */
+
+@media (max-width: 480px) {
+  .bill-history-container {
+    padding: 12px;
+  }
+
+  .bh-header-left {
+    gap: 8px;
+  }
+
+  .bh-header-icon {
+    font-size: 18px;
+  }
+
+  .bh-title {
+    font-size: 16px;
+  }
+
+  .bh-bill-card {
+    padding: 10px 12px;
+    border-radius: 8px;
+  }
+
+  .bh-card-top {
+    margin-bottom: 6px;
+  }
+
+  .bh-card-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .bh-card-billno {
+    max-width: 100px;
+    font-size: 10px;
+  }
+
+  .bh-card-date {
+    font-size: 11px;
+  }
+
+  .bh-payment-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  /* Modal - small mobile: GlobalHeader is 88px tall */
+  .bh-modal-overlay {
+    padding: 96px 6px 6px;
+  }
+
+  .bh-modal {
+    border-radius: 10px;
+    max-height: calc(100vh - 56px);
+  }
+
+  .bh-modal-header {
+    padding: 12px 14px;
+  }
+
+  .bh-modal-header h2 {
+    font-size: 1rem;
+  }
+
+  .bh-modal-body {
+    padding: 14px;
+  }
+
+  .bh-label {
+    font-size: 10px;
+  }
+
+  .bh-value {
+    font-size: 13px;
+  }
+
+  .bh-item-staff {
+    font-size: 11px;
+  }
+
+  .bh-modal-actions {
+    padding: 10px 14px;
+  }
+}
+
+/* ============================================================================
+   LANDSCAPE MOBILE
+   ============================================================================ */
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .bh-modal-overlay {
+    padding: 10px;
+  }
+
+  .bh-modal {
+    max-height: calc(100vh - 20px);
+  }
+
+  .bh-modal-header {
+    padding: 10px 16px;
+  }
+
+  .bh-modal-body {
+    padding: 12px 16px;
+  }
+
+  .bh-modal-actions {
+    flex-direction: row;
+    padding: 10px 16px;
+  }
+
+  .bh-action-btn {
+    min-height: 40px;
+  }
+}

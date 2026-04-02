@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from mongoengine import Q
 from mongoengine.errors import DoesNotExist
 from datetime import datetime, timedelta
-from models import DiscountApprovalRequest, ApprovalCode, Bill, Staff, Manager, Owner
+from models import DiscountApprovalRequest, ApprovalCode, Bill, Staff, Manager, Owner, Notification
 from utils.auth import require_auth, require_role, get_current_user
 from utils.branch_filter import get_selected_branch
 from utils.approval_codes import (
@@ -151,7 +151,10 @@ def approve_request(approval_id, current_user=None):
         if approval.bill:
             approval.bill.discount_approval_status = 'approved'
             approval.bill.save()
-        
+
+        # Resolve related notification
+        Notification.objects(reference_id=str(approval.id), type='discount_approval').update(set__is_resolved=True)
+
         result = to_dict(approval)
         response = jsonify({'approval': result, 'message': 'Discount approved successfully'})
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -227,7 +230,9 @@ def approve_with_code(approval_id, current_user=None):
         if approval.bill:
             approval.bill.discount_approval_status = 'approved'
             approval.bill.save()
-        
+
+        Notification.objects(reference_id=str(approval.id), type='discount_approval').update(set__is_resolved=True)
+
         result = to_dict(approval)
         response = jsonify({'approval': result, 'message': 'Discount approved with code'})
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -265,7 +270,9 @@ def reject_request(approval_id, current_user=None):
         if approval.bill:
             approval.bill.discount_approval_status = 'rejected'
             approval.bill.save()
-        
+
+        Notification.objects(reference_id=str(approval.id), type='discount_approval').update(set__is_resolved=True)
+
         result = to_dict(approval)
         response = jsonify({'approval': result, 'message': 'Discount request rejected'})
         response.headers.add('Access-Control-Allow-Origin', '*')

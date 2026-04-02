@@ -108,7 +108,7 @@ const QuickSale = () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/loyalty-program/settings`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`
         }
       })
       if (response.ok) {
@@ -718,7 +718,7 @@ const QuickSale = () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/customers/${customerId}/active-membership`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`
         }
       })
       
@@ -1113,7 +1113,7 @@ const QuickSale = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`
         },
         body: JSON.stringify({
           customer_id: selectedCustomer.id,
@@ -1368,7 +1368,7 @@ const QuickSale = () => {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`
         },
         body: JSON.stringify({
           discount_amount: membershipInfo && membershipInfo.plan && discountType === 'membership' 

@@ -26,9 +26,14 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const storedToken = localStorage.getItem('auth_token');
-        const storedUser = localStorage.getItem('auth_user');
-        const storedBranch = localStorage.getItem('current_branch');
+        // Clear any legacy localStorage auth data from before the sessionStorage migration
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
+        localStorage.removeItem('current_branch');
+
+        const storedToken = sessionStorage.getItem('auth_token');
+        const storedUser = sessionStorage.getItem('auth_user');
+        const storedBranch = sessionStorage.getItem('current_branch');
 
         if (storedToken && storedUser) {
           setToken(storedToken);
@@ -50,14 +55,14 @@ export const AuthProvider = ({ children }) => {
             setCurrentBranch(branchData);
           } else if (userData && userData.branch) {
             setCurrentBranch(userData.branch);
-            localStorage.setItem('current_branch', JSON.stringify(userData.branch));
+            sessionStorage.setItem('current_branch', JSON.stringify(userData.branch));
           } else if (userData && userData.branch_id) {
             // If only branch_id is available, fetch branch details
             await fetchBranches();
             const branch = branches.find(b => b.id === userData.branch_id);
             if (branch) {
               setCurrentBranch(branch);
-              localStorage.setItem('current_branch', JSON.stringify(branch));
+              sessionStorage.setItem('current_branch', JSON.stringify(branch));
             }
           }
         }
@@ -92,7 +97,7 @@ export const AuthProvider = ({ children }) => {
 
       // Update user data with latest from server
       setUser(data.user);
-      localStorage.setItem('auth_user', JSON.stringify(data.user));
+      sessionStorage.setItem('auth_user', JSON.stringify(data.user));
 
       return data.user;
     } catch (error) {
@@ -125,18 +130,18 @@ export const AuthProvider = ({ children }) => {
       setUser(data.user);
       setIsAuthenticated(true);
 
-      localStorage.setItem('auth_token', data.token);
-      localStorage.setItem('auth_user', JSON.stringify(data.user));
+      sessionStorage.setItem('auth_token', data.token);
+      sessionStorage.setItem('auth_user', JSON.stringify(data.user));
       
       // Set branch from login response (prioritize branch object, then branch_id)
       if (data.branch) {
         // Use branch from response (most complete)
         setCurrentBranch(data.branch);
-        localStorage.setItem('current_branch', JSON.stringify(data.branch));
+        sessionStorage.setItem('current_branch', JSON.stringify(data.branch));
       } else if (data.user.branch) {
         // Fallback to user.branch
         setCurrentBranch(data.user.branch);
-        localStorage.setItem('current_branch', JSON.stringify(data.user.branch));
+        sessionStorage.setItem('current_branch', JSON.stringify(data.user.branch));
       } else if (data.branch_id || data.user.branch_id) {
         // If only branch_id is available, fetch branch details
         const branchId = data.branch_id || data.user.branch_id;
@@ -146,16 +151,16 @@ export const AuthProvider = ({ children }) => {
           const branch = branches.find(b => b.id === branchId);
           if (branch) {
             setCurrentBranch(branch);
-            localStorage.setItem('current_branch', JSON.stringify(branch));
+            sessionStorage.setItem('current_branch', JSON.stringify(branch));
           } else {
             // Store branch_id if branch details not available
             setCurrentBranch({ id: branchId, name: 'Branch' });
-            localStorage.setItem('current_branch', JSON.stringify({ id: branchId, name: 'Branch' }));
+            sessionStorage.setItem('current_branch', JSON.stringify({ id: branchId, name: 'Branch' }));
           }
         } else {
           // For staff/manager, store branch_id
           setCurrentBranch({ id: branchId, name: 'Branch' });
-          localStorage.setItem('current_branch', JSON.stringify({ id: branchId, name: 'Branch' }));
+          sessionStorage.setItem('current_branch', JSON.stringify({ id: branchId, name: 'Branch' }));
         }
       }
       
@@ -194,16 +199,16 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(false);
       setCurrentBranch(null);
       setBranches([]);
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('auth_user');
-      localStorage.removeItem('current_branch');
+      sessionStorage.removeItem('auth_token');
+      sessionStorage.removeItem('auth_user');
+      sessionStorage.removeItem('current_branch');
     }
   };
 
   // Update user function (for profile updates)
   const updateUser = (newUserData) => {
     setUser(newUserData);
-    localStorage.setItem('auth_user', JSON.stringify(newUserData));
+    sessionStorage.setItem('auth_user', JSON.stringify(newUserData));
   };
 
   // Change password function
@@ -376,7 +381,7 @@ export const AuthProvider = ({ children }) => {
       // Update current branch
       if (data.branch) {
         setCurrentBranch(data.branch);
-        localStorage.setItem('current_branch', JSON.stringify(data.branch));
+        sessionStorage.setItem('current_branch', JSON.stringify(data.branch));
       }
       
       return { success: true, branch: data.branch };

@@ -430,7 +430,7 @@ const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
           </button>
         )}
         {onDownload && (
-          <button className="invoice-action-btn download-btn" onClick={onDownload}>
+          <button className="invoice-action-btn download-btn" onClick={() => onDownload(billId)}>
             Download Invoice
           </button>
         )}

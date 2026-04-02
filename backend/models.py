@@ -720,6 +720,20 @@ class ApprovalCode(Document):
     expires_at = DateTimeField()  # Optional expiration
     created_at = DateTimeField(default=datetime.utcnow)
 
+# Notification Model
+class Notification(Document):
+    meta = {'collection': 'notifications', 'indexes': ['for_roles', 'branch', 'is_resolved']}
+
+    type = StringField(required=True, max_length=30)
+    title = StringField(required=True, max_length=200)
+    message = StringField(max_length=500)
+    for_roles = ListField(StringField(max_length=20))
+    branch = ReferenceField('Branch')
+    reference_id = StringField(max_length=50)
+    read_by = ListField(StringField(max_length=50))
+    is_resolved = BooleanField(default=False)
+    created_at = DateTimeField(default=datetime.utcnow)
+
 # Staff Leave Model
 class StaffLeave(Document):
     """Tracks staff leave/absence requests"""

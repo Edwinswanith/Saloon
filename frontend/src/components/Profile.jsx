@@ -125,8 +125,8 @@ const Profile = ({ isOpen, onClose }) => {
           updateUser(data.user);
         }
         
-        // Update localStorage
-        localStorage.setItem('auth_user', JSON.stringify(data.user));
+        // Update sessionStorage
+        sessionStorage.setItem('auth_user', JSON.stringify(data.user));
       } else {
         setError(data.error || data.message || 'Failed to update profile');
       }
