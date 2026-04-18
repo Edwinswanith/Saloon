@@ -194,6 +194,7 @@ class MembershipPlan(Document):
     allocated_discount = FloatField(default=0.0)  # Discount percentage
     status = StringField(max_length=20, default='active')  # active, inactive
     description = StringField()
+    branch = ReferenceField('Branch')  # None = available to all branches
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
 
@@ -771,6 +772,24 @@ class StaffTempAssignment(Document):
     created_by = ReferenceField('Staff')  # Who created this assignment
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
+
+# Business Settings Singleton
+class BusinessSettings(Document):
+    """Singleton document holding business-wide display settings (name, logo)."""
+    meta = {'collection': 'business_settings'}
+
+    name = StringField(required=True, max_length=120, default='Priyanka Nature Cure')
+    logo_url = StringField(max_length=500)
+    updated_at = DateTimeField(default=datetime.utcnow)
+
+    @classmethod
+    def get_instance(cls):
+        """Return the singleton, creating it from BUSINESS_NAME env var if missing."""
+        instance = cls.objects.first()
+        if instance is None:
+            instance = cls(name=os.environ.get('BUSINESS_NAME', 'Priyanka Nature Cure'))
+            instance.save()
+        return instance
 
 # Backward compatibility aliases for routes not yet converted
 # These allow old route imports to work but routes need conversion to use embedded documents

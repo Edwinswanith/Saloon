@@ -13,6 +13,7 @@ import { apiGet, apiPost } from '../utils/api'
 import { PUBLIC_BASE_URL } from '../config'
 import { formatLocalDate } from '../utils/dateUtils'
 import { useAuth } from '../contexts/AuthContext'
+import { useBusiness } from '../contexts/BusinessContext'
 import toast from 'react-hot-toast'
 import './BillHistory.css'
 
@@ -27,6 +28,7 @@ const BRANCH_INFO = {
 
 const BillHistory = () => {
   const { currentBranch } = useAuth()
+  const { businessName: configuredBusinessName } = useBusiness()
   const [bills, setBills] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -198,7 +200,7 @@ const BillHistory = () => {
       if (phoneNumber.length === 10) phoneNumber = '91' + phoneNumber
 
       const customerName = details.customer_name || 'Customer'
-      const businessName = 'Priyanka Nature Cure'
+      const businessName = configuredBusinessName || 'Priyanka Nature Cure'
       const supportPhone = '8095851126'
       const feedbackLink = `${PUBLIC_BASE_URL}/feedback`
 

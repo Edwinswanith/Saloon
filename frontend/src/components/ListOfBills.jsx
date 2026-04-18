@@ -3,15 +3,18 @@ import {
   FaArrowLeft,
   FaCloudDownloadAlt,
   FaTimes,
+  FaTrash,
 } from 'react-icons/fa'
 import './ListOfBills.css'
 import { API_BASE_URL } from '../config'
-import { apiGet } from '../utils/api'
+import { apiGet, apiDelete } from '../utils/api'
 import { formatLocalDate } from '../utils/dateUtils'
 import { useAuth } from '../contexts/AuthContext'
+import { showConfirm, showSuccess, showError } from '../utils/toast.jsx'
 
 const ListOfBills = ({ setActivePage }) => {
-  const { currentBranch } = useAuth()
+  const { currentBranch, user } = useAuth()
+  const canDeleteBills = user && (user.role === 'owner' || user.role === 'manager')
   const [dateFilter, setDateFilter] = useState('month') // Default to month to show more bills
   const [bills, setBills] = useState([])
   const [loading, setLoading] = useState(true)
@@ -137,6 +140,35 @@ const ListOfBills = ({ setActivePage }) => {
     } catch (error) {
       return 'N/A'
     }
+  }
+
+  const handleDeleteBill = (bill) => {
+    const billId = bill.id
+    if (!billId) {
+      showError('Bill ID not found')
+      return
+    }
+    const reason = (window.prompt('Reason for deleting this bill? (optional)') || '').trim()
+    showConfirm(
+      `Delete bill ${bill.bill_number || billId}? Stock and cash transactions will be reversed.`,
+      async () => {
+        try {
+          const response = await apiDelete(`/api/bills/${billId}`, {
+            body: JSON.stringify({ deletion_reason: reason }),
+          })
+          if (response.ok) {
+            showSuccess('Bill deleted successfully')
+            fetchBills()
+          } else {
+            const err = await response.json().catch(() => ({}))
+            showError(err.error || 'Failed to delete bill')
+          }
+        } catch (error) {
+          console.error('Error deleting bill:', error)
+          showError('Error deleting bill')
+        }
+      }
+    )
   }
 
   const handleViewDetails = async (bill) => {
@@ -295,12 +327,24 @@ const ListOfBills = ({ setActivePage }) => {
                       <td>₹{bill.tax?.toFixed(2) || '0.00'}</td>
                       <td>₹{bill.final_amount?.toFixed(2) || '0.00'}</td>
                       <td>
-                        <button 
-                          className="view-btn"
-                          onClick={() => handleViewDetails(bill)}
-                        >
-                          View
-                        </button>
+                        <div className="bill-actions">
+                          <button 
+                            className="view-btn"
+                            onClick={() => handleViewDetails(bill)}
+                          >
+                            View
+                          </button>
+                          {canDeleteBills && (
+                            <button
+                              className="delete-btn"
+                              onClick={() => handleDeleteBill(bill)}
+                              title="Delete bill"
+                            >
+                              <FaTrash />
+                              <span>Delete</span>
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))

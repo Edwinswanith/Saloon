@@ -9,7 +9,7 @@ import random
 # Add backend directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from mongoengine import connect
+from mongoengine import connect, Q
 from models import Branch, Manager
 from utils.auth import hash_password
 from datetime import datetime
@@ -125,7 +125,7 @@ def add_managers_for_branches():
                 
                 # Check if email or mobile already exists
                 existing = Manager.objects(
-                    (Manager.email == email) | (Manager.mobile == mobile)
+                    Q(email=email) | Q(mobile=mobile)
                 ).first()
                 
                 if not existing:

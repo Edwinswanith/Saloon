@@ -369,6 +369,18 @@ const StaffTempAssignment = () => {
 
   const stats = getSummaryStats()
 
+  // Safe initial letter for avatar bubbles (handles null / empty names without crashing the row).
+  const initialOf = (name) => {
+    if (!name || typeof name !== 'string') return '?'
+    const trimmed = name.trim()
+    return trimmed ? trimmed.charAt(0).toUpperCase() : '?'
+  }
+
+  // Find an active assignment for the currently selected staff so the modal can warn the user.
+  const activeAssignmentForSelected = formData.staff_id
+    ? assignments.find(a => a.staff_id === formData.staff_id && a.status === 'active')
+    : null
+
   return (
     <PageTransition>
       <div className="temp-assignment-page">
@@ -541,10 +553,10 @@ const StaffTempAssignment = () => {
                                   <div key={staff.staff_id} className="staff-item">
                                     <div className="staff-info">
                                       <div className="staff-avatar-small">
-                                        {staff.staff_name.charAt(0)}
+                                        {initialOf(staff.staff_name)}
                                       </div>
                                       <div>
-                                        <div className="staff-name">{staff.staff_name}</div>
+                                        <div className="staff-name">{staff.staff_name || 'Unknown staff'}</div>
                                         <div className="staff-mobile">{staff.mobile}</div>
                                       </div>
                                     </div>
@@ -589,10 +601,10 @@ const StaffTempAssignment = () => {
                                 <td>
                                   <div className="staff-cell">
                                     <div className="staff-avatar">
-                                      {leave.staff_name.charAt(0)}
+                                      {initialOf(leave.staff_name)}
                                     </div>
                                     <div>
-                                      <div className="staff-name">{leave.staff_name}</div>
+                                      <div className="staff-name">{leave.staff_name || 'Unknown staff'}</div>
                                     </div>
                                   </div>
                                 </td>
@@ -642,9 +654,75 @@ const StaffTempAssignment = () => {
                     </div>
                   )}
 
+                  {/* Currently Reassigned Staff */}
+                  {coverageData.active_assignments_today && coverageData.active_assignments_today.length > 0 && (
+                    <div className="coverage-section">
+                      <h3 className="section-title">
+                        <FaExchangeAlt style={{ color: '#ff9800', marginRight: '8px' }} />
+                        Currently Reassigned
+                      </h3>
+                      <div className="assignments-table-wrapper">
+                        <table className="assignments-table">
+                          <thead>
+                            <tr>
+                              <th>Staff Member</th>
+                              <th>From Branch</th>
+                              <th>To Branch</th>
+                              <th>Until</th>
+                              <th>Reason</th>
+                              <th>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {coverageData.active_assignments_today.map(a => (
+                              <tr key={a.id}>
+                                <td>
+                                  <div className="staff-cell">
+                                    <div className="staff-avatar">{initialOf(a.staff_name)}</div>
+                                    <div>
+                                      <div className="staff-name">{a.staff_name || 'Unknown staff'}</div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="branch-info">
+                                    <FaBuilding className="branch-icon" />
+                                    <span>{a.original_branch || '-'}</span>
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="branch-info">
+                                    <FaBuilding className="branch-icon" />
+                                    <span>{a.temp_branch || '-'}</span>
+                                  </div>
+                                </td>
+                                <td>
+                                  <span>{a.end_date ? new Date(a.end_date).toLocaleDateString() : '-'}</span>
+                                </td>
+                                <td>
+                                  <span className="reason-badge">{getReasonLabel(a.reason)}</span>
+                                </td>
+                                <td>
+                                  <button
+                                    className="btn-cancel"
+                                    onClick={() => handleCancel(a.id, a.staff_name)}
+                                    title="Cancel this reassignment and return staff to their home branch"
+                                  >
+                                    <FaExchangeAlt /> Return to Original Branch
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
                   {coverageData.branches_needing_coverage?.length === 0 && 
                    coverageData.available_staff_by_branch?.length === 0 && 
-                   coverageData.leaves_today?.length === 0 && (
+                   coverageData.leaves_today?.length === 0 &&
+                   (coverageData.active_assignments_today?.length || 0) === 0 && (
                     <EmptyTable 
                       message="No coverage needs today"
                       subtitle="All branches are fully staffed"
@@ -717,10 +795,10 @@ const StaffTempAssignment = () => {
                         <td>
                           <div className="staff-cell">
                             <div className="staff-avatar">
-                              {assignment.staff_name.charAt(0)}
+                              {initialOf(assignment.staff_name)}
                             </div>
                             <div>
-                              <div className="staff-name">{assignment.staff_name}</div>
+                              <div className="staff-name">{assignment.staff_name || 'Unknown staff'}</div>
                               <div className="staff-mobile">{assignment.staff_mobile}</div>
                             </div>
                           </div>
@@ -812,6 +890,27 @@ const StaffTempAssignment = () => {
                   <FaInfoCircle />
                   <span>Temporarily assign a staff member from their home branch to cover another branch</span>
                 </div>
+
+                {activeAssignmentForSelected && (
+                  <div
+                    className="info-banner"
+                    style={{
+                      background: '#fff3e0',
+                      borderLeft: '4px solid #ff9800',
+                      color: '#8a4b00'
+                    }}
+                  >
+                    <FaExclamationTriangle style={{ color: '#ff9800' }} />
+                    <span>
+                      <strong>{activeAssignmentForSelected.staff_name}</strong> is already reassigned to{' '}
+                      <strong>{activeAssignmentForSelected.temp_branch}</strong> until{' '}
+                      {activeAssignmentForSelected.end_date
+                        ? new Date(activeAssignmentForSelected.end_date).toLocaleDateString()
+                        : 'further notice'}
+                      . Cancel that assignment first from the All Assignments tab (or the Currently Reassigned section on the dashboard) before creating a new one.
+                    </span>
+                  </div>
+                )}
 
                 <div className="form-group">
                   <label>Staff Member <span className="required">*</span></label>

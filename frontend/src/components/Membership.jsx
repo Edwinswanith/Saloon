@@ -10,7 +10,7 @@ import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 import { useAuth } from '../contexts/AuthContext'
 
 const Membership = () => {
-  const { currentBranch } = useAuth()
+  const { currentBranch, branches } = useAuth()
   const [membershipPlans, setMembershipPlans] = useState([])
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -22,6 +22,7 @@ const Membership = () => {
     allocatedDiscount: '',
     status: 'active',
     description: '',
+    branch_id: '',
   })
 
   useEffect(() => {
@@ -66,6 +67,7 @@ const Membership = () => {
       allocatedDiscount: '',
       status: 'active',
       description: '',
+      branch_id: currentBranch?.id || '',
     })
     setShowAddModal(true)
   }
@@ -79,6 +81,7 @@ const Membership = () => {
       allocatedDiscount: plan.allocatedDiscount,
       status: plan.status,
       description: plan.description || '',
+      branch_id: plan.branch_id || '',
     })
     setShowAddModal(true)
   }
@@ -114,6 +117,7 @@ const Membership = () => {
         allocatedDiscount: parseFloat(formData.allocatedDiscount) || 0,
         status: formData.status,
         description: formData.description,
+        branch_id: formData.branch_id || null,
       }
 
       const response = editingPlan
@@ -156,6 +160,7 @@ const Membership = () => {
                   <tr>
                     <th>No.</th>
                     <th>Name</th>
+                    <th>Branch</th>
                     <th>Validity</th>
                     <th>Price (₹)</th>
                     <th>Allocated Discount (%)</th>
@@ -166,7 +171,7 @@ const Membership = () => {
                 <tbody>
                   {membershipPlans.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="empty-row">
+                      <td colSpan="8" className="empty-row">
                         No membership plans found
                       </td>
                     </tr>
@@ -175,6 +180,7 @@ const Membership = () => {
                       <tr key={plan.id}>
                         <td>{index + 1}</td>
                         <td>{plan.name}</td>
+                        <td>{plan.branch_name || 'All Branches'}</td>
                         <td>{plan.validity} days</td>
                         <td>₹{plan.price.toFixed(2)}</td>
                         <td>{plan.allocatedDiscount}%</td>
@@ -290,6 +296,22 @@ const Membership = () => {
                 >
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Branch</label>
+                <select
+                  value={formData.branch_id}
+                  onChange={(e) =>
+                    setFormData({ ...formData, branch_id: e.target.value })
+                  }
+                >
+                  <option value="">All Branches</option>
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="form-group">

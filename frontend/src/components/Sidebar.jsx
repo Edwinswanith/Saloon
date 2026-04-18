@@ -22,6 +22,7 @@ import {
   FaHistory,
 } from 'react-icons/fa'
 import { useAuth } from '../contexts/AuthContext'
+import { useBusiness } from '../contexts/BusinessContext'
 import './Sidebar.css'
 
 /**
@@ -43,6 +44,7 @@ const Sidebar = ({
   onMobileClose
 }) => {
   const { hasAnyRole } = useAuth()
+  const { businessName } = useBusiness()
   const [expandedItems, setExpandedItems] = useState({
     'salon-settings': false,
     customers: false,
@@ -309,7 +311,7 @@ const Sidebar = ({
             {!isCollapsed && (
               <img
                 src="/logo/priyanka logo.png"
-                alt="Priyanka Nature Cure"
+                alt={businessName}
                 className="logo-image"
               />
             )}

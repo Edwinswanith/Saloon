@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast'
 import { ConfigProvider } from 'antd'
 import { antdTheme } from './config/antd-theme'
 import { AuthProvider, useAuth, RequireRole } from './contexts/AuthContext'
+import { BusinessProvider } from './contexts/BusinessContext'
 import { AnimatePresence } from 'framer-motion'
 
 // Keep Login, Sidebar, GlobalHeader eager (needed immediately)
@@ -350,6 +351,7 @@ function App() {
   return (
     <ConfigProvider theme={antdTheme}>
       <AuthProvider>
+        <BusinessProvider>
         <Toaster
           position="top-right"
           toastOptions={{
@@ -381,6 +383,7 @@ function App() {
           }}
         />
         <AppContent />
+        </BusinessProvider>
       </AuthProvider>
     </ConfigProvider>
   )

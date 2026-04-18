@@ -10,7 +10,7 @@ This script:
 Run: python backend/insert_dummy_auth_data.py
 """
 
-from mongoengine import connect, disconnect
+from mongoengine import connect, disconnect, Q
 from models import Staff, Manager
 from utils.auth import hash_password
 from datetime import datetime
@@ -239,7 +239,7 @@ for data in manager_data:
     try:
         # Check if manager already exists
         existing = Manager.objects(
-            (Manager.email == data['email']) | (Manager.mobile == data['mobile'])
+            Q(email=data['email']) | Q(mobile=data['mobile'])
         ).first()
         if existing:
             print(f"  ⚠ Manager {data['first_name']} {data['last_name']} ({data['email']}) already exists - skipping")

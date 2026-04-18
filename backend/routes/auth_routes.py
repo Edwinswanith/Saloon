@@ -2,6 +2,7 @@
 Authentication routes for login, logout, and user management
 """
 from flask import Blueprint, request, jsonify
+from mongoengine import Q
 from models import Staff, Manager, Owner, LoginHistory, Branch
 from utils.auth import (
     hash_password,
@@ -245,13 +246,16 @@ def login():
         # Handle Manager/Owner login
         elif user_type == 'manager':
             # Check if this is an owner login (role='owner' in request)
-            requested_role = request.get_json().get('role', 'manager')
-            
+            raw_role = data.get('role', 'manager')
+            requested_role = (
+                str(raw_role).strip().lower() if raw_role is not None else 'manager'
+            )
+
             if requested_role == 'owner':
                 # Handle Owner login - check Owner collection
-                from mongoengine import Q
+                # Must use Q(); raw (Field==x)|(Field==y) is not a valid MongoEngine query
                 owner = Owner.objects(
-                    (Owner.email == identifier) | (Owner.mobile == identifier)
+                    Q(email=identifier) | Q(mobile=identifier)
                 ).first()
 
                 if not owner:
@@ -410,12 +414,8 @@ def login():
             
             # Handle Manager login - check Manager collection
             # Find manager by email or mobile - filter by branch to ensure correct manager
-            from mongoengine import Q
-            
-            # Build query: find by email/mobile
-            query = Manager.objects(
-                (Manager.email == identifier) | (Manager.mobile == identifier)
-            )
+            # Must use Q(); raw (Field==x)|(Field==y) matches wrong documents
+            query = Manager.objects(Q(email=identifier) | Q(mobile=identifier))
             
             # If branch_id provided, filter by branch to avoid loading wrong manager
             if branch_id and ObjectId.is_valid(branch_id):
@@ -1075,7 +1075,6 @@ def get_staff_list():
     Optional query parameter: branch_id - filter by branch
     """
     try:
-        from mongoengine import Q
         from models import Branch
         from bson import ObjectId
         

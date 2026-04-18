@@ -2175,6 +2175,119 @@
   appearance: none;
 }
 
+.service-search-select {
+  position: relative;
+  width: 100%;
+}
+
+.service-search-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.service-search-input {
+  padding-right: 30px;
+  cursor: text;
+  text-overflow: ellipsis;
+}
+
+.service-search-input:disabled {
+  background: var(--gray-50);
+  cursor: not-allowed;
+}
+
+.service-search-chevron {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--gray-500);
+  font-size: 12px;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  z-index: 11;
+}
+
+.service-search-chevron.open {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.service-search-dropdown {
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: white;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 9999;
+  scrollbar-width: thin !important;
+}
+
+.service-search-dropdown::-webkit-scrollbar {
+  display: block !important;
+  width: 8px !important;
+  height: 8px !important;
+}
+
+.service-search-dropdown::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 4px;
+}
+
+.service-search-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--gray-700);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.service-search-option:hover,
+.service-search-option.highlighted {
+  background: var(--gray-100);
+}
+
+.service-search-option.selected {
+  background: var(--primary-50, #eef2ff);
+  color: var(--primary-700, #4338ca);
+  font-weight: 500;
+}
+
+.service-search-option.no-match {
+  color: var(--gray-500);
+  font-style: italic;
+  cursor: default;
+}
+
+.service-search-option.no-match:hover {
+  background: transparent;
+}
+
+.service-search-option-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.service-search-option-price {
+  color: var(--gray-500);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.service-search-option.selected .service-search-option-price {
+  color: var(--primary-600, #4f46e5);
+}
+
 .table-select::-ms-expand {
   display: none;
 }
@@ -3617,8 +3730,14 @@ select.table-select:focus {
     gap: 16px;
   }
 
+  .service-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .service-table {
     font-size: 13px;
+    min-width: 640px;
   }
 
   .service-table th,

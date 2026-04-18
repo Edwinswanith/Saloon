@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { FaBell, FaUser, FaSignOutAlt, FaBars, FaTimes, FaCheckDouble } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
+import { useBusiness } from '../contexts/BusinessContext';
 import { apiGet, apiPut } from '../utils/api';
 import Profile from './Profile';
 import BranchSelector from './BranchSelector';
@@ -10,6 +11,7 @@ const POLL_INTERVAL = 30000;
 
 const GlobalHeader = ({ onMobileMenuToggle }) => {
   const { user, logout, hasAnyRole } = useAuth();
+  const { businessName } = useBusiness();
   const [showProfile, setShowProfile] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -129,7 +131,7 @@ const GlobalHeader = ({ onMobileMenuToggle }) => {
 
           <div className="global-header-center">
             <div className="banner-text">
-              <span className="banner-main">Priyanka Nature Cure</span>
+              <span className="banner-main" title={businessName}>{businessName}</span>
             </div>
           </div>
 

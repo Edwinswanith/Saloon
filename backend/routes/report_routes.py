@@ -141,27 +141,61 @@ def list_of_bills(current_user=None):
             if end:
                 query = query.filter(bill_date__lte=end)
         if customer_id and ObjectId.is_valid(customer_id):
-            try:
-                customer = Customer.objects.get(id=customer_id)
-                query = query.filter(customer=customer)
-            except DoesNotExist:
-                pass
+            query = query.filter(customer=ObjectId(customer_id))
 
-        # Force evaluation by converting to list
-        bills = list(query.order_by('-bill_date'))
+        # Only load the fields this endpoint actually needs, and skip auto-
+        # dereferencing the customer ref. We batch-fetch customers below in one
+        # query, avoiding the N+1 round-trips to Atlas that made this endpoint
+        # take up to 2 minutes.
+        bills = list(
+            query.order_by('-bill_date')
+                 .no_dereference()
+                 .only(
+                     'bill_number', 'bill_date', 'customer',
+                     'subtotal', 'discount_amount', 'tax_amount',
+                     'final_amount', 'payment_mode', 'booking_status'
+                 )
+        )
+
+        customer_ids = set()
+        for b in bills:
+            cref = b._data.get('customer')
+            if cref is None:
+                continue
+            cid = getattr(cref, 'id', cref)
+            if cid is not None:
+                customer_ids.add(cid)
+
+        customer_map = {}
+        if customer_ids:
+            for c in Customer.objects(id__in=list(customer_ids)).only(
+                'first_name', 'last_name', 'mobile'
+            ):
+                customer_map[c.id] = c
 
         result = []
         for b in bills:
             try:
-                # Format bill_date to show local date correctly
                 bill_date_iso = b.bill_date.isoformat() if b.bill_date else None
-                customer_info = get_safe_customer_info(b.customer)
+
+                cref = b._data.get('customer')
+                cid = getattr(cref, 'id', cref) if cref is not None else None
+                customer = customer_map.get(cid)
+                if customer is not None:
+                    name = f"{customer.first_name or ''} {customer.last_name or ''}".strip() or 'Walk-in'
+                    mobile = customer.mobile
+                    cust_id_str = str(customer.id)
+                else:
+                    name = 'Walk-in'
+                    mobile = None
+                    cust_id_str = None
+
                 result.append({
                     'bill_number': b.bill_number,
                     'bill_date': bill_date_iso,
-                    'customer_name': customer_info['name'],
-                    'customer_mobile': customer_info['mobile'],
-                    'customer_id': customer_info['id'],
+                    'customer_name': name,
+                    'customer_mobile': mobile,
+                    'customer_id': cust_id_str,
                     'id': str(b.id),
                     'subtotal': b.subtotal,
                     'discount': b.discount_amount,
@@ -173,7 +207,7 @@ def list_of_bills(current_user=None):
             except Exception as e:
                 print(f"Error processing bill {b.id}: {e}")
                 continue
-        
+
         response = jsonify(result)
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response

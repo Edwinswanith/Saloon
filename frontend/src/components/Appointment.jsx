@@ -24,7 +24,6 @@ const Appointment = ({ setActivePage }) => {
   const [staffMembers, setStaffMembers] = useState([])
   const [appointments, setAppointments] = useState([])
   const [loading, setLoading] = useState(true)
-  const [showBookingModal, setShowBookingModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [selectedAppointment, setSelectedAppointment] = useState(null)
@@ -33,17 +32,6 @@ const Appointment = ({ setActivePage }) => {
   const [loadingInvoice, setLoadingInvoice] = useState(false)
   const [billId, setBillId] = useState(null)
   const [showInvoiceView, setShowInvoiceView] = useState(false) // Track whether to show invoice or appointment details
-  const [bookingForm, setBookingForm] = useState({
-    customer_id: '',
-    staff_id: '',
-    service_id: '',
-    appointment_date: new Date().toISOString().split('T')[0],
-    start_time: '',
-    notes: '',
-    dob: '',
-  })
-  const [customers, setCustomers] = useState([])
-  const [services, setServices] = useState([])
 
 
   const isCurrentTime = (hour) => {
@@ -100,8 +88,6 @@ const Appointment = ({ setActivePage }) => {
 
   useEffect(() => {
     fetchStaff()
-    fetchCustomers()
-    fetchServices()
   }, [])
 
   useEffect(() => {
@@ -114,39 +100,12 @@ const Appointment = ({ setActivePage }) => {
   useEffect(() => {
     const handleBranchChange = () => {
       fetchStaff()
-      fetchCustomers()
-      fetchServices()
       fetchAppointments()
     }
     
     window.addEventListener('branchChanged', handleBranchChange)
     return () => window.removeEventListener('branchChanged', handleBranchChange)
   }, [])
-
-  // Fetch customer DOB when customer is selected
-  useEffect(() => {
-    if (bookingForm.customer_id) {
-      apiGet(`/api/customers/${bookingForm.customer_id}`)
-        .then(response => {
-          if (response.ok) {
-            return response.json()
-          }
-          return null
-        })
-        .then(data => {
-          if (data && data.dob) {
-            setBookingForm(prev => ({ ...prev, dob: data.dob }))
-          } else {
-            setBookingForm(prev => ({ ...prev, dob: '' }))
-          }
-        })
-        .catch(error => {
-          console.error('Error fetching customer DOB:', error)
-        })
-    } else {
-      setBookingForm(prev => ({ ...prev, dob: '' }))
-    }
-  }, [bookingForm.customer_id])
 
   const fetchStaff = async () => {
     try {
@@ -155,26 +114,6 @@ const Appointment = ({ setActivePage }) => {
       setStaffMembers(data.staffs || [])
     } catch (error) {
       console.error('Error fetching staff:', error)
-    }
-  }
-
-  const fetchCustomers = async () => {
-    try {
-      const response = await apiGet('/api/customers?per_page=100')
-      const data = await response.json()
-      setCustomers(data.customers || [])
-    } catch (error) {
-      console.error('Error fetching customers:', error)
-    }
-  }
-
-  const fetchServices = async () => {
-    try {
-      const response = await apiGet('/api/services')
-      const data = await response.json()
-      setServices(data.services || [])
-    } catch (error) {
-      console.error('Error fetching services:', error)
     }
   }
 
@@ -227,68 +166,6 @@ const Appointment = ({ setActivePage }) => {
       setAppointments([])
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleBookAppointment = async (e) => {
-    e.preventDefault()
-    
-    // Validate required fields
-    if (!bookingForm.customer_id || !bookingForm.staff_id || !bookingForm.appointment_date || !bookingForm.start_time) {
-      showError('Please fill in all required fields')
-      return
-    }
-    
-    try {
-      // Format time correctly (ensure HH:MM:SS format)
-      let formattedTime = bookingForm.start_time
-      if (formattedTime.length === 5) { // HH:MM format
-        formattedTime = formattedTime + ':00'
-      }
-      
-      const response = await apiPost('/api/appointments', {
-        customer_id: bookingForm.customer_id,  // Send as string (MongoDB ObjectId)
-        staff_id: bookingForm.staff_id,  // Send as string (MongoDB ObjectId)
-        service_id: bookingForm.service_id || null,  // Send as string (MongoDB ObjectId) or null
-        appointment_date: bookingForm.appointment_date,
-        start_time: formattedTime,
-        status: 'confirmed',
-        notes: bookingForm.notes || '',
-      })
-      
-      const responseData = await response.json()
-      
-      if (response.ok) {
-        showSuccess('Appointment booked successfully!')
-        
-        // Save DOB if provided
-        if (bookingForm.dob && bookingForm.customer_id) {
-          try {
-            await apiPut(`/api/customers/${bookingForm.customer_id}`, { dob: bookingForm.dob })
-          } catch (error) {
-            console.error('Error saving customer DOB:', error)
-            // Non-blocking - don't show error to user as appointment was already created
-          }
-        }
-        
-        setShowBookingModal(false)
-        setBookingForm({
-          customer_id: '',
-          staff_id: '',
-          service_id: '',
-          appointment_date: selectedDate,
-          start_time: '',
-          notes: '',
-          dob: '',
-        })
-        // Refresh appointments immediately
-        await fetchAppointments()
-      } else {
-        showError(responseData.error || 'Failed to book appointment')
-      }
-    } catch (error) {
-      console.error('Error booking appointment:', error)
-      showError('Error booking appointment: ' + error.message)
     }
   }
 
@@ -358,17 +235,6 @@ const Appointment = ({ setActivePage }) => {
         return false
       }
     })
-  }
-
-  const openBookingModal = (staffId, hour, date = null) => {
-    setBookingForm({
-      ...bookingForm,
-      staff_id: staffId,
-      appointment_date: date || selectedDate,
-      start_time: hour ? `${String(hour).padStart(2, '0')}:00` : '',
-      dob: '', // Reset DOB when opening modal
-    })
-    setShowBookingModal(true)
   }
 
   const openDetailModal = async (appointment) => {
@@ -656,8 +522,7 @@ const Appointment = ({ setActivePage }) => {
                       <div
                         key={`${timeSlot.hour}-${staff.id}`}
                         className="schedule-cell"
-                        onClick={() => openBookingModal(staff.id, timeSlot.hour, selectedDate)}
-                        style={{ cursor: 'pointer', position: 'relative' }}
+                        style={{ position: 'relative' }}
                       >
                         {showCurrentTime && staffIndex === 0 && (
                           <div 
@@ -745,8 +610,7 @@ const Appointment = ({ setActivePage }) => {
                       <div
                         key={`${timeSlot.hour}-${date}`}
                         className="schedule-cell"
-                        onClick={() => openBookingModal(selectedStaff !== 'all' ? selectedStaff : null, timeSlot.hour, date)}
-                        style={{ cursor: 'pointer', position: 'relative' }}
+                        style={{ position: 'relative' }}
                       >
                         {showCurrentTime && date === getWeekDates(selectedDate)[0] && (
                           <div className="current-time-line-wrapper">
@@ -845,91 +709,6 @@ const Appointment = ({ setActivePage }) => {
           </div>
         )}
       </div>
-
-      {/* Booking Modal */}
-      {showBookingModal && (
-        <div className="modal-overlay" onClick={() => setShowBookingModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Book Appointment</h2>
-              <button className="close-btn" onClick={() => setShowBookingModal(false)}>
-                <FaTimes />
-              </button>
-            </div>
-            <form onSubmit={handleBookAppointment}>
-              <div className="form-group">
-                <label>Customer *</label>
-                <select
-                  required
-                  value={bookingForm.customer_id}
-                  onChange={(e) => setBookingForm({ ...bookingForm, customer_id: e.target.value })}
-                >
-                  <option value="">Select Customer</option>
-                  {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.firstName} {customer.lastName} - {customer.mobile}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Service</label>
-                <select
-                  value={bookingForm.service_id}
-                  onChange={(e) => setBookingForm({ ...bookingForm, service_id: e.target.value })}
-                >
-                  <option value="">Select Service</option>
-                  {services.map((service) => (
-                    <option key={service.id} value={service.id}>
-                      {service.name} - ₹{service.price}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Date *</label>
-                <input
-                  type="date"
-                  required
-                  value={bookingForm.appointment_date}
-                  onChange={(e) => setBookingForm({ ...bookingForm, appointment_date: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>Time *</label>
-                <input
-                  type="time"
-                  required
-                  value={bookingForm.start_time}
-                  onChange={(e) => setBookingForm({ ...bookingForm, start_time: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>Notes</label>
-                <textarea
-                  value={bookingForm.notes}
-                  onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })}
-                  rows="3"
-                />
-              </div>
-              <div className="form-group">
-                <label>Date of Birth (optional)</label>
-                <input
-                  type="date"
-                  value={bookingForm.dob}
-                  onChange={(e) => setBookingForm({ ...bookingForm, dob: e.target.value })}
-                />
-              </div>
-              <div className="modal-actions">
-                <button type="button" onClick={() => setShowBookingModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit">Book Appointment</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Appointment Detail Modal */}
       {showDetailModal && appointmentDetail && (

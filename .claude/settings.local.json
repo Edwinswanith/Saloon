@@ -32,7 +32,8 @@
       "Bash(grep:*)",
       "Bash(npm install:*)",
       "Bash(taskkill:*)",
-      "mcp__chrome-devtools__type_text"
+      "mcp__chrome-devtools__type_text",
+      "Bash(pip install:*)"
     ]
   }
 }

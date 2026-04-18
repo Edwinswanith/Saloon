@@ -269,6 +269,40 @@
   font-style: italic;
 }
 
+.bill-actions {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.delete-btn {
+  padding: 4px 12px;
+  max-height: 32px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #b91c1c;
+  background: transparent;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.delete-btn:hover {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
+.delete-btn:active {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: white;
+}
+
 .view-btn {
   padding: 4px 12px;
   max-height: 32px;

@@ -199,8 +199,12 @@ def generate_invoice_pdf_reportlab(invoice_data):
     booking_date = invoice_data.get('booking_date', 'N/A')
     booking_time = invoice_data.get('booking_time', 'N/A')
 
-    # Company name is hardcoded to match View Bill
-    company_name = 'Priyanka Nature Cure'
+    # Company name is pulled from BusinessSettings singleton
+    try:
+        from models import BusinessSettings
+        company_name = BusinessSettings.get_instance().name or 'Priyanka Nature Cure'
+    except Exception:
+        company_name = 'Priyanka Nature Cure'
 
     # Look up branch info from mapping (case-insensitive)
     branch_name = branch.get('name', '').strip()

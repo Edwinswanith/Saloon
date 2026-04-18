@@ -1,0 +1,1721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saloon Pro - Complete Salon Management System</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;500;600;700&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #0d9488;
+            --primary-dark: #0f766e;
+            --primary-light: #99f6e4;
+            --accent: #f59e0b;
+            --dark: #0f172a;
+            --dark-2: #1e293b;
+            --gray: #64748b;
+            --gray-light: #f1f5f9;
+            --white: #ffffff;
+            --gradient-hero: linear-gradient(135deg, #0f172a 0%, #134e4a 50%, #0f172a 100%);
+            --gradient-card: linear-gradient(135deg, #f0fdfa 0%, #f8fafc 100%);
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+            --shadow-md: 0 4px 20px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 40px rgba(0,0,0,0.12);
+            --shadow-xl: 0 25px 60px rgba(0,0,0,0.15);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--dark);
+            line-height: 1.6;
+            background: var(--white);
+            overflow-x: hidden;
+        }
+
+        /* ===== HERO SECTION ===== */
+        .hero {
+            min-height: 100vh;
+            background: var(--gradient-hero);
+            position: relative;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(13,148,136,0.15) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            left: -10%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(245,158,11,0.1) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .hero-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 40px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(13,148,136,0.2);
+            border: 1px solid rgba(13,148,136,0.3);
+            color: var(--primary-light);
+            padding: 8px 20px;
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            margin-bottom: 24px;
+        }
+
+        .hero-badge::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #34d399;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .hero h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 56px;
+            font-weight: 700;
+            color: var(--white);
+            line-height: 1.15;
+            margin-bottom: 20px;
+        }
+
+        .hero h1 span {
+            background: linear-gradient(135deg, #34d399, #5eead4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 18px;
+            color: #94a3b8;
+            line-height: 1.7;
+            margin-bottom: 36px;
+            max-width: 480px;
+        }
+
+        .hero-stats {
+            display: flex;
+            gap: 40px;
+            margin-top: 48px;
+        }
+
+        .hero-stat { text-align: left; }
+
+        .hero-stat-number {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--white);
+        }
+
+        .hero-stat-label {
+            font-size: 13px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 4px;
+        }
+
+        .hero-image-wrapper { position: relative; }
+
+        .hero-image-wrapper img {
+            width: 100%;
+            border-radius: 16px;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .hero-image-glow {
+            position: absolute;
+            inset: -2px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, rgba(13,148,136,0.4), rgba(245,158,11,0.2));
+            z-index: -1;
+            filter: blur(20px);
+        }
+
+        .hero-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 16px 36px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            text-decoration: none;
+            transition: all 0.3s;
+            box-shadow: 0 4px 20px rgba(13,148,136,0.4);
+        }
+
+        .hero-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(13,148,136,0.5); }
+
+        /* ===== SECTION STYLES ===== */
+        section { padding: 100px 40px; }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        .section-label {
+            display: inline-block;
+            background: rgba(13,148,136,0.1);
+            color: var(--primary);
+            padding: 6px 16px;
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 42px;
+            font-weight: 700;
+            color: var(--dark);
+            line-height: 1.2;
+            margin-bottom: 16px;
+        }
+
+        .section-desc {
+            font-size: 18px;
+            color: var(--gray);
+            max-width: 600px;
+            line-height: 1.7;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 64px;
+        }
+
+        .section-header .section-desc { margin: 0 auto; }
+
+        /* ===== OVERVIEW STRIP ===== */
+        .overview-strip {
+            background: var(--white);
+            padding: 40px;
+            border-top: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .overview-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 32px;
+            text-align: center;
+        }
+
+        .overview-item { padding: 20px; }
+
+        .overview-number {
+            font-size: 40px;
+            font-weight: 800;
+            color: var(--primary);
+            line-height: 1;
+        }
+
+        .overview-label {
+            font-size: 14px;
+            color: var(--gray);
+            margin-top: 8px;
+            font-weight: 500;
+        }
+
+        /* ===== FEATURE SHOWCASE ===== */
+        .feature-showcase { background: var(--gray-light); }
+
+        .feature-block {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: center;
+            margin-bottom: 100px;
+        }
+
+        .feature-block:last-child { margin-bottom: 0; }
+        .feature-block.reverse { direction: rtl; }
+        .feature-block.reverse > * { direction: ltr; }
+
+        .feature-number {
+            font-size: 72px;
+            font-weight: 900;
+            color: rgba(13,148,136,0.08);
+            line-height: 1;
+            margin-bottom: -10px;
+            font-family: 'Playfair Display', serif;
+        }
+
+        .feature-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 16px;
+        }
+
+        .feature-desc {
+            font-size: 16px;
+            color: var(--gray);
+            line-height: 1.8;
+            margin-bottom: 28px;
+        }
+
+        .feature-list {
+            list-style: none;
+            display: grid;
+            gap: 12px;
+        }
+
+        .feature-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 15px;
+            color: var(--dark-2);
+        }
+
+        .feature-list li::before {
+            content: '\2713';
+            flex-shrink: 0;
+            width: 24px;
+            height: 24px;
+            background: rgba(13,148,136,0.1);
+            color: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            margin-top: 1px;
+        }
+
+        .feature-image-card {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 16px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .feature-image-card img {
+            width: 100%;
+            border-radius: 12px;
+            display: block;
+        }
+
+        /* ===== MODULES GRID ===== */
+        .modules-section { background: var(--white); }
+
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .module-card {
+            background: var(--gradient-card);
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 32px;
+            transition: all 0.3s;
+        }
+
+        .module-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-light);
+        }
+
+        .module-icon {
+            width: 52px;
+            height: 52px;
+            background: linear-gradient(135deg, rgba(13,148,136,0.1), rgba(13,148,136,0.05));
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        .module-card h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 10px;
+        }
+
+        .module-card p {
+            font-size: 14px;
+            color: var(--gray);
+            line-height: 1.7;
+        }
+
+        /* ===== REPORTS SECTION ===== */
+        .reports-section {
+            background: var(--gradient-hero);
+            color: white;
+        }
+
+        .reports-section .section-label {
+            background: rgba(245,158,11,0.2);
+            color: #fcd34d;
+        }
+
+        .reports-section .section-title { color: var(--white); }
+        .reports-section .section-desc { color: #94a3b8; }
+
+        .reports-layout {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 60px;
+            align-items: center;
+        }
+
+        .reports-image {
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .reports-image img { width: 100%; display: block; }
+
+        .report-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 32px;
+        }
+
+        .report-tag {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: #cbd5e1;
+            padding: 8px 18px;
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .report-tag:hover {
+            background: rgba(13,148,136,0.2);
+            border-color: rgba(13,148,136,0.4);
+            color: var(--primary-light);
+        }
+
+        /* ===== TECH STACK ===== */
+        .tech-section { background: var(--gray-light); }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .tech-card {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 36px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s;
+        }
+
+        .tech-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-3px);
+        }
+
+        .tech-card h3 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--dark);
+        }
+
+        .tech-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .tech-pill {
+            background: var(--gray-light);
+            color: var(--dark-2);
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .tech-card-icon { font-size: 36px; margin-bottom: 16px; }
+
+        /* ===== ARCHITECTURE MAP ===== */
+        .arch-section { background: var(--white); }
+
+        .arch-layer {
+            margin-bottom: 48px;
+        }
+
+        .arch-layer:last-child { margin-bottom: 0; }
+
+        .arch-layer-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .arch-layer-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+
+        .arch-layer-icon.frontend { background: linear-gradient(135deg, #dbeafe, #eff6ff); }
+        .arch-layer-icon.backend { background: linear-gradient(135deg, #d1fae5, #ecfdf5); }
+        .arch-layer-icon.database { background: linear-gradient(135deg, #fef3c7, #fffbeb); }
+
+        .arch-layer-header h3 {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .arch-layer-header h3 small {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--gray);
+            margin-top: 2px;
+        }
+
+        .arch-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .arch-table thead th {
+            background: var(--gray-light);
+            padding: 14px 20px;
+            text-align: left;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--dark);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .arch-table tbody td {
+            padding: 14px 20px;
+            font-size: 14px;
+            color: var(--dark-2);
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: top;
+        }
+
+        .arch-table tbody tr:last-child td { border-bottom: none; }
+
+        .arch-table tbody tr:hover { background: #f8fafc; }
+
+        .arch-tech-badge {
+            display: inline-block;
+            background: rgba(13,148,136,0.08);
+            color: var(--primary-dark);
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 4px;
+            margin-bottom: 4px;
+        }
+
+        .arch-tech-badge.blue {
+            background: rgba(59,130,246,0.08);
+            color: #2563eb;
+        }
+
+        .arch-tech-badge.amber {
+            background: rgba(245,158,11,0.08);
+            color: #d97706;
+        }
+
+        .arch-flow {
+            margin-top: 48px;
+            background: var(--gradient-card);
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 32px;
+        }
+
+        .arch-flow h4 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .flow-steps {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .flow-step {
+            background: var(--white);
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px 20px;
+            text-align: center;
+            min-width: 140px;
+        }
+
+        .flow-step-label {
+            font-size: 11px;
+            color: var(--gray);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .flow-step-tech {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .flow-arrow {
+            font-size: 20px;
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        /* ===== SECURITY ===== */
+        .security-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+
+        .security-card {
+            background: var(--white);
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 36px;
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            transition: all 0.3s;
+        }
+
+        .security-card:hover {
+            box-shadow: var(--shadow-sm);
+            border-color: var(--primary-light);
+        }
+
+        .security-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, rgba(13,148,136,0.1), rgba(13,148,136,0.05));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+
+        .security-card h3 {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 6px;
+        }
+
+        .security-card p {
+            font-size: 14px;
+            color: var(--gray);
+            line-height: 1.6;
+        }
+
+        /* ===== CTA SECTION ===== */
+        .cta-section {
+            background: linear-gradient(135deg, #0f172a, #134e4a);
+            text-align: center;
+            padding: 100px 40px;
+        }
+
+        .cta-section h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 42px;
+            color: var(--white);
+            margin-bottom: 20px;
+        }
+
+        .cta-section p {
+            font-size: 18px;
+            color: #94a3b8;
+            margin-bottom: 40px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .cta-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--primary), #059669);
+            color: white;
+            padding: 18px 48px;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 18px;
+            text-decoration: none;
+            box-shadow: 0 4px 30px rgba(13,148,136,0.4);
+            transition: all 0.3s;
+        }
+
+        .cta-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 40px rgba(13,148,136,0.5);
+        }
+
+        .cta-features {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 48px;
+            flex-wrap: wrap;
+        }
+
+        .cta-feature {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #94a3b8;
+            font-size: 14px;
+        }
+
+        .cta-feature span { color: #34d399; }
+
+        /* ===== FOOTER ===== */
+        .footer {
+            background: var(--dark);
+            padding: 40px;
+            text-align: center;
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        /* ===== PRINT / PDF ===== */
+        @page {
+            size: A4 portrait;
+            margin: 16mm 14mm;
+        }
+
+        @media print {
+            /* Force backgrounds to print */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+
+            html, body {
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: visible !important;
+                font-size: 14px !important;
+            }
+
+            /* Remove all hovers/transforms/shadows */
+            .module-card, .tech-card, .security-card,
+            .module-card:hover, .tech-card:hover, .security-card:hover,
+            .hero-cta:hover, .cta-btn:hover, .report-tag:hover {
+                transform: none !important;
+                box-shadow: none !important;
+            }
+
+            /* Remove glow effects */
+            .hero-image-glow { display: none !important; }
+
+            /* Remove animations */
+            .hero-badge::before { animation: none !important; }
+
+            /* ================================================================
+               KEY FIX: headings MUST stick to next content — never orphan
+               ================================================================ */
+            h1, h2, h3, h4,
+            .section-header,
+            .section-label,
+            .section-title,
+            .feature-number,
+            .feature-title,
+            .feature-desc {
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+                orphans: 3;
+                widows: 3;
+            }
+
+            /* ===== HERO = page 1 ===== */
+            .hero {
+                min-height: auto !important;
+                padding: 36px 32px !important;
+                page-break-after: always;
+                break-after: page;
+            }
+
+            .hero h1 {
+                font-size: 38px !important;
+                margin-bottom: 14px !important;
+            }
+
+            .hero-subtitle {
+                font-size: 15px !important;
+                margin-bottom: 24px !important;
+            }
+
+            .hero-content {
+                gap: 32px !important;
+            }
+
+            .hero-stats {
+                margin-top: 28px !important;
+                gap: 28px !important;
+            }
+
+            .hero-stat-number { font-size: 28px !important; }
+
+            /* ===== OVERVIEW STRIP ===== */
+            .overview-strip {
+                page-break-inside: avoid;
+                break-inside: avoid;
+                padding: 24px 32px !important;
+            }
+
+            /* ===== SECTIONS ===== */
+            section {
+                padding: 36px 32px !important;
+                page-break-inside: auto;
+            }
+
+            .section-title {
+                font-size: 30px !important;
+            }
+
+            /* Section header + first content below = glued together */
+            .section-header {
+                margin-bottom: 32px !important;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            /* ===== FEATURE SHOWCASE ===== */
+            .feature-showcase {
+                page-break-inside: auto !important;
+            }
+
+            /* Each feature block: heading + list + image = ONE unit */
+            .feature-block {
+                page-break-inside: avoid;
+                break-inside: avoid;
+                page-break-before: auto;
+                margin-bottom: 40px !important;
+                gap: 40px !important;
+            }
+
+            .feature-number {
+                font-size: 48px !important;
+            }
+
+            .feature-title {
+                font-size: 24px !important;
+            }
+
+            .feature-desc {
+                font-size: 14px !important;
+                margin-bottom: 16px !important;
+            }
+
+            .feature-list {
+                gap: 8px !important;
+            }
+
+            .feature-list li {
+                font-size: 13px !important;
+            }
+
+            .feature-list li::before {
+                width: 20px !important;
+                height: 20px !important;
+                font-size: 10px !important;
+            }
+
+            .feature-image-card {
+                padding: 8px !important;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            /* ===== MODULES GRID ===== */
+            .modules-section {
+                page-break-inside: auto !important;
+            }
+
+            /* Keep section title + grid together — force page break BEFORE if needed */
+            .modules-section .section-header {
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+            }
+
+            .modules-grid {
+                page-break-inside: auto !important;
+                gap: 14px !important;
+            }
+
+            .module-card {
+                padding: 20px !important;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            .module-icon {
+                width: 36px !important;
+                height: 36px !important;
+                font-size: 18px !important;
+                margin-bottom: 10px !important;
+            }
+
+            .module-card h3 {
+                font-size: 15px !important;
+                margin-bottom: 6px !important;
+            }
+
+            .module-card p {
+                font-size: 12px !important;
+            }
+
+            /* ===== REPORTS SECTION ===== */
+            .reports-section {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            .reports-layout {
+                gap: 32px !important;
+            }
+
+            .report-tags {
+                gap: 6px !important;
+                margin-top: 20px !important;
+            }
+
+            .report-tag {
+                padding: 5px 12px !important;
+                font-size: 11px !important;
+            }
+
+            /* ===== SECURITY ===== */
+            .security-grid {
+                page-break-inside: auto !important;
+                gap: 14px !important;
+            }
+
+            .security-card {
+                padding: 24px !important;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            /* ===== TECH STACK ===== */
+            .tech-section .section-header {
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+            }
+
+            .tech-grid {
+                page-break-inside: auto !important;
+                gap: 14px !important;
+            }
+
+            .tech-card {
+                padding: 24px !important;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            /* ===== ARCHITECTURE ===== */
+            .arch-section {
+                page-break-inside: auto !important;
+            }
+
+            .arch-section .section-header {
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+            }
+
+            /* Each layer: header + table = glued */
+            .arch-layer {
+                page-break-inside: avoid;
+                break-inside: avoid;
+                margin-bottom: 24px !important;
+            }
+
+            .arch-layer-header {
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+            }
+
+            .arch-table {
+                font-size: 12px !important;
+            }
+
+            .arch-table thead th {
+                padding: 10px 14px !important;
+                font-size: 11px !important;
+            }
+
+            .arch-table tbody td {
+                padding: 10px 14px !important;
+                font-size: 12px !important;
+            }
+
+            .arch-tech-badge {
+                font-size: 10px !important;
+                padding: 2px 8px !important;
+            }
+
+            .arch-flow {
+                page-break-inside: avoid;
+                break-inside: avoid;
+                padding: 20px !important;
+                margin-top: 24px !important;
+            }
+
+            .flow-step {
+                padding: 10px 14px !important;
+                min-width: 100px !important;
+            }
+
+            .flow-step-label { font-size: 9px !important; }
+            .flow-step-tech { font-size: 13px !important; }
+
+            /* ===== CTA ===== */
+            .cta-section {
+                page-break-inside: avoid;
+                break-inside: avoid;
+                padding: 60px 32px !important;
+            }
+
+            .cta-section h2 {
+                font-size: 32px !important;
+            }
+
+            /* ===== IMAGES ===== */
+            img {
+                max-width: 100% !important;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            /* ===== TEXT: never clip ===== */
+            .feature-list li, .module-card p, .section-desc,
+            .arch-table td, .report-tag, .tech-pill {
+                overflow: visible !important;
+                text-overflow: unset !important;
+            }
+
+            /* ===== FOOTER ===== */
+            .footer {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            .hero-content { grid-template-columns: 1fr; text-align: center; }
+            .hero h1 { font-size: 42px; }
+            .hero-subtitle { margin: 0 auto 36px; }
+            .hero-stats { justify-content: center; }
+            .feature-block, .feature-block.reverse { grid-template-columns: 1fr; direction: ltr; }
+            .reports-layout { grid-template-columns: 1fr; }
+            .overview-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 32px; }
+            .section-title { font-size: 30px; }
+            .modules-grid, .tech-grid { grid-template-columns: 1fr; }
+            .security-grid { grid-template-columns: 1fr; }
+            .overview-grid { grid-template-columns: repeat(2, 1fr); }
+            .hero-stats { flex-direction: column; gap: 20px; }
+            section { padding: 60px 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ==================== HERO ==================== -->
+<section class="hero">
+    <div class="hero-content">
+        <div>
+            <div class="hero-badge">Cloud-Powered SaaS Platform</div>
+            <h1>The Complete <span>Salon Management</span> System</h1>
+            <p class="hero-subtitle">
+                An enterprise-grade, multi-branch salon and spa management platform that handles billing, appointments, CRM, inventory, staff management, analytics, and everything in between.
+            </p>
+            <a href="#features" class="hero-cta">Explore Features &rarr;</a>
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <div class="hero-stat-number">50+</div>
+                    <div class="hero-stat-label">Modules</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="hero-stat-number">450+</div>
+                    <div class="hero-stat-label">API Endpoints</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="hero-stat-number">25+</div>
+                    <div class="hero-stat-label">Reports</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="hero-stat-number">30+</div>
+                    <div class="hero-stat-label">Data Models</div>
+                </div>
+            </div>
+        </div>
+        <div class="hero-image-wrapper">
+            <div class="hero-image-glow"></div>
+            <img src="images/dashboard-mockup.png" alt="Saloon Pro Dashboard">
+        </div>
+    </div>
+</section>
+
+<!-- ==================== OVERVIEW STRIP ==================== -->
+<div class="overview-strip">
+    <div class="overview-grid">
+        <div class="overview-item">
+            <div class="overview-number">POS</div>
+            <div class="overview-label">Quick Sale & Billing</div>
+        </div>
+        <div class="overview-item">
+            <div class="overview-number">CRM</div>
+            <div class="overview-label">Customer Management</div>
+        </div>
+        <div class="overview-item">
+            <div class="overview-number">HR</div>
+            <div class="overview-label">Staff & Attendance</div>
+        </div>
+        <div class="overview-item">
+            <div class="overview-number">BI</div>
+            <div class="overview-label">Analytics & Reports</div>
+        </div>
+        <div class="overview-item">
+            <div class="overview-number">OPS</div>
+            <div class="overview-label">Multi-Branch Ops</div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== FEATURE SHOWCASES ==================== -->
+<section class="feature-showcase" id="features">
+    <div class="container">
+
+        <!-- Feature 1: Quick Sale / POS -->
+        <div class="feature-block">
+            <div>
+                <div class="feature-number">01</div>
+                <h2 class="feature-title">Point of Sale & Billing</h2>
+                <p class="feature-desc">
+                    A powerful, intuitive billing system designed for fast-paced salon operations. Create multi-item bills with services, packages, products, and memberships in seconds.
+                </p>
+                <ul class="feature-list">
+                    <li>Multi-item checkout: services, packages, products, memberships & prepaid</li>
+                    <li>Multiple payment methods: Cash, Card, UPI, Wallet</li>
+                    <li>GST-compliant PDF invoice generation</li>
+                    <li>Real-time inventory deduction on sale</li>
+                    <li>Discount approval workflow with manager codes</li>
+                    <li>Share invoices via Email, WhatsApp, or public link</li>
+                    <li>Bill history with deleted bills archive & audit trail</li>
+                </ul>
+            </div>
+            <div class="feature-image-card">
+                <img src="images/billing-mockup.png" alt="Quick Sale Billing Interface">
+            </div>
+        </div>
+
+        <!-- Feature 2: Customer CRM -->
+        <div class="feature-block reverse">
+            <div>
+                <div class="feature-number">02</div>
+                <h2 class="feature-title">Customer Relationship Management</h2>
+                <p class="feature-desc">
+                    Build lasting relationships with comprehensive customer profiles, lead tracking, feedback management, and lifecycle analytics.
+                </p>
+                <ul class="feature-list">
+                    <li>360-degree customer profiles with complete visit & spending history</li>
+                    <li>Lead management with conversion tracking</li>
+                    <li>Missed enquiry follow-up system</li>
+                    <li>Customer feedback collection (public page, no login required)</li>
+                    <li>Service recovery & complaint resolution</li>
+                    <li>Customer merge tool for deduplication with audit trail</li>
+                    <li>Lifecycle segmentation: VIP, Regular, At-Risk, Inactive</li>
+                    <li>Referral program with attribution tracking</li>
+                </ul>
+            </div>
+            <div class="feature-image-card">
+                <img src="images/customer-mockup.png" alt="Customer CRM Interface">
+            </div>
+        </div>
+
+        <!-- Feature 3: Appointments -->
+        <div class="feature-block">
+            <div>
+                <div class="feature-number">03</div>
+                <h2 class="feature-title">Appointment Scheduling</h2>
+                <p class="feature-desc">
+                    A visual calendar system for managing bookings, staff availability, and appointment workflows across all branches.
+                </p>
+                <ul class="feature-list">
+                    <li>Visual weekly & monthly calendar view</li>
+                    <li>Staff assignment with real-time availability checking</li>
+                    <li>Status tracking: Confirmed, Completed, Cancelled, No-show</li>
+                    <li>Dynamic available slot calculation</li>
+                    <li>Direct appointment-to-bill linking</li>
+                    <li>Multi-branch scheduling support</li>
+                    <li>Booking trends & cancellation rate analytics</li>
+                </ul>
+            </div>
+            <div class="feature-image-card">
+                <img src="images/appointment-mockup.png" alt="Appointment Calendar">
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<!-- ==================== ALL MODULES ==================== -->
+<section class="modules-section">
+    <div class="container">
+        <div class="section-header">
+            <div class="section-label">Complete Platform</div>
+            <h2 class="section-title">Everything You Need to Run Your Salon</h2>
+            <p class="section-desc">From front-desk operations to back-office analytics, every module is built to work together seamlessly.</p>
+        </div>
+
+        <div class="modules-grid">
+            <div class="module-card">
+                <div class="module-icon">&#128176;</div>
+                <h3>Financial Management</h3>
+                <p>Cash register with in/out tracking, expense management with categories, tax slab configuration, GST compliance, and complete financial reporting.</p>
+            </div>
+            <div class="module-card">
+                <div class="module-icon">&#128188;</div>
+                <h3>Membership & Prepaid</h3>
+                <p>Create membership plans with validity periods and discounts. Manage prepaid balances with real-time usage tracking and expiry alerts.</p>
+            </div>
+            <div class="module-card">
+                <div class="module-icon">&#128230;</div>
+                <h3>Inventory Management</h3>
+                <p>Real-time stock tracking with automatic deduction on sales. Low stock alerts, SKU management, category organization, and inventory reports.</p>
+            </div>
+            <div class="module-card">
+                <div class="module-icon">&#128101;</div>
+                <h3>Staff Management</h3>
+                <p>Complete staff lifecycle: attendance check-in/out, leave management with approval, performance metrics, commission tracking, and leaderboard.</p>
+            </div>
+            <div class="module-card">
+                <div class="module-icon">&#127775;</div>
+                <h3>Service & Package Catalog</h3>
+                <p>Organize services by category (Hair, Skin, Spa, Bridal, etc.), create combo packages, set pricing and duration, with branch-specific availability.</p>
+            </div>
+            <div class="module-card">
+                <div class="module-icon">&#128274;</div>
+                <h3>Discount Approval Workflow</h3>
+                <p>Staff request discounts, managers approve with generated codes. Complete audit trail of every discount with approval status and history.</p>
+            </div>
+            <div class="module-card">
+                <div class="module-icon">&#128227;</div>
+                <h3>Marketing & Campaigns</h3>
+                <p>Birthday and general campaigns, offer management, customer segmentation targeting, and WhatsApp integration with template management.</p>
+            </div>
+            <div class="module-card">
+                <div class="module-icon">&#127970;</div>
+                <h3>Multi-Branch Operations</h3>
+                <p>Full data isolation per branch. Staff temp-assignments across locations. Owner-level cross-branch visibility and consolidated reporting.</p>
+            </div>
+            <div class="module-card">
+                <div class="module-icon">&#128736;</div>
+                <h3>Asset Management</h3>
+                <p>Track fixed assets by branch with purchase details, categorization, status management, and comprehensive asset summary reports.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== REPORTS & ANALYTICS ==================== -->
+<section class="reports-section">
+    <div class="container">
+        <div class="reports-layout">
+            <div class="reports-image">
+                <img src="images/reports-mockup.png" alt="Analytics & Reports Dashboard">
+            </div>
+            <div>
+                <div class="section-label">Business Intelligence</div>
+                <h2 class="section-title">25+ Powerful Reports & Analytics</h2>
+                <p class="section-desc">
+                    Data-driven decisions made easy. From real-time KPIs to deep-dive analysis, get the insights you need to grow your business.
+                </p>
+                <div class="report-tags">
+                    <span class="report-tag">Revenue Dashboard</span>
+                    <span class="report-tag">Staff Performance</span>
+                    <span class="report-tag">Sales Insights</span>
+                    <span class="report-tag">Service Analysis</span>
+                    <span class="report-tag">Customer Lifecycle</span>
+                    <span class="report-tag">Business Growth Trends</span>
+                    <span class="report-tag">Client Value & Loyalty</span>
+                    <span class="report-tag">Expense Reports</span>
+                    <span class="report-tag">Inventory Reports</span>
+                    <span class="report-tag">Staff Incentives</span>
+                    <span class="report-tag">Membership Clients</span>
+                    <span class="report-tag">Period Summary</span>
+                    <span class="report-tag">Top Customers</span>
+                    <span class="report-tag">Top Moving Items</span>
+                    <span class="report-tag">Payment Distribution</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== SECURITY & RBAC ==================== -->
+<section>
+    <div class="container">
+        <div class="section-header">
+            <div class="section-label">Enterprise Grade</div>
+            <h2 class="section-title">Security & Access Control</h2>
+            <p class="section-desc">Built with enterprise-level security to protect your business data across all branches and user roles.</p>
+        </div>
+
+        <div class="security-grid">
+            <div class="security-card">
+                <div class="security-icon">&#128272;</div>
+                <div>
+                    <h3>JWT Authentication</h3>
+                    <p>Secure token-based authentication with bcrypt password hashing and session management for every user.</p>
+                </div>
+            </div>
+            <div class="security-card">
+                <div class="security-icon">&#128101;</div>
+                <div>
+                    <h3>Role-Based Access (RBAC)</h3>
+                    <p>Three-tier permission system: Owner (full access), Manager (branch-level), Staff (limited operations).</p>
+                </div>
+            </div>
+            <div class="security-card">
+                <div class="security-icon">&#127970;</div>
+                <div>
+                    <h3>Branch-Level Data Isolation</h3>
+                    <p>Every record is branch-scoped. Staff see only their branch. Owners get cross-branch visibility.</p>
+                </div>
+            </div>
+            <div class="security-card">
+                <div class="security-icon">&#128202;</div>
+                <div>
+                    <h3>Complete Audit Trail</h3>
+                    <p>Login history tracking, discount approval logs, customer merge logs, and deleted bill archives for full accountability.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== TECH STACK ==================== -->
+<section class="tech-section">
+    <div class="container">
+        <div class="section-header">
+            <div class="section-label">Technology</div>
+            <h2 class="section-title">Modern, Scalable Tech Stack</h2>
+            <p class="section-desc">Built with industry-leading technologies for performance, reliability, and scalability.</p>
+        </div>
+
+        <div class="tech-grid">
+            <div class="tech-card">
+                <div class="tech-card-icon">&#9881;&#65039;</div>
+                <h3>Frontend</h3>
+                <div class="tech-pills">
+                    <span class="tech-pill">React 18</span>
+                    <span class="tech-pill">Vite 5</span>
+                    <span class="tech-pill">Ant Design 6</span>
+                    <span class="tech-pill">Recharts</span>
+                    <span class="tech-pill">Zustand</span>
+                    <span class="tech-pill">React Query</span>
+                    <span class="tech-pill">Framer Motion</span>
+                </div>
+            </div>
+            <div class="tech-card">
+                <div class="tech-card-icon">&#128421;&#65039;</div>
+                <h3>Backend</h3>
+                <div class="tech-pills">
+                    <span class="tech-pill">Python / Flask 3</span>
+                    <span class="tech-pill">MongoEngine ODM</span>
+                    <span class="tech-pill">PyJWT</span>
+                    <span class="tech-pill">bcrypt</span>
+                    <span class="tech-pill">ReportLab PDF</span>
+                    <span class="tech-pill">Gunicorn WSGI</span>
+                </div>
+            </div>
+            <div class="tech-card">
+                <div class="tech-card-icon">&#9729;&#65039;</div>
+                <h3>Infrastructure</h3>
+                <div class="tech-pills">
+                    <span class="tech-pill">MongoDB Atlas</span>
+                    <span class="tech-pill">Google Cloud Run</span>
+                    <span class="tech-pill">Docker</span>
+                    <span class="tech-pill">Redis Cache</span>
+                    <span class="tech-pill">gzip Compression</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== ARCHITECTURE MAP ==================== -->
+<section class="arch-section">
+    <div class="container">
+        <div class="section-header">
+            <div class="section-label">Architecture</div>
+            <h2 class="section-title">What Powers What</h2>
+            <p class="section-desc">A detailed breakdown of which technology handles which part of the system.</p>
+        </div>
+
+        <!-- FRONTEND LAYER -->
+        <div class="arch-layer">
+            <div class="arch-layer-header">
+                <div class="arch-layer-icon frontend">&#9881;&#65039;</div>
+                <h3>Frontend Layer <small>React 18 + Vite 5 + Ant Design 6</small></h3>
+            </div>
+            <table class="arch-table">
+                <thead>
+                    <tr>
+                        <th style="width:25%">Technology</th>
+                        <th style="width:35%">Used For</th>
+                        <th style="width:40%">Where in the App</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="arch-tech-badge blue">React 18</span></td>
+                        <td>Component-based UI rendering, SPA routing, state management</td>
+                        <td>Entire frontend &mdash; all 50+ pages/views are React components</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge blue">Vite 5</span></td>
+                        <td>Build tool, dev server, hot module replacement, production bundling</td>
+                        <td>Dev workflow &amp; production build (with Terser to strip console.log)</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge blue">Ant Design 6</span></td>
+                        <td>UI component library &mdash; tables, forms, modals, date pickers, notifications</td>
+                        <td>Every page: QuickSale checkout, appointment forms, customer tables, report filters, settings panels</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge blue">Recharts</span></td>
+                        <td>Data visualization &mdash; line charts, bar charts, pie charts, area charts</td>
+                        <td>Dashboard KPIs, revenue trends, payment distribution, staff performance, all report pages</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge blue">Zustand</span></td>
+                        <td>Lightweight global state management</td>
+                        <td>Sidebar state, theme toggle, shared UI state across components</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge blue">React Query</span></td>
+                        <td>Server state caching, auto-refetch, background sync</td>
+                        <td>All API calls &mdash; dashboard stats, customer lists, bill data, inventory, reports</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge blue">Framer Motion</span></td>
+                        <td>Page transitions, mount/unmount animations, micro-interactions</td>
+                        <td>Page route transitions, modal animations, card hover effects</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge blue">React Hook Form</span></td>
+                        <td>Form validation, controlled inputs, submit handling</td>
+                        <td>Customer creation, staff forms, service/package forms, settings forms</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge blue">Day.js</span></td>
+                        <td>Date formatting, manipulation, range calculations</td>
+                        <td>Appointment calendar, report date filters, bill timestamps, membership expiry</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge blue">React Icons</span></td>
+                        <td>Icon library for UI elements</td>
+                        <td>Sidebar navigation, action buttons, status indicators, KPI cards</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- BACKEND LAYER -->
+        <div class="arch-layer">
+            <div class="arch-layer-header">
+                <div class="arch-layer-icon backend">&#128421;&#65039;</div>
+                <h3>Backend Layer <small>Python / Flask 3 + Gunicorn WSGI</small></h3>
+            </div>
+            <table class="arch-table">
+                <thead>
+                    <tr>
+                        <th style="width:25%">Technology</th>
+                        <th style="width:35%">Used For</th>
+                        <th style="width:40%">Where in the App</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="arch-tech-badge">Flask 3</span></td>
+                        <td>Web framework &mdash; routing, request/response handling, Blueprints</td>
+                        <td>All 450+ API endpoints across 34 route modules (e.g. bill_routes, customer_routes, dashboard_routes)</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge">Flask Blueprints</span></td>
+                        <td>Modular route organization, namespace isolation</td>
+                        <td>Each feature has its own Blueprint: /api/bills, /api/customers, /api/appointments, /api/staff, etc.</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge">MongoEngine 0.27</span></td>
+                        <td>MongoDB ODM &mdash; document models, queries, validation, indexing</td>
+                        <td>All 30+ data models: Bill, Customer, Staff, Appointment, Product, Service, etc.</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge">PyJWT</span></td>
+                        <td>JWT token generation, validation, expiry management</td>
+                        <td>Login/auth system &mdash; generates tokens on login, validates on every @require_auth endpoint</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge">bcrypt</span></td>
+                        <td>Password hashing and verification</td>
+                        <td>Staff, Manager, Owner password storage &mdash; hash on creation, verify on login</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge">ReportLab</span></td>
+                        <td>PDF generation &mdash; professional invoice rendering</td>
+                        <td>Invoice PDF creation with GST breakdown, branch details, itemized billing</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge">Gunicorn</span></td>
+                        <td>Production WSGI server with multi-worker threading</td>
+                        <td>Cloud Run deployment &mdash; 2 workers, 4 threads each, handles concurrent requests</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge">flask-compress</span></td>
+                        <td>gzip response compression (70-80% size reduction)</td>
+                        <td>All API responses &mdash; especially large report data, customer lists, bill histories</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge">Redis / In-Memory</span></td>
+                        <td>Response caching with TTL, falls back to dict-based cache</td>
+                        <td>Dashboard stats (5min TTL), report aggregations, frequently accessed data</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge">MongoDB Aggregation</span></td>
+                        <td>Server-side data pipelines for analytics</td>
+                        <td>Staff leaderboard, revenue breakdown, payment distribution, client funnel, all report endpoints</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- DATABASE LAYER -->
+        <div class="arch-layer">
+            <div class="arch-layer-header">
+                <div class="arch-layer-icon database">&#128451;&#65039;</div>
+                <h3>Database Layer <small>MongoDB Atlas (Cloud) &mdash; 30+ Collections</small></h3>
+            </div>
+            <table class="arch-table">
+                <thead>
+                    <tr>
+                        <th style="width:30%">Collection Group</th>
+                        <th style="width:30%">Collections</th>
+                        <th style="width:40%">What It Stores</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="arch-tech-badge amber">Core Business</span></td>
+                        <td>branches, customers, staffs, managers, owners</td>
+                        <td>Branch locations, customer profiles (visit history, spending, lifecycle), staff credentials & assignments, manager/owner accounts</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge amber">Service Catalog</span></td>
+                        <td>service_groups, services, product_categories, products, packages</td>
+                        <td>Service menu with categories (Hair, Skin, Spa), product inventory with SKU/stock, combo packages with bundled pricing</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge amber">Transactions</span></td>
+                        <td>bills, invoices, cash_transactions</td>
+                        <td>Multi-item bills with embedded line items, PDF invoice records, cash register in/out entries with daily position</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge amber">Memberships</span></td>
+                        <td>membership_plans, memberships, prepaid_packages</td>
+                        <td>Plan templates (validity, discounts), active customer memberships, prepaid wallet balances with usage tracking</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge amber">Appointments</span></td>
+                        <td>appointments</td>
+                        <td>Booking records with staff assignment, service, time slot, status (confirmed/completed/cancelled/no-show), linked bill ID</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge amber">CRM & Engagement</span></td>
+                        <td>leads, missed_enquiries, feedbacks, service_recovery, referrals</td>
+                        <td>Lead pipeline with conversion status, missed follow-ups, customer ratings/comments, complaint resolution, referral attributions</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge amber">Staff & HR</span></td>
+                        <td>staff_attendance, staff_leaves, staff_temp_assignments</td>
+                        <td>Daily check-in/out times, leave requests with approval status, temporary cross-branch assignments with date ranges</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge amber">Financial</span></td>
+                        <td>expenses, assets, tax_settings, tax_slabs, discount_approvals</td>
+                        <td>Categorized expenses, fixed asset inventory, branch-specific GST config, tax rate slabs, discount request/approval audit trail</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge amber">Marketing</span></td>
+                        <td>offer_campaigns, whatsapp_messages, approval_codes</td>
+                        <td>Campaign definitions with targeting rules, WhatsApp template messages, generated manager approval codes for discounts</td>
+                    </tr>
+                    <tr>
+                        <td><span class="arch-tech-badge amber">Audit & Logs</span></td>
+                        <td>customer_merge_logs, login_history</td>
+                        <td>Customer dedup merge audit trail (before/after), user login timestamps with device info for security</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- REQUEST FLOW -->
+        <div class="arch-flow">
+            <h4>Request Flow: How a Bill Gets Created</h4>
+            <div class="flow-steps">
+                <div class="flow-step">
+                    <div class="flow-step-label">User Interface</div>
+                    <div class="flow-step-tech">React + Ant Design</div>
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-step">
+                    <div class="flow-step-label">API Call</div>
+                    <div class="flow-step-tech">React Query + Fetch</div>
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-step">
+                    <div class="flow-step-label">Auth Check</div>
+                    <div class="flow-step-tech">PyJWT + RBAC</div>
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-step">
+                    <div class="flow-step-label">Route Handler</div>
+                    <div class="flow-step-tech">Flask Blueprint</div>
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-step">
+                    <div class="flow-step-label">Data Layer</div>
+                    <div class="flow-step-tech">MongoEngine ODM</div>
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-step">
+                    <div class="flow-step-label">Database</div>
+                    <div class="flow-step-tech">MongoDB Atlas</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<!-- ==================== CTA ==================== -->
+<section class="cta-section">
+    <h2>Ready to Transform Your Salon Business?</h2>
+    <p>Join the modern way of managing your salon with an all-in-one platform built for growth.</p>
+    <a href="#" class="cta-btn">Get Started Today &rarr;</a>
+    <div class="cta-features">
+        <div class="cta-feature"><span>&#10003;</span> Cloud-hosted, zero maintenance</div>
+        <div class="cta-feature"><span>&#10003;</span> Mobile responsive</div>
+        <div class="cta-feature"><span>&#10003;</span> Multi-branch ready</div>
+        <div class="cta-feature"><span>&#10003;</span> GST compliant</div>
+    </div>
+</section>
+
+<!-- ==================== FOOTER ==================== -->
+<div class="footer">
+    <p>&copy; 2026 Saloon Pro Management System. All rights reserved. | Built with modern cloud technologies.</p>
+</div>
+
+</body>
+</html>

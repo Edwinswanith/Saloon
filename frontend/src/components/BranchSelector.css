@@ -295,6 +295,11 @@
 }
 
 @media (max-width: 1024px) {
+  .branch-selector-button {
+    height: 38px;
+    padding: 8px 12px;
+  }
+
   .branch-name {
     max-width: 100px;
   }

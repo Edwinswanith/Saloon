@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { FaBars, FaBell, FaUser, FaCalendar, FaBoxes, FaTrash, FaChevronDown, FaClock, FaTimes, FaExclamationTriangle, FaClipboardList, FaTimesCircle, FaGift } from 'react-icons/fa'
 import './QuickSale.css'
 import { API_BASE_URL } from '../config'
@@ -12,6 +13,178 @@ import { formatLocalDate } from '../utils/dateUtils'
 import { PageTransition } from './shared/PageTransition'
 import { EmptyList } from './shared/EmptyStates'
 import InvoicePreview from './InvoicePreview'
+
+const ServiceSearchSelect = ({ value, services, onChange, disabled, loadingServices }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const [searchText, setSearchText] = useState('')
+  const [highlightedIndex, setHighlightedIndex] = useState(-1)
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 })
+  const wrapperRef = useRef(null)
+  const inputRef = useRef(null)
+  const dropdownRef = useRef(null)
+
+  const selectedService = services.find(s => s.id === value)
+  const selectedLabel = selectedService ? `${selectedService.name} - ₹${selectedService.price}` : ''
+  const displayValue = isOpen ? searchText : selectedLabel
+
+  const filteredServices = searchText.trim()
+    ? services.filter(s => (s.name || '').toLowerCase().includes(searchText.trim().toLowerCase()))
+    : services
+
+  const updateDropdownPosition = () => {
+    if (!inputRef.current) return
+    const rect = inputRef.current.getBoundingClientRect()
+    setDropdownPos({
+      top: rect.bottom + 2,
+      left: rect.left,
+      width: rect.width,
+    })
+  }
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (
+        wrapperRef.current && !wrapperRef.current.contains(e.target) &&
+        dropdownRef.current && !dropdownRef.current.contains(e.target)
+      ) {
+        setIsOpen(false)
+        setSearchText('')
+        setHighlightedIndex(-1)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  useEffect(() => {
+    if (!isOpen) return
+    updateDropdownPosition()
+    const onScrollOrResize = () => updateDropdownPosition()
+    window.addEventListener('scroll', onScrollOrResize, true)
+    window.addEventListener('resize', onScrollOrResize)
+    return () => {
+      window.removeEventListener('scroll', onScrollOrResize, true)
+      window.removeEventListener('resize', onScrollOrResize)
+    }
+  }, [isOpen])
+
+  const openDropdown = () => {
+    if (disabled) return
+    setIsOpen(true)
+    setHighlightedIndex(-1)
+    updateDropdownPosition()
+  }
+
+  const handleSelect = (svc) => {
+    onChange(svc.id)
+    setIsOpen(false)
+    setSearchText('')
+    setHighlightedIndex(-1)
+  }
+
+  const handleInputChange = (e) => {
+    setSearchText(e.target.value)
+    if (!isOpen) setIsOpen(true)
+    setHighlightedIndex(0)
+  }
+
+  const handleKeyDown = (e) => {
+    if (!isOpen && (e.key === 'ArrowDown' || e.key === 'Enter')) {
+      e.preventDefault()
+      openDropdown()
+      return
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setHighlightedIndex(i => Math.min(i + 1, filteredServices.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setHighlightedIndex(i => Math.max(i - 1, 0))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      if (highlightedIndex >= 0 && filteredServices[highlightedIndex]) {
+        handleSelect(filteredServices[highlightedIndex])
+      } else if (filteredServices.length === 1) {
+        handleSelect(filteredServices[0])
+      }
+    } else if (e.key === 'Escape') {
+      setIsOpen(false)
+      setSearchText('')
+      setHighlightedIndex(-1)
+      inputRef.current?.blur()
+    }
+  }
+
+  const placeholder = loadingServices
+    ? 'Loading services...'
+    : services.length === 0
+      ? 'No services available'
+      : 'Select or search a service'
+
+  return (
+    <div className="service-search-select" ref={wrapperRef}>
+      <div className="service-search-input-wrapper">
+        <input
+          ref={inputRef}
+          type="text"
+          className="table-select service-search-input"
+          value={displayValue}
+          onChange={handleInputChange}
+          onFocus={openDropdown}
+          onClick={openDropdown}
+          onKeyDown={handleKeyDown}
+          placeholder={selectedService && !isOpen ? '' : placeholder}
+          disabled={disabled}
+          autoComplete="off"
+        />
+        <FaChevronDown
+          className={`service-search-chevron ${isOpen ? 'open' : ''}`}
+          onClick={(e) => {
+            e.stopPropagation()
+            if (isOpen) {
+              setIsOpen(false)
+              setSearchText('')
+            } else {
+              openDropdown()
+              inputRef.current?.focus()
+            }
+          }}
+        />
+      </div>
+      {isOpen && createPortal(
+        <ul
+          ref={dropdownRef}
+          className="service-search-dropdown"
+          style={{
+            position: 'fixed',
+            top: `${dropdownPos.top}px`,
+            left: `${dropdownPos.left}px`,
+            width: `${dropdownPos.width}px`,
+          }}
+        >
+          {filteredServices.length === 0 ? (
+            <li className="service-search-option no-match">
+              {services.length === 0 ? 'No services available' : `No services match "${searchText}"`}
+            </li>
+          ) : (
+            filteredServices.map((svc, idx) => (
+              <li
+                key={svc.id}
+                className={`service-search-option ${svc.id === value ? 'selected' : ''} ${idx === highlightedIndex ? 'highlighted' : ''}`}
+                onMouseDown={(e) => { e.preventDefault(); handleSelect(svc) }}
+                onMouseEnter={() => setHighlightedIndex(idx)}
+              >
+                <span className="service-search-option-name">{svc.name}</span>
+                <span className="service-search-option-price">₹{svc.price}</span>
+              </li>
+            ))
+          )}
+        </ul>,
+        document.body
+      )}
+    </div>
+  )
+}
 
 const QuickSale = () => {
   const { user, currentBranch } = useAuth()
@@ -762,7 +935,7 @@ const QuickSale = () => {
 
   const fetchMembershipPlans = async () => {
     try {
-      const response = await apiGet('/api/membership-plans')
+      const response = await apiGet('/api/membership-plans?status=active')
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -871,9 +1044,7 @@ const QuickSale = () => {
       showWarning('Please select a customer first')
       return
     }
-    if (availableMemberships.length === 0) {
-      await fetchMembershipPlans()
-    }
+    await fetchMembershipPlans()
     setShowMembershipModal(true)
   }
 
@@ -2471,25 +2642,13 @@ const QuickSale = () => {
                   services.map((service) => (
                     <tr key={service.id} className="service-table-row">
                       <td>
-                        <select
-                          className="table-select"
-                          value={service.service_id || ''}
-                          onChange={(e) => updateService(service.id, 'service_id', e.target.value)}
+                        <ServiceSearchSelect
+                          value={service.service_id}
+                          services={availableServices}
+                          onChange={(id) => updateService(service.id, 'service_id', id)}
                           disabled={loadingServices}
-                        >
-                          <option value="">
-                            {loadingServices
-                              ? 'Loading services...'
-                              : availableServices.length === 0
-                                ? 'No services available'
-                                : 'Select a service'}
-                          </option>
-                          {availableServices.map(svc => (
-                            <option key={svc.id} value={svc.id}>
-                              {svc.name} - ₹{svc.price}
-                            </option>
-                          ))}
-                        </select>
+                          loadingServices={loadingServices}
+                        />
                       </td>
                       <td>
                         <select
@@ -2657,7 +2816,7 @@ const QuickSale = () => {
                     }
                   }}
                 >
-                  <option value="confirmed">Completed Appointment</option>
+                  <option value="confirmed">Appointment</option>
                   <option value="service-completed">Service Completed</option>
                 </select>
               </div>

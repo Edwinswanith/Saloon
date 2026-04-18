@@ -1,24 +1,31 @@
 from flask import Blueprint, request, jsonify
-from models import MembershipPlan, Membership
+from models import MembershipPlan, Membership, Branch
 from datetime import datetime
 from mongoengine.errors import DoesNotExist, ValidationError
+from mongoengine.queryset.visitor import Q
 from bson import ObjectId
-from utils.auth import require_role
-from utils.redis_cache import cache_response
+from utils.auth import require_role, optional_auth
 
 membership_plan_bp = Blueprint('membership_plans', __name__)
 
 @membership_plan_bp.route('/', methods=['GET'])
-@cache_response(ttl=300)  # Cache for 5 minutes
-def get_membership_plans():
-    """Get all membership plans"""
+@optional_auth
+def get_membership_plans(current_user=None):
+    """Get all membership plans, filtered by branch when X-Branch-Id header is present"""
     try:
         status = request.args.get('status', 'all')
-        
+
         query = MembershipPlan.objects
-        
+
         if status != 'all':
             query = query.filter(status=status)
+
+        # Filter by branch: show plans assigned to this branch + global plans (branch=None)
+        branch_id_header = request.headers.get('X-Branch-Id') or request.headers.get('x-branch-id')
+        if branch_id_header and ObjectId.is_valid(branch_id_header):
+            branch = Branch.objects(id=branch_id_header).first()
+            if branch:
+                query = query.filter(Q(branch=branch) | Q(branch=None))
 
         plans = list(query.order_by('-created_at'))
 
@@ -26,14 +33,16 @@ def get_membership_plans():
                 'id': str(p.id),
                 'name': p.name,
                 'validity_days': p.validity_days,
-                'validity': p.validity_days,  # Keep both for compatibility
+                'validity': p.validity_days,
                 'price': p.price,
                 'allocatedDiscount': p.allocated_discount,
-                'allocated_discount': p.allocated_discount,  # Keep both for compatibility
+                'allocated_discount': p.allocated_discount,
                 'status': p.status,
-                'description': p.description
+                'description': p.description,
+                'branch_id': str(p.branch.id) if p.branch else None,
+                'branch_name': p.branch.name if p.branch else None,
             } for p in plans]
-        
+
         response = jsonify(result)
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
@@ -85,13 +94,19 @@ def create_membership_plan(current_user=None):
         if data.get('price') is None:
             return jsonify({'error': 'Price is required'}), 400
         
+        branch = None
+        branch_id = data.get('branch_id')
+        if branch_id and ObjectId.is_valid(branch_id):
+            branch = Branch.objects(id=branch_id).first()
+
         plan = MembershipPlan(
             name=data.get('name'),
             validity_days=data.get('validity'),
             price=data.get('price'),
             allocated_discount=data.get('allocatedDiscount', 0.0),
             status=data.get('status', 'active'),
-            description=data.get('description', '')
+            description=data.get('description', ''),
+            branch=branch,
         )
         plan.save()
         
@@ -129,7 +144,15 @@ def update_membership_plan(plan_id, current_user=None):
             plan.status = data['status']
         if data.get('description') is not None:
             plan.description = data['description']
-        
+        # Allow unsetting branch (empty string = global plan)
+        if 'branch_id' in data:
+            branch_id = data['branch_id']
+            if branch_id and ObjectId.is_valid(branch_id):
+                branch = Branch.objects(id=branch_id).first()
+                plan.branch = branch
+            else:
+                plan.branch = None
+
         plan.updated_at = datetime.utcnow()
         plan.save()
         

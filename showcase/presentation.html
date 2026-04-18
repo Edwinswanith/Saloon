@@ -1,0 +1,1706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saloon Pro - Product Presentation</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;500;600;700;800&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #0d9488;
+            --primary-dark: #0f766e;
+            --primary-light: #99f6e4;
+            --accent: #f59e0b;
+            --dark: #0f172a;
+            --dark-2: #1e293b;
+            --gray: #64748b;
+            --white: #ffffff;
+        }
+
+        html { scroll-behavior: smooth; scroll-snap-type: y mandatory; overflow-y: scroll; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--dark);
+            color: var(--white);
+            overflow-x: hidden;
+        }
+
+        /* ===== SLIDE SYSTEM ===== */
+        .slide {
+            min-height: 100vh;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            scroll-snap-align: start;
+            position: relative;
+            overflow: hidden;
+            padding: 60px;
+        }
+
+        .slide-inner {
+            max-width: 1200px;
+            width: 100%;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* ===== NAVIGATION ===== */
+        .nav-dots {
+            position: fixed;
+            right: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.3);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .nav-dot:hover, .nav-dot.active {
+            background: var(--primary);
+            border-color: var(--primary-light);
+            transform: scale(1.3);
+        }
+
+        .nav-dot[title]::after {
+            content: attr(title);
+            position: absolute;
+            right: 24px;
+            background: var(--dark-2);
+            color: var(--white);
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .nav-dot:hover::after { opacity: 1; }
+
+        .slide-counter {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            font-size: 14px;
+            color: rgba(255,255,255,0.4);
+            z-index: 100;
+            font-weight: 500;
+        }
+
+        /* ===== SLIDE 1: TITLE ===== */
+        .slide-title {
+            background: linear-gradient(135deg, #0f172a 0%, #134e4a 40%, #0f172a 100%);
+        }
+
+        .slide-title::before {
+            content: '';
+            position: absolute;
+            top: -200px;
+            right: -100px;
+            width: 700px;
+            height: 700px;
+            background: radial-gradient(circle, rgba(13,148,136,0.12) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .slide-title::after {
+            content: '';
+            position: absolute;
+            bottom: -200px;
+            left: -100px;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(245,158,11,0.08) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .title-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: center;
+        }
+
+        .title-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(13,148,136,0.15);
+            border: 1px solid rgba(13,148,136,0.3);
+            color: var(--primary-light);
+            padding: 8px 20px;
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 28px;
+        }
+
+        .title-badge::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #34d399;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .title-heading {
+            font-family: 'Playfair Display', serif;
+            font-size: 64px;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 24px;
+        }
+
+        .title-heading span {
+            background: linear-gradient(135deg, #34d399, #5eead4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .title-sub {
+            font-size: 20px;
+            color: #94a3b8;
+            line-height: 1.6;
+            margin-bottom: 40px;
+        }
+
+        .title-img {
+            position: relative;
+        }
+
+        .title-img img {
+            width: 100%;
+            border-radius: 16px;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .title-img-glow {
+            position: absolute;
+            inset: -4px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, rgba(13,148,136,0.3), rgba(245,158,11,0.15));
+            z-index: -1;
+            filter: blur(25px);
+        }
+
+        /* ===== SLIDE 2: OVERVIEW / STATS ===== */
+        .slide-overview {
+            background: linear-gradient(180deg, #0f172a, #1e293b);
+        }
+
+        .overview-title {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .overview-title h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .overview-title p {
+            font-size: 18px;
+            color: #94a3b8;
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            margin-bottom: 48px;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 36px 28px;
+            text-align: center;
+            transition: all 0.4s;
+        }
+
+        .stat-card:hover {
+            background: rgba(13,148,136,0.08);
+            border-color: rgba(13,148,136,0.3);
+            transform: translateY(-4px);
+        }
+
+        .stat-number {
+            font-size: 52px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary-light), var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 15px;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        .capability-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+        }
+
+        .capability-pill {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: #e2e8f0;
+            transition: all 0.3s;
+        }
+
+        .capability-pill:hover {
+            background: rgba(13,148,136,0.15);
+            border-color: var(--primary);
+        }
+
+        .capability-pill .cap-icon {
+            font-size: 28px;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        /* ===== FEATURE SLIDES (3-7) ===== */
+        .slide-feature {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+        }
+
+        .feature-layout {
+            display: grid;
+            grid-template-columns: 1fr 1.1fr;
+            gap: 80px;
+            align-items: center;
+        }
+
+        .feature-layout.reverse { direction: rtl; }
+        .feature-layout.reverse > * { direction: ltr; }
+
+        .feature-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(13,148,136,0.12);
+            border: 1px solid rgba(13,148,136,0.25);
+            color: var(--primary-light);
+            padding: 6px 16px;
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+
+        .feature-heading {
+            font-family: 'Playfair Display', serif;
+            font-size: 44px;
+            font-weight: 700;
+            line-height: 1.15;
+            margin-bottom: 20px;
+        }
+
+        .feature-desc {
+            font-size: 17px;
+            color: #94a3b8;
+            line-height: 1.7;
+            margin-bottom: 32px;
+        }
+
+        .feature-checks {
+            list-style: none;
+            display: grid;
+            gap: 14px;
+        }
+
+        .feature-checks li {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            font-size: 15px;
+            color: #e2e8f0;
+            font-weight: 500;
+        }
+
+        .check-icon {
+            width: 28px;
+            height: 28px;
+            background: rgba(13,148,136,0.15);
+            border: 1px solid rgba(13,148,136,0.3);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #34d399;
+            font-size: 14px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .feature-img-wrap {
+            position: relative;
+        }
+
+        .feature-img-wrap img {
+            width: 100%;
+            border-radius: 16px;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .feature-img-bg {
+            position: absolute;
+            inset: -3px;
+            border-radius: 19px;
+            background: linear-gradient(135deg, rgba(13,148,136,0.25), transparent, rgba(245,158,11,0.1));
+            z-index: -1;
+            filter: blur(15px);
+        }
+
+        /* ===== SLIDE: MODULES GRID ===== */
+        .slide-modules {
+            background: linear-gradient(180deg, #0f172a, #134e4a 50%, #0f172a);
+        }
+
+        .modules-head {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .modules-head h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .modules-head p { color: #94a3b8; font-size: 18px; }
+
+        .mod-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .mod-card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 28px;
+            transition: all 0.3s;
+        }
+
+        .mod-card:hover {
+            background: rgba(13,148,136,0.08);
+            border-color: rgba(13,148,136,0.3);
+            transform: translateY(-3px);
+        }
+
+        .mod-card-icon {
+            font-size: 32px;
+            margin-bottom: 14px;
+        }
+
+        .mod-card h3 {
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .mod-card p {
+            font-size: 13px;
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+
+        /* ===== SLIDE: REPORTS ===== */
+        .slide-reports {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+        }
+
+        .reports-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 60px;
+            align-items: center;
+        }
+
+        .reports-img img {
+            width: 100%;
+            border-radius: 16px;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .reports-content h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 44px;
+            margin-bottom: 16px;
+        }
+
+        .reports-content > p {
+            font-size: 17px;
+            color: #94a3b8;
+            margin-bottom: 28px;
+            line-height: 1.7;
+        }
+
+        .r-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .r-tag {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #cbd5e1;
+            padding: 8px 18px;
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .r-tag:hover {
+            background: rgba(13,148,136,0.15);
+            border-color: var(--primary);
+            color: var(--primary-light);
+        }
+
+        /* ===== SLIDE: TECH STACK ===== */
+        .slide-tech {
+            background: linear-gradient(180deg, #0f172a, #1e293b);
+        }
+
+        .tech-head {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .tech-head h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .tech-head p { color: #94a3b8; font-size: 18px; }
+
+        .tech-cols {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .tech-col {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 36px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .tech-col:hover {
+            border-color: rgba(13,148,136,0.3);
+            transform: translateY(-3px);
+        }
+
+        .tech-col-icon { font-size: 40px; margin-bottom: 16px; }
+
+        .tech-col h3 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .tech-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .tech-tag {
+            background: rgba(13,148,136,0.1);
+            border: 1px solid rgba(13,148,136,0.2);
+            color: var(--primary-light);
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* ===== SLIDE: ARCHITECTURE MAP ===== */
+        .slide-arch {
+            background: linear-gradient(180deg, #0f172a, #1e293b);
+        }
+
+        .arch-head {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .arch-head h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .arch-head p { color: #94a3b8; font-size: 18px; }
+
+        .arch-layers {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-bottom: 36px;
+        }
+
+        .arch-col {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 28px;
+            transition: all 0.3s;
+        }
+
+        .arch-col:hover {
+            border-color: rgba(13,148,136,0.3);
+        }
+
+        .arch-col-head {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .arch-col-icon {
+            font-size: 24px;
+        }
+
+        .arch-col-head h3 {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .arch-col-head h3 small {
+            display: block;
+            font-size: 11px;
+            font-weight: 500;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        .arch-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            margin-bottom: 14px;
+            font-size: 13px;
+            color: #e2e8f0;
+            line-height: 1.5;
+        }
+
+        .arch-row:last-child { margin-bottom: 0; }
+
+        .arch-badge {
+            flex-shrink: 0;
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .arch-badge.fe { background: rgba(59,130,246,0.15); color: #93c5fd; }
+        .arch-badge.be { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+        .arch-badge.db { background: rgba(245,158,11,0.15); color: #fcd34d; }
+
+        .arch-flow-row {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 14px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .arch-flow-step {
+            text-align: center;
+            padding: 10px 16px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            min-width: 110px;
+        }
+
+        .arch-flow-step .afs-label {
+            font-size: 10px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .arch-flow-step .afs-tech {
+            font-size: 14px;
+            font-weight: 700;
+            color: #e2e8f0;
+            margin-top: 2px;
+        }
+
+        .arch-flow-arrow {
+            color: var(--primary);
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        /* ===== SLIDE: SECURITY ===== */
+        .slide-security {
+            background: linear-gradient(135deg, #0f172a, #134e4a 60%, #0f172a);
+        }
+
+        .sec-head {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .sec-head h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .sec-head p { color: #94a3b8; font-size: 18px; }
+
+        .sec-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+
+        .sec-card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 32px;
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            transition: all 0.3s;
+        }
+
+        .sec-card:hover {
+            border-color: rgba(13,148,136,0.3);
+            background: rgba(13,148,136,0.06);
+        }
+
+        .sec-card-icon {
+            width: 50px;
+            height: 50px;
+            background: rgba(13,148,136,0.12);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .sec-card h3 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .sec-card p {
+            font-size: 14px;
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+
+        /* ===== SLIDE: CTA / CLOSING ===== */
+        .slide-cta {
+            background: linear-gradient(135deg, #0f172a, #134e4a 50%, #0f172a);
+            text-align: center;
+        }
+
+        .cta-content h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 56px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            line-height: 1.15;
+        }
+
+        .cta-content h2 span {
+            background: linear-gradient(135deg, #34d399, #5eead4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .cta-content > p {
+            font-size: 20px;
+            color: #94a3b8;
+            max-width: 600px;
+            margin: 0 auto 40px;
+            line-height: 1.6;
+        }
+
+        .cta-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: linear-gradient(135deg, var(--primary), #059669);
+            color: white;
+            padding: 20px 56px;
+            border-radius: 16px;
+            font-weight: 700;
+            font-size: 20px;
+            text-decoration: none;
+            box-shadow: 0 8px 40px rgba(13,148,136,0.4);
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 50px rgba(13,148,136,0.5);
+        }
+
+        .cta-pills {
+            display: flex;
+            justify-content: center;
+            gap: 32px;
+            margin-top: 48px;
+            flex-wrap: wrap;
+        }
+
+        .cta-pill {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #94a3b8;
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .cta-pill .pill-check {
+            color: #34d399;
+            font-size: 18px;
+        }
+
+        .thank-you {
+            margin-top: 80px;
+            font-size: 14px;
+            color: #475569;
+        }
+
+        /* ===== KEYBOARD HINT ===== */
+        .key-hint {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 8px 20px;
+            border-radius: 100px;
+            font-size: 12px;
+            color: #64748b;
+            z-index: 100;
+            transition: opacity 0.5s;
+        }
+
+        .key-hint kbd {
+            background: rgba(255,255,255,0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-family: inherit;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            .title-layout, .feature-layout, .feature-layout.reverse, .reports-grid {
+                grid-template-columns: 1fr;
+                direction: ltr;
+                gap: 40px;
+            }
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+            .capability-row { grid-template-columns: repeat(3, 1fr); }
+            .title-heading { font-size: 48px; }
+            .feature-heading { font-size: 36px; }
+        }
+
+        @media (max-width: 768px) {
+            .slide { padding: 40px 24px; }
+            .title-heading { font-size: 36px; }
+            .feature-heading, .modules-head h2, .tech-head h2, .sec-head h2, .reports-content h2 { font-size: 32px; }
+            .mod-grid, .tech-cols, .sec-grid { grid-template-columns: 1fr; }
+            .stats-row { grid-template-columns: 1fr 1fr; }
+            .capability-row { grid-template-columns: repeat(2, 1fr); }
+            .cta-content h2 { font-size: 36px; }
+            .nav-dots { display: none; }
+        }
+
+        /* ===== PRINT / PDF — 1 slide = 1 page ===== */
+        @page {
+            size: landscape;
+            margin: 0;
+        }
+
+        @media print {
+            /* Force backgrounds to print */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+
+            html {
+                scroll-snap-type: none !important;
+            }
+
+            html, body {
+                width: 100% !important;
+                height: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: visible !important;
+            }
+
+            /* Hide navigation UI */
+            .nav-dots, .key-hint, .slide-counter {
+                display: none !important;
+            }
+
+            /* ---- CORE: each slide = exactly one landscape page ---- */
+            .slide {
+                width: 100vw !important;
+                min-height: 0 !important;
+                height: 100vh !important;          /* fill one printed page */
+                max-height: 100vh !important;
+                padding: 28px 36px !important;
+                margin: 0 !important;
+                overflow: hidden !important;        /* clip rather than spill */
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                page-break-after: always;
+                break-after: page;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            .slide:last-of-type {
+                page-break-after: auto;
+                break-after: auto;
+            }
+
+            /* ---- Scale down content to fit one page ---- */
+            .slide-inner {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+
+            /* Remove all hovers / transforms / shadows */
+            .stat-card, .capability-pill, .mod-card, .tech-col,
+            .sec-card, .arch-col, .r-tag, .cta-button,
+            .stat-card:hover, .capability-pill:hover,
+            .mod-card:hover, .tech-col:hover,
+            .sec-card:hover, .arch-col:hover,
+            .r-tag:hover, .cta-button:hover {
+                transform: none !important;
+                box-shadow: none !important;
+            }
+
+            /* Remove glow / blur effects */
+            .title-img-glow, .feature-img-bg {
+                display: none !important;
+            }
+
+            /* Remove animations */
+            .title-badge::before { animation: none !important; }
+
+            /* ---- SLIDE 1: Title — tighten spacing ---- */
+            .title-layout {
+                gap: 32px !important;
+            }
+
+            .title-heading {
+                font-size: 44px !important;
+                margin-bottom: 14px !important;
+            }
+
+            .title-sub {
+                font-size: 16px !important;
+                margin-bottom: 20px !important;
+            }
+
+            .title-badge {
+                margin-bottom: 16px !important;
+            }
+
+            /* ---- SLIDE 2: Overview stats ---- */
+            .overview-title {
+                margin-bottom: 28px !important;
+            }
+
+            .overview-title h2 {
+                font-size: 36px !important;
+            }
+
+            .stats-row {
+                gap: 14px !important;
+                margin-bottom: 28px !important;
+            }
+
+            .stat-card {
+                padding: 20px 16px !important;
+            }
+
+            .stat-number {
+                font-size: 38px !important;
+            }
+
+            .capability-pill {
+                padding: 10px !important;
+                font-size: 12px !important;
+            }
+
+            .capability-pill .cap-icon {
+                font-size: 22px !important;
+                margin-bottom: 4px !important;
+            }
+
+            /* ---- SLIDE 3-5: Feature slides — tighten ---- */
+            .feature-layout,
+            .feature-layout.reverse {
+                gap: 32px !important;
+            }
+
+            .feature-heading {
+                font-size: 32px !important;
+                margin-bottom: 12px !important;
+            }
+
+            .feature-label {
+                margin-bottom: 12px !important;
+            }
+
+            .feature-desc {
+                font-size: 14px !important;
+                margin-bottom: 18px !important;
+            }
+
+            .feature-checks {
+                gap: 8px !important;
+            }
+
+            .feature-checks li {
+                font-size: 13px !important;
+            }
+
+            .check-icon {
+                width: 22px !important;
+                height: 22px !important;
+                font-size: 11px !important;
+            }
+
+            /* ---- SLIDE 6: Modules grid ---- */
+            .modules-head {
+                margin-bottom: 24px !important;
+            }
+
+            .modules-head h2 {
+                font-size: 34px !important;
+            }
+
+            .mod-grid {
+                gap: 10px !important;
+            }
+
+            .mod-card {
+                padding: 14px 16px !important;
+            }
+
+            .mod-card-icon {
+                font-size: 22px !important;
+                margin-bottom: 6px !important;
+            }
+
+            .mod-card h3 {
+                font-size: 14px !important;
+                margin-bottom: 4px !important;
+            }
+
+            .mod-card p {
+                font-size: 11px !important;
+                line-height: 1.4 !important;
+            }
+
+            /* ---- SLIDE 7: Reports ---- */
+            .reports-grid {
+                gap: 32px !important;
+            }
+
+            .reports-content h2 {
+                font-size: 32px !important;
+            }
+
+            .reports-content > p {
+                font-size: 14px !important;
+                margin-bottom: 18px !important;
+            }
+
+            .r-tags {
+                gap: 6px !important;
+            }
+
+            .r-tag {
+                padding: 5px 12px !important;
+                font-size: 11px !important;
+            }
+
+            /* ---- SLIDE 8: Tech Stack ---- */
+            .tech-head {
+                margin-bottom: 28px !important;
+            }
+
+            .tech-head h2 {
+                font-size: 34px !important;
+            }
+
+            .tech-cols {
+                gap: 16px !important;
+            }
+
+            .tech-col {
+                padding: 24px !important;
+            }
+
+            .tech-col h3 {
+                font-size: 17px !important;
+                margin-bottom: 14px !important;
+            }
+
+            /* ---- SLIDE 9: Architecture ---- */
+            .arch-head {
+                margin-bottom: 20px !important;
+            }
+
+            .arch-head h2 {
+                font-size: 34px !important;
+            }
+
+            .arch-layers {
+                gap: 12px !important;
+                margin-bottom: 16px !important;
+            }
+
+            .arch-col {
+                padding: 14px !important;
+            }
+
+            .arch-col-head {
+                margin-bottom: 10px !important;
+                padding-bottom: 8px !important;
+                gap: 8px !important;
+            }
+
+            .arch-col-head h3 {
+                font-size: 14px !important;
+            }
+
+            .arch-col-icon {
+                font-size: 18px !important;
+            }
+
+            .arch-row {
+                font-size: 11px !important;
+                margin-bottom: 8px !important;
+                gap: 6px !important;
+            }
+
+            .arch-badge {
+                font-size: 9px !important;
+                padding: 1px 6px !important;
+                min-width: 60px !important;
+            }
+
+            .arch-flow-row {
+                padding: 12px !important;
+                gap: 8px !important;
+            }
+
+            .arch-flow-step {
+                padding: 6px 10px !important;
+                min-width: 80px !important;
+            }
+
+            .arch-flow-step .afs-label {
+                font-size: 8px !important;
+            }
+
+            .arch-flow-step .afs-tech {
+                font-size: 11px !important;
+            }
+
+            .arch-flow-arrow {
+                font-size: 14px !important;
+            }
+
+            /* ---- SLIDE 10: Security ---- */
+            .sec-head {
+                margin-bottom: 28px !important;
+            }
+
+            .sec-head h2 {
+                font-size: 34px !important;
+            }
+
+            .sec-grid {
+                gap: 14px !important;
+            }
+
+            .sec-card {
+                padding: 22px !important;
+            }
+
+            /* ---- SLIDE 11: CTA ---- */
+            .cta-content h2 {
+                font-size: 40px !important;
+            }
+
+            .cta-content > p {
+                font-size: 16px !important;
+                margin-bottom: 24px !important;
+            }
+
+            .cta-pills {
+                margin-top: 28px !important;
+                gap: 20px !important;
+            }
+
+            .thank-you {
+                margin-top: 40px !important;
+            }
+
+            /* ---- Images ---- */
+            img {
+                max-width: 100% !important;
+            }
+
+            /* ---- Ensure all text visible ---- */
+            .feature-checks li, .mod-card p, .sec-card p,
+            .arch-row, .r-tag, .tech-tag, .cta-pill {
+                overflow: visible !important;
+                text-overflow: unset !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navigation Dots -->
+<nav class="nav-dots" id="navDots">
+    <div class="nav-dot active" data-slide="0" title="Home"></div>
+    <div class="nav-dot" data-slide="1" title="Overview"></div>
+    <div class="nav-dot" data-slide="2" title="POS & Billing"></div>
+    <div class="nav-dot" data-slide="3" title="CRM"></div>
+    <div class="nav-dot" data-slide="4" title="Appointments"></div>
+    <div class="nav-dot" data-slide="5" title="All Modules"></div>
+    <div class="nav-dot" data-slide="6" title="Reports"></div>
+    <div class="nav-dot" data-slide="7" title="Tech Stack"></div>
+    <div class="nav-dot" data-slide="8" title="Architecture"></div>
+    <div class="nav-dot" data-slide="9" title="Security"></div>
+    <div class="nav-dot" data-slide="10" title="Get Started"></div>
+</nav>
+
+<div class="slide-counter" id="slideCounter">1 / 11</div>
+<div class="key-hint" id="keyHint">Use <kbd>&#8595;</kbd> <kbd>&#8593;</kbd> or scroll to navigate</div>
+
+<!-- ============================== SLIDE 1: TITLE ============================== -->
+<section class="slide slide-title" id="slide-0">
+    <div class="slide-inner">
+        <div class="title-layout">
+            <div>
+                <div class="title-badge">Cloud-Powered SaaS Platform</div>
+                <h1 class="title-heading">The Complete <span>Salon Management</span> System</h1>
+                <p class="title-sub">Enterprise-grade, multi-branch salon & spa management platform. Billing, CRM, appointments, inventory, staff, analytics &mdash; all in one.</p>
+            </div>
+            <div class="title-img">
+                <div class="title-img-glow"></div>
+                <img src="images/dashboard-mockup.png" alt="Dashboard">
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================== SLIDE 2: OVERVIEW ============================== -->
+<section class="slide slide-overview" id="slide-1">
+    <div class="slide-inner">
+        <div class="overview-title">
+            <h2>Platform at a Glance</h2>
+            <p>A comprehensive solution built for modern salon businesses</p>
+        </div>
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-number">50+</div>
+                <div class="stat-label">Frontend Modules</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">450+</div>
+                <div class="stat-label">API Endpoints</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">25+</div>
+                <div class="stat-label">Business Reports</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">30+</div>
+                <div class="stat-label">Data Collections</div>
+            </div>
+        </div>
+        <div class="capability-row">
+            <div class="capability-pill"><span class="cap-icon">&#128176;</span>Point of Sale</div>
+            <div class="capability-pill"><span class="cap-icon">&#128100;</span>CRM</div>
+            <div class="capability-pill"><span class="cap-icon">&#128197;</span>Appointments</div>
+            <div class="capability-pill"><span class="cap-icon">&#128101;</span>Staff & HR</div>
+            <div class="capability-pill"><span class="cap-icon">&#128202;</span>Analytics</div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================== SLIDE 3: POS & BILLING ============================== -->
+<section class="slide slide-feature" id="slide-2">
+    <div class="slide-inner">
+        <div class="feature-layout">
+            <div>
+                <div class="feature-label">Core Module</div>
+                <h2 class="feature-heading">Point of Sale & Smart Billing</h2>
+                <p class="feature-desc">Lightning-fast checkout built for high-volume salon operations. Multi-item bills, multiple payment methods, and professional GST invoices.</p>
+                <ul class="feature-checks">
+                    <li><span class="check-icon">&#10003;</span>Services, Packages, Products, Memberships & Prepaid</li>
+                    <li><span class="check-icon">&#10003;</span>Cash, Card, UPI, Wallet payment methods</li>
+                    <li><span class="check-icon">&#10003;</span>GST-compliant PDF invoices</li>
+                    <li><span class="check-icon">&#10003;</span>Real-time inventory deduction</li>
+                    <li><span class="check-icon">&#10003;</span>Discount approval with manager codes</li>
+                    <li><span class="check-icon">&#10003;</span>Share via Email, WhatsApp, public link</li>
+                </ul>
+            </div>
+            <div class="feature-img-wrap">
+                <div class="feature-img-bg"></div>
+                <img src="images/billing-mockup.png" alt="Billing Interface">
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================== SLIDE 4: CRM ============================== -->
+<section class="slide slide-feature" id="slide-3">
+    <div class="slide-inner">
+        <div class="feature-layout reverse">
+            <div>
+                <div class="feature-label">Customer Intelligence</div>
+                <h2 class="feature-heading">360&deg; Customer Relationship Management</h2>
+                <p class="feature-desc">Build lasting relationships with complete customer profiles, lead tracking, feedback management, and lifecycle analytics.</p>
+                <ul class="feature-checks">
+                    <li><span class="check-icon">&#10003;</span>Full customer profile with visit & spend history</li>
+                    <li><span class="check-icon">&#10003;</span>Lead management with conversion tracking</li>
+                    <li><span class="check-icon">&#10003;</span>Missed enquiry follow-up system</li>
+                    <li><span class="check-icon">&#10003;</span>Public feedback page (no login required)</li>
+                    <li><span class="check-icon">&#10003;</span>Customer merge & deduplication</li>
+                    <li><span class="check-icon">&#10003;</span>VIP / Regular / At-Risk segmentation</li>
+                </ul>
+            </div>
+            <div class="feature-img-wrap">
+                <div class="feature-img-bg"></div>
+                <img src="images/customer-mockup.png" alt="CRM Interface">
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================== SLIDE 5: APPOINTMENTS ============================== -->
+<section class="slide slide-feature" id="slide-4">
+    <div class="slide-inner">
+        <div class="feature-layout">
+            <div>
+                <div class="feature-label">Scheduling</div>
+                <h2 class="feature-heading">Visual Appointment Calendar</h2>
+                <p class="feature-desc">A beautiful, drag-and-drop calendar system for managing bookings, staff availability, and appointment status across all branches.</p>
+                <ul class="feature-checks">
+                    <li><span class="check-icon">&#10003;</span>Weekly & monthly calendar views</li>
+                    <li><span class="check-icon">&#10003;</span>Staff assignment & availability checking</li>
+                    <li><span class="check-icon">&#10003;</span>Confirmed / Completed / Cancelled / No-show</li>
+                    <li><span class="check-icon">&#10003;</span>Dynamic slot calculation</li>
+                    <li><span class="check-icon">&#10003;</span>Direct appointment-to-bill linking</li>
+                    <li><span class="check-icon">&#10003;</span>Multi-branch scheduling</li>
+                </ul>
+            </div>
+            <div class="feature-img-wrap">
+                <div class="feature-img-bg"></div>
+                <img src="images/appointment-mockup.png" alt="Appointment Calendar">
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================== SLIDE 6: ALL MODULES ============================== -->
+<section class="slide slide-modules" id="slide-5">
+    <div class="slide-inner">
+        <div class="modules-head">
+            <h2>Complete Business Platform</h2>
+            <p>Every module works together for seamless salon operations</p>
+        </div>
+        <div class="mod-grid">
+            <div class="mod-card">
+                <div class="mod-card-icon">&#128176;</div>
+                <h3>Financial Management</h3>
+                <p>Cash register, expense tracking, tax slabs, GST compliance, and financial reports.</p>
+            </div>
+            <div class="mod-card">
+                <div class="mod-card-icon">&#128188;</div>
+                <h3>Membership & Prepaid</h3>
+                <p>Membership plans with benefits, prepaid balances, real-time usage, and expiry management.</p>
+            </div>
+            <div class="mod-card">
+                <div class="mod-card-icon">&#128230;</div>
+                <h3>Inventory Management</h3>
+                <p>Real-time stock tracking, auto-deduction on sale, low stock alerts, and SKU management.</p>
+            </div>
+            <div class="mod-card">
+                <div class="mod-card-icon">&#128101;</div>
+                <h3>Staff & HR</h3>
+                <p>Attendance, leave management, performance metrics, commission tracking, and leaderboard.</p>
+            </div>
+            <div class="mod-card">
+                <div class="mod-card-icon">&#127775;</div>
+                <h3>Service Catalog</h3>
+                <p>Service groups, combo packages, pricing, duration, and branch-specific availability.</p>
+            </div>
+            <div class="mod-card">
+                <div class="mod-card-icon">&#128274;</div>
+                <h3>Discount Approvals</h3>
+                <p>Staff request, manager approve workflow with generated codes and full audit trail.</p>
+            </div>
+            <div class="mod-card">
+                <div class="mod-card-icon">&#128227;</div>
+                <h3>Marketing Campaigns</h3>
+                <p>Birthday campaigns, general offers, customer targeting, and WhatsApp integration.</p>
+            </div>
+            <div class="mod-card">
+                <div class="mod-card-icon">&#127970;</div>
+                <h3>Multi-Branch Ops</h3>
+                <p>Branch data isolation, temp staff assignments, and owner-level cross-branch visibility.</p>
+            </div>
+            <div class="mod-card">
+                <div class="mod-card-icon">&#128736;</div>
+                <h3>Asset Management</h3>
+                <p>Fixed asset tracking by branch with purchase details, status, and summary reports.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================== SLIDE 7: REPORTS ============================== -->
+<section class="slide slide-reports" id="slide-6">
+    <div class="slide-inner">
+        <div class="reports-grid">
+            <div class="reports-img">
+                <img src="images/reports-mockup.png" alt="Reports Dashboard">
+            </div>
+            <div class="reports-content">
+                <div class="feature-label" style="background:rgba(245,158,11,0.15);color:#fcd34d;border-color:rgba(245,158,11,0.3);">Business Intelligence</div>
+                <h2>25+ Powerful Reports</h2>
+                <p>Data-driven decisions made easy. Real-time KPIs, trend analysis, and deep-dive business insights.</p>
+                <div class="r-tags">
+                    <span class="r-tag">Revenue Dashboard</span>
+                    <span class="r-tag">Staff Performance</span>
+                    <span class="r-tag">Sales Insights</span>
+                    <span class="r-tag">Customer Lifecycle</span>
+                    <span class="r-tag">Growth Trends</span>
+                    <span class="r-tag">Client Value</span>
+                    <span class="r-tag">Expense Reports</span>
+                    <span class="r-tag">Inventory</span>
+                    <span class="r-tag">Incentives</span>
+                    <span class="r-tag">Membership</span>
+                    <span class="r-tag">Top Customers</span>
+                    <span class="r-tag">Payments</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================== SLIDE 8: TECH STACK ============================== -->
+<section class="slide slide-tech" id="slide-7">
+    <div class="slide-inner">
+        <div class="tech-head">
+            <h2>Modern, Scalable Architecture</h2>
+            <p>Built with industry-leading technologies for performance and reliability</p>
+        </div>
+        <div class="tech-cols">
+            <div class="tech-col">
+                <div class="tech-col-icon">&#9881;&#65039;</div>
+                <h3>Frontend</h3>
+                <div class="tech-tags">
+                    <span class="tech-tag">React 18</span>
+                    <span class="tech-tag">Vite 5</span>
+                    <span class="tech-tag">Ant Design 6</span>
+                    <span class="tech-tag">Recharts</span>
+                    <span class="tech-tag">Zustand</span>
+                    <span class="tech-tag">React Query</span>
+                    <span class="tech-tag">Framer Motion</span>
+                </div>
+            </div>
+            <div class="tech-col">
+                <div class="tech-col-icon">&#128421;&#65039;</div>
+                <h3>Backend</h3>
+                <div class="tech-tags">
+                    <span class="tech-tag">Python / Flask 3</span>
+                    <span class="tech-tag">MongoEngine</span>
+                    <span class="tech-tag">PyJWT</span>
+                    <span class="tech-tag">bcrypt</span>
+                    <span class="tech-tag">ReportLab PDF</span>
+                    <span class="tech-tag">Gunicorn</span>
+                </div>
+            </div>
+            <div class="tech-col">
+                <div class="tech-col-icon">&#9729;&#65039;</div>
+                <h3>Infrastructure</h3>
+                <div class="tech-tags">
+                    <span class="tech-tag">MongoDB Atlas</span>
+                    <span class="tech-tag">Google Cloud Run</span>
+                    <span class="tech-tag">Docker</span>
+                    <span class="tech-tag">Redis Cache</span>
+                    <span class="tech-tag">gzip Compression</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================== SLIDE 9: ARCHITECTURE MAP ============================== -->
+<section class="slide slide-arch" id="slide-8">
+    <div class="slide-inner">
+        <div class="arch-head">
+            <h2>What Powers What</h2>
+            <p>Detailed breakdown of technologies and where they are used</p>
+        </div>
+
+        <div class="arch-layers">
+            <!-- Frontend Column -->
+            <div class="arch-col">
+                <div class="arch-col-head">
+                    <span class="arch-col-icon">&#9881;&#65039;</span>
+                    <h3>Frontend <small>React 18 + Vite 5</small></h3>
+                </div>
+                <div class="arch-row"><span class="arch-badge fe">Ant Design</span> All UI: tables, forms, modals, date pickers, notifications</div>
+                <div class="arch-row"><span class="arch-badge fe">Recharts</span> Dashboard charts, revenue trends, analytics visualizations</div>
+                <div class="arch-row"><span class="arch-badge fe">React Query</span> All API calls, caching, auto-refetch, background sync</div>
+                <div class="arch-row"><span class="arch-badge fe">Zustand</span> Sidebar state, theme toggle, global UI state</div>
+                <div class="arch-row"><span class="arch-badge fe">Framer Motion</span> Page transitions, modal animations, micro-interactions</div>
+                <div class="arch-row"><span class="arch-badge fe">Hook Form</span> Customer, staff, service forms &mdash; validation &amp; submit</div>
+                <div class="arch-row"><span class="arch-badge fe">Day.js</span> Calendar dates, report filters, membership expiry</div>
+            </div>
+
+            <!-- Backend Column -->
+            <div class="arch-col">
+                <div class="arch-col-head">
+                    <span class="arch-col-icon">&#128421;&#65039;</span>
+                    <h3>Backend <small>Flask 3 + Gunicorn</small></h3>
+                </div>
+                <div class="arch-row"><span class="arch-badge be">Blueprints</span> 34 route modules: /api/bills, /api/customers, /api/staff...</div>
+                <div class="arch-row"><span class="arch-badge be">MongoEngine</span> 30+ models: Bill, Customer, Staff, Product, Appointment...</div>
+                <div class="arch-row"><span class="arch-badge be">PyJWT</span> Token auth on every @require_auth protected endpoint</div>
+                <div class="arch-row"><span class="arch-badge be">bcrypt</span> Password hashing for Staff, Manager, Owner accounts</div>
+                <div class="arch-row"><span class="arch-badge be">ReportLab</span> GST-compliant PDF invoice generation</div>
+                <div class="arch-row"><span class="arch-badge be">Aggregation</span> Leaderboard, revenue breakdown, funnel, all reports</div>
+                <div class="arch-row"><span class="arch-badge be">Redis/Cache</span> Dashboard stats (5min TTL), report aggregations</div>
+            </div>
+
+            <!-- Database Column -->
+            <div class="arch-col">
+                <div class="arch-col-head">
+                    <span class="arch-col-icon">&#128451;&#65039;</span>
+                    <h3>Database <small>MongoDB Atlas</small></h3>
+                </div>
+                <div class="arch-row"><span class="arch-badge db">Core</span> branches, customers, staffs, managers, owners</div>
+                <div class="arch-row"><span class="arch-badge db">Catalog</span> services, products, packages, service_groups, categories</div>
+                <div class="arch-row"><span class="arch-badge db">Billing</span> bills (embedded items), invoices, cash_transactions</div>
+                <div class="arch-row"><span class="arch-badge db">Membership</span> membership_plans, memberships, prepaid_packages</div>
+                <div class="arch-row"><span class="arch-badge db">HR</span> staff_attendance, staff_leaves, temp_assignments</div>
+                <div class="arch-row"><span class="arch-badge db">CRM</span> leads, feedbacks, missed_enquiries, referrals</div>
+                <div class="arch-row"><span class="arch-badge db">Finance</span> expenses, assets, tax_settings, discount_approvals</div>
+            </div>
+        </div>
+
+        <!-- Request Flow -->
+        <div class="arch-flow-row">
+            <div class="arch-flow-step"><div class="afs-label">UI</div><div class="afs-tech">React + Ant Design</div></div>
+            <span class="arch-flow-arrow">&rarr;</span>
+            <div class="arch-flow-step"><div class="afs-label">API Call</div><div class="afs-tech">React Query</div></div>
+            <span class="arch-flow-arrow">&rarr;</span>
+            <div class="arch-flow-step"><div class="afs-label">Auth</div><div class="afs-tech">PyJWT + RBAC</div></div>
+            <span class="arch-flow-arrow">&rarr;</span>
+            <div class="arch-flow-step"><div class="afs-label">Handler</div><div class="afs-tech">Flask Blueprint</div></div>
+            <span class="arch-flow-arrow">&rarr;</span>
+            <div class="arch-flow-step"><div class="afs-label">ORM</div><div class="afs-tech">MongoEngine</div></div>
+            <span class="arch-flow-arrow">&rarr;</span>
+            <div class="arch-flow-step"><div class="afs-label">Database</div><div class="afs-tech">MongoDB Atlas</div></div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================== SLIDE 10: SECURITY ============================== -->
+<section class="slide slide-security" id="slide-9">
+    <div class="slide-inner">
+        <div class="sec-head">
+            <h2>Enterprise-Grade Security</h2>
+            <p>Your business data is protected at every level</p>
+        </div>
+        <div class="sec-grid">
+            <div class="sec-card">
+                <div class="sec-card-icon">&#128272;</div>
+                <div>
+                    <h3>JWT Authentication</h3>
+                    <p>Secure token-based auth with bcrypt password hashing and session management.</p>
+                </div>
+            </div>
+            <div class="sec-card">
+                <div class="sec-card-icon">&#128101;</div>
+                <div>
+                    <h3>Role-Based Access Control</h3>
+                    <p>Three-tier permissions: Owner (full), Manager (branch-level), Staff (limited).</p>
+                </div>
+            </div>
+            <div class="sec-card">
+                <div class="sec-card-icon">&#127970;</div>
+                <div>
+                    <h3>Branch Data Isolation</h3>
+                    <p>Every record is branch-scoped. Staff see only their branch data. Owners see all.</p>
+                </div>
+            </div>
+            <div class="sec-card">
+                <div class="sec-card-icon">&#128202;</div>
+                <div>
+                    <h3>Complete Audit Trail</h3>
+                    <p>Login history, discount logs, customer merge logs, and deleted bill archives.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================== SLIDE 10: CTA ============================== -->
+<section class="slide slide-cta" id="slide-10">
+    <div class="slide-inner">
+        <div class="cta-content">
+            <h2>Ready to <span>Transform</span> Your Salon Business?</h2>
+            <p>An all-in-one platform built for growth, efficiency, and exceptional customer experiences.</p>
+            <button class="cta-button">Get Started Today &rarr;</button>
+            <div class="cta-pills">
+                <div class="cta-pill"><span class="pill-check">&#10003;</span> Cloud-hosted</div>
+                <div class="cta-pill"><span class="pill-check">&#10003;</span> Mobile responsive</div>
+                <div class="cta-pill"><span class="pill-check">&#10003;</span> Multi-branch</div>
+                <div class="cta-pill"><span class="pill-check">&#10003;</span> GST compliant</div>
+                <div class="cta-pill"><span class="pill-check">&#10003;</span> WhatsApp integration</div>
+            </div>
+            <p class="thank-you">Thank you for your time. Let's build something great together.</p>
+        </div>
+    </div>
+</section>
+
+<script>
+    // Navigation dot tracking
+    const slides = document.querySelectorAll('.slide');
+    const dots = document.querySelectorAll('.nav-dot');
+    const counter = document.getElementById('slideCounter');
+    const keyHint = document.getElementById('keyHint');
+
+    // Hide hint after 5 seconds
+    setTimeout(() => { keyHint.style.opacity = '0'; }, 5000);
+
+    // Dot click navigation
+    dots.forEach(dot => {
+        dot.addEventListener('click', () => {
+            const idx = parseInt(dot.dataset.slide);
+            slides[idx].scrollIntoView({ behavior: 'smooth' });
+        });
+    });
+
+    // Intersection observer for active dot
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const idx = Array.from(slides).indexOf(entry.target);
+                dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+                counter.textContent = `${idx + 1} / ${slides.length}`;
+            }
+        });
+    }, { threshold: 0.5 });
+
+    slides.forEach(s => observer.observe(s));
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+        const current = Array.from(dots).findIndex(d => d.classList.contains('active'));
+        if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+            e.preventDefault();
+            if (current < slides.length - 1) slides[current + 1].scrollIntoView({ behavior: 'smooth' });
+        } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+            e.preventDefault();
+            if (current > 0) slides[current - 1].scrollIntoView({ behavior: 'smooth' });
+        }
+    });
+</script>
+
+</body>
+</html>

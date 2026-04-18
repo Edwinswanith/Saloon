@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { FaWhatsapp } from 'react-icons/fa'
 import { apiGet, apiPost } from '../utils/api'
 import { PUBLIC_BASE_URL } from '../config'
+import { useBusiness } from '../contexts/BusinessContext'
 import './InvoicePreview.css'
 
 // Branch information mapping
@@ -56,6 +57,7 @@ const BRANCH_INFO = {
 }
 
 const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
+  const { businessName: configuredBusinessName } = useBusiness()
   const [htmlContent, setHtmlContent] = useState('')
   const [loading, setLoading] = useState(false)
   const [useServerHtml, setUseServerHtml] = useState(false)
@@ -246,11 +248,11 @@ const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
       }
     }
 
-    // Communication settings (hardcoded defaults)
-    const businessName = 'Priyanka Nature Cure'
+    // Communication settings (business name from BusinessContext)
+    const businessName = configuredBusinessName || 'Priyanka Nature Cure'
     const supportPhone = '8095851126'
     const feedbackLink = `${PUBLIC_BASE_URL}/feedback`
-    const signoffName = 'Priyanka Nature Cure'
+    const signoffName = businessName
 
     // Generate shareable invoice link (single URL for viewing and downloading)
     let invoiceLink = ''
@@ -290,7 +292,7 @@ const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
     <div className="invoice-preview-container">
       {/* Header Section - Center-Aligned */}
       <div className="invoice-header-section">
-        <h1 className="company-name">Priyanka Nature Cure</h1>
+        <h1 className="company-name">{configuredBusinessName || 'Priyanka Nature Cure'}</h1>
         {branchInfo?.address && branchInfo.address.map((line, index) => (
           <p key={index} className="company-address">{line}</p>
         ))}
