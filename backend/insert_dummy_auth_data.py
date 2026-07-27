@@ -15,9 +15,11 @@ from models import Staff, Manager
 from utils.auth import hash_password
 from datetime import datetime
 import os
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 # MongoDB connection - Use the actual connection string from app.py
-MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
+load_env()
+MONGODB_URI = get_mongodb_uri()
 MONGODB_DB = 'Saloon'
 
 print("=" * 70)
@@ -375,4 +377,3 @@ print("\n✅ Collections are automatically created when first document is insert
 disconnect()
 print("\n✓ Disconnected from MongoDB")
 print("\n✅ Database is ready for testing!\n")
-

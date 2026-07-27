@@ -6,12 +6,14 @@ import os
 import sys
 from mongoengine import connect, disconnect
 from models import Product
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 def connect_to_mongodb():
     """Connect to MongoDB using the same logic as app.py"""
     try:
         # Get MongoDB connection details
-        mongo_uri = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
+load_env()
+mongo_uri = get_mongodb_uri()
         mongodb_db = os.environ.get('MONGODB_DB', 'Saloon_prod')
         
         # Parse connection string - same logic as app.py
@@ -104,4 +106,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

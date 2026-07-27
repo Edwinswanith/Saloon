@@ -33,6 +33,7 @@ import sys
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 from mongoengine import connect, disconnect
 from models import Branch, Staff, Service, ServiceGroup
@@ -203,7 +204,7 @@ def main():
     dry_run = not args.confirm
     mongo_uri = os.environ.get(
         "MONGODB_URI",
-        "mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon",
+        "get_mongodb_uri()",
     )
     mongo_db = os.environ.get("MONGODB_DB", "Saloon_prod")
 

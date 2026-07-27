@@ -25,6 +25,7 @@ from datetime import datetime
 from mongoengine import connect, disconnect
 from models import Staff, Manager, Owner, Branch
 from utils.auth import hash_password, verify_password
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 
 def _branch_name(ref):
@@ -71,7 +72,7 @@ def build_uri(raw_uri, db_name):
 def connect_db():
     uri = os.environ.get(
         'MONGODB_URI',
-        'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon',
+        'get_mongodb_uri()',
     )
     db_name = os.environ.get('MONGODB_DB', 'Saloon_prod')
     full = build_uri(uri, db_name)

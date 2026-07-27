@@ -9,15 +9,16 @@ This script will:
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 from mongoengine import connect
 from models import Manager, Branch
 from bson import ObjectId
 
 # Use the same MongoDB configuration as app.py
-MONGO_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
-MONGODB_DB = os.environ.get('MONGODB_DB', 'Saloon')
-
+load_env()
+MONGO_URI = get_mongodb_uri()
+MONGODB_DB = get_mongodb_db()
 def verify_manager_branches():
     """Verify manager-branch reference integrity"""
     connect(db=MONGODB_DB, host=MONGO_URI)

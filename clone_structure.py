@@ -6,10 +6,14 @@ Usage:
 """
 
 import os
+from pathlib import Path
+from dotenv import load_dotenv
 from pymongo import MongoClient
 
+load_dotenv(Path(__file__).resolve().parent / '.env')
+
 # MongoDB Configuration
-MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
+MONGODB_URI = os.environ['MONGODB_URI']
 SOURCE_DB = "Saloon"
 TARGET_DB = "Saloon_prod"
 

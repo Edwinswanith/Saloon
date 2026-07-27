@@ -1,10 +1,11 @@
 """One-off diagnostic — read-only. Inspect the recent bills in Dummy Branch via raw PyMongo."""
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 from pymongo import MongoClient
 from setup_dummy_branch import build_mongo_uri
-
-mongo_uri = os.environ.get("MONGODB_URI", "mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon")
+load_env()
+mongo_uri = get_mongodb_uri()
 mongo_db = os.environ.get("MONGODB_DB", "Saloon_prod")
 
 client = MongoClient(build_mongo_uri(mongo_uri, mongo_db))

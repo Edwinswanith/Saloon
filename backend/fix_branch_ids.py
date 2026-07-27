@@ -8,6 +8,7 @@ from datetime import datetime
 
 # Add backend directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 from mongoengine import connect, disconnect
 from models import (
@@ -17,9 +18,9 @@ from models import (
 )
 
 # MongoDB connection - use same as app.py
-MONGO_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
-MONGODB_DB = os.environ.get('MONGODB_DB', 'Saloon')
-
+load_env()
+MONGO_URI = get_mongodb_uri()
+MONGODB_DB = get_mongodb_db()
 # Chennai branch names (expected branches)
 EXPECTED_BRANCHES = [
     "T. Nagar",
@@ -35,7 +36,8 @@ def connect_db():
     """Connect to MongoDB"""
     try:
         # Get MongoDB connection details
-        mongo_uri = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
+load_env()
+mongo_uri = get_mongodb_uri()
         mongodb_db = os.environ.get('MONGODB_DB', 'Saloon')
         
         # Parse connection string - same logic as app.py
@@ -363,4 +365,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

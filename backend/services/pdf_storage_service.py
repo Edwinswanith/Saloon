@@ -9,11 +9,15 @@ from datetime import datetime
 import os
 import logging
 
+from utils.env_config import get_mongodb_db, get_mongodb_uri, load_env
+
 logger = logging.getLogger(__name__)
 
+load_env()
+
 # Get MongoDB connection from environment
-MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
-MONGODB_DB = os.environ.get('MONGODB_DB', 'Saloon_prod')
+MONGODB_URI = get_mongodb_uri()
+MONGODB_DB = get_mongodb_db()
 
 # Global GridFS instance (will be initialized on first use)
 _gridfs_instance = None

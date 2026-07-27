@@ -12,12 +12,15 @@ These indexes are critical for query performance on:
 - Expenses
 """
 
-import os
 import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pymongo import MongoClient, ASCENDING, DESCENDING, TEXT
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 # MongoDB Configuration (same as app.py)
-MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
+load_env()
+MONGODB_URI = get_mongodb_uri()
 MONGODB_DB = 'Saloon_prod'  # Use 'Saloon' for development
 
 

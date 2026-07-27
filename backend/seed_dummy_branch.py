@@ -10,6 +10,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 from datetime import datetime
 from mongoengine import connect, disconnect
@@ -18,10 +19,9 @@ from utils.auth import hash_password
 
 MONGODB_URI = os.environ.get(
     "MONGODB_URI",
-    "mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon",
+    "get_mongodb_uri()",
 )
-MONGODB_DB = os.environ.get("MONGODB_DB", "Saloon_prod")
-
+MONGODB_DB = get_mongodb_db()
 BRANCH_NAME = "Dummy Branch"
 PASSWORD = "test123"
 

@@ -7,13 +7,14 @@ from mongoengine import connect
 
 # Add the project root to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 from models import Customer, Branch
 from utils.branch_filter import filter_by_branch
 
 # MongoDB connection
-MONGO_URI = 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon'
-
+load_env()
+MONGO_URI = get_mongodb_uri()
 def test_branch_filtering():
     """Test branch filtering logic"""
     
@@ -73,4 +74,3 @@ def test_branch_filtering():
 
 if __name__ == '__main__':
     test_branch_filtering()
-

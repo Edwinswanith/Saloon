@@ -4,13 +4,14 @@ Creates indexes for ALL collections to optimize performance
 
 Run: python backend/migrations/create_all_indexes_comprehensive.py
 """
-import os
 import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pymongo import MongoClient, ASCENDING, DESCENDING, TEXT
-
-MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
-MONGODB_DB = os.environ.get('MONGODB_DB', 'Saloon_prod')
-
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
+load_env()
+MONGODB_URI = get_mongodb_uri()
+MONGODB_DB = get_mongodb_db()
 def create_all_indexes():
     """Create all performance-critical indexes for every collection"""
     
@@ -422,4 +423,3 @@ if __name__ == "__main__":
             create_all_indexes()
         except KeyboardInterrupt:
             print("\nCancelled.")
-

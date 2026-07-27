@@ -1,0 +1,14 @@
+{
+  "name": "saloon-monorepo",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=frontend",
+    "build": "npm run vercel-build",
+    "vercel-build": "node scripts/vercel-build.mjs",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:backend": "cd backend && python app.py"
+  }
+}

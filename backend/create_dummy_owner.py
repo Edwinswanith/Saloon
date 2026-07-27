@@ -7,11 +7,12 @@ from mongoengine import connect
 from models import Owner, Branch
 from utils.auth import hash_password
 from datetime import datetime
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 # MongoDB connection - using the same connection string as app.py
-MONGO_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
-MONGODB_DB = os.environ.get('MONGODB_DB', 'Saloon')
-
+load_env()
+MONGO_URI = get_mongodb_uri()
+MONGODB_DB = get_mongodb_db()
 def connect_to_mongodb():
     """Connect to MongoDB using the same logic as app.py"""
     try:
@@ -127,4 +128,3 @@ if __name__ == '__main__':
     else:
         print("\n[ERROR] Failed to create owner")
         sys.exit(1)
-

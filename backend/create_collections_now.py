@@ -5,12 +5,14 @@ Uses MongoEngine connection (same as app) to create collections
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 from mongoengine import connect, disconnect
 from datetime import datetime
 
 # MongoDB Configuration (same as app.py)
-MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
+load_env()
+MONGODB_URI = get_mongodb_uri()
 MONGODB_DB = 'Saloon'
 
 # Parse connection string
@@ -268,4 +270,3 @@ print("Done! Check MongoDB Atlas Data Explorer to see your collections.")
 print("=" * 60)
 
 disconnect()
-

@@ -15,6 +15,7 @@ import os
 
 # Add the backend directory to the path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 from mongoengine import connect
 from models import Staff, Manager, Owner, Branch
@@ -28,7 +29,8 @@ except ImportError:
     pass  # dotenv not installed, use environment variables directly
 
 # MongoDB connection string (same as app.py)
-MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
+load_env()
+MONGODB_URI = get_mongodb_uri()
 MONGODB_DB = 'Saloon'
 
 def sanitize_branch_name(branch_name):

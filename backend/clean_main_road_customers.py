@@ -10,11 +10,13 @@ from datetime import datetime
 
 # Add parent directory to path to import models
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 from models import Customer, Branch
 
 # MongoDB Configuration
-MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
+load_env()
+MONGODB_URI = get_mongodb_uri()
 MONGODB_DB = 'Saloon_prod'
 
 def normalize_mobile(mobile):
@@ -312,4 +314,3 @@ if __name__ == '__main__':
         import traceback
         traceback.print_exc()
         sys.exit(1)
-

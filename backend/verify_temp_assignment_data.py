@@ -5,9 +5,11 @@ from mongoengine import connect, DoesNotExist
 from models import StaffTempAssignment, StaffLeave, Staff, Branch
 from datetime import datetime, date
 import os
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 # MongoDB connection
-MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/Saloon?appName=Saloon')
+load_env()
+MONGODB_URI = get_mongodb_uri()
 connect(host=MONGODB_URI)
 
 def verify_assignments():
@@ -99,4 +101,3 @@ def verify_assignments():
 
 if __name__ == "__main__":
     verify_assignments()
-

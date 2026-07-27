@@ -4,13 +4,14 @@ Verifies existing indexes and creates missing ones for ALL collections
 
 Run: python backend/migrations/verify_and_fix_all_indexes.py --yes
 """
-import os
 import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pymongo import MongoClient, ASCENDING, DESCENDING, TEXT
-
-MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
-MONGODB_DB = os.environ.get('MONGODB_DB', 'Saloon_prod')
-
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
+load_env()
+MONGODB_URI = get_mongodb_uri()
+MONGODB_DB = get_mongodb_db()
 def get_existing_indexes(db, collection_name):
     """Get all existing indexes for a collection"""
     try:
@@ -481,4 +482,3 @@ if __name__ == "__main__":
             verify_and_create_indexes()
         except KeyboardInterrupt:
             print("\nCancelled.")
-

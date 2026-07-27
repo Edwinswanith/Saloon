@@ -5,10 +5,11 @@ Script to add services to existing packages in MongoDB
 from mongoengine import connect
 from models import Package, Service
 import json
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 # Connect to MongoDB
-MONGODB_URI = "mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/Saloon?appName=Saloon"
-
+load_env()
+MONGODB_URI = get_mongodb_uri()
 def populate_package_services():
     """Add services to packages"""
     
@@ -124,4 +125,3 @@ if __name__ == "__main__":
         print("\n[FAILED] Please check the errors above and try again.")
     else:
         print("\n[COMPLETE] You can now see services in the Package List dropdown!")
-

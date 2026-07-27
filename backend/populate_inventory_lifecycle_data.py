@@ -3,9 +3,11 @@ from models import Supplier, Customer, Branch
 from datetime import datetime, timedelta
 import random
 import os
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 # Connect to MongoDB
-MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
+load_env()
+MONGODB_URI = get_mongodb_uri()
 connect(host=MONGODB_URI, db='Saloon')
 
 def populate_suppliers():
@@ -175,4 +177,3 @@ if __name__ == "__main__":
     print("2. Refresh your browser")
     print("3. Check Inventory section for suppliers")
     print("4. Check Customer Lifecycle Report for segments")
-
