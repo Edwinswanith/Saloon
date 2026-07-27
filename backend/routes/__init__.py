@@ -27,12 +27,12 @@ from .service_recovery_routes import service_recovery_bp
 from .customer_lifecycle_routes import customer_lifecycle_bp
 from .discount_approval_routes import discount_approval_bp
 from .branch_routes import branch_bp
-from .temp_assignment_routes import temp_assignment_bp
 from .leave_routes import leave_bp
 from .customer_merge_routes import customer_merge_bp
 from .campaign_routes import campaign_bp
 from .notification_routes import notification_bp
 from .settings_routes import settings_bp
+from .offer_routes import offer_bp
 
 def register_routes(app):
     # Register blueprints with /api prefix
@@ -64,10 +64,10 @@ def register_routes(app):
     app.register_blueprint(customer_lifecycle_bp, url_prefix='/api/customer-lifecycle')
     app.register_blueprint(discount_approval_bp, url_prefix='/api/discount-approvals')
     app.register_blueprint(branch_bp, url_prefix='/api')
-    app.register_blueprint(temp_assignment_bp, url_prefix='/api/temp-assignments')
     app.register_blueprint(leave_bp, url_prefix='/api/leaves')
     app.register_blueprint(customer_merge_bp, url_prefix='/api/customers/merge')
     app.register_blueprint(campaign_bp, url_prefix='/api/campaigns')
     app.register_blueprint(notification_bp, url_prefix='/api/notifications')
     app.register_blueprint(settings_bp, url_prefix='/api/settings')
+    app.register_blueprint(offer_bp, url_prefix='/api/offers')
 

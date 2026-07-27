@@ -74,8 +74,13 @@ def login():
 
         # Handle Staff login
         if user_type == 'staff':
-            # Find staff by mobile - handle missing is_active field
-            staff = Staff.objects(mobile=identifier).first()
+            # Staff are pooled across all branches — mobile is globally unique
+            # among active staff. Filter out disabled/soft-deleted records.
+            staff = Staff.objects(
+                mobile=identifier,
+                is_active__ne=False,
+                status__ne='inactive'
+            ).first()
 
             if not staff:
                 # Log failed login attempt
@@ -186,16 +191,11 @@ def login():
                     response = jsonify({'error': 'Branch not found'})
                     response.headers.add('Access-Control-Allow-Origin', '*')
                     return response, 404
-                
-                # Staff can only access their assigned branch
-                if staff.branch and str(staff.branch.id) != branch_id:
-                    response = jsonify({'error': 'You do not have access to this branch'})
-                    response.headers.add('Access-Control-Allow-Origin', '*')
-                    return response, 403
-                
+
+                # Staff can operate at any branch (no branch lock).
                 selected_branch = branch
             else:
-                # Use staff's assigned branch if no branch_id provided
+                # Default to staff's home branch if no branch_id provided
                 selected_branch = staff.branch
 
             # Log login history
@@ -786,8 +786,12 @@ def update_profile(current_user=None):
             if 'email' in data:
                 staff.email = data['email']
             if 'mobile' in data:
-                # Check if mobile is already taken by another staff
-                existing = Staff.objects(mobile=data['mobile']).first()
+                # Check if mobile is already taken by ANOTHER ACTIVE staff
+                existing = Staff.objects(
+                    mobile=data['mobile'],
+                    is_active__ne=False,
+                    status__ne='inactive'
+                ).first()
                 if existing and str(existing.id) != user_id:
                     response = jsonify({'error': 'Mobile number already in use'})
                     response.headers.add('Access-Control-Allow-Origin', '*')
@@ -1071,41 +1075,35 @@ def set_initial_password():
 @auth_bp.route('/staff-list', methods=['GET'])
 def get_staff_list():
     """
-    Get list of staff members for login selection (public endpoint for login screen)
-    Optional query parameter: branch_id - filter by branch
+    Get list of staff members for login selection (public endpoint for login screen).
+
+    Staff are pooled across all branches — every staff appears regardless of which
+    branch the user picked on the login screen. The optional `branch_id` query
+    parameter is accepted for backward compatibility but is ignored for filtering;
+    it is only echoed back in the response for the UI.
     """
     try:
         from models import Branch
-        from bson import ObjectId
-        
-        # Get branch_id from query parameter
+
         branch_id = request.args.get('branch_id')
         branch = None
         if branch_id and ObjectId.is_valid(branch_id):
             branch = Branch.objects(id=branch_id).first()
-        
-        # Get all staff members first, then filter in Python
-        # This handles cases where fields might be missing or None
-        query = Staff.objects()
-        if branch:
-            query = query.filter(branch=branch)
-        
-        all_staff = query.only(
+
+        all_staff = Staff.objects().only(
             'id', 'mobile', 'first_name', 'last_name', 'role', 'is_active', 'status', 'branch'
         )
 
         staff_list = []
         for staff in all_staff:
-            # Skip only if explicitly marked as inactive
-            # Handle None/missing values as active (default behavior)
             is_active = staff.is_active if staff.is_active is not None else True
             status = staff.status if staff.status else 'active'
-            
+
             if is_active is False:
                 continue
             if status == 'inactive':
                 continue
-                
+
             staff_list.append({
                 'id': str(staff.id),
                 'mobile': staff.mobile,
@@ -1124,8 +1122,8 @@ def get_staff_list():
         response.headers.add('Access-Control-Allow-Origin', '*')
         response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
-        
-        print(f"Returning {len(staff_list)} staff members for login (branch: {branch.name if branch else 'All'})")
+
+        print(f"Returning {len(staff_list)} staff members for login (cross-branch)")
         return response, 200
 
     except Exception as e:
@@ -1384,11 +1382,15 @@ def update_owner_credentials(current_user=None):
 @require_auth
 def switch_branch(current_user=None):
     """
-    Switch branch for Owner (Owner only)
-    
+    Switch the active branch for the current user.
+
+    Any authenticated user (staff/manager/owner) can switch to any active branch.
+    Staff are pooled across the business — every staff member may sign in to and
+    work at any branch.
+
     Request body:
     {
-        "branch_id": "branch_id_string"
+        "branch_id": "branch_id_string"   # null = "All Branches" view (owner-only context)
     }
     """
     try:
@@ -1397,28 +1399,32 @@ def switch_branch(current_user=None):
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 401
         
-        # Check if user is Owner
-        user_role = current_user.get('role')
-        if user_role != 'owner':
-            response = jsonify({'error': 'Only Owner can switch branches'})
-            response.headers.add('Access-Control-Allow-Origin', '*')
-            return response, 403
-        
         data = request.get_json()
         if not data:
             response = jsonify({'error': 'Request body is required'})
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 400
-        
+
         branch_id = data.get('branch_id')
-        if not branch_id:
-            response = jsonify({'error': 'branch_id is required'})
+
+        # The synthetic "All Branches" (null) view aggregates dashboards across every
+        # branch — only meaningful for owners. Staff/manager must pick a specific branch.
+        if branch_id is None:
+            user_role = current_user.get('role')
+            if user_role != 'owner':
+                response = jsonify({'error': 'Only Owner can use the All Branches view; pick a specific branch'})
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response, 403
+            response = jsonify({
+                'message': 'Switched to All Branches',
+                'branch': None,
+            })
             response.headers.add('Access-Control-Allow-Origin', '*')
-            return response, 400
-        
+            return response
+
         from models import Branch
         from bson import ObjectId
-        
+
         if not ObjectId.is_valid(branch_id):
             response = jsonify({'error': 'Invalid branch ID'})
             response.headers.add('Access-Control-Allow-Origin', '*')

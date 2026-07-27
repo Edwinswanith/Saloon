@@ -32,6 +32,7 @@ const Settings = ({ setActivePage }) => {
       title: 'Manager',
       description: 'Manage your Managers',
       icon: <FaUserTie />,
+      requiresRole: ['owner'],
     },
     {
       id: 6,

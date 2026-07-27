@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import {
   FaEdit,
   FaTrash,
@@ -11,7 +12,7 @@ import {
 } from 'react-icons/fa'
 import './Service.css'
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
-import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
+import { showSuccess, showError } from '../utils/toast.jsx'
 import { useAuth } from '../contexts/AuthContext'
 import Header from './Header'
 
@@ -35,7 +36,7 @@ const Service = () => {
     price: '',
     duration: '',
     description: '',
-    groupId: ''
+    groupId: '',
   })
 
   useEffect(() => {
@@ -49,7 +50,7 @@ const Service = () => {
       fetchServiceGroups()
       setServicesByGroup({}) // Clear services cache
     }
-    
+
     window.addEventListener('branchChanged', handleBranchChange)
     return () => window.removeEventListener('branchChanged', handleBranchChange)
   }, [currentBranch])
@@ -212,6 +213,7 @@ const Service = () => {
 
       if (response.ok) {
         const data = await response.json()
+
         if (serviceFormData.groupId) {
           fetchServicesForGroup(serviceFormData.groupId)
         }
@@ -225,7 +227,7 @@ const Service = () => {
           price: '',
           duration: '',
           description: '',
-          groupId: ''
+          groupId: '',
         })
         showSuccess(data.message || (editingService ? 'Service updated successfully!' : 'Service added successfully!'))
       } else {
@@ -460,7 +462,7 @@ const Service = () => {
                                   price: service.price || '',
                                   duration: service.duration || '',
                                   description: service.description || '',
-                                  groupId: service.groupId || group.id
+                                  groupId: service.groupId || group.id,
                                 })
                                 setShowServiceModal(true)
                               }}
@@ -506,10 +508,20 @@ const Service = () => {
       </div>
 
       {/* Add/Edit Service Group Modal */}
-      {showGroupModal && (
+      {showGroupModal && createPortal(
         <div className="modal-overlay" onClick={() => setShowGroupModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>{editingGroup ? 'Edit Service Group' : 'Add Service Group'}</h2>
+            <div className="std-modal-header">
+              <h2>{editingGroup ? 'Edit Service Group' : 'Add Service Group'}</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowGroupModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <div className="form-group">
               <label>Group Name *</label>
               <input
@@ -525,17 +537,31 @@ const Service = () => {
               <button className="btn-save" onClick={handleSaveGroup}>Save</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Add/Edit Service Modal */}
-      {showServiceModal && (
+      {showServiceModal && createPortal(
         <div className="modal-overlay" onClick={() => {
           setShowServiceModal(false)
           setShowGroupDropdown(false)
         }}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>{editingService ? 'Edit Service' : 'Add Service'}</h2>
+            <div className="std-modal-header">
+              <h2>{editingService ? 'Edit Service' : 'Add Service'}</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => {
+                  setShowServiceModal(false)
+                  setShowGroupDropdown(false)
+                }}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <div className="form-group">
               <label>Service Name *</label>
               <input
@@ -626,14 +652,25 @@ const Service = () => {
               <button className="btn-save" onClick={handleSaveService}>Save</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Import Services Modal */}
-      {showImportModal && (
+      {showImportModal && createPortal(
         <div className="modal-overlay" onClick={() => setShowImportModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Import Services</h2>
+            <div className="std-modal-header">
+              <h2>Import Services</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowImportModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <div className="import-instructions">
               <p>Upload a CSV file with the following columns:</p>
               <ul>
@@ -655,7 +692,8 @@ const Service = () => {
               <button className="btn-cancel" onClick={() => setShowImportModal(false)}>Cancel</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

@@ -16,10 +16,10 @@ import {
   FaChevronLeft,
   FaChevronRight,
   FaStar,
-  FaExchangeAlt,
   FaTimes,
   FaBullhorn,
   FaHistory,
+  FaTags,
 } from 'react-icons/fa'
 import { useAuth } from '../contexts/AuthContext'
 import { useBusiness } from '../contexts/BusinessContext'
@@ -79,15 +79,20 @@ const Sidebar = ({
       icon: <FaStar />,
       text: 'Priyanka Nature cure'
     },
-    dashboardItem: { 
-      id: 'dashboard', 
-      label: 'Dashboard', 
-      icon: <FaChartBar /> 
+    // Quick Sale is the primary workflow — shown first, above Dashboard.
+    quickSaleItem: {
+      id: 'quick-sale',
+      label: 'Quick Sale',
+      icon: <FaCreditCard />
+    },
+    dashboardItem: {
+      id: 'dashboard',
+      label: 'Dashboard',
+      icon: <FaChartBar />
     },
     billingSection: {
       section: 'BILLING',
       items: [
-        { id: 'quick-sale', label: 'Quick Sale', icon: <FaCreditCard /> },
         { id: 'cash-register', label: 'Cash Register', icon: <FaMoneyBillWave /> },
         { id: 'bill-history', label: 'Bill History', icon: <FaHistory /> },
         { id: 'appointment', label: 'Appointment', icon: <FaCalendarAlt /> },
@@ -117,11 +122,16 @@ const Sidebar = ({
           icon: <FaKey />,
           requiresRole: ['manager', 'owner']
         },
-        { 
-          id: 'offer-campaigns', 
-          label: 'Offer Campaigns', 
+        {
+          id: 'offer-campaigns',
+          label: 'Offer Campaigns',
           icon: <FaBullhorn />,
           requiresRole: ['manager', 'owner']
+        },
+        {
+          id: 'offer-management',
+          label: 'Offer Management',
+          icon: <FaTags />
         }
       ],
     },
@@ -166,14 +176,8 @@ const Sidebar = ({
           icon: <FaCheckCircle />,
           requiresRole: ['manager', 'owner']
         },
-        { 
-          id: 'staff-temp-assignment', 
-          label: 'Staff Reassignment', 
-          icon: <FaExchangeAlt />,
-          requiresRole: ['manager', 'owner']
-        },
-        { 
-          id: 'asset-management', 
+        {
+          id: 'asset-management',
           label: 'Asset Management', 
           icon: <FaBriefcase />,
           requiresRole: ['manager', 'owner']
@@ -188,7 +192,7 @@ const Sidebar = ({
     },
   }
 
-  const { logo, dashboardItem, billingSection, analyticsSection, masterSection } = menuConfig
+  const { logo, quickSaleItem, dashboardItem, billingSection, analyticsSection, masterSection } = menuConfig
 
   // Update expanded state for menu items
   if (billingSection.items) {
@@ -318,7 +322,24 @@ const Sidebar = ({
           </div>
         </div>
       <nav className="sidebar-nav">
-        {/* Dashboard - Standalone (first) */}
+        {/* Quick Sale - Standalone (first, primary workflow) */}
+        {quickSaleItem && (
+          <div>
+            <div
+              className={`nav-item ${activePage === quickSaleItem.id ? 'active' : ''}`}
+              onClick={() => handleNavClick(quickSaleItem.id)}
+              title={isCollapsed ? quickSaleItem.label : ''}
+            >
+              <span className="nav-icon">{quickSaleItem.icon}</span>
+              <span className="nav-label">{quickSaleItem.label}</span>
+            </div>
+          </div>
+        )}
+
+        {/* BILLING Section */}
+        {renderSection(billingSection, 'billing')}
+
+        {/* Dashboard - Standalone (after Billing) — visible to all roles */}
         {dashboardItem && (
           <div>
             <div
@@ -331,9 +352,6 @@ const Sidebar = ({
             </div>
           </div>
         )}
-
-        {/* BILLING Section */}
-        {renderSection(billingSection, 'billing')}
 
         {/* ANALYTICS Section */}
         {renderSection(analyticsSection, 'analytics')}

@@ -1,0 +1,203 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e46]:
+    - complementary [ref=e47]:
+      - generic [ref=e48]:
+        - button "Collapse sidebar" [ref=e49] [cursor=pointer]:
+          - img [ref=e50]
+        - img "Priyanka Nature Cure" [ref=e53]
+      - navigation [ref=e54]:
+        - generic [ref=e56] [cursor=pointer]:
+          - img [ref=e58]
+          - generic [ref=e60]: Quick Sale
+        - generic [ref=e61]:
+          - generic: BILLING
+          - generic [ref=e63] [cursor=pointer]:
+            - img [ref=e65]
+            - generic [ref=e67]: Cash Register
+          - generic [ref=e69] [cursor=pointer]:
+            - img [ref=e71]
+            - generic [ref=e73]: Bill History
+          - generic [ref=e75] [cursor=pointer]:
+            - img [ref=e77]
+            - generic [ref=e79]: Appointment
+          - generic [ref=e81] [cursor=pointer]:
+            - img [ref=e83]
+            - generic [ref=e85]: Customers
+            - img [ref=e87]
+          - generic [ref=e90] [cursor=pointer]:
+            - img [ref=e92]
+            - generic [ref=e94]: Inventory
+          - generic [ref=e96] [cursor=pointer]:
+            - img [ref=e98]
+            - generic [ref=e100]: Discount Approvals
+          - generic [ref=e102] [cursor=pointer]:
+            - img [ref=e104]
+            - generic [ref=e106]: Approval Codes
+          - generic [ref=e108] [cursor=pointer]:
+            - img [ref=e110]
+            - generic [ref=e112]: Offer Campaigns
+          - generic [ref=e114] [cursor=pointer]:
+            - img [ref=e116]
+            - generic [ref=e118]: Offer Management
+        - generic [ref=e120] [cursor=pointer]:
+          - img [ref=e122]
+          - generic [ref=e124]: Dashboard
+        - generic [ref=e125]:
+          - generic: ANALYTICS
+          - generic [ref=e127] [cursor=pointer]:
+            - img [ref=e129]
+            - generic [ref=e131]: Reports & Analytics
+        - generic [ref=e132]:
+          - generic: MASTER
+          - generic [ref=e133]:
+            - generic [ref=e134] [cursor=pointer]:
+              - img [ref=e136]
+              - generic [ref=e138]: Saloon Settings
+              - img [ref=e811]
+            - generic [ref=e813]:
+              - generic [ref=e815] [cursor=pointer]: Service
+              - generic [ref=e817] [cursor=pointer]: Package
+              - generic [ref=e819] [cursor=pointer]: Product
+              - generic [ref=e821] [cursor=pointer]: Membership
+              - generic [ref=e823] [cursor=pointer]: Settings
+          - generic [ref=e143] [cursor=pointer]:
+            - img [ref=e145]
+            - generic [ref=e147]: Staff Attendance
+          - generic [ref=e149] [cursor=pointer]:
+            - img [ref=e151]
+            - generic [ref=e153]: Asset Management
+          - generic [ref=e155] [cursor=pointer]:
+            - img [ref=e157]
+            - generic [ref=e159]: Expense
+    - banner [ref=e160]:
+      - generic [ref=e161]:
+        - generic "Priyanka Nature Cure" [ref=e164]
+        - generic [ref=e165]:
+          - button "Dummy Branch ▼" [ref=e672] [cursor=pointer]:
+            - generic [ref=e168]: Dummy Branch
+            - generic [ref=e169]: ▼
+          - button "Logout" [ref=e170] [cursor=pointer]:
+            - img [ref=e171]
+            - generic [ref=e173]: Logout
+          - button "Notifications" [ref=e673] [cursor=pointer]:
+            - img [ref=e176]
+          - button "DO" [ref=e178] [cursor=pointer]:
+            - generic [ref=e179]: DO
+    - main [ref=e180]:
+      - generic [ref=e182]:
+        - heading "Dashboard" [level=1] [ref=e185]
+        - generic [ref=e186]:
+          - generic [ref=e187]:
+            - button "Sales" [ref=e188] [cursor=pointer]
+            - button "Staff" [ref=e189] [cursor=pointer]
+          - generic [ref=e190]:
+            - generic [ref=e191]: "Filter:"
+            - button "This Month" [ref=e194] [cursor=pointer]:
+              - generic [ref=e195]: This Month
+              - img
+        - generic [ref=e197]:
+          - generic [ref=e198]:
+            - generic [ref=e199]: Staff Performance (Branch)
+            - generic [ref=e675]:
+              - list [ref=e677]:
+                - listitem [ref=e678]:
+                  - img "Appointments legend icon" [ref=e679]
+                  - text: Appointments
+                - listitem [ref=e681]:
+                  - img "Revenue legend icon" [ref=e682]
+                  - text: Revenue
+                - listitem [ref=e684]:
+                  - img "Services legend icon" [ref=e685]
+                  - text: Services
+              - application [ref=e687]:
+                - generic [ref=e708]:
+                  - generic [ref=e711]: Dummy Staff
+                  - generic [ref=e712]:
+                    - generic [ref=e714]: "0"
+                    - generic [ref=e716]: 3k
+                    - generic [ref=e718]: 6k
+                    - generic [ref=e720]: 9k
+                    - generic [ref=e722]: 12k
+          - generic [ref=e286]:
+            - generic [ref=e287]: Top Performer (Company-Wide)
+            - generic [ref=e723]:
+              - generic [ref=e724]:
+                - generic [ref=e725]:
+                  - generic [ref=e726]:
+                    - text: "N"
+                    - img [ref=e728]
+                  - generic [ref=e730]:
+                    - heading "Nisha" [level=3] [ref=e731]
+                    - generic [ref=e732]: TOP PERFORMER
+                - generic [ref=e733]:
+                  - generic [ref=e734]: "65.4"
+                  - generic [ref=e735]: /100 Score
+              - application [ref=e739]:
+                - generic [ref=e761]:
+                  - generic [ref=e762]:
+                    - generic [ref=e764]: 25%
+                    - generic [ref=e766]: 100%
+                  - generic [ref=e767]:
+                    - generic [ref=e769]: Revenue
+                    - generic [ref=e771]: Services
+                    - generic [ref=e773]: Rating
+                    - generic [ref=e775]: Appointments
+                    - generic [ref=e777]: Score
+              - generic [ref=e778]:
+                - generic [ref=e779]:
+                  - generic [ref=e780]: ₹ 42,870
+                  - generic [ref=e781]: Revenue
+                - generic [ref=e782]:
+                  - generic [ref=e783]: "92"
+                  - generic [ref=e784]: Services
+                - generic [ref=e785]:
+                  - generic [ref=e786]: 0/5
+                  - generic [ref=e787]: Rating
+                - generic [ref=e788]:
+                  - generic [ref=e789]: "0"
+                  - generic [ref=e790]: Appointments
+          - generic [ref=e357]:
+            - generic [ref=e358]: Employee Performance
+            - table [ref=e361]:
+              - rowgroup [ref=e362]:
+                - row "# Staff Name Item Count Service Package Product Membership Total Avg. Bill (₹) Info" [ref=e363]:
+                  - columnheader "#" [ref=e364]:
+                    - generic [ref=e366]: "#"
+                  - columnheader "Staff Name" [ref=e367]:
+                    - generic [ref=e369]: Staff Name
+                  - columnheader "Item Count" [ref=e370]:
+                    - generic [ref=e372]: Item Count
+                  - columnheader "Service" [ref=e373]:
+                    - generic [ref=e375]: Service
+                  - columnheader "Package" [ref=e376]:
+                    - generic [ref=e378]: Package
+                  - columnheader "Product" [ref=e379]:
+                    - generic [ref=e381]: Product
+                  - columnheader "Membership" [ref=e382]:
+                    - generic [ref=e384]: Membership
+                  - columnheader "Total" [ref=e385]:
+                    - generic [ref=e387]: Total
+                  - columnheader "Avg. Bill (₹)" [ref=e388]:
+                    - generic [ref=e390]: Avg. Bill (₹)
+                  - columnheader "Info" [ref=e391]:
+                    - generic [ref=e393]: Info
+              - rowgroup [ref=e394]:
+                - row "1 Dummy Staff 8 8 - - - ₹ 11,170 ₹ 1,396 Info" [ref=e791]:
+                  - cell "1" [ref=e792]:
+                    - generic [ref=e793]: "1"
+                  - cell "Dummy Staff" [ref=e794]:
+                    - generic [ref=e795]:
+                      - img [ref=e796]
+                      - generic [ref=e798]: Dummy Staff
+                  - cell "8" [ref=e799]
+                  - cell "8" [ref=e800]
+                  - cell "-" [ref=e801]
+                  - cell "-" [ref=e802]
+                  - cell "-" [ref=e803]
+                  - cell "₹ 11,170" [ref=e804]
+                  - cell "₹ 1,396" [ref=e805]
+                  - cell "Info" [ref=e806]:
+                    - button "Info" [ref=e807] [cursor=pointer]:
+                      - img [ref=e808]
+                      - generic [ref=e810]: Info
+  - generic [ref=e631]: 3k

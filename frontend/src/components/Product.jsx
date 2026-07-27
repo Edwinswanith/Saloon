@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import {
   FaEdit,
   FaTrash,
@@ -607,10 +608,20 @@ const Product = () => {
       </div>
 
       {/* Add/Edit Product Category Modal */}
-      {showCategoryModal && (
+      {showCategoryModal && createPortal(
         <div className="modal-overlay" onClick={() => setShowCategoryModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>{editingCategory ? 'Edit Product Category' : 'Add Product Category'}</h2>
+            <div className="std-modal-header">
+              <h2>{editingCategory ? 'Edit Product Category' : 'Add Product Category'}</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowCategoryModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <div className="form-group">
               <label>Category Name *</label>
               <input
@@ -626,17 +637,31 @@ const Product = () => {
               <button className="btn-save" onClick={handleSaveCategory}>Save</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Add/Edit Product Modal */}
-      {showProductModal && (
+      {showProductModal && createPortal(
         <div className="modal-overlay" onClick={() => {
           setShowProductModal(false)
           setShowCategoryDropdown(false)
         }}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>{editingProduct ? 'Edit Product' : 'Add Product'}</h2>
+            <div className="std-modal-header">
+              <h2>{editingProduct ? 'Edit Product' : 'Add Product'}</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => {
+                  setShowProductModal(false)
+                  setShowCategoryDropdown(false)
+                }}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <div className="form-group">
               <label>Product Name *</label>
               <input
@@ -755,14 +780,25 @@ const Product = () => {
               <button className="btn-save" onClick={handleSaveProduct}>Save</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Import Products Modal */}
-      {showImportModal && (
+      {showImportModal && createPortal(
         <div className="modal-overlay" onClick={() => setShowImportModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Import Products</h2>
+            <div className="std-modal-header">
+              <h2>Import Products</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowImportModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <div className="import-instructions">
               <p>Upload a CSV or Excel file (.csv, .xlsx, .xls) with the following columns:</p>
               <ul>
@@ -788,7 +824,8 @@ const Product = () => {
               <button className="btn-cancel" onClick={() => setShowImportModal(false)}>Cancel</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

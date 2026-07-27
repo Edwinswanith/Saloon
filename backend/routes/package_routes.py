@@ -68,12 +68,14 @@ def get_packages(current_user=None):
         
         print(f"[PACKAGE GET] Initial query count (active only): {query.count()}")
 
-        # Filter by branch - include packages with matching branch OR packages without branch (legacy)
+        # Strict branch filter — matches services/products behavior. No-branch legacy
+        # packages leaked across branches under the previous OR filter; if any still exist,
+        # they need a one-time data migration to assign a branch rather than being shown
+        # to every branch.
         branch = get_selected_branch(request, current_user)
         if branch:
             print(f"[PACKAGE GET] Filtering by branch: {branch.name} (ID: {branch.id})")
-            # Include packages with matching branch OR packages without branch assigned (legacy support)
-            query = query.filter(Q(branch=branch) | Q(branch__exists=False) | Q(branch=None))
+            query = query.filter(branch=branch)
             print(f"[PACKAGE GET] After branch filter count: {query.count()}")
         else:
             print(f"[PACKAGE GET] WARNING: No branch found for user. Showing all packages.")

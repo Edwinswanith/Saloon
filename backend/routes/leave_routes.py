@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from models import StaffLeave, Staff, Branch, StaffTempAssignment
+from models import StaffLeave, Staff, Branch
 from datetime import datetime, date
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
@@ -71,7 +71,6 @@ def get_leaves(current_user=None):
             'reason': l.reason,
             'status': l.status,
             'coverage_required': l.coverage_required,
-            'covered_by_id': str(l.covered_by.id) if l.covered_by else None,
             'approved_by_id': str(l.approved_by.id) if l.approved_by else None,
             'rejection_reason': l.rejection_reason,
             'created_at': l.created_at.isoformat() if l.created_at else None
@@ -107,8 +106,6 @@ def get_leaves_today(current_user=None):
             'leave_type': l.leave_type,
             'reason': l.reason,
             'coverage_required': l.coverage_required,
-            'covered_by_id': str(l.covered_by.id) if l.covered_by else None,
-            'covered': l.covered_by is not None
         } for l in leaves])
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
@@ -141,7 +138,6 @@ def get_leave(id, current_user=None):
             'reason': l.reason,
             'status': l.status,
             'coverage_required': l.coverage_required,
-            'covered_by_id': str(l.covered_by.id) if l.covered_by else None,
             'approved_by_id': str(l.approved_by.id) if l.approved_by else None,
             'rejection_reason': l.rejection_reason,
             'created_at': l.created_at.isoformat() if l.created_at else None
@@ -275,15 +271,7 @@ def update_leave(id, current_user=None):
         
         if 'coverage_required' in data:
             leave.coverage_required = data['coverage_required']
-        
-        # Link to temp assignment if provided
-        if 'covered_by_id' in data and data['covered_by_id']:
-            try:
-                assignment = StaffTempAssignment.objects.get(id=data['covered_by_id'])
-                leave.covered_by = assignment
-            except DoesNotExist:
-                pass
-        
+
         leave.updated_at = datetime.utcnow()
         leave.save()
         

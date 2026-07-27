@@ -204,6 +204,28 @@
   color: var(--primary-600);
 }
 
+/* "All Branches" combined view — distinct styling so the owner can tell it
+   apart from real branches. */
+.branch-item-all {
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.06) 0%, white 100%);
+  margin-bottom: 8px;
+  border-bottom: 1px dashed var(--gray-200);
+  border-radius: 8px 8px 6px 6px;
+}
+
+.branch-item-all .branch-item-name {
+  font-weight: 700;
+}
+
+.branch-item-all .branch-item-name::before {
+  content: '🌐 ';
+  margin-right: 4px;
+}
+
+.branch-item-all .branch-item-city {
+  font-style: italic;
+}
+
 /* ========== BRANCH ITEM CONTENT ========== */
 .branch-item-content {
   display: flex;
@@ -312,8 +334,9 @@
     font-size: 13px;
   }
 
+  /* Bumped from 80px so "All Branches" (~90px) doesn't truncate mid-word. */
   .branch-name {
-    max-width: 80px;
+    max-width: 110px;
   }
 }
 
@@ -325,8 +348,11 @@
     gap: 4px;
   }
 
+  /* Bumped from 50px so "All Branches" (~78px at 12px font) fits without
+     becoming "All Br...". On really tight screens it still ellipses, but
+     gracefully. */
   .branch-name {
-    max-width: 50px;
+    max-width: 90px;
   }
 
   .branch-arrow {

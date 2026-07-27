@@ -1,8 +1,26 @@
 import React, { useState, useEffect } from 'react';
+import { FaTimes } from 'react-icons/fa';
 import { apiGet, apiPut } from '../utils/api';
 import Header from './Header';
 import './ServiceRecovery.css';
 import { useAuth } from '../contexts/AuthContext';
+import CompactSelect from './shared/CompactSelect';
+
+const STATUS_FILTER_OPTIONS = [
+  { value: '', label: 'All Status' },
+  { value: 'open', label: 'Open' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'resolved', label: 'Resolved' },
+  { value: 'closed', label: 'Closed' },
+];
+
+const ISSUE_TYPE_FILTER_OPTIONS = [
+  { value: '', label: 'All Issue Types' },
+  { value: 'service_quality', label: 'Service Quality' },
+  { value: 'staff_behavior', label: 'Staff Behavior' },
+  { value: 'pricing', label: 'Pricing' },
+  { value: 'other', label: 'Other' },
+];
 
 const ServiceRecovery = () => {
   const { currentBranch } = useAuth()
@@ -134,20 +152,18 @@ const ServiceRecovery = () => {
 
         {/* Filters */}
         <div className="filters-section">
-          <select value={filters.status} onChange={(e) => setFilters({...filters, status: e.target.value})}>
-            <option value="">All Status</option>
-            <option value="open">Open</option>
-            <option value="in_progress">In Progress</option>
-            <option value="resolved">Resolved</option>
-            <option value="closed">Closed</option>
-          </select>
-          <select value={filters.issue_type} onChange={(e) => setFilters({...filters, issue_type: e.target.value})}>
-            <option value="">All Issue Types</option>
-            <option value="service_quality">Service Quality</option>
-            <option value="staff_behavior">Staff Behavior</option>
-            <option value="pricing">Pricing</option>
-            <option value="other">Other</option>
-          </select>
+          <CompactSelect
+            value={filters.status}
+            onChange={(v) => setFilters({...filters, status: v})}
+            options={STATUS_FILTER_OPTIONS}
+            placeholder="All Status"
+          />
+          <CompactSelect
+            value={filters.issue_type}
+            onChange={(v) => setFilters({...filters, issue_type: v})}
+            options={ISSUE_TYPE_FILTER_OPTIONS}
+            placeholder="All Issue Types"
+          />
         </div>
 
         {/* Cases Table */}
@@ -179,17 +195,15 @@ const ServiceRecovery = () => {
                       {caseItem.assigned_manager_name ? (
                         caseItem.assigned_manager_name
                       ) : (
-                        <select
+                        <CompactSelect
                           value=""
-                          onChange={(e) => handleAssign(caseItem.id, e.target.value)}
-                        >
-                          <option value="">Assign Manager</option>
-                          {managers.map(manager => (
-                            <option key={manager.id} value={manager.id}>
-                              {manager.firstName} {manager.lastName}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(v) => handleAssign(caseItem.id, v)}
+                          options={managers.map(manager => ({
+                            value: manager.id,
+                            label: `${manager.firstName} ${manager.lastName}`
+                          }))}
+                          placeholder="Assign Manager"
+                        />
                       )}
                     </td>
                     <td>
@@ -222,7 +236,17 @@ const ServiceRecovery = () => {
         {showResolveModal && selectedCase && (
           <div className="modal-overlay" onClick={() => { setShowResolveModal(false); setSelectedCase(null); setResolveNotes(''); }}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <h2>Resolve Service Recovery Case</h2>
+              <div className="std-modal-header">
+                <h2>Resolve Service Recovery Case</h2>
+                <button
+                  type="button"
+                  className="modal-close-btn"
+                  onClick={() => { setShowResolveModal(false); setSelectedCase(null); setResolveNotes(''); }}
+                  aria-label="Close"
+                >
+                  <FaTimes />
+                </button>
+              </div>
               <div className="case-details">
                 <p><strong>Customer:</strong> {selectedCase.customer_name}</p>
                 <p><strong>Issue Type:</strong> {selectedCase.issue_type}</p>

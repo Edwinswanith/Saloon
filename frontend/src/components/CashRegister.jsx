@@ -3,9 +3,23 @@ import { FaCalendarAlt, FaCloudDownloadAlt, FaEdit, FaTrash, FaMoneyBillWave, Fa
 import './CashRegister.css'
 import { useAuth } from '../contexts/AuthContext'
 import { apiGet, apiPost, apiDelete } from '../utils/api'
+import CompactSelect from './shared/CompactSelect'
+import ClassicDatePicker from './shared/ClassicDatePicker'
+
+const MONTH_LABELS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+const MONTH_OPTIONS = MONTH_LABELS.map((label, i) => ({
+  value: String(i + 1).padStart(2, '0'),
+  label
+}))
+const currentYear = new Date().getFullYear()
+const YEAR_OPTIONS = Array.from({ length: 6 }, (_, i) => {
+  const y = currentYear - 2 + i
+  return { value: String(y), label: String(y) }
+})
 
 const CashRegister = () => {
-  const { currentBranch } = useAuth()
+  const { currentBranch, user } = useAuth()
+  const isStaff = user?.role === 'staff'
   const [viewMode, setViewMode] = useState('daily')
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)) // YYYY-MM
@@ -38,20 +52,25 @@ const CashRegister = () => {
 
   useEffect(() => {
     fetchTransactions()
-    fetchSummary()
-  }, [selectedDate, selectedMonth, viewMode, currentBranch])
+    // Staff can't view sales totals - the /summary endpoint 403s for them, so skip it.
+    if (!isStaff) {
+      fetchSummary()
+    }
+  }, [selectedDate, selectedMonth, viewMode, currentBranch, isStaff])
 
   // Listen for branch changes
   useEffect(() => {
     const handleBranchChange = () => {
       console.log('[CashRegister] Branch changed, refreshing transactions...')
       fetchTransactions()
-      fetchSummary()
+      if (!isStaff) {
+        fetchSummary()
+      }
     }
 
     window.addEventListener('branchChanged', handleBranchChange)
     return () => window.removeEventListener('branchChanged', handleBranchChange)
-  }, [currentBranch])
+  }, [currentBranch, isStaff])
 
   const fetchTransactions = async () => {
     try {
@@ -181,7 +200,7 @@ const CashRegister = () => {
 
   const handleDownloadReport = () => {
     try {
-      const csvContent = [
+      const rows = [
         ['Date', 'Time', 'Type', 'Payment Method', 'Source', 'Reason', 'Amount', 'Notes'],
         ...transactions.map(transaction => [
           transaction.transaction_date || 'N/A',
@@ -193,16 +212,24 @@ const CashRegister = () => {
           `₹${(transaction.amount || 0).toFixed(2)}`,
           transaction.notes || '',
         ]),
-        [],
-        ['Summary', '', '', '', '', '', '', ''],
-        ['Total Cash In', '', '', '', '', '', `₹${summary.totalIn.toFixed(2)}`, ''],
-        ['Total Cash Out', '', '', '', '', '', `₹${summary.totalOut.toFixed(2)}`, ''],
-        ['Net Cash Flow', '', '', '', '', '', `₹${summary.netFlow.toFixed(2)}`, ''],
-        ['', '', '', '', '', '', '', ''],
-        ['Cash Payments', '', '', '', '', '', `₹${summary.cashTotal.toFixed(2)}`, ''],
-        ['UPI Payments', '', '', '', '', '', `₹${summary.upiTotal.toFixed(2)}`, ''],
-        ['Card Payments', '', '', '', '', '', `₹${summary.cardTotal.toFixed(2)}`, ''],
-      ].map(row => {
+      ]
+
+      // Staff don't get the sales-total rollup, in the CSV either.
+      if (!isStaff) {
+        rows.push(
+          [],
+          ['Summary', '', '', '', '', '', '', ''],
+          ['Total Cash In', '', '', '', '', '', `₹${summary.totalIn.toFixed(2)}`, ''],
+          ['Total Cash Out', '', '', '', '', '', `₹${summary.totalOut.toFixed(2)}`, ''],
+          ['Net Cash Flow', '', '', '', '', '', `₹${summary.netFlow.toFixed(2)}`, ''],
+          ['', '', '', '', '', '', '', ''],
+          ['Cash Payments', '', '', '', '', '', `₹${summary.cashTotal.toFixed(2)}`, ''],
+          ['UPI Payments', '', '', '', '', '', `₹${summary.upiTotal.toFixed(2)}`, ''],
+          ['Card Payments', '', '', '', '', '', `₹${summary.cardTotal.toFixed(2)}`, ''],
+        )
+      }
+
+      const csvContent = rows.map(row => {
         return row.map(cell => {
           const cellStr = String(cell || '')
           if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
@@ -251,24 +278,41 @@ const CashRegister = () => {
 
           <div className="date-filter">
             <label className="date-label">{viewMode === 'monthly' ? 'Month:' : 'Date:'}</label>
-            <div className="date-input-wrapper">
-              {viewMode === 'monthly' ? (
-                <input
-                  type="month"
-                  className="date-picker"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                />
-              ) : (
-                <input
-                  type="date"
-                  className="date-picker"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                />
-              )}
-              <span className="calendar-icon"><FaCalendarAlt /></span>
-            </div>
+            {viewMode === 'monthly' ? (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div style={{ minWidth: 130 }}>
+                  <CompactSelect
+                    className="cash-date-select"
+                    value={selectedMonth.split('-')[1] || '01'}
+                    onChange={(month) => {
+                      const year = selectedMonth.split('-')[0] || String(currentYear)
+                      setSelectedMonth(`${year}-${month}`)
+                    }}
+                    options={MONTH_OPTIONS}
+                    placeholder="Month"
+                  />
+                </div>
+                <div style={{ minWidth: 90 }}>
+                  <CompactSelect
+                    className="cash-date-select"
+                    value={selectedMonth.split('-')[0] || String(currentYear)}
+                    onChange={(year) => {
+                      const month = selectedMonth.split('-')[1] || '01'
+                      setSelectedMonth(`${year}-${month}`)
+                    }}
+                    options={YEAR_OPTIONS}
+                    placeholder="Year"
+                  />
+                </div>
+              </div>
+            ) : (
+              <ClassicDatePicker
+                value={selectedDate}
+                onChange={(v) => v && setSelectedDate(v)}
+                placeholder="Select date"
+                allowEmpty={false}
+              />
+            )}
           </div>
 
           <button className="download-btn" onClick={handleDownloadReport}>
@@ -277,22 +321,26 @@ const CashRegister = () => {
           </button>
         </div>
 
-        {/* Cash Flow Summary Cards */}
-        <div className="summary-cards">
-          <div className="summary-card cash-in">
-            <div className="card-label">Total Cash In</div>
-            <div className="card-value">₹{summary.totalIn.toFixed(2)}</div>
-          </div>
+        {/* Cash Flow Summary Cards - sales totals, hidden from staff */}
+        <div className={`summary-cards${isStaff ? ' summary-cards--staff' : ''}`}>
+          {!isStaff && (
+            <>
+              <div className="summary-card cash-in">
+                <div className="card-label">Total Cash In</div>
+                <div className="card-value">₹{summary.totalIn.toFixed(2)}</div>
+              </div>
 
-          <div className="summary-card cash-out">
-            <div className="card-label">Total Cash Out</div>
-            <div className="card-value">₹{summary.totalOut.toFixed(2)}</div>
-          </div>
+              <div className="summary-card cash-out">
+                <div className="card-label">Total Cash Out</div>
+                <div className="card-value">₹{summary.totalOut.toFixed(2)}</div>
+              </div>
 
-          <div className="summary-card net-flow">
-            <div className="card-label">Net Cash Flow</div>
-            <div className="card-value">₹{summary.netFlow.toFixed(2)}</div>
-          </div>
+              <div className="summary-card net-flow">
+                <div className="card-label">Net Cash Flow</div>
+                <div className="card-value">₹{summary.netFlow.toFixed(2)}</div>
+              </div>
+            </>
+          )}
 
           <div className="action-buttons-group">
             <button
@@ -318,30 +366,32 @@ const CashRegister = () => {
           </div>
         </div>
 
-        {/* Payment Method Breakdown */}
-        <div className="payment-method-cards">
-          <div className="method-card method-cash">
-            <div className="method-icon"><FaMoneyBillWave /></div>
-            <div className="method-info">
-              <div className="method-label">Cash</div>
-              <div className="method-value">₹{summary.cashTotal.toFixed(2)}</div>
+        {/* Payment Method Breakdown - also reveals total sales, hidden from staff */}
+        {!isStaff && (
+          <div className="payment-method-cards">
+            <div className="method-card method-cash">
+              <div className="method-icon"><FaMoneyBillWave /></div>
+              <div className="method-info">
+                <div className="method-label">Cash</div>
+                <div className="method-value">₹{summary.cashTotal.toFixed(2)}</div>
+              </div>
+            </div>
+            <div className="method-card method-upi">
+              <div className="method-icon"><FaMobileAlt /></div>
+              <div className="method-info">
+                <div className="method-label">UPI</div>
+                <div className="method-value">₹{summary.upiTotal.toFixed(2)}</div>
+              </div>
+            </div>
+            <div className="method-card method-card-pay">
+              <div className="method-icon"><FaCreditCard /></div>
+              <div className="method-info">
+                <div className="method-label">Card</div>
+                <div className="method-value">₹{summary.cardTotal.toFixed(2)}</div>
+              </div>
             </div>
           </div>
-          <div className="method-card method-upi">
-            <div className="method-icon"><FaMobileAlt /></div>
-            <div className="method-info">
-              <div className="method-label">UPI</div>
-              <div className="method-value">₹{summary.upiTotal.toFixed(2)}</div>
-            </div>
-          </div>
-          <div className="method-card method-card-pay">
-            <div className="method-icon"><FaCreditCard /></div>
-            <div className="method-info">
-              <div className="method-label">Card</div>
-              <div className="method-value">₹{summary.cardTotal.toFixed(2)}</div>
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* Transactions Section */}
         <div className="transactions-section">

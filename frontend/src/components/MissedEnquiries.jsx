@@ -1,8 +1,27 @@
 import React, { useState, useEffect } from 'react';
+import { FaTimes } from 'react-icons/fa';
 import { apiGet, apiPost, apiPut } from '../utils/api';
 import Header from './Header';
 import './MissedEnquiries.css';
 import { useAuth } from '../contexts/AuthContext';
+import CompactSelect from './shared/CompactSelect';
+import ClassicDatePicker from './shared/ClassicDatePicker';
+
+const STATUS_OPTIONS = [
+  { value: '', label: 'All Status' },
+  { value: 'open', label: 'Open' },
+  { value: 'converted', label: 'Converted' },
+  { value: 'lost', label: 'Lost' },
+];
+const STATUS_OPTIONS_REQUIRED = STATUS_OPTIONS.slice(1); // without the "All" row for the form
+const TYPE_OPTIONS = [
+  { value: '', label: 'All Types' },
+  { value: 'walk-in', label: 'Walk-in' },
+  { value: 'call', label: 'Call' },
+  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'other', label: 'Other' },
+];
+const TYPE_OPTIONS_REQUIRED = TYPE_OPTIONS.slice(1);
 
 const MissedEnquiries = () => {
   const { currentBranch } = useAuth()
@@ -204,32 +223,41 @@ const MissedEnquiries = () => {
         )}
 
         {/* Filters */}
-        <div className="filters-section">
-          <select value={filters.status} onChange={(e) => setFilters({...filters, status: e.target.value})}>
-            <option value="">All Status</option>
-            <option value="open">Open</option>
-            <option value="converted">Converted</option>
-            <option value="lost">Lost</option>
-          </select>
-          <select value={filters.enquiry_type} onChange={(e) => setFilters({...filters, enquiry_type: e.target.value})}>
-            <option value="">All Types</option>
-            <option value="walk-in">Walk-in</option>
-            <option value="call">Call</option>
-            <option value="whatsapp">WhatsApp</option>
-            <option value="other">Other</option>
-          </select>
-          <input
-            type="date"
-            value={filters.start_date}
-            onChange={(e) => setFilters({...filters, start_date: e.target.value})}
-            placeholder="Start Date"
-          />
-          <input
-            type="date"
-            value={filters.end_date}
-            onChange={(e) => setFilters({...filters, end_date: e.target.value})}
-            placeholder="End Date"
-          />
+        <div className="filters-section" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          <div style={{ minWidth: 130 }}>
+            <CompactSelect
+              className="me-filter-select"
+              value={filters.status}
+              onChange={(v) => setFilters({ ...filters, status: v })}
+              options={STATUS_OPTIONS}
+              placeholder="All Status"
+            />
+          </div>
+          <div style={{ minWidth: 130 }}>
+            <CompactSelect
+              className="me-filter-select"
+              value={filters.enquiry_type}
+              onChange={(v) => setFilters({ ...filters, enquiry_type: v })}
+              options={TYPE_OPTIONS}
+              placeholder="All Types"
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>From</span>
+            <ClassicDatePicker
+              value={filters.start_date}
+              onChange={(v) => setFilters({ ...filters, start_date: v })}
+              placeholder="From"
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>To</span>
+            <ClassicDatePicker
+              value={filters.end_date}
+              onChange={(v) => setFilters({ ...filters, end_date: v })}
+              placeholder="To"
+            />
+          </div>
           <button onClick={() => setShowModal(true)} className="btn-primary">Add Enquiry</button>
         </div>
 
@@ -288,7 +316,17 @@ const MissedEnquiries = () => {
         {showModal && (
           <div className="modal-overlay" onClick={() => { setShowModal(false); setEditingEnquiry(null); resetForm(); }}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <h2>{editingEnquiry ? 'Edit Enquiry' : 'New Missed Enquiry'}</h2>
+              <div className="std-modal-header">
+                <h2>{editingEnquiry ? 'Edit Enquiry' : 'New Missed Enquiry'}</h2>
+                <button
+                  type="button"
+                  className="modal-close-btn"
+                  onClick={() => { setShowModal(false); setEditingEnquiry(null); resetForm(); }}
+                  aria-label="Close"
+                >
+                  <FaTimes />
+                </button>
+              </div>
               <form onSubmit={handleSubmit}>
                 <div className="form-group">
                   <label>Customer Name *</label>
@@ -310,15 +348,13 @@ const MissedEnquiries = () => {
                 </div>
                 <div className="form-group">
                   <label>Enquiry Type</label>
-                  <select
+                  <CompactSelect
+                    className="me-form-select"
                     value={formData.enquiry_type}
-                    onChange={(e) => setFormData({...formData, enquiry_type: e.target.value})}
-                  >
-                    <option value="walk-in">Walk-in</option>
-                    <option value="call">Call</option>
-                    <option value="whatsapp">WhatsApp</option>
-                    <option value="other">Other</option>
-                  </select>
+                    onChange={(v) => setFormData({ ...formData, enquiry_type: v })}
+                    options={TYPE_OPTIONS_REQUIRED}
+                    placeholder="Select type"
+                  />
                 </div>
                 <div className="form-group">
                   <label>Requested Service</label>
@@ -338,22 +374,21 @@ const MissedEnquiries = () => {
                 </div>
                 <div className="form-group">
                   <label>Follow-up Date</label>
-                  <input
-                    type="date"
+                  <ClassicDatePicker
                     value={formData.follow_up_date}
-                    onChange={(e) => setFormData({...formData, follow_up_date: e.target.value})}
+                    onChange={(v) => setFormData({ ...formData, follow_up_date: v })}
+                    placeholder="Select follow-up date"
                   />
                 </div>
                 <div className="form-group">
                   <label>Status</label>
-                  <select
+                  <CompactSelect
+                    className="me-form-select"
                     value={formData.status}
-                    onChange={(e) => setFormData({...formData, status: e.target.value})}
-                  >
-                    <option value="open">Open</option>
-                    <option value="converted">Converted</option>
-                    <option value="lost">Lost</option>
-                  </select>
+                    onChange={(v) => setFormData({ ...formData, status: v })}
+                    options={STATUS_OPTIONS_REQUIRED}
+                    placeholder="Select status"
+                  />
                 </div>
                 <div className="form-group">
                   <label>Notes</label>

@@ -567,6 +567,16 @@
   }
 }
 
+/* Tablet landscape 1025-1366 — matches App.css rule, narrower sidebar for more content room */
+@media (min-width: 1025px) and (max-width: 1366px) {
+  .sidebar {
+    width: 220px;
+  }
+  .sidebar.collapsed {
+    width: 64px;
+  }
+}
+
 @media (max-width: 1024px) {
   .sidebar {
     width: 240px;
@@ -600,7 +610,11 @@
   }
 }
 
-@media (max-width: 768px) {
+/* Overlay sidebar: applies on phones AND on tablets in portrait orientation.
+   In portrait the 240px sidebar would eat too much of the screen if it pushed content,
+   so it slides in over the main area just like the mobile layout. */
+@media (max-width: 768px),
+       (max-width: 1024px) and (orientation: portrait) {
   .sidebar {
     width: 280px;
     transform: translateX(-100%);

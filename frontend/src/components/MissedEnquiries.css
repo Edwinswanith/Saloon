@@ -145,6 +145,27 @@
   color: var(--gray-400);
 }
 
+/* Trigger styling for the CompactSelect/CompactDateInput replacements of the
+   native selects and date inputs in both the filter bar and the modal form. */
+.me-filter-select,
+.me-form-select {
+  padding: 7px 12px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-700);
+  background: white;
+  cursor: pointer;
+  min-height: 36px;
+  transition: border-color 0.15s ease;
+}
+
+.me-filter-select:hover,
+.me-form-select:hover {
+  border-color: var(--primary-700);
+}
+
 /* ========== TABLE CONTAINER ========== */
 .table-container {
   width: 100%;

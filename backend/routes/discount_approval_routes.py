@@ -208,6 +208,20 @@ def approve_with_code(approval_id, current_user=None):
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 400
 
+        # Atomically claim one usage slot BEFORE granting the approval, so two concurrent
+        # requests can't both pass the can_use_code check and both increment past max_uses.
+        # We match on the current usage_count so only one claimant succeeds.
+        claim_filter = {
+            'id': matched_code.id,
+            'is_active': True,
+            'usage_count': matched_code.usage_count,
+        }
+        claimed = ApprovalCode.objects(**claim_filter).update_one(inc__usage_count=1)
+        if not claimed:
+            response = jsonify({'error': 'Approval code could not be claimed (limit reached or code changed)'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 409
+
         # Record who approved
         if current_user:
             user_type = current_user.get('user_type', '')
@@ -221,10 +235,6 @@ def approve_with_code(approval_id, current_user=None):
         approval.approved_at = datetime.utcnow()
         approval.updated_at = datetime.utcnow()
         approval.save()
-        
-        # Update code usage
-        matched_code.usage_count += 1
-        matched_code.save()
         
         # Update bill
         if approval.bill:

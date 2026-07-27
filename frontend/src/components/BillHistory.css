@@ -134,6 +134,19 @@
   border-color: var(--primary-700);
 }
 
+/* Read-only label used in place of the dropdown for staff (fixed 48h window) */
+.bh-date-label {
+  flex: 0 0 auto;
+  padding: 10px 14px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--surface-secondary, #f8fafc);
+  white-space: nowrap;
+}
+
 .bh-date-picker {
   flex: 1;
   min-width: 140px;
@@ -240,6 +253,17 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+.bh-card-attended {
+  margin: 4px 0 6px;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.bh-card-attended strong {
+  color: #111827;
+  font-weight: 600;
 }
 
 .bh-card-meta {

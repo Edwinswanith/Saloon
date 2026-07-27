@@ -1,0 +1,137 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - button "Collapse sidebar" [ref=e6] [cursor=pointer]:
+          - img [ref=e7]
+        - img "Priyanka Nature Cure" [ref=e10]
+      - navigation [ref=e11]:
+        - generic [ref=e13] [cursor=pointer]:
+          - img [ref=e15]
+          - generic [ref=e17]: Quick Sale
+        - generic [ref=e18]:
+          - generic: BILLING
+          - generic [ref=e20] [cursor=pointer]:
+            - img [ref=e22]
+            - generic [ref=e24]: Cash Register
+          - generic [ref=e26] [cursor=pointer]:
+            - img [ref=e28]
+            - generic [ref=e30]: Bill History
+          - generic [ref=e32] [cursor=pointer]:
+            - img [ref=e34]
+            - generic [ref=e36]: Appointment
+          - generic [ref=e38] [cursor=pointer]:
+            - img [ref=e40]
+            - generic [ref=e42]: Customers
+            - img [ref=e44]
+          - generic [ref=e47] [cursor=pointer]:
+            - img [ref=e49]
+            - generic [ref=e51]: Inventory
+          - generic [ref=e53] [cursor=pointer]:
+            - img [ref=e55]
+            - generic [ref=e57]: Discount Approvals
+          - generic [ref=e59] [cursor=pointer]:
+            - img [ref=e61]
+            - generic [ref=e63]: Approval Codes
+          - generic [ref=e65] [cursor=pointer]:
+            - img [ref=e67]
+            - generic [ref=e69]: Offer Campaigns
+          - generic [ref=e71] [cursor=pointer]:
+            - img [ref=e73]
+            - generic [ref=e75]: Offer Management
+        - generic [ref=e77] [cursor=pointer]:
+          - img [ref=e79]
+          - generic [ref=e81]: Dashboard
+        - generic [ref=e82]:
+          - generic: ANALYTICS
+          - generic [ref=e84] [cursor=pointer]:
+            - img [ref=e86]
+            - generic [ref=e88]: Reports & Analytics
+        - generic [ref=e89]:
+          - generic: MASTER
+          - generic [ref=e90]:
+            - generic [ref=e91] [cursor=pointer]:
+              - img [ref=e93]
+              - generic [ref=e95]: Saloon Settings
+              - img [ref=e337]
+            - generic [ref=e339]:
+              - generic [ref=e341] [cursor=pointer]: Service
+              - generic [ref=e343] [cursor=pointer]: Package
+              - generic [ref=e345] [cursor=pointer]: Product
+              - generic [ref=e347] [cursor=pointer]: Membership
+              - generic [ref=e349] [cursor=pointer]: Settings
+          - generic [ref=e100] [cursor=pointer]:
+            - img [ref=e102]
+            - generic [ref=e104]: Staff Attendance
+          - generic [ref=e106] [cursor=pointer]:
+            - img [ref=e108]
+            - generic [ref=e110]: Asset Management
+          - generic [ref=e112] [cursor=pointer]:
+            - img [ref=e114]
+            - generic [ref=e116]: Expense
+    - banner [ref=e117]:
+      - generic [ref=e118]:
+        - generic "Priyanka Nature Cure" [ref=e121]
+        - generic [ref=e122]:
+          - button "Dummy Branch ▼" [ref=e124] [cursor=pointer]:
+            - generic [ref=e125]: Dummy Branch
+            - generic [ref=e126]: ▼
+          - button "Logout" [ref=e127] [cursor=pointer]:
+            - img [ref=e128]
+            - generic [ref=e130]: Logout
+          - button "Notifications" [ref=e132] [cursor=pointer]:
+            - img [ref=e133]
+          - button "DO" [ref=e135] [cursor=pointer]:
+            - generic [ref=e136]: DO
+    - main [ref=e137]:
+      - generic [ref=e351]:
+        - generic [ref=e352]:
+          - heading "Memberships" [level=2] [ref=e353]
+          - button "New Plan" [ref=e354] [cursor=pointer]:
+            - img [ref=e355]
+            - text: New Plan
+        - generic [ref=e357]:
+          - complementary [ref=e358]:
+            - generic [ref=e359]: 4 plans
+            - list [ref=e360]:
+              - listitem [ref=e361]:
+                - button "PNC New Membership ●active 20% off · All services" [ref=e362] [cursor=pointer]:
+                  - generic [ref=e363]:
+                    - text: PNC New Membership
+                    - generic [ref=e364]: ●active
+                  - generic [ref=e365]:
+                    - generic [ref=e366]: 20% off
+                    - generic [ref=e367]: ·
+                    - generic [ref=e368]: All services
+              - listitem [ref=e369]:
+                - button "PNC Exisiting Member ●active 20% off · All services" [ref=e370] [cursor=pointer]:
+                  - generic [ref=e371]:
+                    - text: PNC Exisiting Member
+                    - generic [ref=e372]: ●active
+                  - generic [ref=e373]:
+                    - generic [ref=e374]: 20% off
+                    - generic [ref=e375]: ·
+                    - generic [ref=e376]: All services
+              - listitem [ref=e377]:
+                - button "Gold Membership ●active 20% off · All services" [ref=e378] [cursor=pointer]:
+                  - generic [ref=e379]:
+                    - text: Gold Membership
+                    - generic [ref=e380]: ●active
+                  - generic [ref=e381]:
+                    - generic [ref=e382]: 20% off
+                    - generic [ref=e383]: ·
+                    - generic [ref=e384]: All services
+              - listitem [ref=e385]:
+                - button "Diamond Membership ●active 20% off · All services" [ref=e386] [cursor=pointer]:
+                  - generic [ref=e387]:
+                    - text: Diamond Membership
+                    - generic [ref=e388]: ●active
+                  - generic [ref=e389]:
+                    - generic [ref=e390]: 20% off
+                    - generic [ref=e391]: ·
+                    - generic [ref=e392]: All services
+          - generic [ref=e394]:
+            - generic [ref=e395]: 🎟
+            - generic [ref=e396]: Pick a plan
+            - generic [ref=e397]: Select a membership on the left to manage which services it discounts.
+  - generic [ref=e336]: Revenue

@@ -5,7 +5,7 @@ from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
 from mongoengine import Q
 from utils.branch_filter import get_selected_branch
-from utils.auth import require_auth
+from utils.auth import require_auth, require_role
 from utils.date_utils import get_ist_date_range
 
 feedback_bp = Blueprint('feedback', __name__)
@@ -305,8 +305,9 @@ def create_feedback(current_user=None):
         return response, 500
 
 @feedback_bp.route('/<id>', methods=['PUT'])
-def update_feedback(id):
-    """Update feedback"""
+@require_role('manager', 'owner')
+def update_feedback(id, current_user=None):
+    """Update feedback (manager/owner only)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid feedback ID format'}), 400
@@ -340,8 +341,9 @@ def update_feedback(id):
         return response, 500
 
 @feedback_bp.route('/<id>', methods=['DELETE'])
-def delete_feedback(id):
-    """Delete feedback"""
+@require_role('manager', 'owner')
+def delete_feedback(id, current_user=None):
+    """Delete feedback (manager/owner only)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid feedback ID format'}), 400
@@ -392,39 +394,38 @@ def get_feedback_stats(current_user=None):
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
 
-        # Get branch for filtering
         branch = get_selected_branch(request, current_user)
-        query = Feedback.objects
+
+        match = {}
         if branch:
-            query = query.filter(branch=branch)
-
-        # Apply date filters
+            match['branch'] = ObjectId(str(branch.id))
         if start_date:
-            start = datetime.strptime(start_date, '%Y-%m-%d')
-            query = query.filter(created_at__gte=start)
+            match.setdefault('created_at', {})['$gte'] = datetime.strptime(start_date, '%Y-%m-%d')
         if end_date:
-            end = datetime.strptime(end_date, '%Y-%m-%d')
-            # Set end to end of day to include all data from the end date
-            end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
-            query = query.filter(created_at__lte=end)
+            match.setdefault('created_at', {})['$lte'] = datetime.strptime(
+                end_date, '%Y-%m-%d').replace(hour=23, minute=59, second=59, microsecond=999999)
 
-        # Force evaluation by converting to list
-        feedbacks = list(query)
+        pipeline = []
+        if match:
+            pipeline.append({'$match': match})
+        pipeline.append({'$group': {
+            '_id': '$rating',
+            'count': {'$sum': 1}
+        }})
 
-        # Calculate average rating
-        if feedbacks:
-            avg_rating = sum(f.rating for f in feedbacks if f.rating) / len(feedbacks)
-        else:
-            avg_rating = 0
-
-        # Count by rating
         rating_counts = {}
-        for f in feedbacks:
-            if f.rating:
-                rating_counts[f.rating] = rating_counts.get(f.rating, 0) + 1
+        total = 0
+        weighted_sum = 0
+        for row in Feedback.objects.aggregate(pipeline):
+            r = row['_id']
+            c = row['count']
+            if r is None:
+                continue
+            rating_counts[r] = c
+            total += c
+            weighted_sum += r * c
 
-        # Total count
-        total = len(feedbacks)
+        avg_rating = (weighted_sum / total) if total else 0
 
         response = jsonify({
             'total_feedback': total,
@@ -452,17 +453,41 @@ def get_recent_feedback(current_user=None):
     try:
         limit = request.args.get('limit', 10, type=int)
 
-        # Get branch for filtering
         branch = get_selected_branch(request, current_user)
-        query = Feedback.objects
+        query = Feedback.objects.no_dereference().only(
+            'customer', 'rating', 'comment', 'created_at'
+        )
         if branch:
             query = query.filter(branch=branch)
-        # Force evaluation by converting to list
         feedbacks = list(query.order_by('-created_at').limit(limit))
+
+        customer_ids = set()
+        for f in feedbacks:
+            raw = f._data.get('customer')
+            if raw is None:
+                continue
+            cid = raw.id if hasattr(raw, 'id') else raw
+            if cid is not None:
+                customer_ids.add(cid)
+
+        customer_map = {}
+        if customer_ids:
+            for c in Customer.objects(id__in=list(customer_ids)).only('first_name', 'last_name'):
+                customer_map[c.id] = c
+
+        def _cust_name(f):
+            raw = f._data.get('customer')
+            if raw is None:
+                return 'Anonymous'
+            cid = raw.id if hasattr(raw, 'id') else raw
+            c = customer_map.get(cid)
+            if not c:
+                return 'Anonymous'
+            return f"{c.first_name or ''} {c.last_name or ''}".strip() or 'Anonymous'
 
         response = jsonify([{
             'id': str(f.id),
-            'customer_name': f"{f.customer.first_name} {f.customer.last_name}" if f.customer else 'Anonymous',
+            'customer_name': _cust_name(f),
             'rating': f.rating,
             'comment': f.comment,
             'created_at': f.created_at.isoformat() if f.created_at else None

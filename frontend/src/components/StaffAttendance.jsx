@@ -7,6 +7,7 @@ import {
 import './StaffAttendance.css'
 import { apiGet, apiPost } from '../utils/api'
 import { useAuth } from '../contexts/AuthContext'
+import ClassicDatePicker from './shared/ClassicDatePicker'
 
 const StaffAttendance = () => {
   const { currentBranch } = useAuth()
@@ -196,20 +197,14 @@ const StaffAttendance = () => {
           <div className="attendance-top-section">
             <h2 className="section-title">Staff Attendance</h2>
             <div className="top-actions">
-              <div className="date-picker-wrapper">
+              <div className="date-picker-wrapper" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <label className="date-label">Date:</label>
-                <div className="date-input-wrapper">
-                  <input
-                    type="date"
-                    className="date-picker"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                  />
-                  <span className="date-display">{formatDate(selectedDate)}</span>
-                  <span className="calendar-icon">
-                    <FaCalendarAlt />
-                  </span>
-                </div>
+                <ClassicDatePicker
+                  value={selectedDate}
+                  onChange={(v) => v && setSelectedDate(v)}
+                  placeholder="Select date"
+                  allowEmpty={false}
+                />
               </div>
               <button className="mark-all-btn" onClick={markAllPresent}>
                 <FaCheck />

@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, make_response
-from models import Bill, Customer, Product, BillItemEmbedded, DiscountApprovalRequest, ApprovalCode, Staff, Membership, Branch, CashTransaction, Service, Package, MembershipPlan, ReferralProgramSettings, Referral, Invoice, Notification
+from models import Bill, Customer, Product, BillItemEmbedded, DiscountApprovalRequest, ApprovalCode, Staff, Membership, Branch, CashTransaction, Service, Package, MembershipPlan, ReferralProgramSettings, Referral, Invoice, Notification, Offer
 from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 from mongoengine import Q
@@ -205,6 +205,14 @@ def _resolve_bill_items(bill):
         if bill.tax_amount and bill.subtotal and float(bill.subtotal) > 0:
             item_tax = (float(item.total or 0) / float(bill.subtotal)) * float(bill.tax_amount)
 
+        membership_discount_amt = float(getattr(item, 'membership_discount', 0) or 0)
+        item_total_for_pct = float(item.total or 0)
+        membership_discount_pct = (
+            round(membership_discount_amt / item_total_for_pct * 100, 1)
+            if item_total_for_pct > 0 and membership_discount_amt > 0
+            else 0
+        )
+
         items.append({
             'id': idx + 1,
             'name': item_name,
@@ -215,7 +223,11 @@ def _resolve_bill_items(bill):
             'tax': round(item_tax, 2),
             'discount': round(float(item.price or 0) * float(item.quantity or 1) * float(item.discount or 0) / 100.0, 2),
             'total': float(item.total) if item.total else 0.0,
-            'start_time': item.start_time if item.start_time else None
+            'start_time': item.start_time if item.start_time else None,
+            # Per-line membership discount (₹) and the derived percentage. 0 / 0
+            # for lines not covered by an active membership at checkout time.
+            'membership_discount': round(membership_discount_amt, 2),
+            'membership_discount_pct': membership_discount_pct,
         })
 
     return items
@@ -258,32 +270,37 @@ def _build_invoice_data(bill):
     customer_data, branch_data = _resolve_bill_metadata(bill)
     items = _resolve_bill_items(bill)
 
-    # Generate invoice number
+    # Generate invoice number. Cache it on the bill the first time so subsequent
+    # fetches skip the collection scan entirely — this was the main bottleneck in
+    # the post-checkout invoice modal.
     invoice_number = getattr(bill, 'invoice_number', None)
     if not invoice_number:
         try:
-            # Find the highest existing invoice number to avoid duplicates
-            last_invoice = Invoice.objects.order_by('-invoice_number').first()
+            # Find the highest existing invoice number to avoid duplicates.
+            # The unique index on Invoice.invoice_number makes this an index scan (fast).
+            last_invoice = Invoice.objects.only('invoice_number').order_by('-invoice_number').first()
             if last_invoice and last_invoice.invoice_number:
-                # Extract number from last invoice (e.g., "INV-000015" -> 15)
                 try:
                     last_num = int(last_invoice.invoice_number.replace('INV-', '').lstrip('0') or '0')
                     invoice_num = last_num + 1
                 except (ValueError, AttributeError):
-                    # Fallback: count existing invoices
                     invoice_num = Invoice.objects.count() + 1
             else:
-                # No invoices exist, start from 1
                 invoice_num = 1
-            
+
             invoice_number = f"INV-{invoice_num:06d}"
-            
-            # Double-check for duplicates (race condition protection)
-            while Invoice.objects(invoice_number=invoice_number).first():
-                invoice_num += 1
-                invoice_number = f"INV-{invoice_num:06d}"
         except Exception:
             invoice_number = f"INV-{bill.bill_number[-6:]}" if bill.bill_number else generate_invoice_number()
+
+        # Persist the generated number directly onto the Bill document (strict=False
+        # on the Bill model allows this dynamic field). Next fetch hits the cached
+        # value and skips the Invoice lookup entirely. Use update_one to avoid a
+        # full bill.save() which would rewrite the items array too.
+        try:
+            Bill.objects(id=bill.id).update_one(set__invoice_number=invoice_number)
+            bill.invoice_number = invoice_number
+        except Exception:
+            pass
 
     # Format dates
     bill_date = bill.bill_date
@@ -316,6 +333,19 @@ def _build_invoice_data(bill):
     total_discount = item_discount_total + float(bill.discount_amount or 0)
     referral = float(bill.referral_discount or 0)
 
+    # Offer snapshot recorded on the bill (if any). Stored as a plain dict on the
+    # Bill document; surfaces on the invoice so customers see the applied offer.
+    applied_offer_data = None
+    raw_applied_offer = getattr(bill, 'applied_offer', None) or {}
+    if raw_applied_offer and raw_applied_offer.get('id'):
+        applied_offer_data = {
+            'id': str(raw_applied_offer.get('id')),
+            'name': raw_applied_offer.get('name', 'Offer'),
+            'type': raw_applied_offer.get('type', 'general'),
+            'percentage': float(raw_applied_offer.get('percentage', 0) or 0),
+            'amount': float(raw_applied_offer.get('amount', 0) or 0),
+        }
+
     return {
         'invoice_number': invoice_number,
         'bill_number': bill.bill_number,
@@ -325,9 +355,12 @@ def _build_invoice_data(bill):
         'customer': customer_data,
         'branch': branch_data,
         'items': items,
+        'applied_offer': applied_offer_data,
         'summary': {
             'subtotal': round(gross_subtotal, 2),
             'discount': round(total_discount, 2),
+            'discount_type': bill.discount_type or 'fix',
+            'offer': applied_offer_data,
             'referral_discount': referral,
             'net': round(gross_subtotal - total_discount - referral, 2),
             'tax': float(bill.tax_amount) if bill.tax_amount else 0.0,
@@ -393,6 +426,30 @@ def get_bills(current_user=None):
         if branch:
             query = query.filter(branch=branch)
 
+        # Staff can only see bills where they attended at least one item, and only
+        # within the last 48 hours. Manager/owner see all bills for the branch.
+        user_role = (current_user or {}).get('role')
+        user_id = (current_user or {}).get('user_id')
+        if user_role == 'staff' and user_id and ObjectId.is_valid(user_id):
+            try:
+                staff_obj = Staff.objects(id=user_id).first()
+            except Exception:
+                staff_obj = None
+            if staff_obj:
+                # Use a raw query on the embedded array — sends plain ObjectId and matches
+                # regardless of whether the stored reference is a raw ObjectId or DBRef.
+                query = query.filter(__raw__={'items.staff': ObjectId(user_id)})
+                # Enforce the 48-hour visibility cap server-side so a staff user can't
+                # widen the range by crafting query params. This runs alongside any
+                # start_date/end_date the frontend sends; whichever is tighter wins.
+                cutoff_48h = datetime.utcnow() - timedelta(hours=48)
+                query = query.filter(bill_date__gte=cutoff_48h)
+            else:
+                # No matching staff record → return nothing rather than all bills
+                return jsonify({
+                    'bills': [], 'total': 0, 'page': page, 'pages': 0, 'per_page': per_page
+                })
+
         # Apply filters
         if not include_deleted:
             query = query.filter(is_deleted=False)
@@ -422,15 +479,74 @@ def get_bills(current_user=None):
 
         # OPTIMIZED: Get count first, then paginate
         total = query.count()
-        bills = list(query.order_by('-bill_date').skip((page - 1) * per_page).limit(per_page))
+        # Sort by bill_date desc, then created_at desc as a tiebreaker. Bills
+        # entered the same day from QuickSale share an identical bill_date
+        # (noon-IST), so without created_at the within-day order is unstable —
+        # the most recently created bill could appear below older ones.
+        bills = list(query.order_by('-bill_date', '-created_at').skip((page - 1) * per_page).limit(per_page))
+
+        # Batch-fetch attending staff names (Staff has first_name+last_name, not `name`)
+        staff_ids = set()
+        customer_ids = set()
+        for b in bills:
+            cust_id = _get_raw_ref_id(b, 'customer')
+            if cust_id:
+                customer_ids.add(str(cust_id))
+            for item in (b.items or []):
+                ref_id = _get_raw_ref_id(item, 'staff')
+                if ref_id:
+                    staff_ids.add(str(ref_id))
+
+        staff_name_map = {}
+        if staff_ids:
+            try:
+                for s in Staff.objects(id__in=list(staff_ids)).only('id', 'first_name', 'last_name'):
+                    staff_name_map[str(s.id)] = f"{s.first_name or ''} {s.last_name or ''}".strip() or 'Staff'
+            except Exception:
+                staff_name_map = {}
+
+        # Batch-fetch customer info — was N sequential .reload() calls, now a single query
+        customer_info_map = {}
+        if customer_ids:
+            try:
+                for c in Customer.objects(id__in=list(customer_ids)).only('id', 'first_name', 'last_name', 'mobile'):
+                    customer_info_map[str(c.id)] = {
+                        'id': str(c.id),
+                        'name': f"{c.first_name or ''} {c.last_name or ''}".strip() or 'Walk-in',
+                        'mobile': c.mobile
+                    }
+            except Exception:
+                customer_info_map = {}
 
         result = []
         for b in bills:
             try:
-                customer_info = get_safe_customer_info(b.customer)
+                cust_id = _get_raw_ref_id(b, 'customer')
+                customer_info = customer_info_map.get(str(cust_id)) if cust_id else None
+                if not customer_info:
+                    customer_info = {'name': 'Walk-in', 'mobile': None, 'id': None}
                 customer_name = customer_info['name']
                 customer_mobile = customer_info['mobile']
                 customer_obj_id = customer_info['id']
+
+                # Collect unique attending staff for this bill (for display in list view)
+                attending_staff = []
+                seen_staff_ids = set()
+                first_item_start_time = None
+                for item in (b.items or []):
+                    if first_item_start_time is None and getattr(item, 'start_time', None):
+                        first_item_start_time = item.start_time
+                    ref_id = _get_raw_ref_id(item, 'staff')
+                    if not ref_id:
+                        continue
+                    sid = str(ref_id)
+                    if sid in seen_staff_ids:
+                        continue
+                    seen_staff_ids.add(sid)
+                    attending_staff.append({
+                        'id': sid,
+                        'name': staff_name_map.get(sid, 'Staff')
+                    })
 
                 bill_data = {
                     'id': str(b.id),
@@ -439,6 +555,11 @@ def get_bills(current_user=None):
                     'customer_name': customer_name,
                     'customer_mobile': customer_mobile,
                     'bill_date': b.bill_date.isoformat() if b.bill_date else None,
+                    # The actual service start time the user picked at booking,
+                    # taken from the first bill item. Bill display should prefer
+                    # this over bill_date (which is normalized to noon-IST and
+                    # therefore unhelpful as a "time the bill was for").
+                    'start_time': first_item_start_time,
                     'subtotal': b.subtotal,
                     'discount_amount': b.discount_amount,
                     'discount_type': b.discount_type,
@@ -449,7 +570,9 @@ def get_bills(current_user=None):
                     'booking_status': b.booking_status,
                     'booking_note': b.booking_note,
                     'is_deleted': b.is_deleted,
-                    'created_at': b.created_at.isoformat() if b.created_at else None
+                    'created_at': b.created_at.isoformat() if b.created_at else None,
+                    'attending_staff': attending_staff,
+                    'attending_staff_names': ', '.join(s['name'] for s in attending_staff) if attending_staff else ''
                 }
 
                 # Include items when filtering by appointment_id (for edit functionality)
@@ -521,10 +644,23 @@ def get_bills(current_user=None):
         return jsonify({'error': str(e)}), 500
 
 @bill_bp.route('/bills/<id>', methods=['GET'])
-def get_bill(id):
+@require_auth
+def get_bill(id, current_user=None):
     """Get a single bill with items"""
     try:
         bill = Bill.objects.get(id=id)
+
+        # Staff can only view bills where they attended at least one item
+        user_role = (current_user or {}).get('role')
+        user_id = (current_user or {}).get('user_id')
+        if user_role == 'staff' and user_id:
+            staff_item_ids = {
+                str(_get_raw_ref_id(item, 'staff'))
+                for item in (bill.items or [])
+                if _get_raw_ref_id(item, 'staff')
+            }
+            if str(user_id) not in staff_item_ids:
+                return jsonify({'error': 'Not authorized to view this bill'}), 403
         
         customer_info = get_safe_customer_info(bill.customer)
         customer_name = customer_info['name']
@@ -587,6 +723,14 @@ def get_bill(id):
             except Exception as e:
                 print(f"Error loading staff for bill item {idx}: {e}")
 
+            membership_discount_amt = float(getattr(item, 'membership_discount', 0) or 0)
+            item_total_for_pct = float(getattr(item, 'total', 0) or 0)
+            membership_discount_pct = (
+                round(membership_discount_amt / item_total_for_pct * 100, 1)
+                if item_total_for_pct > 0 and membership_discount_amt > 0
+                else 0
+            )
+
             item_data = {
                 'id': idx,  # Index as ID for embedded documents
                 'item_type': getattr(item, 'item_type', None),
@@ -602,7 +746,9 @@ def get_bill(id):
                 'price': getattr(item, 'price', 0),
                 'discount': getattr(item, 'discount', 0),
                 'quantity': getattr(item, 'quantity', 1),
-                'total': getattr(item, 'total', 0)
+                'total': getattr(item, 'total', 0),
+                'membership_discount': round(membership_discount_amt, 2),
+                'membership_discount_pct': membership_discount_pct,
             }
             items.append(item_data)
 
@@ -692,6 +838,41 @@ def create_bill():
                 }
             }), 200
 
+        # Recent-duplicate guard: if the same customer just had a bill created
+        # within the last few seconds and it isn't checked out yet, return that
+        # bill instead of creating a new one. Prevents the double-bill race
+        # that occurs when the Checkout request fires twice in quick succession.
+        if data.get('customer_id'):
+            try:
+                threshold = datetime.utcnow() - timedelta(seconds=8)
+                recent_qs = Bill.objects(
+                    customer=data['customer_id'],
+                    appointment=appointment,
+                    is_deleted=False,
+                    created_at__gte=threshold,
+                ).order_by('-created_at')
+                for recent in recent_qs:
+                    already_checked_out = (
+                        recent.booking_status == 'service-completed' and recent.payment_mode
+                    )
+                    if not already_checked_out:
+                        # items_count tells the frontend whether the existing bill
+                        # already has items — if so, it skips the follow-up
+                        # bulk-add call so we don't duplicate items.
+                        return jsonify({
+                            'id': str(recent.id),
+                            'message': 'Using existing recent bill (duplicate request)',
+                            'data': {
+                                'id': str(recent.id),
+                                'bill_number': recent.bill_number,
+                                'existing': True,
+                                'items_count': len(recent.items or [])
+                            }
+                        }), 200
+            except Exception as e:
+                # Non-fatal: log and fall through to normal create
+                print(f"[CREATE BILL] dedup lookup failed (non-fatal): {e}")
+
         customer = None
         if data.get('customer_id'):
             try:
@@ -735,6 +916,16 @@ def create_bill():
             customer=customer
         )
 
+        # Optionally accept items at creation time so the frontend can create a bill
+        # WITH items in a single HTTP round-trip instead of create → bulk-add (2 RTs).
+        initial_items_payload = data.get('items') or []
+        embedded_items = []
+        if initial_items_payload:
+            embedded_items, err = _build_embedded_items_from_payload(initial_items_payload, branch)
+            if err:
+                response, status = err
+                return response, status
+
         bill = Bill(
             bill_number=generate_bill_number(),
             customer=customer,
@@ -747,7 +938,7 @@ def create_bill():
             final_amount=0,
             booking_status=data.get('booking_status', 'pending'),
             booking_note=data.get('booking_note'),
-            items=[]
+            items=embedded_items
         )
         bill.save()
 
@@ -757,7 +948,8 @@ def create_bill():
             'data': {
                 'id': str(bill.id),
                 'bill_number': bill.bill_number,
-                'existing': False
+                'existing': False,
+                'items_count': len(embedded_items)
             }
         }), 201
     except Exception as e:
@@ -927,6 +1119,190 @@ def add_bill_item(id):
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+def _build_embedded_items_from_payload(items_payload, bill_branch):
+    """Validate and build BillItemEmbedded list from a raw items payload.
+
+    Returns (embedded_items, error_response) where one is None.
+    Shared by POST /bills (when items are included) and POST /bills/<id>/items/bulk.
+    """
+    from models import Service, Package, MembershipPlan, Staff as StaffModel
+
+    if not items_payload:
+        return [], None
+
+    def _valid_ids(key):
+        ids = set()
+        for it in items_payload:
+            v = it.get(key)
+            if v and ObjectId.is_valid(str(v)):
+                ids.add(str(v))
+        return list(ids)
+
+    service_ids = _valid_ids('service_id')
+    package_ids = _valid_ids('package_id')
+    product_ids = _valid_ids('product_id')
+    staff_ids = _valid_ids('staff_id')
+    membership_ids = _valid_ids('membership_id')
+
+    service_map = {str(s.id): s for s in Service.objects(id__in=service_ids)} if service_ids else {}
+    package_map = {str(p.id): p for p in Package.objects(id__in=package_ids)} if package_ids else {}
+    product_map = {str(p.id): p for p in Product.objects(id__in=product_ids)} if product_ids else {}
+    staff_map = {str(s.id): s for s in StaffModel.objects(id__in=staff_ids)} if staff_ids else {}
+    membership_plan_map = {str(p.id): p for p in MembershipPlan.objects(id__in=membership_ids)} if membership_ids else {}
+
+    name_only_membership_names = [
+        (it.get('name') or '').strip()
+        for it in items_payload
+        if it.get('item_type') == 'membership' and not it.get('membership_id') and it.get('name')
+    ]
+    if name_only_membership_names:
+        for p in MembershipPlan.objects(name__in=name_only_membership_names, status='active'):
+            membership_plan_map[p.name.lower()] = p
+
+    embedded_items = []
+    product_qty_in_batch = {}
+
+    for data_item in items_payload:
+        service = service_map.get(str(data_item.get('service_id'))) if data_item.get('service_id') else None
+        if data_item.get('service_id') and not service:
+            return None, (jsonify({'error': f'Service not found: {data_item.get("service_id")}'}), 404)
+        if service and bill_branch and service.branch and str(service.branch.id) != str(bill_branch.id):
+            return None, (jsonify({'error': f'Service {service.name} does not belong to this branch'}), 400)
+
+        package = package_map.get(str(data_item.get('package_id'))) if data_item.get('package_id') else None
+        if data_item.get('package_id') and not package:
+            return None, (jsonify({'error': f'Package not found: {data_item.get("package_id")}'}), 404)
+        if package and bill_branch and package.branch and str(package.branch.id) != str(bill_branch.id):
+            return None, (jsonify({'error': f'Package {package.name} does not belong to this branch'}), 400)
+
+        product = product_map.get(str(data_item.get('product_id'))) if data_item.get('product_id') else None
+        if data_item.get('product_id') and not product:
+            return None, (jsonify({'error': f'Product not found: {data_item.get("product_id")}'}), 404)
+        if product and bill_branch and product.branch and str(product.branch.id) != str(bill_branch.id):
+            return None, (jsonify({'error': f'Product {product.name} does not belong to this branch'}), 400)
+
+        staff = staff_map.get(str(data_item.get('staff_id'))) if data_item.get('staff_id') else None
+
+        item_name = None
+        if data_item.get('membership_id'):
+            mp = membership_plan_map.get(str(data_item['membership_id']))
+            if not mp and data_item.get('name'):
+                mp = membership_plan_map.get(data_item['name'].lower())
+            if not mp:
+                return None, (jsonify({'error': f'Membership plan not found: {data_item.get("name", data_item.get("membership_id"))}'}), 404)
+            item_name = mp.name
+        elif data_item.get('item_type') == 'membership' and data_item.get('name'):
+            mp = membership_plan_map.get(data_item['name'].lower())
+            if not mp:
+                return None, (jsonify({'error': f'Membership plan not found: {data_item.get("name")}'}), 404)
+            item_name = mp.name
+
+        if service:
+            item_name = service.name
+        elif package:
+            item_name = package.name
+        elif product:
+            item_name = product.name
+        if not item_name:
+            item_name = data_item.get('name')
+
+        if product and data_item.get('quantity'):
+            qty = int(data_item.get('quantity', 1) or 1)
+            pid = str(product.id)
+            product_qty_in_batch[pid] = product_qty_in_batch.get(pid, 0) + qty
+            if product.stock_quantity is not None and product.stock_quantity < product_qty_in_batch[pid]:
+                return None, (jsonify({
+                    'error': f'Insufficient stock for {product.name}. Only {product.stock_quantity} units available'
+                }), 400)
+
+        embedded_items.append(BillItemEmbedded(
+            item_type=data_item['item_type'],
+            name=item_name,
+            service=service,
+            package=package,
+            product=product,
+            membership=None,
+            staff=staff,
+            start_time=data_item.get('start_time') or None,
+            price=data_item['price'],
+            discount=data_item.get('discount', 0),
+            quantity=data_item.get('quantity', 1),
+            total=data_item['total']
+        ))
+
+    return embedded_items, None
+
+
+@bill_bp.route('/bills/<id>/items/bulk', methods=['POST'])
+def add_bill_items_bulk(id):
+    """Add multiple items to a bill in a single request.
+
+    Body: { "items": [ { item_type, service_id?, package_id?, product_id?, membership_id?,
+                         staff_id?, start_time?, price, discount?, quantity?, total, name? } , ... ] }
+
+    This avoids the N+1 HTTP round-trip cost of adding items one at a time during checkout.
+    All referenced Services/Packages/Products/Staff/MembershipPlans are batch-fetched in bulk.
+    """
+    try:
+        if not id or len(id) < 10:
+            return jsonify({'error': f'Invalid bill ID format: {id}'}), 400
+
+        bill = Bill.objects.get(id=id)
+        data = request.get_json() or {}
+        items_payload = data.get('items') or []
+        if not isinstance(items_payload, list) or not items_payload:
+            return jsonify({'error': 'items array is required'}), 400
+
+        from models import Service, Package, Membership as MembershipModel, MembershipPlan, Staff as StaffModel
+
+        # Ensure bill has a branch assigned
+        if not bill.branch:
+            current_user = get_current_user()
+            appointment = None
+            if bill.appointment:
+                try:
+                    bill.appointment.reload()
+                    appointment = bill.appointment
+                except Exception:
+                    appointment = bill.appointment
+            branch = resolve_bill_branch(
+                current_user=current_user,
+                appointment=appointment,
+                customer=bill.customer
+            )
+            if branch:
+                bill.branch = branch
+                bill.save()
+            else:
+                return jsonify({'error': 'Bill must have a branch assigned before adding items'}), 400
+
+        # Delegate validation + embedded item construction to the shared helper
+        embedded_items, err = _build_embedded_items_from_payload(items_payload, bill.branch)
+        if err:
+            response, status = err
+            return response, status
+
+        # Single atomic $push with $each for the whole batch — one DB round-trip.
+        # MongoEngine 0.27 misparses `push__items__each=...` as a path
+        # ($push: {"items.each": [...]}), which MongoDB rejects with
+        # "Cannot create field 'each' in element {items: []}". The correct
+        # MongoEngine syntax that emits $push: {items: {$each: [...]}} is
+        # push_all__items=list.
+        if embedded_items:
+            Bill.objects(id=id).update_one(push_all__items=embedded_items)
+
+        return jsonify({
+            'message': f'Added {len(embedded_items)} item(s) to bill',
+            'count': len(embedded_items)
+        }), 201
+    except Bill.DoesNotExist:
+        return jsonify({'error': f'Bill not found with ID: {id}'}), 404
+    except Exception as e:
+        import traceback
+        print(f"[ADD_ITEMS_BULK] Error: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
 @bill_bp.route('/bills/<bill_id>/items/<int:item_id>', methods=['DELETE'])
 def remove_bill_item(bill_id, item_id):
     """Remove item from bill"""
@@ -1006,29 +1382,159 @@ def checkout_bill(id, current_user=None):
                 bill.branch = _resolved_branch
                 print(f"[CHECKOUT] Resolved bill branch early: {_resolved_branch.name} (ID: {_resolved_branch.id})")
 
-        # Check for active membership discount first (automatic, cannot be overridden)
+        # Membership discount is OPT-IN — applied only when the frontend explicitly
+        # sends discount_type='membership'. Staff can choose to apply it, use a manual
+        # discount instead, or skip discounts entirely.
+        # The discount applies only to services/packages/products — NOT to the membership
+        # plan purchase itself (a customer should not discount the plan they're buying).
         membership_discount_applied = False
+        offer_applied = False
+        applied_offer_snapshot = None
         discount_amount = 0.0
         discount_type = 'fix'
-        
-        if bill.customer:
-            # OPTIMIZE: Use indexed query for faster lookup
-            bill.customer.reload()
-            active_membership = Membership.objects(
-                customer=bill.customer,
-                status='active',
-                expiry_date__gte=datetime.utcnow()
-            ).first()
-            
-            if active_membership and active_membership.plan:
-                # Reload plan to get allocated_discount
-                active_membership.plan.reload()
-                if active_membership.plan.allocated_discount > 0:
-                    # Apply membership discount automatically
-                    membership_discount_percent = float(active_membership.plan.allocated_discount)
-                    discount_amount = float(subtotal) * (membership_discount_percent / 100.0)
-                    discount_type = 'membership'
-                    membership_discount_applied = True
+
+        requested_discount_type = (data.get('discount_type') or '').lower()
+
+        # === Offer handling (single-offer rule) ===
+        # If the frontend specifies applied_offer_id, validate the offer and apply it
+        # as the bill discount. An applied offer overrides the membership auto-discount
+        # so a membership customer never gets two discounts stacked.
+        applied_offer_id = data.get('applied_offer_id')
+        if applied_offer_id:
+            try:
+                offer = Offer.objects(id=applied_offer_id).first()
+            except Exception:
+                offer = None
+            if not offer:
+                response = jsonify({'error': 'Selected offer not found'})
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response, 400
+            if not offer.is_currently_valid():
+                response = jsonify({'error': f"Offer '{offer.name}' is not currently active"})
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response, 400
+
+            eligible_subtotal_for_offer = sum(
+                float(item.total) if item.total else 0.0
+                for item in bill.items
+                if (item.item_type or '') != 'membership'
+            )
+
+            # Membership-type offers require the customer to have an active membership
+            if offer.offer_type == 'membership':
+                has_active_membership = False
+                if bill.customer:
+                    try:
+                        bill.customer.reload()
+                        active_membership = Membership.objects(
+                            customer=bill.customer,
+                            status='active',
+                            expiry_date__gte=datetime.utcnow()
+                        ).first()
+                        has_active_membership = bool(active_membership)
+                    except Exception:
+                        has_active_membership = False
+                if not has_active_membership:
+                    response = jsonify({'error': f"Offer '{offer.name}' is for membership customers only"})
+                    response.headers.add('Access-Control-Allow-Origin', '*')
+                    return response, 400
+
+            offer_discount_amount = float(eligible_subtotal_for_offer) * (float(offer.discount_percentage or 0) / 100.0)
+            discount_amount = offer_discount_amount
+            discount_type = 'offer'
+            offer_applied = True
+            applied_offer_snapshot = {
+                'id': str(offer.id),
+                'name': offer.name,
+                'type': offer.offer_type,
+                'percentage': float(offer.discount_percentage or 0),
+                'amount': round(offer_discount_amount, 2),
+            }
+            print(f"[CHECKOUT] Offer applied: {offer.name} ({offer.discount_percentage}%) -> ₹{offer_discount_amount:.2f}")
+
+        if not offer_applied and requested_discount_type == 'membership':
+            # Membership discount applies ONLY to customers who already have an
+            # active membership at the time of this bill. A plan being purchased
+            # in this same bill does NOT activate retroactively — it kicks in
+            # from the customer's next visit.
+            candidate_plans = []
+
+            if bill.customer:
+                bill.customer.reload()
+                active_membership = Membership.objects(
+                    customer=bill.customer,
+                    status='active',
+                    expiry_date__gte=datetime.utcnow()
+                ).first()
+                if active_membership and active_membership.plan:
+                    active_membership.plan.reload()
+                    candidate_plans.append(active_membership.plan)
+
+            # Pre-compute each plan's eligibility info: percentage + whitelist of service ids
+            # (empty whitelist = applies to all non-membership items).
+            plan_specs = []
+            for plan in candidate_plans:
+                pct = float(plan.allocated_discount or 0)
+                if pct <= 0:
+                    continue
+                raw_refs = plan._data.get('applicable_services') or []
+                service_ids = set()
+                for ref in raw_refs:
+                    try:
+                        sid = ref.id if hasattr(ref, 'id') else ref
+                        service_ids.add(str(sid))
+                    except Exception:
+                        continue
+                # Strict mapping: only plans with explicitly ticked services
+                # contribute a discount. A plan with no services in its
+                # applicable_services list is "configured but inert" — owner
+                # must pick services in the Membership editor before it
+                # discounts anything.
+                if not service_ids:
+                    continue
+                plan_specs.append({
+                    'percent': pct,
+                    'service_ids': service_ids,
+                })
+
+            # Per-item: pick the best applicable plan and apply that plan's percentage.
+            # Also write the rupee amount back onto each item's `membership_discount`
+            # field so the invoice / bill history can show a per-line breakdown.
+            membership_discount_total = 0.0
+            for item in bill.items:
+                # Reset every line up-front in case this bill is being checked
+                # out again (e.g., discount approval cycle) — stale per-line
+                # values from a prior pass would otherwise linger.
+                item.membership_discount = 0.0
+
+                if (item.item_type or '') == 'membership':
+                    continue  # never discount the membership plan purchase itself
+                item_total = float(item.total or 0)
+                if item_total <= 0:
+                    continue
+
+                item_service_id = _get_raw_ref_id(item, 'service') if item.item_type == 'service' else None
+                item_service_id_str = str(item_service_id) if item_service_id else None
+
+                best_pct_for_item = 0.0
+                for spec in plan_specs:
+                    # Strict mapping: only services whose id is in the plan's
+                    # applicable_services list get the discount. Packages and
+                    # products are never discounted by membership.
+                    if item_service_id_str and item_service_id_str in spec['service_ids']:
+                        if spec['percent'] > best_pct_for_item:
+                            best_pct_for_item = spec['percent']
+
+                if best_pct_for_item > 0:
+                    line_discount = round(item_total * (best_pct_for_item / 100.0), 2)
+                    item.membership_discount = line_discount
+                    membership_discount_total += line_discount
+
+            if membership_discount_total > 0:
+                discount_amount = membership_discount_total
+                discount_type = 'membership'
+                membership_discount_applied = True
+                print(f"[CHECKOUT] Membership discount (per-item): ₹{membership_discount_total:.2f} across {len(plan_specs)} eligible plan(s)")
         
         # Always calculate item-level discounts regardless of membership
         # (membership covers bill-level discount; item discounts are always manual)
@@ -1039,8 +1545,8 @@ def checkout_bill(id, current_user=None):
             if item_disc > 0 and item_price > 0:
                 item_level_discount += item_price * item_disc / 100.0
 
-        # If no membership discount, also handle manual bill-level discount
-        if not membership_discount_applied:
+        # If no membership and no offer discount, also handle manual bill-level discount
+        if not membership_discount_applied and not offer_applied:
             # Get discount from request
             discount_amount = float(data.get('discount_amount', 0) or 0)
             discount_type = data.get('discount_type', 'fix')
@@ -1053,12 +1559,13 @@ def checkout_bill(id, current_user=None):
             elif discount_amount > 0 and gross_total > 0:
                 discount_percent = (discount_amount / gross_total) * 100
         else:
-            # Membership discount already set; no bill-level manual discount
+            # Membership or offer discount already set; no bill-level manual discount
             discount_percent = 0
 
         # Total discount subject to approval = bill-level manual + item-level manual
-        # (membership discount is automatic and never needs staff approval)
-        total_discount_for_approval = (0 if membership_discount_applied else discount_amount) + item_level_discount
+        # (membership/offer discounts are automatic and never need staff approval)
+        skip_bill_discount_for_approval = membership_discount_applied or offer_applied
+        total_discount_for_approval = (0 if skip_bill_discount_for_approval else discount_amount) + item_level_discount
 
         # Compute overall percent for the approval record
         if total_discount_for_approval > 0 and gross_total > 0:
@@ -1239,6 +1746,9 @@ def checkout_bill(id, current_user=None):
         bill.subtotal = subtotal
         bill.discount_amount = discount_amount
         bill.discount_type = discount_type
+        # Persist or clear the offer snapshot. Single-offer rule means at most one
+        # offer is recorded on the bill at any time.
+        bill.applied_offer = applied_offer_snapshot if offer_applied else {}
         bill.referral_discount = referral_discount
         bill.tax_amount = tax_amount
         bill.tax_rate = tax_rate
@@ -1252,45 +1762,73 @@ def checkout_bill(id, current_user=None):
             bill.discount_approval_status = 'none'
         bill.updated_at = datetime.utcnow()
 
-        # Update product stock - validate and reduce for all products in bill
-        # Skip if bill is already checked out to prevent double stock reduction
+        # Update product stock — batch validate + bulk atomic decrement.
+        # OLD: per product → .reload() + .save() (2 DB round-trips each, sequential).
+        # NEW: 1 query to fetch all stock + 1 bulk_write to decrement all. O(1) round-trips.
         if not is_already_checked_out:
-            products_to_update = []
+            # Aggregate required quantity per product ID (handles duplicate product rows)
+            product_qty_needed = {}
+            product_item_refs = {}
             for item in bill.items:
-                if item.item_type == 'product' and item.product:
-                    # Reload product to get latest stock count (handles concurrent checkouts)
-                    item.product.reload()
-                    quantity_needed = int(item.quantity) if item.quantity else 1
+                if item.item_type != 'product':
+                    continue
+                ref_id = _get_raw_ref_id(item, 'product')
+                if not ref_id:
+                    continue
+                pid = str(ref_id)
+                qty = int(item.quantity) if item.quantity else 1
+                product_qty_needed[pid] = product_qty_needed.get(pid, 0) + qty
+                product_item_refs[pid] = item
 
-                    # Validate: reject if product belongs to a DIFFERENT branch (allow legacy items with no branch)
-                    if bill.branch and item.product.branch and str(item.product.branch.id) != str(bill.branch.id):
-                        error_msg = f'Product {item.product.name} does not belong to this branch'
-                        print(f"[CHECKOUT] Error: {error_msg} (Bill branch: {bill.branch.id if bill.branch else None}, Product branch: {item.product.branch.id if item.product.branch else None})")
-                        return jsonify({'error': error_msg}), 400
+            if product_qty_needed:
+                # Single query: pull current stock + branch for all products in this bill
+                current_products = {
+                    str(p.id): p
+                    for p in Product.objects(id__in=list(product_qty_needed.keys())).only(
+                        'id', 'name', 'stock_quantity', 'branch'
+                    )
+                }
 
-                    # Validate stock availability before reducing
-                    if item.product.stock_quantity is not None:
-                        if item.product.stock_quantity < quantity_needed:
-                            error_msg = f'Insufficient stock for product: {item.product.name}. Available: {item.product.stock_quantity}, Required: {quantity_needed}'
-                            print(f"[CHECKOUT] Error: {error_msg}")
-                            return jsonify({'error': error_msg}), 400
+                # Validate all products before we touch any of them (all-or-nothing)
+                for pid, qty_needed in product_qty_needed.items():
+                    product = current_products.get(pid)
+                    if not product:
+                        return jsonify({'error': f'Product not found: {pid}'}), 400
 
-                        # Store product and quantity for batch update
-                        products_to_update.append({
-                            'product': item.product,
-                            'quantity': quantity_needed
-                        })
+                    # Branch check (legacy items with no branch are allowed)
+                    product_branch_id = _get_raw_ref_id(product, 'branch')
+                    if bill.branch and product_branch_id and str(product_branch_id) != str(bill.branch.id):
+                        return jsonify({'error': f'Product {product.name} does not belong to this branch'}), 400
 
-            # Reduce stock for all products (atomic operation - all or nothing)
-            for product_update in products_to_update:
-                product_update['product'].stock_quantity -= product_update['quantity']
-                if product_update['product'].stock_quantity < 0:
-                    product_update['product'].stock_quantity = 0  # Prevent negative stock
-                product_update['product'].save()
+                    if product.stock_quantity is not None and product.stock_quantity < qty_needed:
+                        return jsonify({
+                            'error': f'Insufficient stock for product: {product.name}. '
+                                     f'Available: {product.stock_quantity}, Required: {qty_needed}'
+                        }), 400
+
+                # All validations passed — single bulk_write decrements all stocks atomically
+                try:
+                    from pymongo import UpdateOne
+                    from mongoengine.connection import get_db
+                    operations = [
+                        UpdateOne(
+                            {'_id': ObjectId(pid)},
+                            {'$inc': {'stock_quantity': -qty},
+                             '$set': {'updated_at': datetime.utcnow()}}
+                        )
+                        for pid, qty in product_qty_needed.items()
+                    ]
+                    if operations:
+                        get_db()['products'].bulk_write(operations, ordered=False)
+                except Exception as stock_err:
+                    print(f"[CHECKOUT] Stock decrement failed: {stock_err}")
+                    return jsonify({'error': 'Failed to update product stock'}), 500
 
         bill.save()
 
-        # Create Membership records for membership items (only for new checkouts)
+        # Create Membership records for membership items (only for new checkouts).
+        # If the customer already has an active membership, expire it — a new plan
+        # purchase is treated as an upgrade/replacement, not a second concurrent plan.
         if not is_already_checked_out and bill.customer:
             membership_items_updated = False
             for item in bill.items:
@@ -1303,8 +1841,23 @@ def checkout_bill(id, current_user=None):
                             plan = MembershipPlan.objects(name__iexact=item.name).first()
 
                         if plan:
-                            # Create the Membership record for this customer
                             now = datetime.utcnow()
+
+                            # Expire any existing active membership(s) for this customer.
+                            # Atomic update_one avoids a read-modify-save race if the
+                            # customer had somehow ended up with multiple active plans.
+                            expired_count = Membership.objects(
+                                customer=bill.customer,
+                                status='active'
+                            ).update(
+                                set__status='replaced',
+                                set__expiry_date=now,
+                                set__updated_at=now
+                            )
+                            if expired_count:
+                                print(f"[CHECKOUT] Replaced {expired_count} prior active membership(s) for customer {bill.customer.id}")
+
+                            # Create the new Membership record
                             new_membership = Membership(
                                 name=plan.name,
                                 customer=bill.customer,
@@ -1392,70 +1945,31 @@ def checkout_bill(id, current_user=None):
             except Exception as e:
                 print(f"[CHECKOUT] Warning: Failed to process referral reward: {e}")
 
-        # Generate and save invoice PDF to GridFS (only for new checkouts)
-        # MANDATORY: PDF generation must succeed or checkout fails
+        # Create the Invoice record at checkout (fast insert), but DEFER PDF generation.
+        # The HTML invoice modal doesn't need a PDF; download/share endpoints already fall
+        # back to on-demand PDF generation when pdf_file_id is missing. Moving the reportlab
+        # render + GridFS upload out of the request path removes ~3-6s from checkout.
+        invoice_data = None
         if not is_already_checked_out:
-            from services.invoice_pdf_service import generate_invoice_pdf
-            from services.pdf_storage_service import save_pdf_to_gridfs
-            
-            # Build invoice data
-            invoice_data = _build_invoice_data(bill)
-            
-            # Generate PDF - this must succeed
-            pdf_bytes = generate_invoice_pdf(invoice_data)
-            if not pdf_bytes:
-                error_msg = 'Failed to generate invoice PDF'
-                print(f"[CHECKOUT] Error: {error_msg}")
-                return jsonify({'error': error_msg}), 500
-            
-            # Save to GridFS - this must succeed
             try:
-                pdf_file_id = save_pdf_to_gridfs(
-                    pdf_bytes=pdf_bytes,
-                    bill_id=str(bill.id),
-                    invoice_number=invoice_data.get('invoice_number', bill.bill_number),
-                    bill_number=bill.bill_number,
-                    bill_date=bill.bill_date
-                )
-                print(f"[CHECKOUT] PDF saved to GridFS: file_id={pdf_file_id}, size={len(pdf_bytes)} bytes")
-            except Exception as e:
-                error_msg = f'Failed to save invoice PDF to storage: {str(e)}'
-                print(f"[CHECKOUT] Error: {error_msg}")
-                import traceback
-                traceback.print_exc()
-                return jsonify({'error': error_msg}), 500
-            
-            # Store PDF metadata in bill
-            bill.pdf_file_id = pdf_file_id
-            bill.pdf_generated_at = datetime.utcnow()
-            bill.pdf_file_size = len(pdf_bytes)
-            
-            # Create Invoice document in MongoDB
-            try:
+                invoice_data = _build_invoice_data(bill)
                 invoice = Invoice(
                     bill=bill,
                     invoice_number=invoice_data.get('invoice_number', bill.bill_number),
                     customer=bill.customer,
                     branch=bill.branch,
-                    pdf_file_id=pdf_file_id,
+                    pdf_file_id=None,  # Generated lazily on first download/share
                     invoice_data=invoice_data,
                     generated_at=datetime.utcnow(),
                     status='generated'
                 )
                 invoice.save()
-                
-                # Link Invoice to Bill
                 bill.invoice = invoice
-                
-                print(f"[CHECKOUT] Invoice document created: invoice_id={invoice.id}, invoice_number={invoice.invoice_number}, pdf_file_id={pdf_file_id}")
+                print(f"[CHECKOUT] Invoice document created (PDF deferred): invoice_id={invoice.id}, invoice_number={invoice.invoice_number}")
             except Exception as e:
-                error_msg = f'Failed to create invoice document: {str(e)}'
-                print(f"[CHECKOUT] Error: {error_msg}")
+                print(f"[CHECKOUT] Warning: Failed to create Invoice document: {e}")
                 import traceback
                 traceback.print_exc()
-                return jsonify({'error': error_msg}), 500
-            
-            # PDF already logged above when saved to GridFS
 
         print(f"[CHECKOUT] Success: Bill {id} checked out successfully. Final amount: {bill.final_amount}")
         checkout_result = {
@@ -1467,6 +1981,16 @@ def checkout_bill(id, current_user=None):
             checkout_result['referral'] = referral_info
         if cash_txn_warning:
             checkout_result['cash_register_warning'] = cash_txn_warning
+
+        # Bundle the invoice data directly in the response so the frontend doesn't
+        # need a separate GET /invoice round-trip. Reuse the dict built during Invoice
+        # creation to avoid computing it twice.
+        try:
+            checkout_result['invoice'] = invoice_data if invoice_data is not None else _build_invoice_data(bill)
+        except Exception as inv_err:
+            print(f"[CHECKOUT] Warning: inline invoice data build failed: {inv_err}")
+            # Non-fatal — frontend will fall back to GET /invoice
+
         return jsonify(checkout_result)
     except Bill.DoesNotExist:
         print(f"[CHECKOUT] Error: Bill {id} not found")

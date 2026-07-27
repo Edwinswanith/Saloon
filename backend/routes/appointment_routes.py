@@ -552,7 +552,8 @@ def get_calendar_view(current_user=None):
         return jsonify({'error': str(e)}), 500
 
 @appointment_bp.route('/appointments/available-slots', methods=['GET'])
-def get_available_slots():
+@require_auth
+def get_available_slots(current_user=None):
     """Get available time slots for a staff on a specific date"""
     try:
         staff_id = request.args.get('staff_id', type=str)
@@ -578,13 +579,18 @@ def get_available_slots():
         # Validate and get staff
         if not ObjectId.is_valid(staff_id):
             return jsonify({'error': 'Invalid staff ID format'}), 400
-        
+
         try:
             staff = Staff.objects.get(id=staff_id)
         except DoesNotExist:
             return jsonify({'error': 'Staff not found'}), 400
         except ValidationError:
             return jsonify({'error': 'Invalid staff ID format'}), 400
+
+        # Enforce branch boundary — caller can't peek at another branch's staff calendar
+        branch = get_selected_branch(request, current_user)
+        if branch and staff.branch and str(staff.branch.id) != str(branch.id):
+            return jsonify({'error': 'Staff does not belong to this branch'}), 403
 
         # Get existing appointments for this staff on this date - force evaluation
         existing_appointments = list(Appointment.objects(
@@ -638,35 +644,33 @@ def get_appointment_stats(current_user=None):
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
 
-        # Get branch for filtering
         branch = get_selected_branch(request, current_user)
-        query = Appointment.objects
+
+        match = {}
         if branch:
-            query = query.filter(branch=branch)
-
+            match['branch'] = ObjectId(str(branch.id))
         if start_date:
-            start = datetime.strptime(start_date, '%Y-%m-%d').date()
-            query = query.filter(appointment_date__gte=start)
+            match.setdefault('appointment_date', {})['$gte'] = datetime.combine(
+                datetime.strptime(start_date, '%Y-%m-%d').date(), time.min)
         if end_date:
-            end = datetime.strptime(end_date, '%Y-%m-%d').date()
-            # Note: appointment_date is a DateField, so we can't set time, but the filter will include the full day
-            query = query.filter(appointment_date__lte=end)
+            match.setdefault('appointment_date', {})['$lte'] = datetime.combine(
+                datetime.strptime(end_date, '%Y-%m-%d').date(), time.max)
 
-        # Force evaluation by converting to list
-        appointments = list(query)
+        pipeline = []
+        if match:
+            pipeline.append({'$match': match})
+        pipeline.append({'$group': {'_id': '$status', 'count': {'$sum': 1}}})
 
-        total = len(appointments)
-        completed = len([a for a in appointments if a.status == 'completed'])
-        confirmed = len([a for a in appointments if a.status == 'confirmed'])
-        cancelled = len([a for a in appointments if a.status == 'cancelled'])
-        no_show = len([a for a in appointments if a.status == 'no-show'])
+        counts = {row['_id']: row['count'] for row in Appointment.objects.aggregate(pipeline)}
+        total = sum(counts.values())
+        completed = counts.get('completed', 0)
 
         return jsonify({
             'total_appointments': total,
             'completed': completed,
-            'confirmed': confirmed,
-            'cancelled': cancelled,
-            'no_show': no_show,
+            'confirmed': counts.get('confirmed', 0),
+            'cancelled': counts.get('cancelled', 0),
+            'no_show': counts.get('no-show', 0),
             'completion_rate': (completed / total * 100) if total > 0 else 0
         })
     except Exception as e:

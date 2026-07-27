@@ -4,10 +4,17 @@ import {
   FaTrash,
   FaPlus,
   FaCloudUploadAlt,
+  FaTimes,
 } from 'react-icons/fa'
 import * as XLSX from 'xlsx'
 import './Tax.css'
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
+import CompactSelect from './shared/CompactSelect'
+
+const PRICING_TYPE_OPTIONS = [
+  { value: 'inclusive', label: 'Price Includes Tax (Inclusive)' },
+  { value: 'exclusive', label: 'Price Excludes Tax (Exclusive)' },
+]
 const Tax = () => {
   const [settings, setSettings] = useState({
     gstNumber: '',
@@ -325,29 +332,27 @@ const Tax = () => {
                 </p>
                 <div className="form-group">
                   <label htmlFor="servicePricingType">For Services:</label>
-                  <select
+                  <CompactSelect
                     id="servicePricingType"
                     value={settings.servicePricingType}
-                    onChange={(e) =>
-                      handleSettingsChange('servicePricingType', e.target.value)
+                    onChange={(v) =>
+                      handleSettingsChange('servicePricingType', v)
                     }
-                  >
-                    <option value="inclusive">Price Includes Tax (Inclusive)</option>
-                    <option value="exclusive">Price Excludes Tax (Exclusive)</option>
-                  </select>
+                    options={PRICING_TYPE_OPTIONS}
+                    placeholder="Select pricing type"
+                  />
                 </div>
                 <div className="form-group">
                   <label htmlFor="productPricingType">For Products:</label>
-                  <select
+                  <CompactSelect
                     id="productPricingType"
                     value={settings.productPricingType}
-                    onChange={(e) =>
-                      handleSettingsChange('productPricingType', e.target.value)
+                    onChange={(v) =>
+                      handleSettingsChange('productPricingType', v)
                     }
-                  >
-                    <option value="inclusive">Price Includes Tax (Inclusive)</option>
-                    <option value="exclusive">Price Excludes Tax (Exclusive)</option>
-                  </select>
+                    options={PRICING_TYPE_OPTIONS}
+                    placeholder="Select pricing type"
+                  />
                 </div>
               </div>
 
@@ -553,7 +558,17 @@ const Tax = () => {
       {showImportModal && (
         <div className="modal-overlay" onClick={() => setShowImportModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Import Tax Slabs</h2>
+            <div className="std-modal-header">
+              <h2>Import Tax Slabs</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowImportModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <div className="import-instructions">
               <p>Upload a CSV or Excel file (.csv, .xlsx, .xls) with the following columns:</p>
               <ul>

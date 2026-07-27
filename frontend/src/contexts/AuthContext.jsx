@@ -43,9 +43,10 @@ export const AuthProvider = ({ children }) => {
 
           // Validate token by fetching current user info
           await validateToken(storedToken);
-          
-          // Load branches if user is authenticated
-          if (userData && userData.role === 'owner') {
+
+          // Load branches for every authenticated user — staff/manager/owner can all
+          // pick any branch and work there.
+          if (userData) {
             await fetchBranches();
           }
           
@@ -53,6 +54,11 @@ export const AuthProvider = ({ children }) => {
           if (storedBranch) {
             const branchData = JSON.parse(storedBranch);
             setCurrentBranch(branchData);
+          } else if (userData && userData.role === 'owner') {
+            // Owner with no prior selection — default to All Branches.
+            const allBranches = { id: null, name: 'All Branches', isAll: true };
+            setCurrentBranch(allBranches);
+            sessionStorage.setItem('current_branch', JSON.stringify(allBranches));
           } else if (userData && userData.branch) {
             setCurrentBranch(userData.branch);
             sessionStorage.setItem('current_branch', JSON.stringify(userData.branch));
@@ -132,9 +138,15 @@ export const AuthProvider = ({ children }) => {
 
       sessionStorage.setItem('auth_token', data.token);
       sessionStorage.setItem('auth_user', JSON.stringify(data.user));
-      
-      // Set branch from login response (prioritize branch object, then branch_id)
-      if (data.branch) {
+
+      // Owners default to "All Branches" combined view — they can drill into a
+      // specific branch from the BranchSelector. Staff/manager fall through to
+      // the per-branch logic below since they're branch-locked.
+      if (data.user.role === 'owner') {
+        const allBranches = { id: null, name: 'All Branches', isAll: true };
+        setCurrentBranch(allBranches);
+        sessionStorage.setItem('current_branch', JSON.stringify(allBranches));
+      } else if (data.branch) {
         // Use branch from response (most complete)
         setCurrentBranch(data.branch);
         sessionStorage.setItem('current_branch', JSON.stringify(data.branch));
@@ -164,8 +176,9 @@ export const AuthProvider = ({ children }) => {
         }
       }
       
-      // Fetch branches if user is Owner (if not already fetched)
-      if (data.user.role === 'owner' && branches.length === 0) {
+      // Fetch branches for every role so the BranchSelector is populated for
+      // staff/manager/owner alike.
+      if (branches.length === 0) {
         await fetchBranches();
       }
 
@@ -330,7 +343,7 @@ export const AuthProvider = ({ children }) => {
     return discountLimits[user.role] || 0;
   };
   
-  // Fetch all branches (Owner only)
+  // Fetch all branches — every role uses this list to populate the BranchSelector.
   const fetchBranches = async () => {
     try {
       if (!token) return;
@@ -356,13 +369,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
   
-  // Switch branch (Owner only)
+  // Switch branch — any authenticated user (staff/manager/owner) may pick any
+  // active branch and work there. Pass `null` to switch to the synthetic
+  // "All Branches" combined view (owner-only — backend rejects others).
   const switchBranch = async (branchId) => {
     try {
-      if (!token || !user || user.role !== 'owner') {
-        throw new Error('Only Owner can switch branches');
+      if (!token || !user) {
+        throw new Error('Not authenticated');
       }
-      
+      if (branchId === null && user.role !== 'owner') {
+        throw new Error('Only Owner can use the All Branches view');
+      }
+
       const response = await fetch(`${API_BASE_URL}/api/auth/switch-branch`, {
         method: 'PUT',
         headers: {
@@ -378,12 +396,20 @@ export const AuthProvider = ({ children }) => {
         throw new Error(data.error || 'Failed to switch branch');
       }
 
-      // Update current branch
+      // Backend returns `branch: null` for the All-Branches case. Store the
+      // sentinel locally so getBranchId() can suppress the X-Branch-Id header.
+      if (branchId === null) {
+        const allBranches = { id: null, name: 'All Branches', isAll: true };
+        setCurrentBranch(allBranches);
+        sessionStorage.setItem('current_branch', JSON.stringify(allBranches));
+        return { success: true, branch: allBranches };
+      }
+
       if (data.branch) {
         setCurrentBranch(data.branch);
         sessionStorage.setItem('current_branch', JSON.stringify(data.branch));
       }
-      
+
       return { success: true, branch: data.branch };
     } catch (error) {
       console.error('Switch branch error:', error);
@@ -391,9 +417,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
   
-  // Get branch ID for API requests
+  // Get branch ID for API requests. Returning null causes utils/api.js to omit
+  // the X-Branch-Id header, which makes the backend aggregate across all branches.
   const getBranchId = () => {
-    if (currentBranch) {
+    // Owner has explicitly chosen "All Branches" — suppress the header.
+    if (currentBranch && currentBranch.isAll) {
+      return null;
+    }
+    if (currentBranch && currentBranch.id) {
       return currentBranch.id;
     }
     if (user && user.branch_id) {

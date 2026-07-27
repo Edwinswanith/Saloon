@@ -5,7 +5,7 @@ from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
 from mongoengine import Q
 from utils.branch_filter import get_selected_branch
-from utils.auth import require_auth
+from utils.auth import require_auth, require_role
 
 attendance_bp = Blueprint('attendance', __name__)
 
@@ -91,7 +91,8 @@ def get_attendance_record(id):
         return jsonify({'error': str(e)}), 500
 
 @attendance_bp.route('/check-in', methods=['POST'])
-def check_in():
+@require_auth
+def check_in(current_user=None):
     """Staff check-in"""
     try:
         data = request.get_json()
@@ -148,7 +149,8 @@ def check_in():
         return jsonify({'error': str(e)}), 500
 
 @attendance_bp.route('/check-out', methods=['POST'])
-def check_out():
+@require_auth
+def check_out(current_user=None):
     """Staff check-out"""
     try:
         data = request.get_json()
@@ -194,8 +196,9 @@ def check_out():
         return jsonify({'error': str(e)}), 500
 
 @attendance_bp.route('/mark', methods=['POST'])
-def mark_attendance():
-    """Mark attendance for a staff member (create or update)"""
+@require_role('manager', 'owner')
+def mark_attendance(current_user=None):
+    """Mark attendance for a staff member (create or update) — manager/owner only"""
     try:
         data = request.get_json()
         if not data:
@@ -282,8 +285,9 @@ def mark_attendance():
         return jsonify({'error': f'Unexpected error: {str(e)}', 'traceback': traceback.format_exc()}), 500
 
 @attendance_bp.route('/', methods=['POST'])
-def create_attendance():
-    """Create attendance record manually"""
+@require_role('manager', 'owner')
+def create_attendance(current_user=None):
+    """Create attendance record manually (manager/owner only)"""
     try:
         data = request.get_json()
 
@@ -353,8 +357,9 @@ def create_attendance():
         return jsonify({'error': str(e)}), 500
 
 @attendance_bp.route('/<id>', methods=['PUT'])
-def update_attendance(id):
-    """Update attendance record"""
+@require_role('manager', 'owner')
+def update_attendance(id, current_user=None):
+    """Update attendance record (manager/owner only)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid attendance ID format'}), 400
@@ -396,8 +401,9 @@ def update_attendance(id):
         return jsonify({'error': str(e)}), 500
 
 @attendance_bp.route('/<id>', methods=['DELETE'])
-def delete_attendance(id):
-    """Delete attendance record"""
+@require_role('manager', 'owner')
+def delete_attendance(id, current_user=None):
+    """Delete attendance record (manager/owner only)"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid attendance ID format'}), 400
@@ -412,7 +418,8 @@ def delete_attendance(id):
         return jsonify({'error': str(e)}), 500
 
 @attendance_bp.route('/staff/<staff_id>', methods=['GET'])
-def get_staff_attendance(staff_id):
+@require_auth
+def get_staff_attendance(staff_id, current_user=None):
     """Get attendance history for a specific staff member"""
     try:
         if not ObjectId.is_valid(staff_id):
@@ -423,10 +430,17 @@ def get_staff_attendance(staff_id):
         except DoesNotExist:
             return jsonify({'error': 'Staff not found'}), 404
 
+        # Branch scope — staff from another branch can't be queried across the boundary
+        branch = get_selected_branch(request, current_user)
+        if branch and staff.branch and str(staff.branch.id) != str(branch.id):
+            return jsonify({'error': 'Staff does not belong to this branch'}), 403
+
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
 
         query = StaffAttendance.objects.filter(staff=staff)
+        if branch:
+            query = query.filter(branch=branch)
 
         if start_date:
             start = datetime.strptime(start_date, '%Y-%m-%d').date()

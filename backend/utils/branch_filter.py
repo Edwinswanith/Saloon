@@ -105,18 +105,11 @@ def get_selected_branch(request_obj, user):
             if ObjectId.is_valid(branch_id_header):
                 branch = Branch.objects(id=branch_id_header).first()
                 if branch:
-                    print(f"[BRANCH_FILTER] Found branch from header: {branch.name} (ID: {branch.id})")
-                    # Check if user is Owner (can access any branch)
-                    if user_role == 'owner':
-                        print(f"[BRANCH_FILTER] Owner accessing branch: {branch.name}")
-                        return branch
-                    # Check if user's branch matches
-                    user_branch = get_user_branch(user)
-                    if user_branch and str(user_branch.id) == branch_id_header:
-                        print(f"[BRANCH_FILTER] User branch matches header: {branch.name}")
-                        return branch
-                    else:
-                        print(f"[BRANCH_FILTER] User branch mismatch. User branch: {user_branch.id if user_branch else None}, Header: {branch_id_header}")
+                    # Any authenticated user (staff/manager/owner) can pick any active branch.
+                    # The original assigned branch is no longer enforced — every staff member
+                    # is allowed to log in and work at any branch.
+                    print(f"[BRANCH_FILTER] {user_role or 'user'} accessing branch from header: {branch.name}")
+                    return branch
                 else:
                     print(f"[BRANCH_FILTER] Branch not found for ID: {branch_id_header}")
             else:
@@ -147,41 +140,24 @@ def filter_by_branch(query, branch):
 
 def require_branch_access(branch_id, user):
     """
-    Check if user can access the specified branch
-    Returns (allowed: bool, branch: Branch or None)
-    
-    Args:
-        branch_id: Branch ID as string
-        user: Can be either a dict (from JWT token) or a MongoEngine document (Staff/Manager)
+    Check if user can access the specified branch.
+
+    All authenticated users (staff/manager/owner) can access any active branch.
+    Staff are pooled across the business and may sign in to and work at any branch.
+    Returns (allowed: bool, branch: Branch or None).
     """
     if not user or not branch_id:
         return False, None
-    
+
     try:
         if not ObjectId.is_valid(branch_id):
             return False, None
-        
+
         branch = Branch.objects(id=branch_id).first()
         if not branch:
             return False, None
-        
-        # Get user role (handle both dict and document)
-        user_role = None
-        if isinstance(user, dict):
-            user_role = user.get('role')
-        elif hasattr(user, 'role'):
-            user_role = user.role
-        
-        # Owner can access any branch
-        if user_role == 'owner':
-            return True, branch
-        
-        # Staff/Manager can only access their assigned branch
-        user_branch = get_user_branch(user)
-        if user_branch and str(user_branch.id) == branch_id:
-            return True, branch
-        
-        return False, None
+
+        return True, branch
     except Exception:
         return False, None
 

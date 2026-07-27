@@ -1,11 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { FaCloudUploadAlt, FaPlus, FaDownload, FaEdit, FaTrash, FaChevronDown, FaUserPlus } from 'react-icons/fa'
+import { FaCloudUploadAlt, FaPlus, FaDownload, FaEdit, FaTrash, FaChevronDown, FaUserPlus, FaTimes } from 'react-icons/fa'
 import { Modal, Input, Select, DatePicker, Button, Form } from 'antd'
 import dayjs from 'dayjs'
 import './LeadManagement.css'
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
 import { useAuth } from '../contexts/AuthContext'
+import CompactSelect from './shared/CompactSelect'
+
+const LEAD_STATUS_OPTIONS = [
+  { value: 'all', label: 'All Status' },
+  { value: 'new', label: 'New' },
+  { value: 'contacted', label: 'Contacted' },
+  { value: 'follow-up', label: 'Follow-up' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'lost', label: 'Lost' },
+]
 
 const { TextArea } = Input
 const ITEMS_PER_PAGE = 15
@@ -343,20 +353,14 @@ const LeadManagement = () => {
 
             {/* Action Bar */}
             <div className="action-bar">
-              <div className="status-dropdown-wrapper">
-                <select
-                  className="status-dropdown"
+              <div className="status-dropdown-wrapper" style={{ minWidth: 160 }}>
+                <CompactSelect
+                  className="lead-status-select"
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="all">All Status</option>
-                  <option value="new">New</option>
-                  <option value="contacted">Contacted</option>
-                  <option value="follow-up">Follow-up</option>
-                  <option value="completed">Completed</option>
-                  <option value="lost">Lost</option>
-                </select>
-                <span className="dropdown-arrow"><FaChevronDown /></span>
+                  onChange={(v) => setStatusFilter(v)}
+                  options={LEAD_STATUS_OPTIONS}
+                  placeholder="All Status"
+                />
               </div>
 
               <button className="action-btn upload-btn" onClick={handleUploadLeads}>
@@ -613,7 +617,17 @@ const LeadManagement = () => {
       {showUploadModal && (
         <div className="modal-overlay" onClick={() => setShowUploadModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Upload Leads</h2>
+            <div className="std-modal-header">
+              <h2>Upload Leads</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowUploadModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <div className="import-instructions">
               <p>Upload a CSV file with the following columns:</p>
               <ul>

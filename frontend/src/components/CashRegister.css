@@ -129,6 +129,23 @@
   color: var(--gray-700);
 }
 
+/* Trigger styling for the CompactSelect dropdowns used in the monthly/daily filter */
+.cash-date-select {
+  padding: 8px 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: 8px;
+  background: white;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--gray-800);
+  min-height: 38px;
+  transition: border-color 0.15s ease;
+}
+
+.cash-date-select:hover {
+  border-color: var(--primary-700);
+}
+
 .date-input-wrapper {
   position: relative;
   display: flex;
@@ -231,6 +248,11 @@
   gap: 20px;
   margin-bottom: 24px;
   align-items: start;
+}
+
+.summary-cards--staff {
+  grid-template-columns: auto;
+  justify-content: flex-start;
 }
 
 .summary-card {

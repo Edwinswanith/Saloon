@@ -80,13 +80,23 @@
         {% if items and items|length > 0 %}
           {% for item in items %}
           <tr>
-            <td class="col-item">{{ item.name or 'Item' }}</td>
+            <td class="col-item">
+              {{ item.name or 'Item' }}
+              {% if item.membership_discount and item.membership_discount > 0 %}
+              <div style="margin-top:2px;display:inline-block;padding:1px 6px;font-size:9px;font-weight:700;background:#d1fae5;color:#047857;border-radius:8px;letter-spacing:0.3px;">
+                MEMBER · {{ item.membership_discount_pct }}% OFF
+              </div>
+              {% endif %}
+            </td>
             <td class="col-staff">{{ item.staff_name or 'N/A' }}</td>
             <td class="col-type">{{ (item.type or 'service') | capitalize }}</td>
             <td class="col-qty">{{ item.quantity or 1 }}</td>
             <td class="col-price">{{ item.price | format_currency }}</td>
             <td class="col-tax">{{ item.tax | format_currency }}</td>
-            <td class="col-discount">{{ item.discount | format_currency }}</td>
+            <td class="col-discount">
+              {% set total_line_discount = (item.discount or 0) + (item.membership_discount or 0) %}
+              {% if total_line_discount > 0 %}{{ total_line_discount | format_currency }}{% else %}—{% endif %}
+            </td>
             <td class="col-amt">{{ item.total | format_currency }}</td>
           </tr>
           {% endfor %}
@@ -105,7 +115,9 @@
         <span class="summary-value">{{ summary.subtotal | format_currency }}</span>
       </div>
       <div class="summary-row">
-        <span class="summary-label">Discount</span>
+        <span class="summary-label">
+          Discount{% if summary.offer %} ({{ summary.offer.name }} – {{ summary.offer.percentage|round(0, 'floor')|int }}%){% endif %}
+        </span>
         <span class="summary-value">{{ summary.discount | format_currency }}</span>
       </div>
       {% if summary.referral_discount and summary.referral_discount > 0 %}

@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from 'react'
-import { FaEdit, FaTrash } from 'react-icons/fa'
+import { createPortal } from 'react-dom'
+import { FaEdit, FaTrash, FaTimes } from 'react-icons/fa'
 import './Inventory.css'
 import { apiGet, apiPost, apiDelete } from '../utils/api'
 import { useAuth } from '../contexts/AuthContext'
+import CompactSelect from './shared/CompactSelect'
+
+const STATUS_OPTIONS = [
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
+]
 
 const Inventory = () => {
   const { currentBranch } = useAuth()
@@ -239,10 +246,20 @@ const Inventory = () => {
       </div>
 
       {/* Supplier Modal */}
-      {showSupplierModal && (
+      {showSupplierModal && createPortal(
         <div className="modal-overlay" onClick={() => setShowSupplierModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>{editingSupplier ? 'Edit Supplier' : 'Add Supplier'}</h2>
+            <div className="std-modal-header">
+              <h2>{editingSupplier ? 'Edit Supplier' : 'Add Supplier'}</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowSupplierModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <div className="form-group">
               <label>Name *</label>
               <input
@@ -278,20 +295,21 @@ const Inventory = () => {
             </div>
             <div className="form-group">
               <label>Status</label>
-              <select
+              <CompactSelect
+                className="form-select"
                 value={supplierFormData.status}
-                onChange={(e) => setSupplierFormData({ ...supplierFormData, status: e.target.value })}
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
+                onChange={(v) => setSupplierFormData({ ...supplierFormData, status: v })}
+                options={STATUS_OPTIONS}
+                placeholder="Select status"
+              />
             </div>
             <div className="modal-actions">
               <button className="btn-cancel" onClick={() => setShowSupplierModal(false)}>Cancel</button>
               <button className="btn-save" onClick={handleSaveSupplier}>Save</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

@@ -1,0 +1,1215 @@
+{
+  "applied_at": "2026-05-05T08:01:49.473726",
+  "entries": [
+    {
+      "bill_id": "69c3b8587a6fc92bbd2ba5ed",
+      "bill_number": "BILL-20260325102632-B2AF",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69c3b85e09f6e5b14ce4b85c"
+      ]
+    },
+    {
+      "bill_id": "69d3a3e695b1f9e831bc7fab",
+      "bill_number": "BILL-20260406121534-4256",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69d3a3f395b1f9e831bc7fb1"
+      ]
+    },
+    {
+      "bill_id": "69d3a3e395b1f9e831bc7faa",
+      "bill_number": "BILL-20260406121531-773E",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69d3a3f195b1f9e831bc7faf"
+      ]
+    },
+    {
+      "bill_id": "69d3c2d495b1f9e831bc7fcc",
+      "bill_number": "BILL-20260406142732-E44A",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69d3c2da95b1f9e831bc7fce"
+      ]
+    },
+    {
+      "bill_id": "69d3209495b1f9e831bc7f7d",
+      "bill_number": "BILL-20260406025516-7F21",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69d320a095b1f9e831bc7f7f"
+      ]
+    },
+    {
+      "bill_id": "69d3206395b1f9e831bc7f6f",
+      "bill_number": "BILL-20260406025427-1782",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69d3206c95b1f9e831bc7f75"
+      ]
+    },
+    {
+      "bill_id": "69d3205f910a834d069158d8",
+      "bill_number": "BILL-20260406025423-8F7B",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69d3206895b1f9e831bc7f71"
+      ]
+    },
+    {
+      "bill_id": "69d4a20b65eb8e3a9a2317f9",
+      "bill_number": "BILL-20260407061955-520B",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69d4a21165eb8e3a9a2317fe"
+      ]
+    },
+    {
+      "bill_id": "69d6649d27f1d8e15e681937",
+      "bill_number": "BILL-20260408142221-1B16",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69d664a327f1d8e15e681939"
+      ]
+    },
+    {
+      "bill_id": "69d66f09480e34bd1b251062",
+      "bill_number": "BILL-20260408150649-3C07",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69d66f0f27f1d8e15e68194a"
+      ]
+    },
+    {
+      "bill_id": "69d910b65cc1455ba8afc802",
+      "bill_number": "BILL-20260410150110-29E1",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69d910bca39e71d0f1ef58b2"
+      ]
+    },
+    {
+      "bill_id": "69d8c4355cc1455ba8afc7cd",
+      "bill_number": "BILL-20260410093445-ABBB",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69d8c43b5cc1455ba8afc7cf"
+      ]
+    },
+    {
+      "bill_id": "69db8015a39e71d0f1ef58cf",
+      "bill_number": "BILL-20260412112053-FA96",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69db801b5cc1455ba8afc832"
+      ]
+    },
+    {
+      "bill_id": "69db7acda39e71d0f1ef58c9",
+      "bill_number": "BILL-20260412105821-5996",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69db7ad65cc1455ba8afc82c"
+      ]
+    },
+    {
+      "bill_id": "69db4959a39e71d0f1ef58c8",
+      "bill_number": "BILL-20260412072721-B225",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69db495f5cc1455ba8afc821"
+      ]
+    },
+    {
+      "bill_id": "69dcf29d5cc1455ba8afc888",
+      "bill_number": "BILL-20260413134149-804B",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69dcf2a35cc1455ba8afc88d"
+      ]
+    },
+    {
+      "bill_id": "69dcf7fa5cc1455ba8afc897",
+      "bill_number": "BILL-20260413140442-BABB",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69dcf8035cc1455ba8afc899"
+      ]
+    },
+    {
+      "bill_id": "69e06b165cc1455ba8afc8e2",
+      "bill_number": "BILL-20260416045238-A48A",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e06b1d5cc1455ba8afc8e4"
+      ]
+    },
+    {
+      "bill_id": "69e4b13aa590bcb29ebbdc2e",
+      "bill_number": "BILL-20260419104058-ADF5",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e4b143a590bcb29ebbdc33"
+      ]
+    },
+    {
+      "bill_id": "69e4b13fa590bcb29ebbdc2f",
+      "bill_number": "BILL-20260419104103-D680",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e4b148a590bcb29ebbdc39"
+      ]
+    },
+    {
+      "bill_id": "69e4b8d4a590bcb29ebbdc48",
+      "bill_number": "BILL-20260419111324-6AA7",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e4b8daa590bcb29ebbdc4e"
+      ]
+    },
+    {
+      "bill_id": "69e4b8d5a590bcb29ebbdc49",
+      "bill_number": "BILL-20260419111325-4DAF",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e4b8dba590bcb29ebbdc4f"
+      ]
+    },
+    {
+      "bill_id": "69e6361b35b7f518cad07439",
+      "bill_number": "BILL-20260420142011-0439",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e6361e35b7f518cad0743a"
+      ]
+    },
+    {
+      "bill_id": "69e633ec35b7f518cad0742e",
+      "bill_number": "BILL-20260420141052-A6AB",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e633ef35b7f518cad07431"
+      ]
+    },
+    {
+      "bill_id": "69e633ec49734fd6f874ac4c",
+      "bill_number": "BILL-20260420141052-1B59",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e633ef35b7f518cad0742f"
+      ]
+    },
+    {
+      "bill_id": "69e633ec35b7f518cad0742c",
+      "bill_number": "BILL-20260420141052-2D1C",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e633ef49734fd6f874ac4d"
+      ]
+    },
+    {
+      "bill_id": "69e62bbe35b7f518cad07422",
+      "bill_number": "BILL-20260420133558-AC15",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e62bc349734fd6f874ac43"
+      ]
+    },
+    {
+      "bill_id": "69e637e335b7f518cad07444",
+      "bill_number": "BILL-20260420142747-4121",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e637e535b7f518cad07445"
+      ]
+    },
+    {
+      "bill_id": "69e6388135b7f518cad07447",
+      "bill_number": "BILL-20260420143025-0C58",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e6388335b7f518cad07449"
+      ]
+    },
+    {
+      "bill_id": "69e5ad96a590bcb29ebbdce2",
+      "bill_number": "BILL-20260420043742-6BF5",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e5ad9ca590bcb29ebbdce5"
+      ]
+    },
+    {
+      "bill_id": "69e5c64fa590bcb29ebbdd2a",
+      "bill_number": "BILL-20260420062311-0285",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e5c65ca590bcb29ebbdd2c"
+      ]
+    },
+    {
+      "bill_id": "69e60500398388caff3a91ea",
+      "bill_number": "BILL-20260420105040-A3AC",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e6050a4d9198ed5cad9505"
+      ]
+    },
+    {
+      "bill_id": "69e77c44dcac5ccd8691355b",
+      "bill_number": "BILL-20260421133148-9095",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e77c46dcac5ccd8691355c"
+      ]
+    },
+    {
+      "bill_id": "69e77ed0dcac5ccd86913566",
+      "bill_number": "BILL-20260421134240-2E46",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e77ed5dcac5ccd86913568"
+      ]
+    },
+    {
+      "bill_id": "69e78484dcac5ccd86913576",
+      "bill_number": "BILL-20260421140700-E0DA",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e78488dcac5ccd8691357a"
+      ]
+    },
+    {
+      "bill_id": "69e78905dcac5ccd86913583",
+      "bill_number": "BILL-20260421142613-2C50",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e78909dcac5ccd86913587"
+      ]
+    },
+    {
+      "bill_id": "69e78ed7dcac5ccd86913597",
+      "bill_number": "BILL-20260421145103-CD6B",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e78eda249174d3bfb82670"
+      ]
+    },
+    {
+      "bill_id": "69e7287695fd90c6c6e0c384",
+      "bill_number": "BILL-20260421073414-ED98",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e728798a8294ae66ba8812"
+      ]
+    },
+    {
+      "bill_id": "69e76a2edcac5ccd86913549",
+      "bill_number": "BILL-20260421121438-3975",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e76a30dcac5ccd8691354b"
+      ]
+    },
+    {
+      "bill_id": "69e76a2fdcac5ccd8691354a",
+      "bill_number": "BILL-20260421121439-2F28",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e76a32dcac5ccd8691354c"
+      ]
+    },
+    {
+      "bill_id": "69e8ca20249174d3bfb8269a",
+      "bill_number": "BILL-20260422131616-11AB",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e8ca22dcac5ccd86913666"
+      ]
+    },
+    {
+      "bill_id": "69e8d85adcac5ccd86913681",
+      "bill_number": "BILL-20260422141658-9874",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e8d85fdcac5ccd86913683"
+      ]
+    },
+    {
+      "bill_id": "69e8bb12dcac5ccd8691363d",
+      "bill_number": "BILL-20260422121202-9F52",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e8bb15249174d3bfb82690"
+      ]
+    },
+    {
+      "bill_id": "69e8de54dcac5ccd869136a2",
+      "bill_number": "BILL-20260422144228-9030",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e8de56dcac5ccd869136a3"
+      ]
+    },
+    {
+      "bill_id": "69e8ea35dcac5ccd869136c7",
+      "bill_number": "BILL-20260422153309-B619",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e8ea39dcac5ccd869136c9"
+      ]
+    },
+    {
+      "bill_id": "69e8e7b6dcac5ccd869136bc",
+      "bill_number": "BILL-20260422152230-1B6D",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e8e7b8dcac5ccd869136bd"
+      ]
+    },
+    {
+      "bill_id": "69e8dfd0dcac5ccd869136af",
+      "bill_number": "BILL-20260422144848-8F2C",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e8dfd2dcac5ccd869136b0"
+      ]
+    },
+    {
+      "bill_id": "69e8de0edcac5ccd8691369d",
+      "bill_number": "BILL-20260422144118-6D1B",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e8de10dcac5ccd8691369e"
+      ]
+    },
+    {
+      "bill_id": "69e8dbd3249174d3bfb826a6",
+      "bill_number": "BILL-20260422143147-3208",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e8dbd5dcac5ccd8691368a"
+      ]
+    },
+    {
+      "bill_id": "69e877b2dcac5ccd869135e8",
+      "bill_number": "BILL-20260422072434-5BFD",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e877b6dcac5ccd869135eb"
+      ]
+    },
+    {
+      "bill_id": "69e869b6dcac5ccd869135b8",
+      "bill_number": "BILL-20260422062454-1103",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e869b8dcac5ccd869135b9"
+      ]
+    },
+    {
+      "bill_id": "69e8621fdcac5ccd869135aa",
+      "bill_number": "BILL-20260422055231-439B",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e86222dcac5ccd869135ab"
+      ]
+    },
+    {
+      "bill_id": "69e8621ddcac5ccd869135a8",
+      "bill_number": "BILL-20260422055229-63A1",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e8621fdcac5ccd869135a9"
+      ]
+    },
+    {
+      "bill_id": "69e8610edcac5ccd869135a1",
+      "bill_number": "BILL-20260422054758-8BDB",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e86111dcac5ccd869135a2"
+      ]
+    },
+    {
+      "bill_id": "69e87f44dcac5ccd869135fb",
+      "bill_number": "BILL-20260422075652-D345",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e87f49dcac5ccd86913600"
+      ]
+    },
+    {
+      "bill_id": "69e8b195dcac5ccd86913626",
+      "bill_number": "BILL-20260422113133-55D5",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e8b198dcac5ccd86913627"
+      ]
+    },
+    {
+      "bill_id": "69e8b192dcac5ccd86913624",
+      "bill_number": "BILL-20260422113130-ACBF",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e8b195dcac5ccd86913625"
+      ]
+    },
+    {
+      "bill_id": "69e87f48dcac5ccd869135fe",
+      "bill_number": "BILL-20260422075656-8D12",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e87f4adcac5ccd86913601"
+      ]
+    },
+    {
+      "bill_id": "69e883f5dcac5ccd86913605",
+      "bill_number": "BILL-20260422081653-18F7",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e883fadcac5ccd86913607"
+      ]
+    },
+    {
+      "bill_id": "69e88ad5dcac5ccd86913613",
+      "bill_number": "BILL-20260422084613-54B3",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e88ad8dcac5ccd86913614"
+      ]
+    },
+    {
+      "bill_id": "69ea1c9d249174d3bfb826d2",
+      "bill_number": "BILL-20260423132029-6005",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69ea1ca1dcac5ccd86913733"
+      ]
+    },
+    {
+      "bill_id": "69ea1646dcac5ccd86913728",
+      "bill_number": "BILL-20260423125326-4C4D",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69ea164adcac5ccd8691372b"
+      ]
+    },
+    {
+      "bill_id": "69ea15f6dcac5ccd86913722",
+      "bill_number": "BILL-20260423125206-3B1F",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69ea15fadcac5ccd86913724"
+      ]
+    },
+    {
+      "bill_id": "69ea0d80dcac5ccd86913718",
+      "bill_number": "BILL-20260423121600-AEB7",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69ea0d83dcac5ccd8691371a"
+      ]
+    },
+    {
+      "bill_id": "69ea3c28249174d3bfb826db",
+      "bill_number": "BILL-20260423153504-A944",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69ea3c2adcac5ccd86913756"
+      ]
+    },
+    {
+      "bill_id": "69e9cbc5dcac5ccd869136e2",
+      "bill_number": "BILL-20260423073533-4ADA",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e9cbcadcac5ccd869136e4"
+      ]
+    },
+    {
+      "bill_id": "69ea032edcac5ccd86913709",
+      "bill_number": "BILL-20260423113158-75E8",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69ea0332dcac5ccd8691370c"
+      ]
+    },
+    {
+      "bill_id": "69e9ef5fdcac5ccd869136fb",
+      "bill_number": "BILL-20260423100727-FE01",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69e9ef63249174d3bfb826c5"
+      ]
+    },
+    {
+      "bill_id": "69eb7671249174d3bfb826f9",
+      "bill_number": "BILL-20260424135601-EF50",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69eb7673dcac5ccd869137d6"
+      ]
+    },
+    {
+      "bill_id": "69eb75e3dcac5ccd869137cf",
+      "bill_number": "BILL-20260424135339-618A",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69eb75e5dcac5ccd869137d0"
+      ]
+    },
+    {
+      "bill_id": "69eb7f82dcac5ccd869137eb",
+      "bill_number": "BILL-20260424143442-4AD3",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69eb7f84dcac5ccd869137ec"
+      ]
+    },
+    {
+      "bill_id": "69eb904bdcac5ccd869137fe",
+      "bill_number": "BILL-20260424154619-64EE",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69eb9050dcac5ccd86913803"
+      ]
+    },
+    {
+      "bill_id": "69eb904ddcac5ccd86913801",
+      "bill_number": "BILL-20260424154621-998F",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69eb9052dcac5ccd86913805"
+      ]
+    },
+    {
+      "bill_id": "69eb1d9edcac5ccd8691376f",
+      "bill_number": "BILL-20260424073702-6254",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69eb1da3dcac5ccd86913771"
+      ]
+    },
+    {
+      "bill_id": "69eb510e249174d3bfb826ee",
+      "bill_number": "BILL-20260424111630-317B",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69eb5112dcac5ccd86913794"
+      ]
+    },
+    {
+      "bill_id": "69ecccfedcac5ccd8691387c",
+      "bill_number": "BILL-20260425141734-A803",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69eccd00dcac5ccd8691387d"
+      ]
+    },
+    {
+      "bill_id": "69ecd5bddcac5ccd8691388a",
+      "bill_number": "BILL-20260425145453-1E72",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69ecd5bfdcac5ccd8691388b"
+      ]
+    },
+    {
+      "bill_id": "69ecd6b7dcac5ccd86913892",
+      "bill_number": "BILL-20260425145903-C866",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69ecd6b9dcac5ccd86913893"
+      ]
+    },
+    {
+      "bill_id": "69ecdf9edcac5ccd8691389f",
+      "bill_number": "BILL-20260425153702-354D",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69ecdfa0dcac5ccd869138a0"
+      ]
+    },
+    {
+      "bill_id": "69ec4c4edcac5ccd8691380f",
+      "bill_number": "BILL-20260425050830-1165",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69ec4c53249174d3bfb82700"
+      ]
+    },
+    {
+      "bill_id": "69ec4c53dcac5ccd86913810",
+      "bill_number": "BILL-20260425050835-FABF",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69ec4c57dcac5ccd86913812"
+      ]
+    },
+    {
+      "bill_id": "69ecb07cdcac5ccd8691384f",
+      "bill_number": "BILL-20260425121556-835F",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69ecb07fdcac5ccd86913850"
+      ]
+    },
+    {
+      "bill_id": "69eca212dcac5ccd86913844",
+      "bill_number": "BILL-20260425111426-4AB7",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69eca217dcac5ccd86913846"
+      ]
+    },
+    {
+      "bill_id": "69eca20ddcac5ccd86913841",
+      "bill_number": "BILL-20260425111421-AC9E",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69eca212dcac5ccd86913843"
+      ]
+    },
+    {
+      "bill_id": "69ee16e8249174d3bfb8272f",
+      "bill_number": "BILL-20260426134512-056E",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69ee16ecdcac5ccd8691390f"
+      ]
+    },
+    {
+      "bill_id": "69ee16e4249174d3bfb8272e",
+      "bill_number": "BILL-20260426134508-C06E",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69ee16e8dcac5ccd8691390c"
+      ]
+    },
+    {
+      "bill_id": "69ee1490dcac5ccd869138fd",
+      "bill_number": "BILL-20260426133512-7218",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69ee1494dcac5ccd86913900"
+      ]
+    },
+    {
+      "bill_id": "69ee13f3dcac5ccd869138f7",
+      "bill_number": "BILL-20260426133235-781A",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69ee13f6dcac5ccd869138f9"
+      ]
+    },
+    {
+      "bill_id": "69ee293ddcac5ccd8691391d",
+      "bill_number": "BILL-20260426150325-30E6",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69ee2942dcac5ccd86913922"
+      ]
+    },
+    {
+      "bill_id": "69ee2941dcac5ccd86913920",
+      "bill_number": "BILL-20260426150329-DE01",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69ee2945dcac5ccd86913924"
+      ]
+    },
+    {
+      "bill_id": "69ee2abcdcac5ccd86913927",
+      "bill_number": "BILL-20260426150948-4359",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69ee2abedcac5ccd86913928"
+      ]
+    },
+    {
+      "bill_id": "69edab13dcac5ccd869138b5",
+      "bill_number": "BILL-20260426060507-9CBF",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69edab15dcac5ccd869138b6"
+      ]
+    },
+    {
+      "bill_id": "69f07417dcac5ccd869139d9",
+      "bill_number": "BILL-20260428084719-4E2A",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f0741adcac5ccd869139db"
+      ]
+    },
+    {
+      "bill_id": "69f07419dcac5ccd869139da",
+      "bill_number": "BILL-20260428084721-03B2",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f0741bdcac5ccd869139dc"
+      ]
+    },
+    {
+      "bill_id": "69edd66adcac5ccd869138cd",
+      "bill_number": "BILL-20260426091002-C33B",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69edd66cdcac5ccd869138ce"
+      ]
+    },
+    {
+      "bill_id": "69ef5f8ddcac5ccd8691398d",
+      "bill_number": "BILL-20260427130725-D64F",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69ef5f91dcac5ccd8691398f"
+      ]
+    },
+    {
+      "bill_id": "69ef5f91249174d3bfb82751",
+      "bill_number": "BILL-20260427130729-F1F8",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69ef5f96dcac5ccd86913992"
+      ]
+    },
+    {
+      "bill_id": "69ef7655dcac5ccd869139b6",
+      "bill_number": "BILL-20260427144437-E964",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69ef7657dcac5ccd869139b8"
+      ]
+    },
+    {
+      "bill_id": "69ef18e0dcac5ccd86913945",
+      "bill_number": "BILL-20260427080552-922D",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69ef18e5dcac5ccd86913947"
+      ]
+    },
+    {
+      "bill_id": "69f0c19edcac5ccd86913a24",
+      "bill_number": "BILL-20260428141806-64CD",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f0c1a2dcac5ccd86913a27"
+      ]
+    },
+    {
+      "bill_id": "69f0bf24dcac5ccd86913a19",
+      "bill_number": "BILL-20260428140732-E77E",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f0bf28249174d3bfb82777"
+      ]
+    },
+    {
+      "bill_id": "69f0b453dcac5ccd86913a0b",
+      "bill_number": "BILL-20260428132123-98CE",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f0b458dcac5ccd86913a0d"
+      ]
+    },
+    {
+      "bill_id": "69f0c27adcac5ccd86913a2f",
+      "bill_number": "BILL-20260428142146-3149",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f0c27fdcac5ccd86913a33"
+      ]
+    },
+    {
+      "bill_id": "69f0c6e5dcac5ccd86913a3a",
+      "bill_number": "BILL-20260428144037-472C",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f0c6e9249174d3bfb8277f"
+      ]
+    },
+    {
+      "bill_id": "69f0d010dcac5ccd86913a4a",
+      "bill_number": "BILL-20260428151944-40BB",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f0d015dcac5ccd86913a4d"
+      ]
+    },
+    {
+      "bill_id": "69f08dfe249174d3bfb82771",
+      "bill_number": "BILL-20260428103750-B8BE",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f08e00dcac5ccd869139f5"
+      ]
+    },
+    {
+      "bill_id": "69f2152a2021a186ef97a1e9",
+      "bill_number": "BILL-20260429142650-6EF2",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f2152c2021a186ef97a1ea"
+      ]
+    },
+    {
+      "bill_id": "69f216662021a186ef97a1f0",
+      "bill_number": "BILL-20260429143206-A50B",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f216682021a186ef97a1f1"
+      ]
+    },
+    {
+      "bill_id": "69f1ecd12021a186ef97a1bf",
+      "bill_number": "BILL-20260429113441-DF44",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f1ecd32021a186ef97a1c0"
+      ]
+    },
+    {
+      "bill_id": "69f3613a2021a186ef97a26e",
+      "bill_number": "BILL-20260430140338-AFCF",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f3613c2021a186ef97a26f"
+      ]
+    },
+    {
+      "bill_id": "69f3571c2021a186ef97a258",
+      "bill_number": "BILL-20260430132028-E076",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f3571f2021a186ef97a25a"
+      ]
+    },
+    {
+      "bill_id": "69f36aeb2021a186ef97a27e",
+      "bill_number": "BILL-20260430144459-436A",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f36aef2021a186ef97a282"
+      ]
+    },
+    {
+      "bill_id": "69f30d932021a186ef97a21e",
+      "bill_number": "BILL-20260430080643-E399",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f30d954fc466b5aa8831e3"
+      ]
+    },
+    {
+      "bill_id": "69f5f9049ddc909c517ed96a",
+      "bill_number": "BILL-20260502131548-509C",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f5f906be9f900b4c37df2b"
+      ]
+    },
+    {
+      "bill_id": "69f60b89be9f900b4c37df38",
+      "bill_number": "BILL-20260502143449-9343",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f60b8ebe9f900b4c37df3a"
+      ]
+    },
+    {
+      "bill_id": "69f5e178be9f900b4c37df08",
+      "bill_number": "BILL-20260502113520-D0B7",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f5e17abe9f900b4c37df09"
+      ]
+    },
+    {
+      "bill_id": "69f5d1efbe9f900b4c37df01",
+      "bill_number": "BILL-20260502102903-3C2A",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f5d1f3be9f900b4c37df03"
+      ]
+    },
+    {
+      "bill_id": "69f75e51be9f900b4c37dfdb",
+      "bill_number": "BILL-20260503144017-773A",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f75e53be9f900b4c37dfdc"
+      ]
+    },
+    {
+      "bill_id": "69f8a31cbe9f900b4c37e01e",
+      "bill_number": "BILL-20260504134604-AF86",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f8a31ebe9f900b4c37e020"
+      ]
+    },
+    {
+      "bill_id": "69f85b979ddc909c517ed99d",
+      "bill_number": "BILL-20260504084055-D205",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f85b9bbe9f900b4c37e00c"
+      ]
+    },
+    {
+      "bill_id": "69f8a58dbe9f900b4c37e024",
+      "bill_number": "BILL-20260504135629-2252",
+      "previous_is_deleted": false,
+      "previous_deletion_reason": null,
+      "previous_deleted_at": null,
+      "cash_txn_ids": [
+        "69f8a591be9f900b4c37e028"
+      ]
+    }
+  ]
+}

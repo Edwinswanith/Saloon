@@ -1,0 +1,383 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e36]:
+    - complementary [ref=e37]:
+      - generic [ref=e38]:
+        - button "Close sidebar" [ref=e39] [cursor=pointer]:
+          - img [ref=e40]
+        - img "Priyanka Nature Cure" [ref=e43]
+      - navigation [ref=e44]:
+        - generic [ref=e46] [cursor=pointer]:
+          - img [ref=e48]
+          - generic [ref=e50]: Quick Sale
+        - generic [ref=e51]:
+          - generic: BILLING
+          - generic [ref=e53] [cursor=pointer]:
+            - img [ref=e55]
+            - generic [ref=e57]: Cash Register
+          - generic [ref=e59] [cursor=pointer]:
+            - img [ref=e61]
+            - generic [ref=e63]: Bill History
+          - generic [ref=e65] [cursor=pointer]:
+            - img [ref=e67]
+            - generic [ref=e69]: Appointment
+          - generic [ref=e71] [cursor=pointer]:
+            - img [ref=e73]
+            - generic [ref=e75]: Customers
+            - img [ref=e77]
+          - generic [ref=e80] [cursor=pointer]:
+            - img [ref=e82]
+            - generic [ref=e84]: Inventory
+          - generic [ref=e86] [cursor=pointer]:
+            - img [ref=e88]
+            - generic [ref=e90]: Discount Approvals
+          - generic [ref=e92] [cursor=pointer]:
+            - img [ref=e94]
+            - generic [ref=e96]: Approval Codes
+          - generic [ref=e98] [cursor=pointer]:
+            - img [ref=e100]
+            - generic [ref=e102]: Offer Campaigns
+          - generic [ref=e104] [cursor=pointer]:
+            - img [ref=e106]
+            - generic [ref=e108]: Offer Management
+        - generic [ref=e110] [cursor=pointer]:
+          - img [ref=e112]
+          - generic [ref=e114]: Dashboard
+        - generic [ref=e115]:
+          - generic: ANALYTICS
+          - generic [ref=e117] [cursor=pointer]:
+            - img [ref=e119]
+            - generic [ref=e121]: Reports & Analytics
+        - generic [ref=e122]:
+          - generic: MASTER
+          - generic [ref=e124] [cursor=pointer]:
+            - img [ref=e126]
+            - generic [ref=e128]: Saloon Settings
+            - img [ref=e130]
+          - generic [ref=e133] [cursor=pointer]:
+            - img [ref=e135]
+            - generic [ref=e137]: Staff Attendance
+          - generic [ref=e139] [cursor=pointer]:
+            - img [ref=e141]
+            - generic [ref=e143]: Asset Management
+          - generic [ref=e145] [cursor=pointer]:
+            - img [ref=e147]
+            - generic [ref=e149]: Expense
+    - banner [ref=e150]:
+      - generic [ref=e151]:
+        - button "Toggle menu" [ref=e152] [cursor=pointer]:
+          - img [ref=e153]
+        - generic "Priyanka Nature Cure" [ref=e157]
+        - generic [ref=e158]:
+          - button "All Branches ▼" [ref=e160] [cursor=pointer]:
+            - generic [ref=e161]: All Branches
+            - generic [ref=e162]: ▼
+          - button "Click to logout" [ref=e163] [cursor=pointer]:
+            - img [ref=e164]
+          - button "5" [ref=e167] [cursor=pointer]:
+            - img [ref=e168]
+            - generic: "5"
+          - button "DO" [ref=e170] [cursor=pointer]:
+            - generic [ref=e171]: DO
+    - main [ref=e172]:
+      - generic [ref=e174]:
+        - heading "Dashboard" [level=1] [ref=e177]
+        - generic [ref=e178]:
+          - generic [ref=e179]:
+            - button "Sales" [ref=e180] [cursor=pointer]
+            - button "Staff" [ref=e181] [cursor=pointer]
+          - generic [ref=e182]:
+            - generic [ref=e183]: "Filter:"
+            - button "This Month" [ref=e186] [cursor=pointer]:
+              - generic [ref=e187]: This Month
+              - img
+        - generic [ref=e189]:
+          - generic [ref=e190]:
+            - generic [ref=e191]: Staff Performance (Branch)
+            - generic [ref=e194]:
+              - list [ref=e196]:
+                - listitem [ref=e197]:
+                  - img "Appointments legend icon" [ref=e198]
+                  - text: Appointments
+                - listitem [ref=e200]:
+                  - img "Revenue legend icon" [ref=e201]
+                  - text: Revenue
+                - listitem [ref=e203]:
+                  - img "Services legend icon" [ref=e204]
+                  - text: Services
+              - application [ref=e206]:
+                - generic [ref=e257]:
+                  - generic [ref=e258]:
+                    - generic [ref=e260]: Nisha
+                    - generic [ref=e262]: Salomi
+                    - generic [ref=e264]: Baby Thapa
+                    - generic [ref=e266]: Ashmita Toto
+                    - generic [ref=e268]: Dummy Staff
+                    - generic [ref=e270]: Sunita
+                    - generic [ref=e272]: Rupsana
+                    - generic [ref=e274]: Paitika
+                  - generic [ref=e275]:
+                    - generic [ref=e277]: "0"
+                    - generic [ref=e279]: 15k
+                    - generic [ref=e281]: 30k
+                    - generic [ref=e283]: 45k
+                    - generic [ref=e285]: 60k
+          - generic [ref=e286]:
+            - generic [ref=e287]: Top Performer (Company-Wide)
+            - generic [ref=e289]:
+              - generic [ref=e290]:
+                - generic [ref=e291]:
+                  - generic [ref=e292]:
+                    - text: "N"
+                    - img [ref=e294]
+                  - generic [ref=e296]:
+                    - heading "Nisha" [level=3] [ref=e297]
+                    - generic [ref=e298]: TOP PERFORMER
+                - generic [ref=e299]:
+                  - generic [ref=e300]: "65.4"
+                  - generic [ref=e301]: /100 Score
+              - application [ref=e305]:
+                - generic [ref=e327]:
+                  - generic [ref=e328]:
+                    - generic [ref=e330]: 0%
+                    - generic [ref=e332]: 25%
+                    - generic [ref=e334]: 50%
+                    - generic [ref=e336]: 75%
+                    - generic [ref=e338]: 100%
+                  - generic [ref=e339]:
+                    - generic [ref=e341]: Revenue
+                    - generic [ref=e343]: Services
+                    - generic [ref=e345]: Rating
+                    - generic [ref=e347]: Appointments
+                    - generic [ref=e349]: Score
+              - generic [ref=e350]:
+                - generic [ref=e351]:
+                  - generic [ref=e352]: ₹ 45,395
+                  - generic [ref=e353]: Revenue
+                - generic [ref=e354]:
+                  - generic [ref=e355]: "95"
+                  - generic [ref=e356]: Services
+                - generic [ref=e357]:
+                  - generic [ref=e358]: 0/5
+                  - generic [ref=e359]: Rating
+                - generic [ref=e360]:
+                  - generic [ref=e361]: "0"
+                  - generic [ref=e362]: Appointments
+          - generic [ref=e363]:
+            - generic [ref=e364]: Employee Performance
+            - table [ref=e367]:
+              - rowgroup [ref=e368]:
+                - row "1 Nisha Item Count 95 Service 95 Package - Product - Membership - Total ₹ 45,395 Avg. Bill ₹ 478 Info" [ref=e369]:
+                  - cell "1" [ref=e370]:
+                    - generic [ref=e371]: "1"
+                  - cell "Nisha" [ref=e372]:
+                    - generic [ref=e373]:
+                      - img [ref=e374]
+                      - generic [ref=e376]: Nisha
+                  - cell "Item Count 95" [ref=e377]
+                  - cell "Service 95" [ref=e378]
+                  - cell "Package -" [ref=e379]
+                  - cell "Product -" [ref=e380]
+                  - cell "Membership -" [ref=e381]
+                  - cell "Total ₹ 45,395" [ref=e382]
+                  - cell "Avg. Bill ₹ 478" [ref=e383]
+                  - cell "Info" [ref=e384]:
+                    - button "Info" [ref=e385] [cursor=pointer]:
+                      - img [ref=e386]
+                      - generic [ref=e388]: Info
+                - row "2 Salomi Item Count 64 Service 64 Package - Product - Membership - Total ₹ 28,475 Avg. Bill ₹ 445 Info" [ref=e389]:
+                  - cell "2" [ref=e390]:
+                    - generic [ref=e391]: "2"
+                  - cell "Salomi" [ref=e392]:
+                    - generic [ref=e393]:
+                      - img [ref=e394]
+                      - generic [ref=e396]: Salomi
+                  - cell "Item Count 64" [ref=e397]
+                  - cell "Service 64" [ref=e398]
+                  - cell "Package -" [ref=e399]
+                  - cell "Product -" [ref=e400]
+                  - cell "Membership -" [ref=e401]
+                  - cell "Total ₹ 28,475" [ref=e402]
+                  - cell "Avg. Bill ₹ 445" [ref=e403]
+                  - cell "Info" [ref=e404]:
+                    - button "Info" [ref=e405] [cursor=pointer]:
+                      - img [ref=e406]
+                      - generic [ref=e408]: Info
+                - row "3 Baby Thapa Item Count 63 Service 63 Package - Product - Membership - Total ₹ 21,922 Avg. Bill ₹ 348 Info" [ref=e409]:
+                  - cell "3" [ref=e410]:
+                    - generic [ref=e411]: "3"
+                  - cell "Baby Thapa" [ref=e412]:
+                    - generic [ref=e413]:
+                      - img [ref=e414]
+                      - generic [ref=e416]: Baby Thapa
+                  - cell "Item Count 63" [ref=e417]
+                  - cell "Service 63" [ref=e418]
+                  - cell "Package -" [ref=e419]
+                  - cell "Product -" [ref=e420]
+                  - cell "Membership -" [ref=e421]
+                  - cell "Total ₹ 21,922" [ref=e422]
+                  - cell "Avg. Bill ₹ 348" [ref=e423]
+                  - cell "Info" [ref=e424]:
+                    - button "Info" [ref=e425] [cursor=pointer]:
+                      - img [ref=e426]
+                      - generic [ref=e428]: Info
+                - row "4 Ashmita Toto Item Count 76 Service 76 Package - Product - Membership - Total ₹ 20,885 Avg. Bill ₹ 275 Info" [ref=e429]:
+                  - cell "4" [ref=e430]:
+                    - generic [ref=e431]: "4"
+                  - cell "Ashmita Toto" [ref=e432]:
+                    - generic [ref=e433]:
+                      - img [ref=e434]
+                      - generic [ref=e436]: Ashmita Toto
+                  - cell "Item Count 76" [ref=e437]
+                  - cell "Service 76" [ref=e438]
+                  - cell "Package -" [ref=e439]
+                  - cell "Product -" [ref=e440]
+                  - cell "Membership -" [ref=e441]
+                  - cell "Total ₹ 20,885" [ref=e442]
+                  - cell "Avg. Bill ₹ 275" [ref=e443]
+                  - cell "Info" [ref=e444]:
+                    - button "Info" [ref=e445] [cursor=pointer]:
+                      - img [ref=e446]
+                      - generic [ref=e448]: Info
+                - row "5 Dummy Staff Item Count 12 Service 12 Package - Product - Membership - Total ₹ 12,230 Avg. Bill ₹ 1,019 Info" [ref=e449]:
+                  - cell "5" [ref=e450]:
+                    - generic [ref=e451]: "5"
+                  - cell "Dummy Staff" [ref=e452]:
+                    - generic [ref=e453]:
+                      - img [ref=e454]
+                      - generic [ref=e456]: Dummy Staff
+                  - cell "Item Count 12" [ref=e457]
+                  - cell "Service 12" [ref=e458]
+                  - cell "Package -" [ref=e459]
+                  - cell "Product -" [ref=e460]
+                  - cell "Membership -" [ref=e461]
+                  - cell "Total ₹ 12,230" [ref=e462]
+                  - cell "Avg. Bill ₹ 1,019" [ref=e463]
+                  - cell "Info" [ref=e464]:
+                    - button "Info" [ref=e465] [cursor=pointer]:
+                      - img [ref=e466]
+                      - generic [ref=e468]: Info
+                - row "6 Sunita Item Count 42 Service 42 Package - Product - Membership - Total ₹ 7,180 Avg. Bill ₹ 171 Info" [ref=e469]:
+                  - cell "6" [ref=e470]:
+                    - generic [ref=e471]: "6"
+                  - cell "Sunita" [ref=e472]:
+                    - generic [ref=e473]:
+                      - img [ref=e474]
+                      - generic [ref=e476]: Sunita
+                  - cell "Item Count 42" [ref=e477]
+                  - cell "Service 42" [ref=e478]
+                  - cell "Package -" [ref=e479]
+                  - cell "Product -" [ref=e480]
+                  - cell "Membership -" [ref=e481]
+                  - cell "Total ₹ 7,180" [ref=e482]
+                  - cell "Avg. Bill ₹ 171" [ref=e483]
+                  - cell "Info" [ref=e484]:
+                    - button "Info" [ref=e485] [cursor=pointer]:
+                      - img [ref=e486]
+                      - generic [ref=e488]: Info
+                - row "7 Rupsana Item Count 18 Service 18 Package - Product - Membership - Total ₹ 5,900 Avg. Bill ₹ 328 Info" [ref=e489]:
+                  - cell "7" [ref=e490]:
+                    - generic [ref=e491]: "7"
+                  - cell "Rupsana" [ref=e492]:
+                    - generic [ref=e493]:
+                      - img [ref=e494]
+                      - generic [ref=e496]: Rupsana
+                  - cell "Item Count 18" [ref=e497]
+                  - cell "Service 18" [ref=e498]
+                  - cell "Package -" [ref=e499]
+                  - cell "Product -" [ref=e500]
+                  - cell "Membership -" [ref=e501]
+                  - cell "Total ₹ 5,900" [ref=e502]
+                  - cell "Avg. Bill ₹ 328" [ref=e503]
+                  - cell "Info" [ref=e504]:
+                    - button "Info" [ref=e505] [cursor=pointer]:
+                      - img [ref=e506]
+                      - generic [ref=e508]: Info
+                - row "8 Paitika Item Count 28 Service 28 Package - Product - Membership - Total ₹ 5,880 Avg. Bill ₹ 210 Info" [ref=e509]:
+                  - cell "8" [ref=e510]:
+                    - generic [ref=e511]: "8"
+                  - cell "Paitika" [ref=e512]:
+                    - generic [ref=e513]:
+                      - img [ref=e514]
+                      - generic [ref=e516]: Paitika
+                  - cell "Item Count 28" [ref=e517]
+                  - cell "Service 28" [ref=e518]
+                  - cell "Package -" [ref=e519]
+                  - cell "Product -" [ref=e520]
+                  - cell "Membership -" [ref=e521]
+                  - cell "Total ₹ 5,880" [ref=e522]
+                  - cell "Avg. Bill ₹ 210" [ref=e523]
+                  - cell "Info" [ref=e524]:
+                    - button "Info" [ref=e525] [cursor=pointer]:
+                      - img [ref=e526]
+                      - generic [ref=e528]: Info
+                - row "9 Mahalakshmi Item Count 8 Service 8 Package - Product - Membership - Total ₹ 4,490 Avg. Bill ₹ 561 Info" [ref=e529]:
+                  - cell "9" [ref=e530]:
+                    - generic [ref=e531]: "9"
+                  - cell "Mahalakshmi" [ref=e532]:
+                    - generic [ref=e533]:
+                      - img [ref=e534]
+                      - generic [ref=e536]: Mahalakshmi
+                  - cell "Item Count 8" [ref=e537]
+                  - cell "Service 8" [ref=e538]
+                  - cell "Package -" [ref=e539]
+                  - cell "Product -" [ref=e540]
+                  - cell "Membership -" [ref=e541]
+                  - cell "Total ₹ 4,490" [ref=e542]
+                  - cell "Avg. Bill ₹ 561" [ref=e543]
+                  - cell "Info" [ref=e544]:
+                    - button "Info" [ref=e545] [cursor=pointer]:
+                      - img [ref=e546]
+                      - generic [ref=e548]: Info
+                - row "10 Aditi Rai Item Count 15 Service 15 Package - Product - Membership - Total ₹ 2,680 Avg. Bill ₹ 179 Info" [ref=e549]:
+                  - cell "10" [ref=e550]:
+                    - generic [ref=e551]: "10"
+                  - cell "Aditi Rai" [ref=e552]:
+                    - generic [ref=e553]:
+                      - img [ref=e554]
+                      - generic [ref=e556]: Aditi Rai
+                  - cell "Item Count 15" [ref=e557]
+                  - cell "Service 15" [ref=e558]
+                  - cell "Package -" [ref=e559]
+                  - cell "Product -" [ref=e560]
+                  - cell "Membership -" [ref=e561]
+                  - cell "Total ₹ 2,680" [ref=e562]
+                  - cell "Avg. Bill ₹ 179" [ref=e563]
+                  - cell "Info" [ref=e564]:
+                    - button "Info" [ref=e565] [cursor=pointer]:
+                      - img [ref=e566]
+                      - generic [ref=e568]: Info
+                - row "11 Ashika Item Count 3 Service 3 Package - Product - Membership - Total ₹ 2,460 Avg. Bill ₹ 820 Info" [ref=e569]:
+                  - cell "11" [ref=e570]:
+                    - generic [ref=e571]: "11"
+                  - cell "Ashika" [ref=e572]:
+                    - generic [ref=e573]:
+                      - img [ref=e574]
+                      - generic [ref=e576]: Ashika
+                  - cell "Item Count 3" [ref=e577]
+                  - cell "Service 3" [ref=e578]
+                  - cell "Package -" [ref=e579]
+                  - cell "Product -" [ref=e580]
+                  - cell "Membership -" [ref=e581]
+                  - cell "Total ₹ 2,460" [ref=e582]
+                  - cell "Avg. Bill ₹ 820" [ref=e583]
+                  - cell "Info" [ref=e584]:
+                    - button "Info" [ref=e585] [cursor=pointer]:
+                      - img [ref=e586]
+                      - generic [ref=e588]: Info
+                - row "— Unassigned Item Count 74 Service 1 Package - Product - Membership 73 Total ₹ 9,083 Avg. Bill ₹ 123 —" [ref=e589]:
+                  - cell "—" [ref=e590]:
+                    - generic [ref=e591]: —
+                  - cell "Unassigned" [ref=e592]:
+                    - generic "Items in checkouts where no staff was selected. Tag staff at checkout to attribute revenue correctly." [ref=e593]:
+                      - img [ref=e594]
+                      - generic [ref=e596]: Unassigned
+                  - cell "Item Count 74" [ref=e597]
+                  - cell "Service 1" [ref=e598]
+                  - cell "Package -" [ref=e599]
+                  - cell "Product -" [ref=e600]
+                  - cell "Membership 73" [ref=e601]
+                  - cell "Total ₹ 9,083" [ref=e602]
+                  - cell "Avg. Bill ₹ 123" [ref=e603]
+                  - cell "—" [ref=e604]:
+                    - generic [ref=e605]: —
+  - generic [ref=e606]: Revenue

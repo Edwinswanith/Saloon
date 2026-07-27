@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { FaTimes } from 'react-icons/fa';
 import Header from './Header';
 import './DiscountApprovals.css';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet, apiPost } from '../utils/api';
 import { showSuccess, showError, showWarning } from '../utils/toast.jsx';
+import CompactSelect from './shared/CompactSelect';
+
+const APPROVAL_METHOD_OPTIONS = [
+  { value: 'in_app', label: 'In-App Approval' },
+  { value: 'code', label: 'Approval Code' },
+];
 
 const DiscountApprovals = () => {
   const { user, currentBranch } = useAuth()
@@ -167,7 +174,17 @@ const DiscountApprovals = () => {
         {showApproveModal && selectedApproval && (
           <div className="modal-overlay" onClick={() => { setShowApproveModal(false); setSelectedApproval(null); setApprovalCode(''); }}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <h2>Approve Discount</h2>
+              <div className="std-modal-header">
+                <h2>Approve Discount</h2>
+                <button
+                  type="button"
+                  className="modal-close-btn"
+                  onClick={() => { setShowApproveModal(false); setSelectedApproval(null); setApprovalCode(''); }}
+                  aria-label="Close"
+                >
+                  <FaTimes />
+                </button>
+              </div>
               <div className="approval-details">
                 <p><strong>Bill Number:</strong> {selectedApproval.bill_number}</p>
                 <p><strong>Requested By:</strong> {selectedApproval.requested_by_name}</p>
@@ -176,10 +193,12 @@ const DiscountApprovals = () => {
               </div>
               <div className="form-group">
                 <label>Approval Method</label>
-                <select value={approvalMethod} onChange={(e) => setApprovalMethod(e.target.value)}>
-                  <option value="in_app">In-App Approval</option>
-                  <option value="code">Approval Code</option>
-                </select>
+                <CompactSelect
+                  value={approvalMethod}
+                  onChange={(v) => setApprovalMethod(v)}
+                  options={APPROVAL_METHOD_OPTIONS}
+                  placeholder="Select method"
+                />
               </div>
               {approvalMethod === 'code' && (
                 <div className="form-group">

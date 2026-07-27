@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import {
   FaEdit,
   FaTrash,
   FaChevronDown,
   FaCloudUploadAlt,
+  FaTimes,
 } from 'react-icons/fa'
 import * as XLSX from 'xlsx'
 import './Package.css'
@@ -384,10 +386,20 @@ const Package = () => {
       </div>
 
       {/* Add/Edit Package Modal */}
-      {showPackageModal && (
+      {showPackageModal && createPortal(
         <div className="modal-overlay" onClick={() => setShowPackageModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>{editingPackage ? 'Edit Package' : 'Add Package'}</h2>
+            <div className="std-modal-header">
+              <h2>{editingPackage ? 'Edit Package' : 'Add Package'}</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowPackageModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <div className="form-group">
               <label>Package Name *</label>
               <input
@@ -442,14 +454,25 @@ const Package = () => {
               <button className="btn-save" onClick={handleSavePackage}>Save</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Import Packages Modal */}
-      {showImportModal && (
+      {showImportModal && createPortal(
         <div className="modal-overlay" onClick={() => setShowImportModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Import Packages</h2>
+            <div className="std-modal-header">
+              <h2>Import Packages</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowImportModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <div className="import-instructions">
               <p>Upload a CSV or Excel file (.csv, .xlsx, .xls) with the following columns:</p>
               <ul>
@@ -471,7 +494,8 @@ const Package = () => {
               <button className="btn-cancel" onClick={() => setShowImportModal(false)}>Cancel</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

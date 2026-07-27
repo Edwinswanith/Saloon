@@ -160,6 +160,27 @@
   position: relative;
 }
 
+/* Compact trigger styling for the CompactSelect dropdowns used in the date and
+   staff filters. Matches the original staff-select look without opacity:0 tricks. */
+.cal-date-select,
+.cal-staff-select {
+  padding: 8px 12px;
+  background: white;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--gray-800);
+  cursor: pointer;
+  min-height: 38px;
+  transition: border-color 0.15s ease;
+}
+
+.cal-date-select:hover,
+.cal-staff-select:hover {
+  border-color: var(--primary-700);
+}
+
 .staff-select {
   padding: 10px 16px;
   padding-right: 36px;

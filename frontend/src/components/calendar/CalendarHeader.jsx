@@ -1,5 +1,6 @@
 import React from 'react'
-import { FaCalendarAlt } from 'react-icons/fa'
+import CompactSelect from '../shared/CompactSelect'
+import ClassicDatePicker from '../shared/ClassicDatePicker'
 import './CalendarHeader.css'
 
 const CalendarHeader = ({
@@ -16,25 +17,17 @@ const CalendarHeader = ({
   activeNavButton,
 }) => {
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString)
-    const day = String(date.getDate()).padStart(2, '0')
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const year = date.getFullYear()
-    return `${day}-${month}-${year}`
-  }
+  const handleToday = () => onNavigate('today')
+  const handleBack = () => onNavigate('prev')
+  const handleNext = () => onNavigate('next')
 
-  const handleToday = () => {
-    onNavigate('today')
-  }
-
-  const handleBack = () => {
-    onNavigate('prev')
-  }
-
-  const handleNext = () => {
-    onNavigate('next')
-  }
+  const staffOptions = [
+    { value: 'all', label: 'All Staff' },
+    ...staffMembers.map(s => ({
+      value: s.id,
+      label: `${s.firstName || ''} ${s.lastName || ''}`.trim() || 'Staff',
+    })),
+  ]
 
   return (
     <header className="appointment-header">
@@ -46,54 +39,46 @@ const CalendarHeader = ({
         <div className="nav-controls-left">
           {/* Navigation Buttons Group */}
           <div className="nav-btn-group">
-            <button 
-              className={`nav-btn ${activeNavButton === 'today' ? 'active' : ''}`} 
+            <button
+              className={`nav-btn ${activeNavButton === 'today' ? 'active' : ''}`}
               onClick={handleToday}
             >
               Today
             </button>
-            <button 
-              className={`nav-btn ${activeNavButton === 'back' ? 'active' : ''}`} 
+            <button
+              className={`nav-btn ${activeNavButton === 'back' ? 'active' : ''}`}
               onClick={handleBack}
             >
               Previous
             </button>
-            <button 
-              className={`nav-btn ${activeNavButton === 'next' ? 'active' : ''}`} 
+            <button
+              className={`nav-btn ${activeNavButton === 'next' ? 'active' : ''}`}
               onClick={handleNext}
             >
               Next
             </button>
           </div>
 
-          {/* Date Input Group */}
-          <div className="date-input-group">
-            <div className="date-input-wrapper">
-              <input
-                type="date"
-                className="date-picker"
-                value={selectedDate}
-                onChange={(e) => onDateChange(e.target.value)}
-              />
-              <span className="date-display">{formatDate(selectedDate)}</span>
-              <span className="calendar-icon"><FaCalendarAlt /></span>
-            </div>
+          {/* Date Picker — classic compact date picker matching the rest of the app */}
+          <div className="date-input-group" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <label className="date-label" style={{ fontSize: 14, fontWeight: 600, color: '#374151' }}>Date:</label>
+            <ClassicDatePicker
+              value={selectedDate}
+              onChange={(v) => v && onDateChange(v)}
+              placeholder="Select date"
+              allowEmpty={false}
+            />
           </div>
 
-          {/* Staff Select Group */}
-          <div className="staff-select-group">
-            <select
-              className="staff-select"
-              value={selectedStaff}
-              onChange={(e) => onStaffChange(e.target.value)}
-            >
-              <option value="all">All Staff</option>
-              {staffMembers.map((staff) => (
-                <option key={staff.id} value={staff.id}>
-                  {staff.firstName} {staff.lastName}
-                </option>
-              ))}
-            </select>
+          {/* Staff Select — compact custom dropdown */}
+          <div className="staff-select-group" style={{ width: 160, flexShrink: 0 }}>
+            <CompactSelect
+              className="cal-staff-select"
+              value={selectedStaff || 'all'}
+              onChange={(v) => onStaffChange(v)}
+              options={staffOptions}
+              placeholder="All Staff"
+            />
           </div>
         </div>
 
@@ -123,4 +108,3 @@ const CalendarHeader = ({
 }
 
 export default CalendarHeader
-

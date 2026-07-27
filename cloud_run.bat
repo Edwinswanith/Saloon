@@ -3,7 +3,7 @@ set PROJECT_ID=legel-assistent-466812
 set REPOSITORY_NAME=saloon
 set REGION=europe-west2
 set IMAGE_NAME=saloon-management-system
-set IMAGE_TAG=v59
+set IMAGE_TAG=v70
 set SERVICE_NAME=saloon-management-system
 
 REM Authenticate with Google Cloud
@@ -26,7 +26,7 @@ if errorlevel 1 goto :fail
 docker push %REGION%-docker.pkg.dev/%PROJECT_ID%/%REPOSITORY_NAME%/%IMAGE_NAME%:%IMAGE_TAG%
 if errorlevel 1 goto :fail
 
-call gcloud run deploy %SERVICE_NAME% --image %REGION%-docker.pkg.dev/%PROJECT_ID%/%REPOSITORY_NAME%/%IMAGE_NAME%:%IMAGE_TAG% --platform managed --region %REGION% --allow-unauthenticated --timeout=600s --min-instances=1 --memory=512Mi --concurrency=80 --cpu=1 --set-env-vars "MONGODB_URI=mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon&tls=true&retryWrites=true&w=majority"
+call gcloud run deploy %SERVICE_NAME% --image %REGION%-docker.pkg.dev/%PROJECT_ID%/%REPOSITORY_NAME%/%IMAGE_NAME%:%IMAGE_TAG% --platform managed --region %REGION% --allow-unauthenticated --timeout=600s --min-instances=1 --memory=512Mi --concurrency=80 --cpu=1 --set-env-vars "MONGODB_URI=mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon&tls=true&retryWrites=true&w=majority,MONGODB_DB=Saloon_prod"
 if errorlevel 1 goto :fail
 
 echo.

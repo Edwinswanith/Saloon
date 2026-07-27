@@ -203,7 +203,8 @@ def get_orders(current_user=None):
         return jsonify({'error': str(e)}), 500
 
 @inventory_bp.route('/orders/<id>', methods=['GET'])
-def get_order(id):
+@require_auth
+def get_order(id, current_user=None):
     """Get a single order with items"""
     try:
         if not ObjectId.is_valid(id):
@@ -321,14 +322,22 @@ def update_order(id, current_user=None):
         order.notes = data.get('notes', order.notes)
         order.updated_at = datetime.utcnow()
 
-        # If status changed to 'received', update product stock
+        # If status changed to 'received', update product stock atomically.
+        # Use $inc via update_one so concurrent receives don't race on a load-modify-save.
+        # Also skip (rather than 500) if the product was deleted between create and receive.
         if data.get('status') == 'received' and old_status != 'received':
             for item in (order.order_items or []):
-                if item.product:
-                    product = Product.objects.get(id=item.product.id)
-                    product.stock_quantity = (product.stock_quantity or 0) + item.quantity
-                    product.updated_at = datetime.utcnow()
-                    product.save()
+                if not item.product:
+                    continue
+                try:
+                    Product.objects(id=item.product.id).update_one(
+                        inc__stock_quantity=int(item.quantity or 0),
+                        set__updated_at=datetime.utcnow()
+                    )
+                except DoesNotExist:
+                    print(f"[INVENTORY] Product {item.product.id} no longer exists — stock not updated for order {order.id}")
+                except Exception as stock_err:
+                    print(f"[INVENTORY] Stock update failed for product {item.product.id}: {stock_err}")
 
         order.save()
 

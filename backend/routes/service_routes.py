@@ -39,22 +39,24 @@ def get_service_groups(current_user=None):
     # Get branch for filtering
     branch = get_selected_branch(request, current_user)
     
-    # Force evaluation by converting to list
     groups = list(ServiceGroup.objects.order_by('display_order'))
-    
-    # Calculate counts per group, filtered by branch if branch is set
-    groups_with_counts = []
-    for g in groups:
-        query = Service.objects(group=g, status='active')
-        if branch:
-            query = query.filter(branch=branch)
-        count = query.count()
-        groups_with_counts.append({
-            'id': str(g.id),
-            'name': g.name,
-            'count': count,
-            'displayOrder': g.display_order
-        })
+
+    match = {'status': 'active'}
+    if branch:
+        match['branch'] = ObjectId(str(branch.id))
+    counts_by_group = {}
+    for row in Service.objects.aggregate([
+        {'$match': match},
+        {'$group': {'_id': '$group', 'count': {'$sum': 1}}}
+    ]):
+        counts_by_group[row['_id']] = row['count']
+
+    groups_with_counts = [{
+        'id': str(g.id),
+        'name': g.name,
+        'count': counts_by_group.get(g.id, 0),
+        'displayOrder': g.display_order
+    } for g in groups]
     
     response = jsonify({
         'groups': groups_with_counts
@@ -214,7 +216,9 @@ def get_services(current_user=None):
 
 @service_bp.route('/<service_id>', methods=['GET'])
 def get_service(service_id):
-    """Get single service"""
+    """Get single service. Membership coverage is managed exclusively from the
+    Membership screen (`MembershipPlan.applicable_services`), so it's not
+    surfaced on the service detail anymore."""
     try:
         if not ObjectId.is_valid(service_id):
             return jsonify({'error': 'Invalid service ID format'}), 400
@@ -223,14 +227,14 @@ def get_service(service_id):
         return jsonify({'error': 'Service not found'}), 404
     except ValidationError:
         return jsonify({'error': 'Invalid service ID format'}), 400
-    
+
     response = jsonify({
         'id': str(service.id),
         'name': service.name,
         'groupId': str(service.group.id) if service.group else None,
         'price': service.price,
         'duration': service.duration,
-        'description': service.description
+        'description': service.description,
     })
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response

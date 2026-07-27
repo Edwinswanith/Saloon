@@ -301,7 +301,10 @@ def send_campaign(current_user=None):
         
         filter_type = data.get('filter_type', 'all')
         customer_ids = data.get('customer_ids', [])  # Optional: specific customer IDs
-        
+        delivery_method = data.get('delivery_method', 'api')  # 'api' (Meta Cloud API) or 'direct_whatsapp' (wa.me opened by browser)
+        sent_customer_ids = data.get('sent_customer_ids') or []  # For direct_whatsapp: which customers the user actually opened
+        skipped_customer_ids = data.get('skipped_customer_ids') or []
+
         # Get customers to send to
         if customer_ids:
             # Send to specific customers
@@ -311,12 +314,12 @@ def send_campaign(current_user=None):
             customers_data = get_filtered_customers(filter_type, branch)
             customer_ids = [c['id'] for c in customers_data]
             customers = list(Customer.objects(id__in=customer_ids, branch=branch, merged_into=None))
-        
+
         if not customers:
             response = jsonify({'error': 'No customers found to send campaign to'})
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 400
-        
+
         # Create campaign record
         created_by_name = current_user.get('name', 'Unknown') if current_user else 'Unknown'
         campaign_type = data.get('campaign_type', 'general')
@@ -332,42 +335,69 @@ def send_campaign(current_user=None):
             created_by_name=created_by_name
         )
         campaign.save()
-        
+
         # Send messages
         sent_count = 0
         failed_count = 0
-        
-        for customer in customers:
-            try:
-                # Only send to customers with WhatsApp consent
-                if not customer.whatsapp_consent:
+
+        if delivery_method == 'direct_whatsapp':
+            # Frontend already opened wa.me tabs for each customer. Just log them.
+            # Consent isn't required here because the salon user is sending manually from their own WhatsApp.
+            sent_set = set(str(cid) for cid in sent_customer_ids)
+            skipped_set = set(str(cid) for cid in skipped_customer_ids)
+            now = datetime.utcnow()
+            for customer in customers:
+                cid = str(customer.id)
+                if cid in skipped_set:
                     failed_count += 1
                     continue
-                
-                result = send_whatsapp_message(
-                    customer=customer,
-                    message_text=data['message_text'],
-                    image_data=data.get('image_data'),
-                    image_mime_type=data.get('image_mime_type')
-                )
-                
-                # Save WhatsApp message record
-                whatsapp_msg = WhatsAppMessage(
-                    customer=customer,
-                    branch=branch,
-                    message_text=data['message_text'],
-                    delivery_status=result.get('delivery_status', 'pending'),
-                    sent_at=datetime.utcnow()
-                )
-                whatsapp_msg.save()
-                
-                if result.get('success'):
-                    sent_count += 1
-                else:
+                if sent_set and cid not in sent_set:
                     failed_count += 1
-            except Exception as e:
-                print(f"Error sending to customer {customer.id}: {str(e)}")
-                failed_count += 1
+                    continue
+                try:
+                    WhatsAppMessage(
+                        customer=customer,
+                        branch=branch,
+                        message_text=data['message_text'],
+                        delivery_status='sent',
+                        sent_at=now
+                    ).save()
+                    sent_count += 1
+                except Exception as e:
+                    print(f"Error logging direct WhatsApp for customer {customer.id}: {str(e)}")
+                    failed_count += 1
+        else:
+            for customer in customers:
+                try:
+                    # Only send to customers with WhatsApp consent
+                    if not customer.whatsapp_consent:
+                        failed_count += 1
+                        continue
+
+                    result = send_whatsapp_message(
+                        customer=customer,
+                        message_text=data['message_text'],
+                        image_data=data.get('image_data'),
+                        image_mime_type=data.get('image_mime_type')
+                    )
+
+                    # Save WhatsApp message record
+                    whatsapp_msg = WhatsAppMessage(
+                        customer=customer,
+                        branch=branch,
+                        message_text=data['message_text'],
+                        delivery_status=result.get('delivery_status', 'pending'),
+                        sent_at=datetime.utcnow()
+                    )
+                    whatsapp_msg.save()
+
+                    if result.get('success'):
+                        sent_count += 1
+                    else:
+                        failed_count += 1
+                except Exception as e:
+                    print(f"Error sending to customer {customer.id}: {str(e)}")
+                    failed_count += 1
         
         # Update campaign status
         campaign.sent_count = sent_count

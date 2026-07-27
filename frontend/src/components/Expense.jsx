@@ -4,6 +4,7 @@ import {
   FaEdit,
   FaTrash,
   FaPlus,
+  FaTimes,
 } from 'react-icons/fa'
 import Header from './Header'
 import './Expense.css'
@@ -26,6 +27,27 @@ import 'react-datepicker/dist/react-datepicker.css'
 import { PageTransition } from './shared/PageTransition'
 import { TableSkeleton, ChartSkeleton } from './shared/SkeletonLoaders'
 import { EmptyTable } from './shared/EmptyStates'
+import CompactSelect from './shared/CompactSelect'
+
+const DATE_FILTER_OPTIONS = [
+  { value: 'current-month', label: 'Current Month' },
+  { value: 'last-month', label: 'Last Month' },
+  { value: 'current-year', label: 'Current Year' },
+  { value: 'custom', label: 'Custom Range' },
+]
+
+const PAYMENT_MODE_FILTER_OPTIONS = [
+  { value: 'all', label: 'All' },
+  { value: 'cash', label: 'Cash' },
+  { value: 'card', label: 'Card' },
+  { value: 'upi', label: 'UPI' },
+]
+
+const PAYMENT_MODE_OPTIONS = [
+  { value: 'cash', label: 'Cash' },
+  { value: 'card', label: 'Card' },
+  { value: 'upi', label: 'UPI' },
+]
 
 const Expense = () => {
   const { currentBranch } = useAuth()
@@ -55,23 +77,8 @@ const Expense = () => {
   })
 
   useEffect(() => {
-    fetchCategories()
-    fetchExpenses()
-    fetchExpenseSummary()
+    Promise.all([fetchCategories(), fetchExpenses(), fetchExpenseSummary()])
   }, [dateFilter, categoryFilter, paymentModeFilter, currentBranch])
-
-  // Listen for branch changes
-  useEffect(() => {
-    const handleBranchChange = () => {
-      console.log('[Expense] Branch changed, refreshing data...')
-      fetchCategories()
-      fetchExpenses()
-      fetchExpenseSummary()
-    }
-    
-    window.addEventListener('branchChanged', handleBranchChange)
-    return () => window.removeEventListener('branchChanged', handleBranchChange)
-  }, [currentBranch])
 
   const fetchCategories = async () => {
     try {
@@ -223,8 +230,7 @@ const Expense = () => {
 
       if (response.ok) {
         const data = await response.json()
-        fetchExpenses()
-        fetchExpenseSummary()
+        Promise.all([fetchExpenses(), fetchExpenseSummary()])
         setShowExpenseModal(false)
         setEditingExpense(null)
         setExpenseFormData({
@@ -287,8 +293,7 @@ const Expense = () => {
 
       if (response.ok) {
         const data = await response.json()
-        fetchCategories()
-        fetchExpenseSummary()
+        Promise.all([fetchCategories(), fetchExpenseSummary()])
         setCategoryFormData({ name: '', description: '' })
         setEditingCategory(null)
         setAddingCategory(false)
@@ -310,8 +315,7 @@ const Expense = () => {
     try {
       const response = await apiDelete(`/api/expenses/categories/${categoryId}`)
       if (response.ok) {
-        fetchCategories()
-        fetchExpenseSummary()
+        Promise.all([fetchCategories(), fetchExpenseSummary()])
         showSuccess('Category deleted successfully')
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
@@ -330,8 +334,7 @@ const Expense = () => {
     try {
       const response = await apiDelete(`/api/expenses/${expenseId}`)
       if (response.ok) {
-        fetchExpenses()
-        fetchExpenseSummary()
+        Promise.all([fetchExpenses(), fetchExpenseSummary()])
         showSuccess('Expense deleted successfully')
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
@@ -513,44 +516,33 @@ const Expense = () => {
             <div className="filters">
               <div className="filter-group">
                 <label className="filter-label">Filter by date:</label>
-                <select
+                <CompactSelect
                   className="filter-dropdown"
                   value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
-                >
-                  <option value="current-month">Current Month</option>
-                  <option value="last-month">Last Month</option>
-                  <option value="current-year">Current Year</option>
-                  <option value="custom">Custom Range</option>
-                </select>
+                  onChange={(v) => setDateFilter(v)}
+                  options={DATE_FILTER_OPTIONS}
+                  placeholder="Select"
+                />
               </div>
               <div className="filter-group">
                 <label className="filter-label">Filter by category:</label>
-                <select
+                <CompactSelect
                   className="filter-dropdown"
                   value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                >
-                  <option value="all">All</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setCategoryFilter(v)}
+                  options={[{ value: 'all', label: 'All' }, ...categories.map((cat) => ({ value: cat.id, label: cat.name }))]}
+                  placeholder="Select"
+                />
               </div>
               <div className="filter-group">
                 <label className="filter-label">Filter by mode of payment:</label>
-                <select
+                <CompactSelect
                   className="filter-dropdown"
                   value={paymentModeFilter}
-                  onChange={(e) => setPaymentModeFilter(e.target.value)}
-                >
-                  <option value="all">All</option>
-                  <option value="cash">Cash</option>
-                  <option value="card">Card</option>
-                  <option value="upi">UPI</option>
-                </select>
+                  onChange={(v) => setPaymentModeFilter(v)}
+                  options={PAYMENT_MODE_FILTER_OPTIONS}
+                  placeholder="Select"
+                />
               </div>
             </div>
             <div className="total-expense">
@@ -667,7 +659,17 @@ const Expense = () => {
       {showExpenseModal && (
         <div className="modal-overlay" onClick={() => setShowExpenseModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>{editingExpense ? 'Edit Expense' : 'Add New Expense'}</h2>
+            <div className="std-modal-header">
+              <h2>{editingExpense ? 'Edit Expense' : 'Add New Expense'}</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowExpenseModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <div className="form-group">
               <label>Expense Name *</label>
               <input
@@ -680,18 +682,12 @@ const Expense = () => {
             </div>
             <div className="form-group">
               <label>Category *</label>
-              <select
+              <CompactSelect
                 value={expenseFormData.category_id}
-                onChange={(e) => setExpenseFormData({ ...expenseFormData, category_id: e.target.value })}
-                required
-              >
-                <option value="">Select category</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setExpenseFormData({ ...expenseFormData, category_id: v })}
+                options={categories.map((cat) => ({ value: cat.id, label: cat.name }))}
+                placeholder="Select category"
+              />
             </div>
             <div className="form-group">
               <label>Amount *</label>
@@ -706,14 +702,12 @@ const Expense = () => {
             </div>
             <div className="form-group">
               <label>Payment Mode</label>
-              <select
+              <CompactSelect
                 value={expenseFormData.payment_mode}
-                onChange={(e) => setExpenseFormData({ ...expenseFormData, payment_mode: e.target.value })}
-              >
-                <option value="cash">Cash</option>
-                <option value="card">Card</option>
-                <option value="upi">UPI</option>
-              </select>
+                onChange={(v) => setExpenseFormData({ ...expenseFormData, payment_mode: v })}
+                options={PAYMENT_MODE_OPTIONS}
+                placeholder="Cash"
+              />
             </div>
             <div className="form-group">
               <label>Expense Date *</label>
@@ -747,7 +741,17 @@ const Expense = () => {
       {showCategoryModal && (
         <div className="modal-overlay" onClick={() => setShowCategoryModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
-            <h2>Manage Expense Categories</h2>
+            <div className="std-modal-header">
+              <h2>Manage Expense Categories</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowCategoryModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <div style={{ marginBottom: '20px' }}>
               {!addingCategory && !editingCategory && (
                 <button 

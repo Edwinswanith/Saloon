@@ -19,10 +19,8 @@ app.config['COMPRESS_MIN_SIZE'] = 500
 
 # MongoDB Configuration
 MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
-# for production
-MONGODB_DB = 'Saloon_prod'
-# for development
-# MONGODB_DB = 'Saloon'
+# Default production DB; override with MONGODB_DB env (e.g. Cloud Run) for explicit alignment
+MONGODB_DB = os.environ.get('MONGODB_DB', 'Saloon_prod')
 
 # Connect to MongoDB
 try:
@@ -152,8 +150,30 @@ try:
     if 'idx_appointments_staff_date_status_perf' in appt_indexes:
         db.appointments.drop_index('idx_appointments_staff_date_status_perf')
         print("[MIGRATION] Dropped duplicate index 'idx_appointments_staff_date_status_perf' on appointments collection")
+    # Drop global unique index on staffs.mobile so soft-deleted mobiles can be reused.
+    # Uniqueness is now enforced at the application layer against active staff only.
+    staff_indexes = db.staffs.index_information()
+    if 'mobile_1' in staff_indexes:
+        db.staffs.drop_index('mobile_1')
+        print("[MIGRATION] Dropped global unique index 'mobile_1' on staffs collection")
+    # The Staff Temporary Reassignment feature was removed — staff are pooled
+    # across all branches by default. Drop the legacy collection and remove the
+    # `covered_by` reference from staff_leaves so MongoEngine doesn't try to
+    # hydrate a model that no longer exists.
+    if 'staff_temp_assignments' in db.list_collection_names():
+        db.staff_temp_assignments.drop()
+        print("[MIGRATION] Dropped legacy 'staff_temp_assignments' collection")
+    leave_unset_result = db.staff_leaves.update_many(
+        {'covered_by': {'$exists': True}},
+        {'$unset': {'covered_by': ''}}
+    )
+    if leave_unset_result.modified_count:
+        print(f"[MIGRATION] Removed legacy 'covered_by' field from {leave_unset_result.modified_count} staff_leaves records")
 except Exception as e:
-    pass  # Index may not exist or DB not connected yet
+    # Log so deployment/connection issues surface instead of being masked as silent no-ops.
+    # We intentionally don't re-raise: a missing index or missing collection on fresh install
+    # shouldn't block startup, but the operator needs visibility if something else broke.
+    print(f"[MIGRATION] Skipped index migration ({type(e).__name__}): {e}")
 
 # Serve React static files
 # Note: Public invoice routes (/i/<share_code>, /invoice/view/<token>, etc.) are handled separately

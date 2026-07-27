@@ -6,6 +6,13 @@ import './OfferCampaigns.css';
 import { apiGet } from '../utils/api';
 import { showError } from '../utils/toast.jsx';
 import { useAuth } from '../contexts/AuthContext';
+import CompactSelect from './shared/CompactSelect';
+
+const CAMPAIGN_TYPE_FILTER_OPTIONS = [
+  { value: 'all', label: 'All Campaigns' },
+  { value: 'general', label: 'General Only' },
+  { value: 'birthday', label: 'Birthday Only' },
+];
 
 const OfferCampaigns = () => {
   const { currentBranch } = useAuth();
@@ -72,16 +79,15 @@ const OfferCampaigns = () => {
         <div className="campaign-section">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <h2>Campaign History</h2>
-            <select
-              value={campaignTypeFilter}
-              onChange={(e) => setCampaignTypeFilter(e.target.value)}
-              className="filter-select"
-              style={{ maxWidth: '200px' }}
-            >
-              <option value="all">All Campaigns</option>
-              <option value="general">General Only</option>
-              <option value="birthday">Birthday Only</option>
-            </select>
+            <div style={{ maxWidth: '200px', width: '100%' }}>
+              <CompactSelect
+                value={campaignTypeFilter}
+                onChange={(v) => setCampaignTypeFilter(v)}
+                className="filter-select"
+                options={CAMPAIGN_TYPE_FILTER_OPTIONS}
+                placeholder="All Campaigns"
+              />
+            </div>
           </div>
           {loadingCampaigns ? (
             <div className="loading-state">Loading campaigns...</div>

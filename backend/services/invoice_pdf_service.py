@@ -360,10 +360,17 @@ def generate_invoice_pdf_reportlab(invoice_data):
     tax = summary.get('tax', 0.0)
     total = summary.get('total', 0.0)
 
+    offer_meta = summary.get('offer') or invoice_data.get('applied_offer')
+    if offer_meta and offer_meta.get('name'):
+        offer_pct = float(offer_meta.get('percentage') or 0)
+        discount_label = f"Discount ({offer_meta['name']} – {int(round(offer_pct))}%)"
+    else:
+        discount_label = 'Discount'
+
     summary_width = 2.5 * inch
     summary_data = [
         ['Subtotal', f"Rs.{subtotal:,.2f}"],
-        ['Discount', f"Rs.{discount:,.2f}"],
+        [discount_label, f"Rs.{discount:,.2f}"],
         ['Net', f"Rs.{net:,.2f}"],
         ['Tax', f"Rs.{tax:,.2f}"],
         ['Total', f"Rs.{int(round(total)):,}"]

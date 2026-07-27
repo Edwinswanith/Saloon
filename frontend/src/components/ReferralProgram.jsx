@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import './ReferralProgram.css'
 import { apiGet, apiPut } from '../utils/api'
+import CompactSelect from './shared/CompactSelect'
+
+const REWARD_TYPE_OPTIONS = [
+  { value: 'percentage', label: 'Percentage (%)' },
+  { value: 'fixed', label: 'Fixed Amount' },
+]
 
 const ReferralProgram = () => {
   const [settings, setSettings] = useState({
@@ -109,18 +115,17 @@ const ReferralProgram = () => {
               {/* Reward Type */}
               <div className="form-group">
                 <label htmlFor="rewardType">Reward Type</label>
-                <select
+                <CompactSelect
                   id="rewardType"
                   value={settings.rewardType}
-                  onChange={(e) =>
-                    handleInputChange('rewardType', e.target.value)
+                  onChange={(v) =>
+                    handleInputChange('rewardType', v)
                   }
                   disabled={!settings.enabled}
                   className={!settings.enabled ? 'disabled' : ''}
-                >
-                  <option value="percentage">Percentage (%)</option>
-                  <option value="fixed">Fixed Amount</option>
-                </select>
+                  options={REWARD_TYPE_OPTIONS}
+                  placeholder="Select reward type"
+                />
               </div>
 
               {/* Referrer Reward */}

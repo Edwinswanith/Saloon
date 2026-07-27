@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { apiGet, apiPost } from '../utils/api';
 import Header from './Header';
-import { FaExclamationTriangle, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
+import { FaExclamationTriangle, FaCheckCircle, FaTimesCircle, FaTimes } from 'react-icons/fa';
 import './CustomerLifecycleReport.css';
+import CompactSelect from './shared/CompactSelect';
 
 const CustomerLifecycleReport = () => {
   const [customers, setCustomers] = useState([]);
@@ -370,7 +371,17 @@ const CustomerLifecycleReport = () => {
         {showWhatsAppModal && (
           <div className="modal-overlay" onClick={() => setShowWhatsAppModal(false)}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <h2>Send WhatsApp Message</h2>
+              <div className="std-modal-header">
+                <h2>Send WhatsApp Message</h2>
+                <button
+                  type="button"
+                  className="modal-close-btn"
+                  onClick={() => setShowWhatsAppModal(false)}
+                  aria-label="Close"
+                >
+                  <FaTimes />
+                </button>
+              </div>
               {!WHATSAPP_ENABLED && (
                 <div className="placeholder-notice">
                   <p style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -380,19 +391,16 @@ const CustomerLifecycleReport = () => {
               )}
               <div className="form-group">
                 <label>Select Template (Optional)</label>
-                <select
+                <CompactSelect
                   value={selectedTemplate}
-                  onChange={(e) => {
-                    setSelectedTemplate(e.target.value);
-                    const template = templates.find(t => t.id === e.target.value);
+                  onChange={(v) => {
+                    setSelectedTemplate(v);
+                    const template = templates.find(t => t.id === v);
                     if (template) setMessageText(template.message_text);
                   }}
-                >
-                  <option value="">Custom Message</option>
-                  {templates.map(template => (
-                    <option key={template.id} value={template.id}>{template.name}</option>
-                  ))}
-                </select>
+                  options={[{ value: '', label: 'Custom Message' }, ...templates.map(template => ({ value: template.id, label: template.name }))]}
+                  placeholder="Custom Message"
+                />
               </div>
               <div className="form-group">
                 <label>Message Text *</label>

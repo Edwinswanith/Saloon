@@ -1,0 +1,768 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e46]:
+    - complementary [ref=e47]:
+      - generic [ref=e48]:
+        - button "Close sidebar" [ref=e49] [cursor=pointer]:
+          - img [ref=e50]
+        - img "Priyanka Nature Cure" [ref=e53]
+      - navigation [ref=e54]:
+        - generic [ref=e56] [cursor=pointer]:
+          - img [ref=e58]
+          - generic [ref=e60]: Quick Sale
+        - generic [ref=e61]:
+          - generic: BILLING
+          - generic [ref=e63] [cursor=pointer]:
+            - img [ref=e65]
+            - generic [ref=e67]: Cash Register
+          - generic [ref=e69] [cursor=pointer]:
+            - img [ref=e71]
+            - generic [ref=e73]: Bill History
+          - generic [ref=e75] [cursor=pointer]:
+            - img [ref=e77]
+            - generic [ref=e79]: Appointment
+          - generic [ref=e81] [cursor=pointer]:
+            - img [ref=e83]
+            - generic [ref=e85]: Customers
+            - img [ref=e87]
+          - generic [ref=e90] [cursor=pointer]:
+            - img [ref=e92]
+            - generic [ref=e94]: Inventory
+          - generic [ref=e96] [cursor=pointer]:
+            - img [ref=e98]
+            - generic [ref=e100]: Discount Approvals
+          - generic [ref=e102] [cursor=pointer]:
+            - img [ref=e104]
+            - generic [ref=e106]: Approval Codes
+          - generic [ref=e108] [cursor=pointer]:
+            - img [ref=e110]
+            - generic [ref=e112]: Offer Campaigns
+          - generic [ref=e114] [cursor=pointer]:
+            - img [ref=e116]
+            - generic [ref=e118]: Offer Management
+        - generic [ref=e120] [cursor=pointer]:
+          - img [ref=e122]
+          - generic [ref=e124]: Dashboard
+        - generic [ref=e125]:
+          - generic: ANALYTICS
+          - generic [ref=e127] [cursor=pointer]:
+            - img [ref=e129]
+            - generic [ref=e131]: Reports & Analytics
+        - generic [ref=e132]:
+          - generic: MASTER
+          - generic [ref=e134] [cursor=pointer]:
+            - img [ref=e136]
+            - generic [ref=e138]: Saloon Settings
+            - img [ref=e140]
+          - generic [ref=e143] [cursor=pointer]:
+            - img [ref=e145]
+            - generic [ref=e147]: Staff Attendance
+          - generic [ref=e149] [cursor=pointer]:
+            - img [ref=e151]
+            - generic [ref=e153]: Asset Management
+          - generic [ref=e155] [cursor=pointer]:
+            - img [ref=e157]
+            - generic [ref=e159]: Expense
+    - banner [ref=e160]:
+      - generic [ref=e161]:
+        - button "Toggle menu" [ref=e162] [cursor=pointer]:
+          - img [ref=e163]
+        - generic "Priyanka Nature Cure" [ref=e167]
+        - generic [ref=e168]:
+          - button "All Branches ▼" [ref=e170] [cursor=pointer]:
+            - generic [ref=e171]: All Branches
+            - generic [ref=e172]: ▼
+          - button "Click to logout" [ref=e173] [cursor=pointer]:
+            - img [ref=e174]
+          - button "5" [ref=e177] [cursor=pointer]:
+            - img [ref=e178]
+            - generic: "5"
+          - button "DO" [ref=e180] [cursor=pointer]:
+            - generic [ref=e181]: DO
+    - main [ref=e182]:
+      - generic [ref=e639]:
+        - generic [ref=e640]:
+          - heading "Memberships" [level=2] [ref=e641]
+          - button "New Plan" [ref=e642] [cursor=pointer]:
+            - img [ref=e643]
+            - text: New Plan
+        - generic [ref=e645]:
+          - complementary [ref=e646]:
+            - generic [ref=e647]: 4 plans
+            - list [ref=e648]:
+              - listitem [ref=e649]:
+                - button "PNC New Membership ●active 20% off · All services" [ref=e650] [cursor=pointer]:
+                  - generic [ref=e651]:
+                    - text: PNC New Membership
+                    - generic [ref=e652]: ●active
+                  - generic [ref=e653]:
+                    - generic [ref=e654]: 20% off
+                    - generic [ref=e655]: ·
+                    - generic [ref=e656]: All services
+              - listitem [ref=e657]:
+                - button "PNC Exisiting Member ●active 20% off · All services" [ref=e658] [cursor=pointer]:
+                  - generic [ref=e659]:
+                    - text: PNC Exisiting Member
+                    - generic [ref=e660]: ●active
+                  - generic [ref=e661]:
+                    - generic [ref=e662]: 20% off
+                    - generic [ref=e663]: ·
+                    - generic [ref=e664]: All services
+              - listitem [ref=e665]:
+                - button "Gold Membership ●active 20% off · All services" [ref=e666] [cursor=pointer]:
+                  - generic [ref=e667]:
+                    - text: Gold Membership
+                    - generic [ref=e668]: ●active
+                  - generic [ref=e669]:
+                    - generic [ref=e670]: 20% off
+                    - generic [ref=e671]: ·
+                    - generic [ref=e672]: All services
+              - listitem [ref=e673]:
+                - button "Diamond Membership ●active 20% off · All services" [ref=e674] [cursor=pointer]:
+                  - generic [ref=e675]:
+                    - text: Diamond Membership
+                    - generic [ref=e676]: ●active
+                  - generic [ref=e677]:
+                    - generic [ref=e678]: 20% off
+                    - generic [ref=e679]: ·
+                    - generic [ref=e680]: All services
+          - generic [ref=e681]:
+            - generic [ref=e682]:
+              - generic [ref=e683]:
+                - generic [ref=e686]:
+                  - text: Diamond Membership
+                  - generic [ref=e687]: ●active
+                - generic [ref=e688]:
+                  - generic [ref=e689]:
+                    - strong [ref=e690]: 20%
+                    - text: "off"
+                  - generic [ref=e691]: ·
+                  - generic [ref=e692]: ₹7999.00
+                  - generic [ref=e693]: ·
+                  - generic [ref=e694]: 365 days
+                  - generic [ref=e695]: ·
+                  - generic [ref=e696]: All branches
+                - generic [ref=e697]: Exclusive annual membership with 20% discount on all services
+              - generic [ref=e684]:
+                - button "Edit" [ref=e698] [cursor=pointer]:
+                  - img [ref=e699]
+                  - generic [ref=e701]: Edit
+                - button "Delete" [ref=e702] [cursor=pointer]:
+                  - img [ref=e703]
+                  - generic [ref=e705]: Delete
+            - generic [ref=e706]:
+              - generic [ref=e707]:
+                - generic [ref=e708]:
+                  - heading "Services covered by this plan" [level=3] [ref=e709]
+                  - paragraph [ref=e710]:
+                    - text: No services ticked — this plan applies
+                    - strong [ref=e711]: no discount
+                    - text: yet. Tick the services it should discount.
+                - generic [ref=e712]: 0 of 100 ticked
+              - generic [ref=e713]:
+                - generic [ref=e714]:
+                  - img [ref=e715]
+                  - textbox "Search services…" [ref=e717]
+                - button "Select all" [ref=e718] [cursor=pointer]
+                - button "Clear all" [ref=e719] [cursor=pointer]
+              - generic [ref=e720]:
+                - generic [ref=e721] [cursor=pointer]:
+                  - checkbox "3/4 Arms· 7 branches ₹300" [ref=e722]
+                  - generic [ref=e723]:
+                    - text: 3/4 Arms
+                    - generic [ref=e724]: · 7 branches
+                  - generic [ref=e725]: ₹300
+                - generic [ref=e726] [cursor=pointer]:
+                  - checkbox "3/4 Legs· 7 branches ₹500" [ref=e727]
+                  - generic [ref=e728]:
+                    - text: 3/4 Legs
+                    - generic [ref=e729]: · 7 branches
+                  - generic [ref=e730]: ₹500
+                - generic [ref=e731] [cursor=pointer]:
+                  - checkbox "4 Layers Advanced Anti-ageing Facial· 7 branches ₹3200" [ref=e732]
+                  - generic [ref=e733]:
+                    - text: 4 Layers Advanced Anti-ageing Facial
+                    - generic [ref=e734]: · 7 branches
+                  - generic [ref=e735]: ₹3200
+                - generic [ref=e736] [cursor=pointer]:
+                  - checkbox "4 Layers Advanced Radiance Facial· 7 branches ₹2500" [ref=e737]
+                  - generic [ref=e738]:
+                    - text: 4 Layers Advanced Radiance Facial
+                    - generic [ref=e739]: · 7 branches
+                  - generic [ref=e740]: ₹2500
+                - generic [ref=e741] [cursor=pointer]:
+                  - checkbox "4 Layers Advanced Whitening Facial· 7 branches ₹3000" [ref=e742]
+                  - generic [ref=e743]:
+                    - text: 4 Layers Advanced Whitening Facial
+                    - generic [ref=e744]: · 7 branches
+                  - generic [ref=e745]: ₹3000
+                - generic [ref=e746] [cursor=pointer]:
+                  - checkbox "Advanced Bearberry Marmalade Facial· 7 branches ₹3500" [ref=e747]
+                  - generic [ref=e748]:
+                    - text: Advanced Bearberry Marmalade Facial
+                    - generic [ref=e749]: · 7 branches
+                  - generic [ref=e750]: ₹3500
+                - generic [ref=e751] [cursor=pointer]:
+                  - checkbox "Advanced Kiwi Fruit Marmalade Facial· 7 branches ₹3500" [ref=e752]
+                  - generic [ref=e753]:
+                    - text: Advanced Kiwi Fruit Marmalade Facial
+                    - generic [ref=e754]: · 7 branches
+                  - generic [ref=e755]: ₹3500
+                - generic [ref=e756] [cursor=pointer]:
+                  - checkbox "Advanced Papaya Marmalade Facial· 7 branches ₹3200" [ref=e757]
+                  - generic [ref=e758]:
+                    - text: Advanced Papaya Marmalade Facial
+                    - generic [ref=e759]: · 7 branches
+                  - generic [ref=e760]: ₹3200
+                - generic [ref=e761] [cursor=pointer]:
+                  - checkbox "Advanced Pineapple Marmalade Facial· 7 branches ₹3000" [ref=e762]
+                  - generic [ref=e763]:
+                    - text: Advanced Pineapple Marmalade Facial
+                    - generic [ref=e764]: · 7 branches
+                  - generic [ref=e765]: ₹3000
+                - generic [ref=e766] [cursor=pointer]:
+                  - checkbox "Advanced Vine Grapes Marmalade Facial· 7 branches ₹3000" [ref=e767]
+                  - generic [ref=e768]:
+                    - text: Advanced Vine Grapes Marmalade Facial
+                    - generic [ref=e769]: · 7 branches
+                  - generic [ref=e770]: ₹3000
+                - generic [ref=e771] [cursor=pointer]:
+                  - checkbox "Anti Hair Loss Treatment with Aminexil· 7 branches ₹0" [ref=e772]
+                  - generic [ref=e773]:
+                    - text: Anti Hair Loss Treatment with Aminexil
+                    - generic [ref=e774]: · 7 branches
+                  - generic [ref=e775]: ₹0
+                - generic [ref=e776] [cursor=pointer]:
+                  - checkbox "Anti-ageing· 7 branches ₹4500" [ref=e777]
+                  - generic [ref=e778]:
+                    - text: Anti-ageing
+                    - generic [ref=e779]: · 7 branches
+                  - generic [ref=e780]: ₹4500
+                - generic [ref=e781] [cursor=pointer]:
+                  - checkbox "Aroma Bleach· 7 branches ₹400" [ref=e782]
+                  - generic [ref=e783]:
+                    - text: Aroma Bleach
+                    - generic [ref=e784]: · 7 branches
+                  - generic [ref=e785]: ₹400
+                - generic [ref=e786] [cursor=pointer]:
+                  - checkbox "Aroma Body Massage· 7 branches ₹3500" [ref=e787]
+                  - generic [ref=e788]:
+                    - text: Aroma Body Massage
+                    - generic [ref=e789]: · 7 branches
+                  - generic [ref=e790]: ₹3500
+                - generic [ref=e791] [cursor=pointer]:
+                  - checkbox "Aroma Oil Massage· 7 branches ₹800" [ref=e792]
+                  - generic [ref=e793]:
+                    - text: Aroma Oil Massage
+                    - generic [ref=e794]: · 7 branches
+                  - generic [ref=e795]: ₹800
+                - generic [ref=e796] [cursor=pointer]:
+                  - checkbox "Ayurvedic Body Massage· 7 branches ₹1800" [ref=e797]
+                  - generic [ref=e798]:
+                    - text: Ayurvedic Body Massage
+                    - generic [ref=e799]: · 7 branches
+                  - generic [ref=e800]: ₹1800
+                - generic [ref=e801] [cursor=pointer]:
+                  - checkbox "Baby Cut· 7 branches ₹375" [ref=e802]
+                  - generic [ref=e803]:
+                    - text: Baby Cut
+                    - generic [ref=e804]: · 7 branches
+                  - generic [ref=e805]: ₹375
+                - generic [ref=e806] [cursor=pointer]:
+                  - checkbox "Back / Arm / Shoulder· 7 branches ₹500" [ref=e807]
+                  - generic [ref=e808]:
+                    - text: Back / Arm / Shoulder
+                    - generic [ref=e809]: · 7 branches
+                  - generic [ref=e810]: ₹500
+                - generic [ref=e811] [cursor=pointer]:
+                  - checkbox "Back Massage· 7 branches ₹800" [ref=e812]
+                  - generic [ref=e813]:
+                    - text: Back Massage
+                    - generic [ref=e814]: · 7 branches
+                  - generic [ref=e815]: ₹800
+                - generic [ref=e816] [cursor=pointer]:
+                  - checkbox "Banana Leaf Bath· 7 branches ₹2000" [ref=e817]
+                  - generic [ref=e818]:
+                    - text: Banana Leaf Bath
+                    - generic [ref=e819]: · 7 branches
+                  - generic [ref=e820]: ₹2000
+                - generic [ref=e821] [cursor=pointer]:
+                  - checkbox "Basic Facial· 7 branches ₹1200" [ref=e822]
+                  - generic [ref=e823]:
+                    - text: Basic Facial
+                    - generic [ref=e824]: · 7 branches
+                  - generic [ref=e825]: ₹1200
+                - generic [ref=e826] [cursor=pointer]:
+                  - checkbox "Black Henna· 7 branches ₹0" [ref=e827]
+                  - generic [ref=e828]:
+                    - text: Black Henna
+                    - generic [ref=e829]: · 7 branches
+                  - generic [ref=e830]: ₹0
+                - generic [ref=e831] [cursor=pointer]:
+                  - checkbox "Blue Bleach· 7 branches ₹400" [ref=e832]
+                  - generic [ref=e833]:
+                    - text: Blue Bleach
+                    - generic [ref=e834]: · 7 branches
+                  - generic [ref=e835]: ₹400
+                - generic [ref=e836] [cursor=pointer]:
+                  - checkbox "Body Steam· 7 branches ₹500" [ref=e837]
+                  - generic [ref=e838]:
+                    - text: Body Steam
+                    - generic [ref=e839]: · 7 branches
+                  - generic [ref=e840]: ₹500
+                - generic [ref=e841] [cursor=pointer]:
+                  - checkbox "Boy Cut· 7 branches ₹500" [ref=e842]
+                  - generic [ref=e843]:
+                    - text: Boy Cut
+                    - generic [ref=e844]: · 7 branches
+                  - generic [ref=e845]: ₹500
+                - generic [ref=e846] [cursor=pointer]:
+                  - checkbox "Chin· 7 branches ₹50–100" [ref=e847]
+                  - generic [ref=e848]:
+                    - text: Chin
+                    - generic [ref=e849]: · 7 branches
+                  - generic [ref=e850]: ₹50–100
+                - generic [ref=e851] [cursor=pointer]:
+                  - checkbox "Choco Wine Facial· 7 branches ₹3500" [ref=e852]
+                  - generic [ref=e853]:
+                    - text: Choco Wine Facial
+                    - generic [ref=e854]: · 7 branches
+                  - generic [ref=e855]: ₹3500
+                - generic [ref=e856] [cursor=pointer]:
+                  - checkbox "Classic Hair Spa· 7 branches ₹0" [ref=e857]
+                  - generic [ref=e858]:
+                    - text: Classic Hair Spa
+                    - generic [ref=e859]: · 7 branches
+                  - generic [ref=e860]: ₹0
+                - generic [ref=e861] [cursor=pointer]:
+                  - checkbox "Clean Up· 7 branches ₹600–750" [ref=e862]
+                  - generic [ref=e863]:
+                    - text: Clean Up
+                    - generic [ref=e864]: · 7 branches
+                  - generic [ref=e865]: ₹600–750
+                - generic [ref=e866] [cursor=pointer]:
+                  - checkbox "Cleanup + Cream Massage· 7 branches ₹1500" [ref=e867]
+                  - generic [ref=e868]:
+                    - text: Cleanup + Cream Massage
+                    - generic [ref=e869]: · 7 branches
+                  - generic [ref=e870]: ₹1500
+                - generic [ref=e871] [cursor=pointer]:
+                  - checkbox "Conditioning· 7 branches ₹250" [ref=e872]
+                  - generic [ref=e873]:
+                    - text: Conditioning
+                    - generic [ref=e874]: · 7 branches
+                  - generic [ref=e875]: ₹250
+                - generic [ref=e876] [cursor=pointer]:
+                  - checkbox "Crystal Spa Manicure· 7 branches ₹1200" [ref=e877]
+                  - generic [ref=e878]:
+                    - text: Crystal Spa Manicure
+                    - generic [ref=e879]: · 7 branches
+                  - generic [ref=e880]: ₹1200
+                - generic [ref=e881] [cursor=pointer]:
+                  - checkbox "Crystal Spa Pedicure· 7 branches ₹1500" [ref=e882]
+                  - generic [ref=e883]:
+                    - text: Crystal Spa Pedicure
+                    - generic [ref=e884]: · 7 branches
+                  - generic [ref=e885]: ₹1500
+                - generic [ref=e886] [cursor=pointer]:
+                  - checkbox "Curl Setting· 7 branches ₹1000" [ref=e887]
+                  - generic [ref=e888]:
+                    - text: Curl Setting
+                    - generic [ref=e889]: · 7 branches
+                  - generic [ref=e890]: ₹1000
+                - generic [ref=e891] [cursor=pointer]:
+                  - checkbox "Dandruff Treatment· 7 branches ₹0" [ref=e892]
+                  - generic [ref=e893]:
+                    - text: Dandruff Treatment
+                    - generic [ref=e894]: · 7 branches
+                  - generic [ref=e895]: ₹0
+                - generic [ref=e896] [cursor=pointer]:
+                  - checkbox "Deep \"U\" Cut· 7 branches ₹400" [ref=e897]
+                  - generic [ref=e898]:
+                    - text: Deep "U" Cut
+                    - generic [ref=e899]: · 7 branches
+                  - generic [ref=e900]: ₹400
+                - generic [ref=e901] [cursor=pointer]:
+                  - checkbox "Deep Conditioning· 7 branches ₹800" [ref=e902]
+                  - generic [ref=e903]:
+                    - text: Deep Conditioning
+                    - generic [ref=e904]: · 7 branches
+                  - generic [ref=e905]: ₹800
+                - generic [ref=e906] [cursor=pointer]:
+                  - checkbox "Depigmentation· 7 branches ₹2500" [ref=e907]
+                  - generic [ref=e908]:
+                    - text: Depigmentation
+                    - generic [ref=e909]: · 7 branches
+                  - generic [ref=e910]: ₹2500
+                - generic [ref=e911] [cursor=pointer]:
+                  - checkbox "Derma Fair· 7 branches ₹2750" [ref=e912]
+                  - generic [ref=e913]:
+                    - text: Derma Fair
+                    - generic [ref=e914]: · 7 branches
+                  - generic [ref=e915]: ₹2750
+                - generic [ref=e916] [cursor=pointer]:
+                  - checkbox "Diamond Facial· 7 branches ₹3000" [ref=e917]
+                  - generic [ref=e918]:
+                    - text: Diamond Facial
+                    - generic [ref=e919]: · 7 branches
+                  - generic [ref=e920]: ₹3000
+                - generic [ref=e921] [cursor=pointer]:
+                  - checkbox "Diana Cut· 7 branches ₹500" [ref=e922]
+                  - generic [ref=e923]:
+                    - text: Diana Cut
+                    - generic [ref=e924]: · 7 branches
+                  - generic [ref=e925]: ₹500
+                - generic [ref=e926] [cursor=pointer]:
+                  - checkbox "Entire Day SPA· 7 branches ₹15000" [ref=e927]
+                  - generic [ref=e928]:
+                    - text: Entire Day SPA
+                    - generic [ref=e929]: · 7 branches
+                  - generic [ref=e930]: ₹15000
+                - generic [ref=e931] [cursor=pointer]:
+                  - checkbox "Eye Brows· 7 branches ₹50" [ref=e932]
+                  - generic [ref=e933]:
+                    - text: Eye Brows
+                    - generic [ref=e934]: · 7 branches
+                  - generic [ref=e935]: ₹50
+                - generic [ref=e936] [cursor=pointer]:
+                  - checkbox "Face Side· 7 branches ₹150–250" [ref=e937]
+                  - generic [ref=e938]:
+                    - text: Face Side
+                    - generic [ref=e939]: · 7 branches
+                  - generic [ref=e940]: ₹150–250
+                - generic [ref=e941] [cursor=pointer]:
+                  - checkbox "Feather Cut· 7 branches ₹1000" [ref=e942]
+                  - generic [ref=e943]:
+                    - text: Feather Cut
+                    - generic [ref=e944]: · 7 branches
+                  - generic [ref=e945]: ₹1000
+                - generic [ref=e946] [cursor=pointer]:
+                  - checkbox "Feet· 7 branches ₹400–600" [ref=e947]
+                  - generic [ref=e948]:
+                    - text: Feet
+                    - generic [ref=e949]: · 7 branches
+                  - generic [ref=e950]: ₹400–600
+                - generic [ref=e951] [cursor=pointer]:
+                  - checkbox "Foot Reflexology· 7 branches ₹700–900" [ref=e952]
+                  - generic [ref=e953]:
+                    - text: Foot Reflexology
+                    - generic [ref=e954]: · 7 branches
+                  - generic [ref=e955]: ₹700–900
+                - generic [ref=e956] [cursor=pointer]:
+                  - checkbox "Foot Reflexology / Back / Arm / Shoulder· 7 branches ₹1200–1750" [ref=e957]
+                  - generic [ref=e958]:
+                    - text: Foot Reflexology / Back / Arm / Shoulder
+                    - generic [ref=e959]: · 7 branches
+                  - generic [ref=e960]: ₹1200–1750
+                - generic [ref=e961] [cursor=pointer]:
+                  - checkbox "Forehead· 7 branches ₹50–100" [ref=e962]
+                  - generic [ref=e963]:
+                    - text: Forehead
+                    - generic [ref=e964]: · 7 branches
+                  - generic [ref=e965]: ₹50–100
+                - generic [ref=e966] [cursor=pointer]:
+                  - checkbox "French Manicure· 7 branches ₹900" [ref=e967]
+                  - generic [ref=e968]:
+                    - text: French Manicure
+                    - generic [ref=e969]: · 7 branches
+                  - generic [ref=e970]: ₹900
+                - generic [ref=e971] [cursor=pointer]:
+                  - checkbox "French Pedicure· 7 branches ₹1250" [ref=e972]
+                  - generic [ref=e973]:
+                    - text: French Pedicure
+                    - generic [ref=e974]: · 7 branches
+                  - generic [ref=e975]: ₹1250
+                - generic [ref=e976] [cursor=pointer]:
+                  - checkbox "Front Cut· 7 branches ₹75" [ref=e977]
+                  - generic [ref=e978]:
+                    - text: Front Cut
+                    - generic [ref=e979]: · 7 branches
+                  - generic [ref=e980]: ₹75
+                - generic [ref=e981] [cursor=pointer]:
+                  - checkbox "Front Layer· 7 branches ₹300" [ref=e982]
+                  - generic [ref=e983]:
+                    - text: Front Layer
+                    - generic [ref=e984]: · 7 branches
+                  - generic [ref=e985]: ₹300
+                - generic [ref=e986] [cursor=pointer]:
+                  - checkbox "Fruit Bleach· 7 branches ₹250" [ref=e987]
+                  - generic [ref=e988]:
+                    - text: Fruit Bleach
+                    - generic [ref=e989]: · 7 branches
+                  - generic [ref=e990]: ₹250
+                - generic [ref=e991] [cursor=pointer]:
+                  - checkbox "Fruit Facial· 7 branches ₹1000" [ref=e992]
+                  - generic [ref=e993]:
+                    - text: Fruit Facial
+                    - generic [ref=e994]: · 7 branches
+                  - generic [ref=e995]: ₹1000
+                - generic [ref=e996] [cursor=pointer]:
+                  - checkbox "Full Arms· 7 branches ₹400–1000" [ref=e997]
+                  - generic [ref=e998]:
+                    - text: Full Arms
+                    - generic [ref=e999]: · 7 branches
+                  - generic [ref=e1000]: ₹400–1000
+                - generic [ref=e1001] [cursor=pointer]:
+                  - checkbox "Full Body· 7 branches ₹1500–3500" [ref=e1002]
+                  - generic [ref=e1003]:
+                    - text: Full Body
+                    - generic [ref=e1004]: · 7 branches
+                  - generic [ref=e1005]: ₹1500–3500
+                - generic [ref=e1006] [cursor=pointer]:
+                  - checkbox "Full Face· 7 branches ₹300–500" [ref=e1007]
+                  - generic [ref=e1008]:
+                    - text: Full Face
+                    - generic [ref=e1009]: · 7 branches
+                  - generic [ref=e1010]: ₹300–500
+                - generic [ref=e1011] [cursor=pointer]:
+                  - checkbox "Full Leg· 7 branches ₹1200" [ref=e1012]
+                  - generic [ref=e1013]:
+                    - text: Full Leg
+                    - generic [ref=e1014]: · 7 branches
+                  - generic [ref=e1015]: ₹1200
+                - generic [ref=e1016] [cursor=pointer]:
+                  - checkbox "Full Legs· 7 branches ₹600–1500" [ref=e1017]
+                  - generic [ref=e1018]:
+                    - text: Full Legs
+                    - generic [ref=e1019]: · 7 branches
+                  - generic [ref=e1020]: ₹600–1500
+                - generic [ref=e1021] [cursor=pointer]:
+                  - checkbox "Glow Derma· 7 branches ₹1800" [ref=e1022]
+                  - generic [ref=e1023]:
+                    - text: Glow Derma
+                    - generic [ref=e1024]: · 7 branches
+                  - generic [ref=e1025]: ₹1800
+                - generic [ref=e1026] [cursor=pointer]:
+                  - checkbox "Gold Bleach· 7 branches ₹500" [ref=e1027]
+                  - generic [ref=e1028]:
+                    - text: Gold Bleach
+                    - generic [ref=e1029]: · 7 branches
+                  - generic [ref=e1030]: ₹500
+                - generic [ref=e1031] [cursor=pointer]:
+                  - checkbox "Gold Facial· 7 branches ₹3500" [ref=e1032]
+                  - generic [ref=e1033]:
+                    - text: Gold Facial
+                    - generic [ref=e1034]: · 7 branches
+                  - generic [ref=e1035]: ₹3500
+                - generic [ref=e1036] [cursor=pointer]:
+                  - checkbox "Hair Coloring· 7 branches ₹0" [ref=e1037]
+                  - generic [ref=e1038]:
+                    - text: Hair Coloring
+                    - generic [ref=e1039]: · 7 branches
+                  - generic [ref=e1040]: ₹0
+                - generic [ref=e1041] [cursor=pointer]:
+                  - checkbox "Hair Fall Treatment· 7 branches ₹0" [ref=e1042]
+                  - generic [ref=e1043]:
+                    - text: Hair Fall Treatment
+                    - generic [ref=e1044]: · 7 branches
+                  - generic [ref=e1045]: ₹0
+                - generic [ref=e1046] [cursor=pointer]:
+                  - checkbox "Hair Relaxing· 7 branches ₹0" [ref=e1047]
+                  - generic [ref=e1048]:
+                    - text: Hair Relaxing
+                    - generic [ref=e1049]: · 7 branches
+                  - generic [ref=e1050]: ₹0
+                - generic [ref=e1051] [cursor=pointer]:
+                  - checkbox "Hair Smoothening· 7 branches ₹0" [ref=e1052]
+                  - generic [ref=e1053]:
+                    - text: Hair Smoothening
+                    - generic [ref=e1054]: · 7 branches
+                  - generic [ref=e1055]: ₹0
+                - generic [ref=e1056] [cursor=pointer]:
+                  - checkbox "Hair Styling· 2 branches ₹100" [ref=e1057]
+                  - generic [ref=e1058]:
+                    - text: Hair Styling
+                    - generic [ref=e1059]: · 2 branches
+                  - generic [ref=e1060]: ₹100
+                - generic [ref=e1061] [cursor=pointer]:
+                  - checkbox "Half Arms· 7 branches ₹200–750" [ref=e1062]
+                  - generic [ref=e1063]:
+                    - text: Half Arms
+                    - generic [ref=e1064]: · 7 branches
+                  - generic [ref=e1065]: ₹200–750
+                - generic [ref=e1066] [cursor=pointer]:
+                  - checkbox "Half Day SPA· 7 branches ₹8000" [ref=e1067]
+                  - generic [ref=e1068]:
+                    - text: Half Day SPA
+                    - generic [ref=e1069]: · 7 branches
+                  - generic [ref=e1070]: ₹8000
+                - generic [ref=e1071] [cursor=pointer]:
+                  - checkbox "Half Leg· 7 branches ₹750" [ref=e1072]
+                  - generic [ref=e1073]:
+                    - text: Half Leg
+                    - generic [ref=e1074]: · 7 branches
+                  - generic [ref=e1075]: ₹750
+                - generic [ref=e1076] [cursor=pointer]:
+                  - checkbox "Half Leg Massage· 7 branches ₹750" [ref=e1077]
+                  - generic [ref=e1078]:
+                    - text: Half Leg Massage
+                    - generic [ref=e1079]: · 7 branches
+                  - generic [ref=e1080]: ₹750
+                - generic [ref=e1081] [cursor=pointer]:
+                  - checkbox "Half Legs· 7 branches ₹300–1000" [ref=e1082]
+                  - generic [ref=e1083]:
+                    - text: Half Legs
+                    - generic [ref=e1084]: · 7 branches
+                  - generic [ref=e1085]: ₹300–1000
+                - generic [ref=e1086] [cursor=pointer]:
+                  - checkbox "Hand Massage· 7 branches ₹800" [ref=e1087]
+                  - generic [ref=e1088]:
+                    - text: Hand Massage
+                    - generic [ref=e1089]: · 7 branches
+                  - generic [ref=e1090]: ₹800
+                - generic [ref=e1091] [cursor=pointer]:
+                  - checkbox "Healing Spa Manicure· 7 branches ₹1000" [ref=e1092]
+                  - generic [ref=e1093]:
+                    - text: Healing Spa Manicure
+                    - generic [ref=e1094]: · 7 branches
+                  - generic [ref=e1095]: ₹1000
+                - generic [ref=e1096] [cursor=pointer]:
+                  - checkbox "Healing Spa Pedicure· 7 branches ₹1200" [ref=e1097]
+                  - generic [ref=e1098]:
+                    - text: Healing Spa Pedicure
+                    - generic [ref=e1099]: · 7 branches
+                  - generic [ref=e1100]: ₹1200
+                - generic [ref=e1101] [cursor=pointer]:
+                  - checkbox "Henna Colouring· 7 branches ₹0" [ref=e1102]
+                  - generic [ref=e1103]:
+                    - text: Henna Colouring
+                    - generic [ref=e1104]: · 7 branches
+                  - generic [ref=e1105]: ₹0
+                - generic [ref=e1106] [cursor=pointer]:
+                  - checkbox "Henna Conditioning· 7 branches ₹0" [ref=e1107]
+                  - generic [ref=e1108]:
+                    - text: Henna Conditioning
+                    - generic [ref=e1109]: · 7 branches
+                  - generic [ref=e1110]: ₹0
+                - generic [ref=e1111] [cursor=pointer]:
+                  - checkbox "Herbal Facial· 7 branches ₹750" [ref=e1112]
+                  - generic [ref=e1113]:
+                    - text: Herbal Facial
+                    - generic [ref=e1114]: · 7 branches
+                  - generic [ref=e1115]: ₹750
+                - generic [ref=e1116] [cursor=pointer]:
+                  - checkbox "Hot Oil Massage (Basic Length)· 7 branches ₹600" [ref=e1117]
+                  - generic [ref=e1118]:
+                    - text: Hot Oil Massage (Basic Length)
+                    - generic [ref=e1119]: · 7 branches
+                  - generic [ref=e1120]: ₹600
+                - generic [ref=e1121] [cursor=pointer]:
+                  - checkbox "Insta Face Lift· 7 branches ₹3500" [ref=e1122]
+                  - generic [ref=e1123]:
+                    - text: Insta Face Lift
+                    - generic [ref=e1124]: · 7 branches
+                  - generic [ref=e1125]: ₹3500
+                - generic [ref=e1126] [cursor=pointer]:
+                  - checkbox "Insta Glow Body Wrap· 7 branches ₹2500" [ref=e1127]
+                  - generic [ref=e1128]:
+                    - text: Insta Glow Body Wrap
+                    - generic [ref=e1129]: · 7 branches
+                  - generic [ref=e1130]: ₹2500
+                - generic [ref=e1131] [cursor=pointer]:
+                  - checkbox "Insta Glow Facial· 7 branches ₹2500" [ref=e1132]
+                  - generic [ref=e1133]:
+                    - text: Insta Glow Facial
+                    - generic [ref=e1134]: · 7 branches
+                  - generic [ref=e1135]: ₹2500
+                - generic [ref=e1136] [cursor=pointer]:
+                  - checkbox "Insta Glow Spa Manicure· 7 branches ₹800" [ref=e1137]
+                  - generic [ref=e1138]:
+                    - text: Insta Glow Spa Manicure
+                    - generic [ref=e1139]: · 7 branches
+                  - generic [ref=e1140]: ₹800
+                - generic [ref=e1141] [cursor=pointer]:
+                  - checkbox "Insta Glow Spa Pedicure· 7 branches ₹1000" [ref=e1142]
+                  - generic [ref=e1143]:
+                    - text: Insta Glow Spa Pedicure
+                    - generic [ref=e1144]: · 7 branches
+                  - generic [ref=e1145]: ₹1000
+                - generic [ref=e1146] [cursor=pointer]:
+                  - checkbox "Insta Hair Glow· 7 branches ₹0" [ref=e1147]
+                  - generic [ref=e1148]:
+                    - text: Insta Hair Glow
+                    - generic [ref=e1149]: · 7 branches
+                  - generic [ref=e1150]: ₹0
+                - generic [ref=e1151] [cursor=pointer]:
+                  - checkbox "Lacto Bleach· 7 branches ₹400" [ref=e1152]
+                  - generic [ref=e1153]:
+                    - text: Lacto Bleach
+                    - generic [ref=e1154]: · 7 branches
+                  - generic [ref=e1155]: ₹400
+                - generic [ref=e1156] [cursor=pointer]:
+                  - checkbox "Layer Cut· 7 branches ₹1000" [ref=e1157]
+                  - generic [ref=e1158]:
+                    - text: Layer Cut
+                    - generic [ref=e1159]: · 7 branches
+                  - generic [ref=e1160]: ₹1000
+                - generic [ref=e1161] [cursor=pointer]:
+                  - checkbox "Leg Massage· 7 branches ₹1000" [ref=e1162]
+                  - generic [ref=e1163]:
+                    - text: Leg Massage
+                    - generic [ref=e1164]: · 7 branches
+                  - generic [ref=e1165]: ₹1000
+                - generic [ref=e1166] [cursor=pointer]:
+                  - checkbox "Light Makeup· 2 branches ₹100" [ref=e1167]
+                  - generic [ref=e1168]:
+                    - text: Light Makeup
+                    - generic [ref=e1169]: · 2 branches
+                  - generic [ref=e1170]: ₹100
+                - generic [ref=e1171] [cursor=pointer]:
+                  - checkbox "Luxurious Jacuzzi Soaking· 7 branches ₹1800" [ref=e1172]
+                  - generic [ref=e1173]:
+                    - text: Luxurious Jacuzzi Soaking
+                    - generic [ref=e1174]: · 7 branches
+                  - generic [ref=e1175]: ₹1800
+                - generic [ref=e1176] [cursor=pointer]:
+                  - checkbox "Meladerm Bleach & Mould Mask· 7 branches ₹1500" [ref=e1177]
+                  - generic [ref=e1178]:
+                    - text: Meladerm Bleach & Mould Mask
+                    - generic [ref=e1179]: · 7 branches
+                  - generic [ref=e1180]: ₹1500
+                - generic [ref=e1181] [cursor=pointer]:
+                  - checkbox "Meladerm Clean Up· 7 branches ₹1200" [ref=e1182]
+                  - generic [ref=e1183]:
+                    - text: Meladerm Clean Up
+                    - generic [ref=e1184]: · 7 branches
+                  - generic [ref=e1185]: ₹1200
+                - generic [ref=e1186] [cursor=pointer]:
+                  - checkbox "Meladerm D-Tan Bleach· 7 branches ₹750" [ref=e1187]
+                  - generic [ref=e1188]:
+                    - text: Meladerm D-Tan Bleach
+                    - generic [ref=e1189]: · 7 branches
+                  - generic [ref=e1190]: ₹750
+                - generic [ref=e1191] [cursor=pointer]:
+                  - checkbox "Meladerm Facial· 7 branches ₹3500" [ref=e1192]
+                  - generic [ref=e1193]:
+                    - text: Meladerm Facial
+                    - generic [ref=e1194]: · 7 branches
+                  - generic [ref=e1195]: ₹3500
+                - generic [ref=e1196] [cursor=pointer]:
+                  - checkbox "Mud Pack· 7 branches ₹2000" [ref=e1197]
+                  - generic [ref=e1198]:
+                    - text: Mud Pack
+                    - generic [ref=e1199]: · 7 branches
+                  - generic [ref=e1200]: ₹2000
+                - generic [ref=e1201] [cursor=pointer]:
+                  - checkbox "Multiple Layer· 7 branches ₹1200" [ref=e1202]
+                  - generic [ref=e1203]:
+                    - text: Multiple Layer
+                    - generic [ref=e1204]: · 7 branches
+                  - generic [ref=e1205]: ₹1200
+                - generic [ref=e1206] [cursor=pointer]:
+                  - checkbox "Mushroom Cut· 7 branches ₹600" [ref=e1207]
+                  - generic [ref=e1208]:
+                    - text: Mushroom Cut
+                    - generic [ref=e1209]: · 7 branches
+                  - generic [ref=e1210]: ₹600
+                - generic [ref=e1211] [cursor=pointer]:
+                  - checkbox "Neck· 7 branches ₹150" [ref=e1212]
+                  - generic [ref=e1213]:
+                    - text: Neck
+                    - generic [ref=e1214]: · 7 branches
+                  - generic [ref=e1215]: ₹150
+                - generic [ref=e1216] [cursor=pointer]:
+                  - checkbox "Neck & Back· 2 branches ₹400–500" [ref=e1217]
+                  - generic [ref=e1218]:
+                    - text: Neck & Back
+                    - generic [ref=e1219]: · 2 branches
+                  - generic [ref=e1220]: ₹400–500
+  - generic [ref=e637]: Revenue

@@ -56,6 +56,8 @@ Production image runs gunicorn with `gthread` workers (2 workers × 4 threads, 1
 
 **Startup migrations**: `app.py` drops legacy indexes on boot (`customers.mobile_1`, `customers.referral_code_1`, duplicate appointment index). Safe to add more one-time migrations in this block.
 
+**`backend/` root clutter**: dozens of one-off scripts (`migrate_*.py`, `create_*.py`, `fix_*.py`, `verify_*.py`) and status docs (`MIGRATION_COMPLETE.md`, `CONVERSION_STATUS.md`, etc.) live at the `backend/` root from the original SQLite→MongoDB migration (Dec 2025) and later data fixes. They are historical/ad-hoc, not part of the running app and not maintained — don't treat them as current documentation or examples of house style. The only migration mechanism that actually runs is the startup block in `app.py`; `backend/migrations/` holds separate one-off index-creation scripts, also run manually, not on boot.
+
 **Backend Utilities** (`backend/utils/`):
 - `auth.py` - JWT handling, decorators: `@require_auth`, `@require_role('manager', 'owner')`, `@optional_auth`
 - `branch_filter.py` - Multi-branch filtering: `get_selected_branch()`, `filter_by_branch()`
@@ -72,14 +74,15 @@ Production image runs gunicorn with `gthread` workers (2 workers × 4 threads, 1
 **State**:
 - Auth: `src/contexts/AuthContext.jsx` - JWT token in `sessionStorage.auth_token`, user in `sessionStorage.auth_user`
 - Branch: Stored in `sessionStorage.current_branch` (JSON), sent via `X-Branch-Id` header on every request
+- "All Branches" mode: when an owner selects `{isAll: true}` as the current branch, [api.js](frontend/src/utils/api.js) intentionally **omits** the `X-Branch-Id` header so the backend aggregates across branches. Do not fall back to the user's home branch in that path — it would silently re-scope every endpoint.
 
 ### Multi-Branch Architecture
 
 - Users have roles: `staff`, `manager`, `owner`
 - Data is branch-scoped via `branch` ReferenceField in models
-- `X-Branch-Id` header determines data scope
+- `X-Branch-Id` header determines data scope; absence of the header (owner-only) means "no scope" → aggregate across branches
 - Owners can switch branches; staff/managers locked to their branch
-- Use `get_selected_branch(request, user)` in routes to get current branch
+- Use `get_selected_branch(request, user)` in routes to get current branch (returns `None` for owner aggregate mode — code paths must handle that)
 
 ### Adding a New API Endpoint
 
@@ -96,7 +99,7 @@ Production image runs gunicorn with `gthread` workers (2 workers × 4 threads, 1
 - Timestamps: `created_at`, `updated_at` (DateTimeField)
 - Soft deletes: `is_active` or `status='inactive'` (do NOT physically delete)
 - Customer uniqueness is a compound `(mobile, branch)` index, not global - same customer can exist across branches
-- For embedded documents with ReferenceFields, use `_get_raw_ref_id(item, 'field')` to read the ObjectId without triggering a lazy dereference (avoids N+1)
+- For embedded documents with ReferenceFields, use `_get_raw_ref_id(item, 'field')` (defined in [bill_routes.py](backend/routes/bill_routes.py)) to read the ObjectId without triggering a lazy dereference (avoids N+1). It reads `item._data[field]` to bypass MongoEngine's auto-deref
 
 ### Performance Conventions
 
@@ -105,3 +108,13 @@ Production image runs gunicorn with `gthread` workers (2 workers × 4 threads, 1
 - Batch-fetch referenced docs in bulk rather than relying on lazy dereference inside a loop
 - Frontend: run independent fetches via `Promise.all` / `Promise.allSettled`, not sequentially
 - Production builds strip `console.log` via terser ([vite.config.js](frontend/vite.config.js))
+- `flask-compress` (gzip) is enabled in [app.py](backend/app.py) for JSON, JS, CSS, and PDFs ≥ 500 bytes — keep responses JSON-serializable rather than streaming where possible
+
+### Static / Public Route Precedence
+
+- Single Flask app serves both API (`/api/*`) and the built React SPA from `backend/static/`
+- The catch-all `serve(path)` in [app.py](backend/app.py) explicitly skips paths starting with `i/`, `invoice/`, or `feedback` so dedicated public routes win — when adding a new public (non-`/api`) prefix, update that skip list, otherwise the SPA's `index.html` will be served instead
+
+## Testing & Linting
+
+There is no test suite, lint config, or type checker in this repo. `frontend/package.json` exposes only `dev`, `build`, `preview`; `backend` has no test runner configured. Verify changes by running the app (`python app.py` + `npm run dev`) and exercising the affected flow.

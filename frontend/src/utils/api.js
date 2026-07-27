@@ -12,15 +12,25 @@ const getAuthToken = () => {
 };
 
 /**
- * Get current branch ID from sessionStorage or context
+ * Get current branch ID from sessionStorage or context.
+ *
+ * Returning null causes the X-Branch-Id header to be omitted, which makes the
+ * backend aggregate across all branches (used by the owner's "All Branches"
+ * dashboard view).
  */
 const getBranchId = () => {
   const storedBranch = sessionStorage.getItem('current_branch');
   if (storedBranch) {
     try {
       const branch = JSON.parse(storedBranch);
+      // Owner explicitly chose "All Branches" — suppress header and DON'T fall
+      // through to the user.branch_id fallback below, otherwise we'd send the
+      // owner's home branch and scope every endpoint to it.
+      if (branch && branch.isAll) {
+        console.log('[API] All Branches selected — omitting X-Branch-Id');
+        return null;
+      }
       if (branch && branch.id) {
-        // Debug log to verify branch ID is being read
         console.log('[API] Using branch ID:', branch.id);
         return branch.id;
       }
@@ -28,7 +38,7 @@ const getBranchId = () => {
       console.error('Error parsing stored branch:', e);
     }
   }
-  
+
   // Fallback: try to get from user data
   const storedUser = sessionStorage.getItem('auth_user');
   if (storedUser) {
@@ -46,7 +56,7 @@ const getBranchId = () => {
       console.error('Error parsing stored user:', e);
     }
   }
-  
+
   console.log('[API] No branch ID found');
   return null;
 };

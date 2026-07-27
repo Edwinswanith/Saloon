@@ -1,0 +1,353 @@
+cluster_id,cluster_size,is_first_in_cluster,bill_number,bill_id,customer_name,branch_name,bill_date,final_amount,payment_mode,item_count,item_summary,gap_seconds_from_first,bill_number_timestamp,decision
+1,2,YES,BILL-20260325102640-3950,69c3b86009f6e5b14ce4b85d,Muthu,DLF,2026-03-25 06:30:00,400.00,cash,1,1x service:Aroma Bleach@400,0.0,20260325102640,
+1,2,,BILL-20260325102632-B2AF,69c3b8587a6fc92bbd2ba5ed,Muthu,DLF,2026-03-25 06:30:00,400.00,cash,1,1x service:Aroma Bleach@400,0.0,20260325102632,delete
+
+2,3,YES,BILL-20260406121528-3FC7,69d3a3e095b1f9e831bc7fa9,Geetha,DLF,2026-04-06 06:30:00,1600.00,cash,3,1x service:3/4 Legs@500; 1x service:3/4 Arms@300; 1x service:Aroma Oil Massage@800,0.0,20260406121528,
+2,3,,BILL-20260406121534-4256,69d3a3e695b1f9e831bc7fab,Geetha,DLF,2026-04-06 06:30:00,1600.00,cash,3,1x service:3/4 Legs@500; 1x service:3/4 Arms@300; 1x service:Aroma Oil Massage@800,0.0,20260406121534,delete
+2,3,,BILL-20260406121531-773E,69d3a3e395b1f9e831bc7faa,Geetha,DLF,2026-04-06 06:30:00,1600.00,cash,3,1x service:3/4 Legs@500; 1x service:3/4 Arms@300; 1x service:Aroma Oil Massage@800,0.0,20260406121531,delete
+
+3,2,YES,BILL-20260406142735-ABDB,69d3c2d795b1f9e831bc7fcd,Ashika,DLF,2026-04-06 06:30:00,3200.00,cash,1,1x service:4 Layers Advanced Anti-ageing Facial@3200,0.0,20260406142735,
+3,2,,BILL-20260406142732-E44A,69d3c2d495b1f9e831bc7fcc,Ashika,DLF,2026-04-06 06:30:00,3200.00,cash,1,1x service:4 Layers Advanced Anti-ageing Facial@3200,0.0,20260406142732,delete
+
+4,2,YES,BILL-20260406025517-9DAF,69d3209595b1f9e831bc7f7e,Ashika,DLF,2026-04-06 06:30:00,6050.00,upi,3,1x service:Upper Lip@50; 1x service:4 Layers Advanced Whitening Facial@3000; 1x service:4 Layers Advanced Whitening Facial@3000,0.0,20260406025517,
+4,2,,BILL-20260406025516-7F21,69d3209495b1f9e831bc7f7d,Ashika,DLF,2026-04-06 06:30:00,6050.00,upi,3,1x service:Upper Lip@50; 1x service:4 Layers Advanced Whitening Facial@3000; 1x service:4 Layers Advanced Whitening Facial@3000,0.0,20260406025516,delete
+
+5,3,YES,BILL-20260406025430-5AB6,69d3206695b1f9e831bc7f70,Geetha,DLF,2026-04-06 06:30:00,4000.00,cash,2,1x service:Advanced Kiwi Fruit Marmalade Facial@3500; 1x service:V Cut@500,0.0,20260406025430,
+5,3,,BILL-20260406025427-1782,69d3206395b1f9e831bc7f6f,Geetha,DLF,2026-04-06 06:30:00,4000.00,cash,2,1x service:Advanced Kiwi Fruit Marmalade Facial@3500; 1x service:V Cut@500,0.0,20260406025427,delete
+5,3,,BILL-20260406025423-8F7B,69d3205f910a834d069158d8,Geetha,DLF,2026-04-06 06:30:00,4000.00,cash,2,1x service:Advanced Kiwi Fruit Marmalade Facial@3500; 1x service:V Cut@500,0.0,20260406025423,delete
+
+6,2,YES,BILL-20260407061950-5779,69d4a20665eb8e3a9a2317f8,Ashika,DLF,2026-04-07 06:30:00,300.00,cash,1,1x service:3/4 Arms@300,0.0,20260407061950,
+6,2,,BILL-20260407061955-520B,69d4a20b65eb8e3a9a2317f9,Ashika,DLF,2026-04-07 06:30:00,300.00,cash,1,1x service:3/4 Arms@300,0.0,20260407061955,delete
+
+7,2,YES,BILL-20260408142223-2A5D,69d6649f27f1d8e15e681938,Suganthi,DLF,2026-04-08 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260408142223,
+7,2,,BILL-20260408142221-1B16,69d6649d27f1d8e15e681937,Suganthi,DLF,2026-04-08 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260408142221,delete
+
+8,2,YES,BILL-20260408150648-71EE,69d66f0827f1d8e15e681948,Namadha,DLF,2026-04-08 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260408150648,
+8,2,,BILL-20260408150649-3C07,69d66f09480e34bd1b251062,Namadha,DLF,2026-04-08 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260408150649,delete
+
+9,2,YES,BILL-20260410150112-30B1,69d910b85cc1455ba8afc803,Anju,DLF,2026-04-10 06:30:00,750.00,upi,1,1x service:Step Cut@750,0.0,20260410150112,
+9,2,,BILL-20260410150110-29E1,69d910b65cc1455ba8afc802,Anju,DLF,2026-04-10 06:30:00,750.00,upi,1,1x service:Step Cut@750,0.0,20260410150110,delete
+
+10,2,YES,BILL-20260410093448-3E26,69d8c4385cc1455ba8afc7ce,Mam,DLF,2026-04-10 06:30:00,1500.00,upi,1,1x service:Crystal Spa Pedicure@1500,0.0,20260410093448,
+10,2,,BILL-20260410093445-ABBB,69d8c4355cc1455ba8afc7cd,Mam,DLF,2026-04-10 06:30:00,1500.00,upi,1,1x service:Crystal Spa Pedicure@1500,0.0,20260410093445,delete
+
+11,2,YES,BILL-20260412112057-AF51,69db80195cc1455ba8afc831,Deepika,DLF,2026-04-12 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260412112057,
+11,2,,BILL-20260412112053-FA96,69db8015a39e71d0f1ef58cf,Deepika,DLF,2026-04-12 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260412112053,delete
+
+12,2,YES,BILL-20260412105829-8FCF,69db7ad55cc1455ba8afc82b,Nrmala,DLF,2026-04-12 06:30:00,125.00,cash,2,1x service:Eye Brows@50; 1x service:Front Cut@75,0.0,20260412105829,
+12,2,,BILL-20260412105821-5996,69db7acda39e71d0f1ef58c9,Nrmala,DLF,2026-04-12 06:30:00,125.00,cash,2,1x service:Eye Brows@50; 1x service:Front Cut@75,0.0,20260412105821,delete
+
+13,2,YES,BILL-20260412072723-4C48,69db495b5cc1455ba8afc820,Nithya,DLF,2026-04-12 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260412072723,
+13,2,,BILL-20260412072721-B225,69db4959a39e71d0f1ef58c8,Nithya,DLF,2026-04-12 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260412072721,delete
+
+14,2,YES,BILL-20260413134146-7C18,69dcf29a5cc1455ba8afc887,Vyayati,DLF,2026-04-13 06:30:00,1000.00,upi,1,1x service:Insta Glow Spa Pedicure@1000,0.0,20260413134146,
+14,2,,BILL-20260413134149-804B,69dcf29d5cc1455ba8afc888,Vyayati,DLF,2026-04-13 06:30:00,1000.00,upi,1,1x service:Insta Glow Spa Pedicure@1000,0.0,20260413134149,delete
+
+15,2,YES,BILL-20260413140446-90AB,69dcf7fe5cc1455ba8afc898,Viji,DLF,2026-04-13 06:30:00,100.00,upi,2,1x service:Eye Brows@50; 1x service:Eye Brows@50,0.0,20260413140446,
+15,2,,BILL-20260413140442-BABB,69dcf7fa5cc1455ba8afc897,Viji,DLF,2026-04-13 06:30:00,100.00,upi,2,1x service:Eye Brows@50; 1x service:Eye Brows@50,0.0,20260413140442,delete
+
+16,2,YES,BILL-20260413125907-31B9,69dce89b5cc1455ba8afc870,Priyadharshini,DLF,2026-04-13 06:30:00,550.00,cash,2,1x service:Eye Brows@50; 1x service:Tan Bleach@500,0.0,20260413125907,
+16,2,,BILL-20260413125922-D334,69dce8aa5cc1455ba8afc875,Priyadharshini,DLF,2026-04-13 06:30:00,550.00,cash,2,1x service:Eye Brows@50; 1x service:Tan Bleach@500,0.0,20260413125922,
+
+17,2,YES,BILL-20260416045244-DE9A,69e06b1c5cc1455ba8afc8e3,Ruby,DLF,2026-04-16 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260416045244,
+17,2,,BILL-20260416045238-A48A,69e06b165cc1455ba8afc8e2,Ruby,DLF,2026-04-16 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260416045238,delete
+
+18,3,YES,BILL-20260419104054-5DA4,69e4b136a590bcb29ebbdc2d,Pratheesha,Main Road,2026-04-19 06:30:00,1250.00,upi,2,1x service:Multiple Layer@1200; 1x service:Eye Brows@50,0.0,20260419104054,
+18,3,,BILL-20260419104058-ADF5,69e4b13aa590bcb29ebbdc2e,Pratheesha,Main Road,2026-04-19 06:30:00,1250.00,upi,2,1x service:Multiple Layer@1200; 1x service:Eye Brows@50,0.0,20260419104058,delete
+18,3,,BILL-20260419104103-D680,69e4b13fa590bcb29ebbdc2f,Pratheesha,Main Road,2026-04-19 06:30:00,1250.00,upi,2,1x service:Multiple Layer@1200; 1x service:Eye Brows@50,0.0,20260419104103,delete
+
+19,2,YES,BILL-20260419111037-E397,69e4b82da590bcb29ebbdc42,Test,Madanandapuram,2026-04-19 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260419111037,
+19,2,,BILL-20260419111404-A492,69e4b8fca590bcb29ebbdc56,Test,Madanandapuram,2026-04-19 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260419111404,
+
+20,3,YES,BILL-20260419111319-3F26,69e4b8cfa590bcb29ebbdc47,Xy,Madanandapuram,2026-04-19 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260419111319,
+20,3,,BILL-20260419111324-6AA7,69e4b8d4a590bcb29ebbdc48,Xy,Madanandapuram,2026-04-19 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260419111324,delete
+20,3,,BILL-20260419111325-4DAF,69e4b8d5a590bcb29ebbdc49,Xy,Madanandapuram,2026-04-19 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260419111325,delete
+
+21,2,YES,BILL-20260420142018-A1B3,69e6362235b7f518cad0743b,Helen,Madanandapuram,2026-04-20 06:30:00,100.00,upi,2,1x service:Eye Brows@50; 1x service:Chin@50,0.0,20260420142018,
+21,2,,BILL-20260420142011-0439,69e6361b35b7f518cad07439,Helen,Madanandapuram,2026-04-20 06:30:00,100.00,upi,2,1x service:Eye Brows@50; 1x service:Chin@50,0.0,20260420142011,delete
+
+22,4,YES,BILL-20260420141052-2E65,69e633ec35b7f518cad0742d,Nitiya,Kovur,2026-04-20 06:30:00,80.00,cash,2,1x service:Eye Brows@40; 1x service:Chin@40,0.0,20260420141052,
+22,4,,BILL-20260420141052-A6AB,69e633ec35b7f518cad0742e,Nitiya,Kovur,2026-04-20 06:30:00,80.00,cash,2,1x service:Eye Brows@40; 1x service:Chin@40,0.0,20260420141052,delete
+22,4,,BILL-20260420141052-1B59,69e633ec49734fd6f874ac4c,Nitiya,Kovur,2026-04-20 06:30:00,80.00,cash,2,1x service:Eye Brows@40; 1x service:Chin@40,0.0,20260420141052,delete
+22,4,,BILL-20260420141052-2D1C,69e633ec35b7f518cad0742c,Nitiya,Kovur,2026-04-20 06:30:00,80.00,cash,2,1x service:Eye Brows@40; 1x service:Chin@40,0.0,20260420141052,delete
+
+23,2,YES,BILL-20260420133600-618A,69e62bc035b7f518cad07423,ARCHANA,Main Road,2026-04-20 06:30:00,3760.00,cash,6,1x service:Eye Brows@50; 1x service:Oxy Bleach@400; 1x service:Neck & Back@500; 1x service:Full Arms@1000; 1x service:Derma Fair@2750; 1x membership:PNC Exisiting Member@0,0.0,20260420133600,
+23,2,,BILL-20260420133558-AC15,69e62bbe35b7f518cad07422,ARCHANA,Main Road,2026-04-20 06:30:00,3760.00,cash,6,1x service:Eye Brows@50; 1x service:Oxy Bleach@400; 1x service:Neck & Back@500; 1x service:Full Arms@1000; 1x service:Derma Fair@2750; 1x membership:PNC Exisiting Member@0,0.0,20260420133558,delete
+
+24,2,YES,BILL-20260420142746-FD2D,69e637e235b7f518cad07443,Sithamya,Madanandapuram,2026-04-20 06:30:00,200.00,cash,1,1x service:Straight Cut@200,0.0,20260420142746,
+24,2,,BILL-20260420142747-4121,69e637e335b7f518cad07444,Sithamya,Madanandapuram,2026-04-20 06:30:00,200.00,cash,1,1x service:Straight Cut@200,0.0,20260420142747,delete
+
+25,2,YES,BILL-20260420143024-8803,69e6388049734fd6f874ac5b,Mahlalyh,Kolapakkam,2026-04-20 06:30:00,250.00,cash,2,1x service:Straight Cut@200; 1x service:Eye Brows@50,0.0,20260420143024,
+25,2,,BILL-20260420143025-0C58,69e6388135b7f518cad07447,Mahlalyh,Kolapakkam,2026-04-20 06:30:00,250.00,cash,2,1x service:Straight Cut@200; 1x service:Eye Brows@50,0.0,20260420143025,delete
+
+26,2,YES,BILL-20260420043739-99D7,69e5ad930c354f565142185e,kanimozhi,Main Road,2026-04-20 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260420043739,
+26,2,,BILL-20260420043742-6BF5,69e5ad96a590bcb29ebbdce2,kanimozhi,Main Road,2026-04-20 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260420043742,delete
+
+27,2,YES,BILL-20260420062309-A863,69e5c64da590bcb29ebbdd29,Subhashree,Main Road,2026-04-20 06:30:00,150.00,upi,3,1x service:Eye Brows@50; 1x service:Eye Brows@50; 1x service:Upper Lip@50,0.0,20260420062309,
+27,2,,BILL-20260420062311-0285,69e5c64fa590bcb29ebbdd2a,Subhashree,Main Road,2026-04-20 06:30:00,150.00,upi,3,1x service:Eye Brows@50; 1x service:Eye Brows@50; 1x service:Upper Lip@50,0.0,20260420062311,delete
+
+28,8,YES,BILL-20260420094921-5680,69e5f6a14d9198ed5cad94cf,Testing,DLF,2026-04-20 06:30:00,2400.00,cash,2,1x service:4 Layers Advanced Whitening Facial@3000; 1x membership:PNC Exisiting Member@0,0.0,20260420094921,
+28,8,,BILL-20260420094931-7450,69e5f6ab4d9198ed5cad94d1,Testing,DLF,2026-04-20 06:30:00,2400.00,cash,2,1x service:4 Layers Advanced Whitening Facial@3000; 1x membership:PNC Exisiting Member@0,0.0,20260420094931,
+28,8,,BILL-20260420103519-FF8E,69e601674d9198ed5cad94eb,Testing,DLF,2026-04-20 06:30:00,2400.00,cash,1,1x service:4 Layers Advanced Whitening Facial@3000,0.0,20260420103519,
+28,8,,BILL-20260420114756-ACB2,69e6126c4d9198ed5cad9531,Testing,DLF,2026-04-20 06:30:00,2400.00,cash,1,1x service:4 Layers Advanced Whitening Facial@3000,0.0,20260420114756,
+28,8,,BILL-20260420110052-DAC5,69e607644d9198ed5cad951a,Testing,DLF,2026-04-20 06:30:00,2400.00,cash,1,1x service:4 Layers Advanced Whitening Facial@3000,0.0,20260420110052,
+28,8,,BILL-20260420105929-9666,69e607114d9198ed5cad9514,Testing,DLF,2026-04-20 06:30:00,2400.00,cash,1,1x service:4 Layers Advanced Whitening Facial@3000,0.0,20260420105929,
+28,8,,BILL-20260420104748-F58B,69e604544d9198ed5cad94ff,Testing,DLF,2026-04-20 06:30:00,2400.00,cash,1,1x service:4 Layers Advanced Whitening Facial@3000,0.0,20260420104748,
+28,8,,BILL-20260420104406-63AD,69e60376398388caff3a91e9,Testing,DLF,2026-04-20 06:30:00,2400.00,cash,1,1x service:4 Layers Advanced Whitening Facial@3000,0.0,20260420104406,
+
+29,2,YES,BILL-20260420105043-236B,69e605034d9198ed5cad9504,deva,Main Road,2026-04-20 06:30:00,2100.00,upi,2,1x service:Hair Styling@1050; 1x service:Light Makeup@1050,0.0,20260420105043,
+29,2,,BILL-20260420105040-A3AC,69e60500398388caff3a91ea,deva,Main Road,2026-04-20 06:30:00,2100.00,upi,2,1x service:Hair Styling@1050; 1x service:Light Makeup@1050,0.0,20260420105040,delete
+
+30,2,YES,BILL-20260421133152-4283,69e77c48dcac5ccd8691355d,Thamish selui,Kolapakkam,2026-04-21 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260421133152,
+30,2,,BILL-20260421133148-9095,69e77c44dcac5ccd8691355b,Thamish selui,Kolapakkam,2026-04-21 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260421133148,delete
+
+31,2,YES,BILL-20260421134231-396F,69e77ec7dcac5ccd86913563,subalakshmi,Main Road,2026-04-21 06:30:00,4120.00,cash,5,1x service:Eye Brows@350; 1x service:3/4 Arms@1800; 1x service:Tan Bleach@500; 1x service:Classic Hair Spa@2500; 1x membership:PNC Exisiting Member@0,0.0,20260421134231,
+31,2,,BILL-20260421134240-2E46,69e77ed0dcac5ccd86913566,subalakshmi,Main Road,2026-04-21 06:30:00,4120.00,cash,5,1x service:Eye Brows@350; 1x service:3/4 Arms@1800; 1x service:Tan Bleach@500; 1x service:Classic Hair Spa@2500; 1x membership:PNC Exisiting Member@0,0.0,20260421134240,delete
+
+32,2,YES,BILL-20260421140657-8DC8,69e78481dcac5ccd86913575,VIDHYALAKSHMI,Main Road,2026-04-21 06:30:00,120.00,cash,4,1x service:Eye Brows@50; 1x service:Upper Lip@50; 1x service:Chin@50; 1x membership:PNC Exisiting Member@0,0.0,20260421140657,
+32,2,,BILL-20260421140700-E0DA,69e78484dcac5ccd86913576,VIDHYALAKSHMI,Main Road,2026-04-21 06:30:00,120.00,cash,4,1x service:Eye Brows@50; 1x service:Upper Lip@50; 1x service:Chin@50; 1x membership:PNC Exisiting Member@0,0.0,20260421140700,delete
+
+33,2,YES,BILL-20260421142610-B86A,69e78902dcac5ccd86913582,kumutha,Main Road,2026-04-21 06:30:00,80.00,upi,3,1x service:Upper Lip@50; 1x service:Chin@50; 1x membership:PNC Exisiting Member@0,0.0,20260421142610,
+33,2,,BILL-20260421142613-2C50,69e78905dcac5ccd86913583,kumutha,Main Road,2026-04-21 06:30:00,80.00,upi,3,1x service:Upper Lip@50; 1x service:Chin@50; 1x membership:PNC Exisiting Member@0,0.0,20260421142613,delete
+
+34,2,YES,BILL-20260421145102-A000,69e78ed6dcac5ccd86913596,Priya,Main Road,2026-04-21 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260421145102,
+34,2,,BILL-20260421145103-CD6B,69e78ed7dcac5ccd86913597,Priya,Main Road,2026-04-21 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260421145103,delete
+
+35,2,YES,BILL-20260421073413-E4F4,69e728758a8294ae66ba8810,Sonolota,Kovur,2026-04-21 06:30:00,40.00,upi,1,1x service:Eye Brows@40,0.0,20260421073413,
+35,2,,BILL-20260421073414-ED98,69e7287695fd90c6c6e0c384,Sonolota,Kovur,2026-04-21 06:30:00,40.00,upi,1,1x service:Eye Brows@40,0.0,20260421073414,delete
+
+36,3,YES,BILL-20260421121435-F14C,69e76a2bdcac5ccd86913547,Somiya,Kovur,2026-04-21 06:30:00,800.00,upi,2,1x service:Herbal Facial@750; 1x service:Eye Brows@50,0.0,20260421121435,
+36,3,,BILL-20260421121438-3975,69e76a2edcac5ccd86913549,Somiya,Kovur,2026-04-21 06:30:00,800.00,upi,2,1x service:Herbal Facial@750; 1x service:Eye Brows@50,0.0,20260421121438,delete
+36,3,,BILL-20260421121439-2F28,69e76a2fdcac5ccd8691354a,Somiya,Kovur,2026-04-21 06:30:00,800.00,upi,2,1x service:Herbal Facial@750; 1x service:Eye Brows@50,0.0,20260421121439,delete
+
+37,2,YES,BILL-20260422131615-3975,69e8ca1f249174d3bfb82699,Sujatha,Kolapakkam,2026-04-22 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260422131615,
+37,2,,BILL-20260422131616-11AB,69e8ca20249174d3bfb8269a,Sujatha,Kolapakkam,2026-04-22 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260422131616,delete
+
+38,2,YES,BILL-20260422141216-8013,69e8d740dcac5ccd86913671,KIRTHIKA,Main Road,2026-04-22 06:30:00,6640.00,upi,14,1x service:Full Arms@1150; 1x service:Insta Glow Spa Pedicure@1000; 1x service:Insta Glow Spa Manicure@800; 1x service:Oxy Bleach@400; 1x service:Full Arms@1000; 1x service:Neck & Back@500; ...,0.0,20260422141216,
+38,2,,BILL-20260422141228-6787,69e8d74c249174d3bfb826a0,KIRTHIKA,Main Road,2026-04-22 06:30:00,6640.00,upi,14,1x service:Full Arms@1150; 1x service:Insta Glow Spa Pedicure@1000; 1x service:Insta Glow Spa Manicure@800; 1x service:Oxy Bleach@400; 1x service:Full Arms@1000; 1x service:Neck & Back@500; ...,0.0,20260422141228,
+
+39,2,YES,BILL-20260422141654-0BAA,69e8d856dcac5ccd8691367e,ROSLIN,Main Road,2026-04-22 06:30:00,3520.00,upi,6,1x service:Insta Glow Spa Pedicure@1000; 1x service:Eye Brows@50; 1x service:Upper Lip@50; 1x service:Hair Coloring@1500; 1x service:Glow Derma@1800; 1x membership:PNC Exisiting Member@0,0.0,20260422141654,
+39,2,,BILL-20260422141658-9874,69e8d85adcac5ccd86913681,ROSLIN,Main Road,2026-04-22 06:30:00,3520.00,upi,6,1x service:Insta Glow Spa Pedicure@1000; 1x service:Eye Brows@50; 1x service:Upper Lip@50; 1x service:Hair Coloring@1500; 1x service:Glow Derma@1800; 1x membership:PNC Exisiting Member@0,0.0,20260422141658,delete
+
+40,2,YES,BILL-20260422121200-AAF9,69e8bb10dcac5ccd8691363c,rima,Main Road,2026-04-22 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260422121200,
+40,2,,BILL-20260422121202-9F52,69e8bb12dcac5ccd8691363d,rima,Main Road,2026-04-22 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260422121202,delete
+
+41,2,YES,BILL-20260422144230-B55D,69e8de56dcac5ccd869136a4,Monah,Kovur,2026-04-22 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260422144230,
+41,2,,BILL-20260422144228-9030,69e8de54dcac5ccd869136a2,Monah,Kovur,2026-04-22 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260422144228,delete
+
+42,2,YES,BILL-20260422153310-134C,69e8ea36249174d3bfb826ae,BANDANA,Main Road,2026-04-22 06:30:00,360.00,cash,4,1x service:Front Layer@300; 1x service:Eye Brows@50; 1x service:Upper Lip@100; 1x membership:PNC Exisiting Member@0,0.0,20260422153310,
+42,2,,BILL-20260422153309-B619,69e8ea35dcac5ccd869136c7,BANDANA,Main Road,2026-04-22 06:30:00,360.00,cash,4,1x service:Front Layer@300; 1x service:Eye Brows@50; 1x service:Upper Lip@100; 1x membership:PNC Exisiting Member@0,0.0,20260422153309,delete
+
+43,2,YES,BILL-20260422152232-0150,69e8e7b8dcac5ccd869136be,Arya,Madanandapuram,2026-04-22 06:30:00,100.00,upi,2,1x service:Eye Brows@50; 1x service:Eye Brows@50,0.0,20260422152232,
+43,2,,BILL-20260422152230-1B6D,69e8e7b6dcac5ccd869136bc,Arya,Madanandapuram,2026-04-22 06:30:00,100.00,upi,2,1x service:Eye Brows@50; 1x service:Eye Brows@50,0.0,20260422152230,delete
+
+44,2,YES,BILL-20260422144850-F470,69e8dfd2dcac5ccd869136b1,Lilamti,Kovur,2026-04-22 06:30:00,80.00,upi,2,1x service:Eye Brows@40; 1x service:Chin@40,0.0,20260422144850,
+44,2,,BILL-20260422144848-8F2C,69e8dfd0dcac5ccd869136af,Lilamti,Kovur,2026-04-22 06:30:00,80.00,upi,2,1x service:Eye Brows@40; 1x service:Chin@40,0.0,20260422144848,delete
+
+45,2,YES,BILL-20260422144121-A836,69e8de11dcac5ccd8691369f,Bimola,Kovur,2026-04-22 06:30:00,200.00,upi,1,1x service:Straight Cut@200,0.0,20260422144121,
+45,2,,BILL-20260422144118-6D1B,69e8de0edcac5ccd8691369d,Bimola,Kovur,2026-04-22 06:30:00,200.00,upi,1,1x service:Straight Cut@200,0.0,20260422144118,delete
+
+46,2,YES,BILL-20260422143153-E415,69e8dbd9dcac5ccd8691368b,Rajeshri,Kovur,2026-04-22 06:30:00,160.00,upi,4,1x service:Eye Brows@40; 1x service:Upper Lip@40; 1x service:Chin@40; 1x service:Forehead@40,0.0,20260422143153,
+46,2,,BILL-20260422143147-3208,69e8dbd3249174d3bfb826a6,Rajeshri,Kovur,2026-04-22 06:30:00,160.00,upi,4,1x service:Eye Brows@40; 1x service:Upper Lip@40; 1x service:Chin@40; 1x service:Forehead@40,0.0,20260422143147,delete
+
+47,2,YES,BILL-20260422072442-5F39,69e877badcac5ccd869135ec,parameshwari,Main Road,2026-04-22 06:30:00,40.00,cash,2,1x service:Eye Brows@50; 1x membership:PNC Exisiting Member@0,0.0,20260422072442,
+47,2,,BILL-20260422072434-5BFD,69e877b2dcac5ccd869135e8,parameshwari,Main Road,2026-04-22 06:30:00,40.00,cash,2,1x service:Eye Brows@50; 1x membership:PNC Exisiting Member@0,0.0,20260422072434,delete
+
+48,2,YES,BILL-20260422062456-7583,69e869b8dcac5ccd869135ba,Devi,Madanandapuram,2026-04-22 06:30:00,200.00,cash,1,1x service:Straight Cut@200,0.0,20260422062456,
+48,2,,BILL-20260422062454-1103,69e869b6dcac5ccd869135b8,Devi,Madanandapuram,2026-04-22 06:30:00,200.00,cash,1,1x service:Straight Cut@200,0.0,20260422062454,delete
+
+49,3,YES,BILL-20260422055234-6F6F,69e86222dcac5ccd869135ac,Nimi,Madanandapuram,2026-04-22 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260422055234,
+49,3,,BILL-20260422055231-439B,69e8621fdcac5ccd869135aa,Nimi,Madanandapuram,2026-04-22 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260422055231,delete
+49,3,,BILL-20260422055229-63A1,69e8621ddcac5ccd869135a8,Nimi,Madanandapuram,2026-04-22 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260422055229,delete
+
+50,2,YES,BILL-20260422054802-79B1,69e86112dcac5ccd869135a3,Radha,Madanandapuram,2026-04-22 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260422054802,
+50,2,,BILL-20260422054758-8BDB,69e8610edcac5ccd869135a1,Radha,Madanandapuram,2026-04-22 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260422054758,delete
+
+51,2,YES,BILL-20260422075646-02FE,69e87f3edcac5ccd869135f8,ELAIYARASI,Main Road,2026-04-22 06:30:00,600.00,upi,4,1x service:U Cut@300; 1x service:Eye Brows@150; 1x service:Front Layer@300; 1x membership:PNC Exisiting Member@0,0.0,20260422075646,
+51,2,,BILL-20260422075652-D345,69e87f44dcac5ccd869135fb,ELAIYARASI,Main Road,2026-04-22 06:30:00,600.00,upi,4,1x service:U Cut@300; 1x service:Eye Brows@150; 1x service:Front Layer@300; 1x membership:PNC Exisiting Member@0,0.0,20260422075652,delete
+
+52,3,YES,BILL-20260422113134-3034,69e8b196249174d3bfb82684,Sunita,Kovur,2026-04-22 06:30:00,80.00,upi,2,1x service:Eye Brows@40; 1x service:Chin@40,0.0,20260422113134,
+52,3,,BILL-20260422113133-55D5,69e8b195dcac5ccd86913626,Sunita,Kovur,2026-04-22 06:30:00,80.00,upi,2,1x service:Eye Brows@40; 1x service:Chin@40,0.0,20260422113133,delete
+52,3,,BILL-20260422113130-ACBF,69e8b192dcac5ccd86913624,Sunita,Kovur,2026-04-22 06:30:00,80.00,upi,2,1x service:Eye Brows@40; 1x service:Chin@40,0.0,20260422113130,delete
+
+53,2,YES,BILL-20260422075653-7418,69e87f45dcac5ccd869135fc,Vishnavisiniv,Kolapakkam,2026-04-22 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260422075653,
+53,2,,BILL-20260422075656-8D12,69e87f48dcac5ccd869135fe,Vishnavisiniv,Kolapakkam,2026-04-22 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260422075656,delete
+
+54,2,YES,BILL-20260422081643-CBC8,69e883ebdcac5ccd86913602,SWAGATA,Main Road,2026-04-22 06:30:00,2880.00,upi,6,1x service:Insta Glow Spa Pedicure@1000; 1x service:Layer Cut@1000; 1x service:Hair Coloring@1500; 1x service:Eye Brows@50; 1x service:Upper Lip@50; 1x membership:PNC Exisiting Member@0,0.0,20260422081643,
+54,2,,BILL-20260422081653-18F7,69e883f5dcac5ccd86913605,SWAGATA,Main Road,2026-04-22 06:30:00,2880.00,upi,6,1x service:Insta Glow Spa Pedicure@1000; 1x service:Layer Cut@1000; 1x service:Hair Coloring@1500; 1x service:Eye Brows@50; 1x service:Upper Lip@50; 1x membership:PNC Exisiting Member@0,0.0,20260422081653,delete
+
+55,2,YES,BILL-20260422084610-6F6A,69e88ad2249174d3bfb8267b,Bughri,Madanandapuram,2026-04-22 06:30:00,440.00,upi,2,1x service:Eye Brows@40; 1x service:Full Face@400,0.0,20260422084610,
+55,2,,BILL-20260422084613-54B3,69e88ad5dcac5ccd86913613,Bughri,Madanandapuram,2026-04-22 06:30:00,440.00,upi,2,1x service:Eye Brows@40; 1x service:Full Face@400,0.0,20260422084613,delete
+
+56,2,YES,BILL-20260423132031-FD2D,69ea1c9fdcac5ccd86913731,SMITA,Main Road,2026-04-23 06:30:00,480.00,upi,2,1x service:Full Face@600; 1x membership:PNC Exisiting Member@0,0.0,20260423132031,
+56,2,,BILL-20260423132029-6005,69ea1c9d249174d3bfb826d2,SMITA,Main Road,2026-04-23 06:30:00,480.00,upi,2,1x service:Full Face@600; 1x membership:PNC Exisiting Member@0,0.0,20260423132029,delete
+
+57,2,YES,BILL-20260423125328-64FE,69ea1648dcac5ccd86913729,SUGANDHI,Main Road,2026-04-23 06:30:00,40.00,cash,2,1x service:Eye Brows@50; 1x membership:PNC Exisiting Member@0,0.0,20260423125328,
+57,2,,BILL-20260423125326-4C4D,69ea1646dcac5ccd86913728,SUGANDHI,Main Road,2026-04-23 06:30:00,40.00,cash,2,1x service:Eye Brows@50; 1x membership:PNC Exisiting Member@0,0.0,20260423125326,delete
+
+58,2,YES,BILL-20260423125212-A46C,69ea15fcdcac5ccd86913725,jayabharathi,Main Road,2026-04-23 06:30:00,520.00,cash,3,1x service:Clean Up@600; 1x service:Eye Brows@50; 1x membership:PNC Exisiting Member@0,0.0,20260423125212,
+58,2,,BILL-20260423125206-3B1F,69ea15f6dcac5ccd86913722,jayabharathi,Main Road,2026-04-23 06:30:00,520.00,cash,3,1x service:Clean Up@600; 1x service:Eye Brows@50; 1x membership:PNC Exisiting Member@0,0.0,20260423125206,delete
+
+59,2,YES,BILL-20260423121602-7F45,69ea0d82dcac5ccd86913719,Baishnabi,Main Road,2026-04-23 06:30:00,100.00,upi,2,1x service:Eye Brows@50; 1x service:Upper Lip@50,0.0,20260423121602,
+59,2,,BILL-20260423121600-AEB7,69ea0d80dcac5ccd86913718,Baishnabi,Main Road,2026-04-23 06:30:00,100.00,upi,2,1x service:Eye Brows@50; 1x service:Upper Lip@50,0.0,20260423121600,delete
+
+60,2,YES,BILL-20260423153504-D086,69ea3c28dcac5ccd86913755,Nasira,Main Road,2026-04-23 06:30:00,1000.00,cash,2,1x service:Hot Oil Massage (Basic Length)@800; 1x service:Straight Cut@200,0.0,20260423153504,
+60,2,,BILL-20260423153504-A944,69ea3c28249174d3bfb826db,Nasira,Main Road,2026-04-23 06:30:00,1000.00,cash,2,1x service:Hot Oil Massage (Basic Length)@800; 1x service:Straight Cut@200,0.0,20260423153504,delete
+
+61,2,YES,BILL-20260423073528-11CA,69e9cbc0dcac5ccd869136e1,roshni,Main Road,2026-04-23 06:30:00,1360.00,upi,7,1x service:Eye Brows@50; 1x service:Upper Lip@50; 1x service:Eye Brows@50; 1x service:Layer Cut@1000; 1x service:U Cut@300; 1x service:Shampoo Wash@250; ...,0.0,20260423073528,
+61,2,,BILL-20260423073533-4ADA,69e9cbc5dcac5ccd869136e2,roshni,Main Road,2026-04-23 06:30:00,1360.00,upi,7,1x service:Eye Brows@50; 1x service:Upper Lip@50; 1x service:Eye Brows@50; 1x service:Layer Cut@1000; 1x service:U Cut@300; 1x service:Shampoo Wash@250; ...,0.0,20260423073533,delete
+
+62,2,YES,BILL-20260423113200-0649,69ea0330dcac5ccd8691370a,Dr.preethaagarwal,Main Road,2026-04-23 06:30:00,2600.00,upi,4,1x service:Hair Coloring@1000; 1x service:Shahnaz Veg Peel Facial@1500; 1x service:Step Cut@750; 1x membership:PNC Exisiting Member@0,0.0,20260423113200,
+62,2,,BILL-20260423113158-75E8,69ea032edcac5ccd86913709,Dr.preethaagarwal,Main Road,2026-04-23 06:30:00,2600.00,upi,4,1x service:Hair Coloring@1000; 1x service:Shahnaz Veg Peel Facial@1500; 1x service:Step Cut@750; 1x membership:PNC Exisiting Member@0,0.0,20260423113158,delete
+
+63,2,YES,BILL-20260423100736-450A,69e9ef68249174d3bfb826c6,madhuvi,Main Road,2026-04-23 06:30:00,80.00,cash,3,1x service:Eye Brows@50; 1x service:Upper Lip@50; 1x membership:PNC Exisiting Member@0,0.0,20260423100736,
+63,2,,BILL-20260423100727-FE01,69e9ef5fdcac5ccd869136fb,madhuvi,Main Road,2026-04-23 06:30:00,80.00,cash,3,1x service:Eye Brows@50; 1x service:Upper Lip@50; 1x membership:PNC Exisiting Member@0,0.0,20260423100727,delete
+
+64,2,YES,BILL-20260424135602-91FB,69eb7672dcac5ccd869137d5,Madhunita,Kovur,2026-04-24 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260424135602,
+64,2,,BILL-20260424135601-EF50,69eb7671249174d3bfb826f9,Madhunita,Kovur,2026-04-24 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260424135601,delete
+
+65,2,YES,BILL-20260424135342-9247,69eb75e6dcac5ccd869137d1,Sthepi,Kovur,2026-04-24 06:30:00,1450.00,upi,2,1x service:Shampoo Wash@250; 1x service:Hair Coloring@1200,0.0,20260424135342,
+65,2,,BILL-20260424135339-618A,69eb75e3dcac5ccd869137cf,Sthepi,Kovur,2026-04-24 06:30:00,1450.00,upi,2,1x service:Shampoo Wash@250; 1x service:Hair Coloring@1200,0.0,20260424135339,delete
+
+66,2,YES,BILL-20260424143438-7FE0,69eb7f7edcac5ccd869137e9,Akriti,Main Road,2026-04-24 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260424143438,
+66,2,,BILL-20260424143442-4AD3,69eb7f82dcac5ccd869137eb,Akriti,Main Road,2026-04-24 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260424143442,delete
+
+67,3,YES,BILL-20260424154616-1C7E,69eb9048dcac5ccd869137fd,SNEHA,Main Road,2026-04-24 06:30:00,240.00,upi,3,1x service:Shampoo Wash@250; 1x service:Eye Brows@50; 1x membership:PNC Exisiting Member@0,0.0,20260424154616,
+67,3,,BILL-20260424154619-64EE,69eb904bdcac5ccd869137fe,SNEHA,Main Road,2026-04-24 06:30:00,240.00,upi,3,1x service:Shampoo Wash@250; 1x service:Eye Brows@50; 1x membership:PNC Exisiting Member@0,0.0,20260424154619,delete
+67,3,,BILL-20260424154621-998F,69eb904ddcac5ccd86913801,SNEHA,Main Road,2026-04-24 06:30:00,240.00,upi,3,1x service:Shampoo Wash@250; 1x service:Eye Brows@50; 1x membership:PNC Exisiting Member@0,0.0,20260424154621,delete
+
+68,2,YES,BILL-20260424073656-E2B3,69eb1d98dcac5ccd8691376c,VINU,Main Road,2026-04-24 06:30:00,80.00,upi,3,1x service:Eye Brows@50; 1x service:Upper Lip@50; 1x membership:PNC Exisiting Member@0,0.0,20260424073656,
+68,2,,BILL-20260424073702-6254,69eb1d9edcac5ccd8691376f,VINU,Main Road,2026-04-24 06:30:00,80.00,upi,3,1x service:Eye Brows@50; 1x service:Upper Lip@50; 1x membership:PNC Exisiting Member@0,0.0,20260424073702,delete
+
+69,2,YES,BILL-20260424111634-E50F,69eb5112dcac5ccd86913793,VIDHYA,Main Road,2026-04-24 06:30:00,160.00,cash,3,1x service:Eye Brows@50; 1x service:Upper Lip@150; 1x membership:PNC Exisiting Member@0,0.0,20260424111634,
+69,2,,BILL-20260424111630-317B,69eb510e249174d3bfb826ee,VIDHYA,Main Road,2026-04-24 06:30:00,160.00,cash,3,1x service:Eye Brows@50; 1x service:Upper Lip@150; 1x membership:PNC Exisiting Member@0,0.0,20260424111630,delete
+
+70,2,YES,BILL-20260425141737-FA2D,69eccd01dcac5ccd8691387e,Krishna,Main Road,2026-04-25 06:30:00,850.00,upi,3,1x service:Eye Brows@50; 1x service:Upper Lip@50; 1x service:Herbal Facial@750,0.0,20260425141737,
+70,2,,BILL-20260425141734-A803,69ecccfedcac5ccd8691387c,Krishna,Main Road,2026-04-25 06:30:00,850.00,upi,3,1x service:Eye Brows@50; 1x service:Upper Lip@50; 1x service:Herbal Facial@750,0.0,20260425141734,delete
+
+71,2,YES,BILL-20260425145146-2DAB,69ecd502249174d3bfb82710,Hema,Kovur,2026-04-25 06:30:00,3080.00,upi,3,1x service:Classic Hair Spa@1600; 1x service:Glow Derma@1440; 1x service:Eye Brows@40,0.0,20260425145146,
+71,2,,BILL-20260425150229-2EAF,69ecd785dcac5ccd86913894,Hema,Kovur,2026-04-25 06:30:00,3080.00,upi,3,1x service:Glow Derma@1440; 1x service:Classic Hair Spa@1600; 1x service:Eye Brows@40,0.0,20260425150229,
+
+72,2,YES,BILL-20260425145451-C029,69ecd5bbdcac5ccd86913889,KAVITHA,Main Road,2026-04-25 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260425145451,
+72,2,,BILL-20260425145453-1E72,69ecd5bddcac5ccd8691388a,KAVITHA,Main Road,2026-04-25 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260425145453,delete
+
+73,2,YES,BILL-20260425145902-8E87,69ecd6b6dcac5ccd86913891,Priya,Kovur,2026-04-25 06:30:00,800.00,upi,1,1x service:Spa Pedicure with Essential Oils@800,0.0,20260425145902,
+73,2,,BILL-20260425145903-C866,69ecd6b7dcac5ccd86913892,Priya,Kovur,2026-04-25 06:30:00,800.00,upi,1,1x service:Spa Pedicure with Essential Oils@800,0.0,20260425145903,delete
+
+74,2,YES,BILL-20260425153656-6862,69ecdf98dcac5ccd8691389d,Cynthia,Main Road,2026-04-25 06:30:00,1500.00,upi,1,1x service:Hair Coloring@1500,0.0,20260425153656,
+74,2,,BILL-20260425153702-354D,69ecdf9edcac5ccd8691389f,Cynthia,Main Road,2026-04-25 06:30:00,1500.00,upi,1,1x service:Hair Coloring@1500,0.0,20260425153702,delete
+
+75,3,YES,BILL-20260425050826-A407,69ec4c4adcac5ccd8691380c,maria,Main Road,2026-04-25 06:30:00,80.00,cash,3,1x service:Eye Brows@50; 1x service:Forehead@50; 1x membership:PNC Exisiting Member@0,0.0,20260425050826,
+75,3,,BILL-20260425050830-1165,69ec4c4edcac5ccd8691380f,maria,Main Road,2026-04-25 06:30:00,80.00,cash,3,1x service:Eye Brows@50; 1x service:Forehead@50; 1x membership:PNC Exisiting Member@0,0.0,20260425050830,delete
+75,3,,BILL-20260425050835-FABF,69ec4c53dcac5ccd86913810,maria,Main Road,2026-04-25 06:30:00,80.00,cash,3,1x service:Eye Brows@50; 1x service:Forehead@50; 1x membership:PNC Exisiting Member@0,0.0,20260425050835,delete
+
+76,2,YES,BILL-20260425121600-2943,69ecb080dcac5ccd86913851,Sujata,Main Road,2026-04-25 06:30:00,600.00,upi,3,1x service:U Cut@300; 1x service:Shampoo Wash@250; 1x service:Eye Brows@50,0.0,20260425121600,
+76,2,,BILL-20260425121556-835F,69ecb07cdcac5ccd8691384f,Sujata,Main Road,2026-04-25 06:30:00,600.00,upi,3,1x service:U Cut@300; 1x service:Shampoo Wash@250; 1x service:Eye Brows@50,0.0,20260425121556,delete
+
+77,3,YES,BILL-20260425111431-5A44,69eca217dcac5ccd86913847,MALTHIKUMAR,Main Road,2026-04-25 06:30:00,3080.00,upi,6,1x service:Insta Glow Spa Pedicure@1000; 1x service:Eye Brows@50; 1x service:U Cut@300; 1x service:Henna Colouring@700; 1x service:Glow Derma@1800; 1x membership:PNC Exisiting Member@0,0.0,20260425111431,
+77,3,,BILL-20260425111426-4AB7,69eca212dcac5ccd86913844,MALTHIKUMAR,Main Road,2026-04-25 06:30:00,3080.00,upi,6,1x service:Insta Glow Spa Pedicure@1000; 1x service:Eye Brows@50; 1x service:U Cut@300; 1x service:Henna Colouring@700; 1x service:Glow Derma@1800; 1x membership:PNC Exisiting Member@0,0.0,20260425111426,delete
+77,3,,BILL-20260425111421-AC9E,69eca20ddcac5ccd86913841,MALTHIKUMAR,Main Road,2026-04-25 06:30:00,3080.00,upi,6,1x service:Insta Glow Spa Pedicure@1000; 1x service:Eye Brows@50; 1x service:U Cut@300; 1x service:Henna Colouring@700; 1x service:Glow Derma@1800; 1x membership:PNC Exisiting Member@0,0.0,20260425111421,delete
+
+78,3,YES,BILL-20260426134515-1928,69ee16ebdcac5ccd8691390d,SEEMAL,Main Road,2026-04-26 06:30:00,1920.00,card,6,1x service:Upper Lip@50; 1x service:Full Arms@400; 1x service:Half Legs@300; 1x service:Half Arms@450; 1x service:Hair Coloring@1200; 1x membership:PNC Exisiting Member@0,0.0,20260426134515,
+78,3,,BILL-20260426134512-056E,69ee16e8249174d3bfb8272f,SEEMAL,Main Road,2026-04-26 06:30:00,1920.00,card,6,1x service:Upper Lip@50; 1x service:Full Arms@400; 1x service:Half Legs@300; 1x service:Half Arms@450; 1x service:Hair Coloring@1200; 1x membership:PNC Exisiting Member@0,0.0,20260426134512,delete
+78,3,,BILL-20260426134508-C06E,69ee16e4249174d3bfb8272e,SEEMAL,Main Road,2026-04-26 06:30:00,1920.00,card,6,1x service:Upper Lip@50; 1x service:Full Arms@400; 1x service:Half Legs@300; 1x service:Half Arms@450; 1x service:Hair Coloring@1200; 1x membership:PNC Exisiting Member@0,0.0,20260426134508,delete
+
+79,2,YES,BILL-20260426133514-DEE5,69ee1492dcac5ccd869138fe,ANITA,Main Road,2026-04-26 06:30:00,400.00,cash,2,1x service:U Cut@500; 1x membership:PNC Exisiting Member@0,0.0,20260426133514,
+79,2,,BILL-20260426133512-7218,69ee1490dcac5ccd869138fd,ANITA,Main Road,2026-04-26 06:30:00,400.00,cash,2,1x service:U Cut@500; 1x membership:PNC Exisiting Member@0,0.0,20260426133512,delete
+
+80,2,YES,BILL-20260426133238-7CC0,69ee13f6dcac5ccd869138f8,NAGAJOTHI,Main Road,2026-04-26 06:30:00,760.00,upi,3,1x service:Eye Brows@50; 1x service:Full Arms@400; 1x service:3/4 Legs@500,0.0,20260426133238,
+80,2,,BILL-20260426133235-781A,69ee13f3dcac5ccd869138f7,NAGAJOTHI,Main Road,2026-04-26 06:30:00,760.00,upi,3,1x service:Eye Brows@50; 1x service:Full Arms@400; 1x service:3/4 Legs@500,0.0,20260426133235,delete
+
+81,3,YES,BILL-20260426150323-561F,69ee293bdcac5ccd8691391c,subathra,Main Road,2026-04-26 06:30:00,80.00,upi,3,1x service:Eye Brows@50; 1x service:Forehead@50; 1x membership:PNC Exisiting Member@0,0.0,20260426150323,
+81,3,,BILL-20260426150325-30E6,69ee293ddcac5ccd8691391d,subathra,Main Road,2026-04-26 06:30:00,80.00,upi,3,1x service:Eye Brows@50; 1x service:Forehead@50; 1x membership:PNC Exisiting Member@0,0.0,20260426150325,delete
+81,3,,BILL-20260426150329-DE01,69ee2941dcac5ccd86913920,subathra,Main Road,2026-04-26 06:30:00,80.00,upi,3,1x service:Eye Brows@50; 1x service:Forehead@50; 1x membership:PNC Exisiting Member@0,0.0,20260426150329,delete
+
+82,2,YES,BILL-20260426150942-797A,69ee2ab6dcac5ccd86913925,SUPRAJA,Main Road,2026-04-26 06:30:00,1200.00,upi,3,1x service:Body Steam@700; 1x service:Shampoo Wash@250; 1x service:Conditioning@250,0.0,20260426150942,
+82,2,,BILL-20260426150948-4359,69ee2abcdcac5ccd86913927,SUPRAJA,Main Road,2026-04-26 06:30:00,1200.00,upi,3,1x service:Body Steam@700; 1x service:Shampoo Wash@250; 1x service:Conditioning@250,0.0,20260426150948,delete
+
+83,2,YES,BILL-20260426060503-5FEE,69edab0fdcac5ccd869138b3,Suashe,Kovur,2026-04-26 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260426060503,
+83,2,,BILL-20260426060507-9CBF,69edab13dcac5ccd869138b5,Suashe,Kovur,2026-04-26 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260426060507,delete
+
+84,3,YES,BILL-20260428084716-04F6,69f07414dcac5ccd869139d7,Joyslien,Madanandapuram,2026-04-28 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260428084716,
+84,3,,BILL-20260428084719-4E2A,69f07417dcac5ccd869139d9,Joyslien,Madanandapuram,2026-04-28 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260428084719,delete
+84,3,,BILL-20260428084721-03B2,69f07419dcac5ccd869139da,Joyslien,Madanandapuram,2026-04-28 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260428084721,delete
+
+85,2,YES,BILL-20260426090955-9987,69edd663249174d3bfb8271e,Pratiba,Main Road,2026-04-26 06:30:00,350.00,card,2,1x service:Eye Brows@50; 1x service:U Cut@300,0.0,20260426090955,
+85,2,,BILL-20260426091002-C33B,69edd66adcac5ccd869138cd,Pratiba,Main Road,2026-04-26 06:30:00,350.00,upi,2,1x service:Eye Brows@50; 1x service:U Cut@300,0.0,20260426091002,delete
+
+86,3,YES,BILL-20260427130733-9A4F,69ef5f95dcac5ccd86913990,MAHESH,Main Road,2026-04-27 06:30:00,40.00,upi,2,1x service:Eye Brows@50; 1x membership:PNC Exisiting Member@0,0.0,20260427130733,
+86,3,,BILL-20260427130725-D64F,69ef5f8ddcac5ccd8691398d,MAHESH,Main Road,2026-04-27 06:30:00,40.00,upi,2,1x service:Eye Brows@50; 1x membership:PNC Exisiting Member@0,0.0,20260427130725,delete
+86,3,,BILL-20260427130729-F1F8,69ef5f91249174d3bfb82751,MAHESH,Main Road,2026-04-27 06:30:00,40.00,upi,2,1x service:Eye Brows@50; 1x membership:PNC Exisiting Member@0,0.0,20260427130729,delete
+
+87,2,YES,BILL-20260427144429-A248,69ef764ddcac5ccd869139b4,Nirmla,Kovur,2026-04-27 06:30:00,400.00,upi,5,1x service:Eye Brows@40; 1x service:Upper Lip@40; 1x service:Chin@40; 1x service:U Cut@240; 1x service:Eye Brows@40,0.0,20260427144429,
+87,2,,BILL-20260427144437-E964,69ef7655dcac5ccd869139b6,Nirmla,Kovur,2026-04-27 06:30:00,400.00,upi,5,1x service:Eye Brows@40; 1x service:Upper Lip@40; 1x service:Chin@40; 1x service:U Cut@240; 1x service:Eye Brows@40,0.0,20260427144437,delete
+
+88,2,YES,BILL-20260427080544-10A0,69ef18d8dcac5ccd86913942,MEENAKSHI,Main Road,2026-04-27 06:30:00,40.00,cash,2,1x service:Eye Brows@50; 1x membership:PNC Exisiting Member@0,0.0,20260427080544,
+88,2,,BILL-20260427080552-922D,69ef18e0dcac5ccd86913945,MEENAKSHI,Main Road,2026-04-27 06:30:00,40.00,cash,2,1x service:Eye Brows@50; 1x membership:PNC Exisiting Member@0,0.0,20260427080552,delete
+
+89,2,YES,BILL-20260428141808-A192,69f0c1a0dcac5ccd86913a25,Ramya,Madanandapuram,2026-04-28 06:30:00,1920.00,cash,5,1x service:Herbal Facial@750; 1x service:Hair Coloring@1200; 1x service:Oxy Bleach@400; 1x service:Eye Brows@50; 1x membership:PNC Exisiting Member@0,0.0,20260428141808,
+89,2,,BILL-20260428141806-64CD,69f0c19edcac5ccd86913a24,Ramya,Madanandapuram,2026-04-28 06:30:00,1920.00,cash,5,1x service:Herbal Facial@750; 1x service:Hair Coloring@1200; 1x service:Oxy Bleach@400; 1x service:Eye Brows@50; 1x membership:PNC Exisiting Member@0,0.0,20260428141806,delete
+
+90,2,YES,BILL-20260428140738-4A70,69f0bf2a249174d3bfb82778,VIBHA,Main Road,2026-04-28 06:30:00,680.00,upi,4,1x service:Under Arms@150; 1x service:Full Arms@400; 1x service:Half Legs@300; 1x membership:PNC Exisiting Member@0,0.0,20260428140738,
+90,2,,BILL-20260428140732-E77E,69f0bf24dcac5ccd86913a19,VIBHA,Main Road,2026-04-28 06:30:00,680.00,upi,4,1x service:Under Arms@150; 1x service:Full Arms@400; 1x service:Half Legs@300; 1x membership:PNC Exisiting Member@0,0.0,20260428140732,delete
+
+91,2,YES,BILL-20260428132128-F8C0,69f0b458dcac5ccd86913a0e,Yamih,Madanandapuram,2026-04-28 06:30:00,840.00,cash,3,1x service:Clean Up@750; 1x service:U Cut@300; 1x membership:PNC Exisiting Member@0,0.0,20260428132128,
+91,2,,BILL-20260428132123-98CE,69f0b453dcac5ccd86913a0b,Yamih,Madanandapuram,2026-04-28 06:30:00,840.00,cash,3,1x service:Clean Up@750; 1x service:U Cut@300; 1x membership:PNC Exisiting Member@0,0.0,20260428132123,delete
+
+92,2,YES,BILL-20260428142144-521A,69f0c278249174d3bfb8277a,Katia,Madanandapuram,2026-04-28 06:30:00,40.00,upi,2,1x service:Eye Brows@50; 1x membership:PNC Exisiting Member@0,0.0,20260428142144,
+92,2,,BILL-20260428142146-3149,69f0c27adcac5ccd86913a2f,Katia,Madanandapuram,2026-04-28 06:30:00,40.00,upi,2,1x service:Eye Brows@50; 1x membership:PNC Exisiting Member@0,0.0,20260428142146,delete
+
+93,2,YES,BILL-20260428144036-D944,69f0c6e4249174d3bfb8277b,Priya,Madanandapuram,2026-04-28 06:30:00,920.00,upi,3,1x service:Herbal Facial@750; 1x service:Oxy Bleach@400; 1x membership:PNC Exisiting Member@0,0.0,20260428144036,
+93,2,,BILL-20260428144037-472C,69f0c6e5dcac5ccd86913a3a,Priya,Madanandapuram,2026-04-28 06:30:00,920.00,upi,3,1x service:Herbal Facial@750; 1x service:Oxy Bleach@400; 1x membership:PNC Exisiting Member@0,0.0,20260428144037,delete
+
+94,2,YES,BILL-20260428151938-528A,69f0d00a249174d3bfb82783,Jaysslen,Madanandapuram,2026-04-28 06:30:00,3040.00,upi,6,1x service:Layer Cut@1000; 1x service:Herbal Facial@750; 1x service:Diamond Facial@500; 1x service:Hair Coloring@1500; 1x service:Eye Brows@50; 1x membership:PNC Exisiting Member@0,0.0,20260428151938,
+94,2,,BILL-20260428151944-40BB,69f0d010dcac5ccd86913a4a,Jaysslen,Madanandapuram,2026-04-28 06:30:00,3040.00,upi,6,1x service:Layer Cut@1000; 1x service:Herbal Facial@750; 1x service:Diamond Facial@500; 1x service:Hair Coloring@1500; 1x service:Eye Brows@50; 1x membership:PNC Exisiting Member@0,0.0,20260428151944,delete
+
+95,2,YES,BILL-20260428103754-1CD7,69f08e02dcac5ccd869139f6,Pooja,Main Road,2026-04-28 06:30:00,1050.00,upi,2,1x service:Aroma Oil Massage@800; 1x service:Conditioning@250,0.0,20260428103754,
+95,2,,BILL-20260428103750-B8BE,69f08dfe249174d3bfb82771,Pooja,Main Road,2026-04-28 06:30:00,1050.00,upi,2,1x service:Aroma Oil Massage@800; 1x service:Conditioning@250,0.0,20260428103750,delete
+
+96,2,YES,BILL-20260429142644-00B8,69f215242021a186ef97a1e7,sindja,Main Road,2026-04-29 06:30:00,100.00,upi,2,1x service:Eye Brows@50; 1x service:Upper Lip@50,0.0,20260429142644,
+96,2,,BILL-20260429142650-6EF2,69f2152a2021a186ef97a1e9,sindja,Main Road,2026-04-29 06:30:00,100.00,upi,2,1x service:Eye Brows@50; 1x service:Upper Lip@50,0.0,20260429142650,delete
+
+97,2,YES,BILL-20260429143200-5ADF,69f216602021a186ef97a1ee,Gaytih,Kovur,2026-04-29 06:30:00,280.00,cash,2,1x service:Eye Brows@40; 1x service:U Cut@240,0.0,20260429143200,
+97,2,,BILL-20260429143206-A50B,69f216662021a186ef97a1f0,Gaytih,Kovur,2026-04-29 06:30:00,280.00,cash,2,1x service:Eye Brows@40; 1x service:U Cut@240,0.0,20260429143206,delete
+
+98,2,YES,BILL-20260429113445-5688,69f1ecd52021a186ef97a1c1,Nikmai,Kolapakkam,2026-04-29 06:30:00,300.00,upi,4,1x service:Upper Lip@100; 1x service:Eye Brows@50; 1x service:Chin@100; 1x service:Eye Brows@50,0.0,20260429113445,
+98,2,,BILL-20260429113441-DF44,69f1ecd12021a186ef97a1bf,Nikmai,Kolapakkam,2026-04-29 06:30:00,300.00,upi,4,1x service:Upper Lip@100; 1x service:Eye Brows@50; 1x service:Chin@100; 1x service:Eye Brows@50,0.0,20260429113441,delete
+
+99,2,YES,BILL-20260430140343-B14E,69f3613f2021a186ef97a270,Aiswarya,Main Road,2026-04-30 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260430140343,
+99,2,,BILL-20260430140338-AFCF,69f3613a2021a186ef97a26e,Aiswarya,Main Road,2026-04-30 06:30:00,50.00,upi,1,1x service:Eye Brows@50,0.0,20260430140338,delete
+
+100,2,YES,BILL-20260430132029-AA66,69f3571d2021a186ef97a259,Tinsera,Madanandapuram,2026-04-30 06:30:00,4000.00,cash,2,1x service:Gold Facial@3500; 1x service:Tan Bleach@500,0.0,20260430132029,
+100,2,,BILL-20260430132028-E076,69f3571c2021a186ef97a258,Tinsera,Madanandapuram,2026-04-30 06:30:00,4000.00,cash,2,1x service:Gold Facial@3500; 1x service:Tan Bleach@500,0.0,20260430132028,delete
+
+101,2,YES,BILL-20260430144458-D631,69f36aea2021a186ef97a27d,selvarani,Main Road,2026-04-30 06:30:00,1120.00,cash,2,1x service:Upper Lip@100; 1x service:Hair Coloring@1500,0.0,20260430144458,
+101,2,,BILL-20260430144459-436A,69f36aeb2021a186ef97a27e,selvarani,Main Road,2026-04-30 06:30:00,1120.00,cash,2,1x service:Upper Lip@100; 1x service:Hair Coloring@1500,0.0,20260430144459,delete
+
+102,2,YES,BILL-20260430080639-D4FA,69f30d8f4fc466b5aa8831e2,Saolhiya,Kolapakkam,2026-04-30 06:30:00,100.00,cash,2,1x service:Eye Brows@50; 1x service:Chin@50,0.0,20260430080639,
+102,2,,BILL-20260430080643-E399,69f30d932021a186ef97a21e,Saolhiya,Kolapakkam,2026-04-30 06:30:00,100.00,cash,2,1x service:Eye Brows@50; 1x service:Chin@50,0.0,20260430080643,delete
+
+103,2,YES,BILL-20260502131553-E298,69f5f909be9f900b4c37df2c,Harini,Kovur,2026-05-02 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260502131553,
+103,2,,BILL-20260502131548-509C,69f5f9049ddc909c517ed96a,Harini,Kovur,2026-05-02 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260502131548,delete
+
+104,2,YES,BILL-20260502143440-E9C3,69f60b80be9f900b4c37df35,NANCY,Main Road,2026-05-02 06:30:00,80.00,upi,3,1x service:Eye Brows@50; 1x service:Upper Lip@50; 1x membership:PNC Exisiting Member@0,0.0,20260502143440,
+104,2,,BILL-20260502143449-9343,69f60b89be9f900b4c37df38,NANCY,Main Road,2026-05-02 06:30:00,80.00,upi,3,1x service:Eye Brows@50; 1x service:Upper Lip@50; 1x membership:PNC Exisiting Member@0,0.0,20260502143449,delete
+
+105,2,YES,BILL-20260502113526-8EB2,69f5e17ebe9f900b4c37df0a,santhiya,Main Road,2026-05-02 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260502113526,
+105,2,,BILL-20260502113520-D0B7,69f5e178be9f900b4c37df08,santhiya,Main Road,2026-05-02 06:30:00,50.00,cash,1,1x service:Eye Brows@50,0.0,20260502113520,delete
+
+106,2,YES,BILL-20260502102910-EADE,69f5d1f6be9f900b4c37df04,gayathri,Main Road,2026-05-02 06:30:00,960.00,upi,7,1x service:Oxy Bleach@400; 1x service:Half Legs@500; 1x service:Eye Brows@50; 1x service:Upper Lip@50; 1x service:Chin@50; 1x service:Under Arms@150; ...,0.0,20260502102910,
+106,2,,BILL-20260502102903-3C2A,69f5d1efbe9f900b4c37df01,gayathri,Main Road,2026-05-02 06:30:00,960.00,upi,7,1x service:Oxy Bleach@400; 1x service:Half Legs@500; 1x service:Eye Brows@50; 1x service:Upper Lip@50; 1x service:Chin@50; 1x service:Under Arms@150; ...,0.0,20260502102903,delete
+
+107,2,YES,BILL-20260503144015-7CBA,69f75e4fbe9f900b4c37dfda,Reshma,Kovur,2026-05-03 06:30:00,150.00,upi,3,1x service:Eye Brows@50; 1x service:Eye Brows@50; 1x service:Chin@50,0.0,20260503144015,
+107,2,,BILL-20260503144017-773A,69f75e51be9f900b4c37dfdb,Reshma,Kovur,2026-05-03 06:30:00,150.00,upi,3,1x service:Eye Brows@50; 1x service:Eye Brows@50; 1x service:Chin@50,0.0,20260503144017,delete
+
+108,2,YES,BILL-20260504134603-FDAC,69f8a31b9ddc909c517ed9a3,Yuvashree,Kovur,2026-05-03 06:30:00,350.00,upi,2,1x service:Eye Brows@50; 1x service:U Cut@300,0.0,20260504134603,
+108,2,,BILL-20260504134604-AF86,69f8a31cbe9f900b4c37e01e,Yuvashree,Kovur,2026-05-03 06:30:00,350.00,upi,2,1x service:Eye Brows@50; 1x service:U Cut@300,0.0,20260504134604,delete
+
+109,2,YES,BILL-20260504084053-E62E,69f85b95be9f900b4c37e008,deepika,Main Road,2026-05-04 06:30:00,600.00,upi,2,1x service:Herbal Facial@750; 1x membership:PNC Exisiting Member@0,0.0,20260504084053,
+109,2,,BILL-20260504084055-D205,69f85b979ddc909c517ed99d,deepika,Main Road,2026-05-04 06:30:00,600.00,upi,2,1x service:Herbal Facial@750; 1x membership:PNC Exisiting Member@0,0.0,20260504084055,delete
+
+110,2,YES,BILL-20260504135629-7C77,69f8a58dbe9f900b4c37e025,SRILAKHA,Main Road,2026-05-04 06:30:00,1950.00,cash,2,1x service:Hair Coloring@1500; 1x service:Half Legs@750,0.0,20260504135629,
+110,2,,BILL-20260504135629-2252,69f8a58dbe9f900b4c37e024,SRILAKHA,Main Road,2026-05-04 06:30:00,1950.00,cash,2,1x service:Hair Coloring@1500; 1x service:Half Legs@750,0.0,20260504135629,delete
+

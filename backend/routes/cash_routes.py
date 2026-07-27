@@ -235,9 +235,9 @@ def delete_cash_transaction(id, current_user=None):
         return jsonify({'error': str(e)}), 500
 
 @cash_bp.route('/summary', methods=['GET'])
-@require_auth
+@require_role('manager', 'owner')
 def get_cash_summary(current_user=None):
-    """Get cash flow summary with payment method breakdown"""
+    """Get cash flow summary with payment method breakdown (Manager and Owner only - reveals total sales)"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')

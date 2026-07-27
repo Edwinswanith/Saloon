@@ -22,7 +22,8 @@ def handle_preflight():
 # Expense Category Routes
 
 @expense_bp.route('/categories', methods=['GET'])
-def get_expense_categories():
+@require_auth
+def get_expense_categories(current_user=None):
     """Get all expense categories"""
     try:
         categories = ExpenseCategory.objects.order_by('name')
@@ -394,13 +395,19 @@ def get_expense_summary(current_user=None):
         return response, 500
 
 @expense_bp.route('/total', methods=['GET'])
-def get_total_expenses():
-    """Get total expenses for a date range"""
+@require_auth
+def get_total_expenses(current_user=None):
+    """Get total expenses for a date range, scoped to current branch"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
 
         query = Expense.objects
+
+        # Branch scope so one branch's dashboard doesn't count another branch's expenses
+        branch = get_selected_branch(request, current_user)
+        if branch:
+            query = query.filter(branch=branch)
 
         if start_date:
             start = datetime.strptime(start_date, '%Y-%m-%d').date()

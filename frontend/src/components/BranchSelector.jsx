@@ -11,16 +11,17 @@ const BranchSelector = () => {
   const buttonRef = useRef(null);
 
   useEffect(() => {
-    // Fetch branches on mount if user is Owner
-    if (user && user.role === 'owner' && branches.length === 0) {
+    // Every authenticated user can switch branches — fetch the list on mount.
+    if (user && branches.length === 0) {
       fetchBranches();
     }
   }, [user, branches.length, fetchBranches]);
 
-  // Only show for Owner
-  if (!user || user.role !== 'owner') {
+  // Visible to every authenticated user (staff/manager/owner).
+  if (!user) {
     return null;
   }
+  const isOwner = user.role === 'owner';
 
   const handleBranchChange = async (branchId) => {
     setLoading(true);
@@ -94,21 +95,38 @@ const BranchSelector = () => {
               <button className="branch-close" onClick={() => setIsOpen(false)}>×</button>
             </div>
             <div className="branch-list">
+              {/* Combined view across every branch — owner-only sentinel */}
+              {isOwner && (
+                <button
+                  key="__all__"
+                  className={`branch-item branch-item-all ${currentBranch && currentBranch.isAll ? 'active' : ''}`}
+                  onClick={() => handleBranchChange(null)}
+                  disabled={loading || (currentBranch && currentBranch.isAll)}
+                >
+                  <div className="branch-item-content">
+                    <span className="branch-item-name">All Branches</span>
+                    <span className="branch-item-city">Combined view across every branch</span>
+                  </div>
+                  {currentBranch && currentBranch.isAll && (
+                    <span className="branch-check">✓</span>
+                  )}
+                </button>
+              )}
               {branches.length === 0 ? (
                 <div className="branch-loading">Loading branches...</div>
               ) : (
                 branches.map((branch) => (
                   <button
                     key={branch.id}
-                    className={`branch-item ${currentBranch && currentBranch.id === branch.id ? 'active' : ''}`}
+                    className={`branch-item ${currentBranch && currentBranch.id === branch.id && !currentBranch.isAll ? 'active' : ''}`}
                     onClick={() => handleBranchChange(branch.id)}
-                    disabled={loading || (currentBranch && currentBranch.id === branch.id)}
+                    disabled={loading || (currentBranch && currentBranch.id === branch.id && !currentBranch.isAll)}
                   >
                     <div className="branch-item-content">
                       <span className="branch-item-name">{branch.name}</span>
                       <span className="branch-item-city">{branch.city}</span>
                     </div>
-                    {currentBranch && currentBranch.id === branch.id && (
+                    {currentBranch && currentBranch.id === branch.id && !currentBranch.isAll && (
                       <span className="branch-check">✓</span>
                     )}
                   </button>

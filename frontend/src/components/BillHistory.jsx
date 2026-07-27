@@ -16,6 +16,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useBusiness } from '../contexts/BusinessContext'
 import toast from 'react-hot-toast'
 import './BillHistory.css'
+import ClassicDatePicker from './shared/ClassicDatePicker'
 
 const BRANCH_INFO = {
   'Main Road': { phone: '044-22520395, 044-66126131' },
@@ -27,12 +28,15 @@ const BRANCH_INFO = {
 }
 
 const BillHistory = () => {
-  const { currentBranch } = useAuth()
+  const { currentBranch, user } = useAuth()
   const { businessName: configuredBusinessName } = useBusiness()
+  const isStaff = user?.role === 'staff'
   const [bills, setBills] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [dateFilter, setDateFilter] = useState('today')
+  // Staff are capped to a rolling 48-hour window (enforced server-side too).
+  // Manager/owner default to today and can widen from the dropdown.
+  const [dateFilter, setDateFilter] = useState(isStaff ? 'last48h' : 'today')
   const [customDate, setCustomDate] = useState('')
   const [selectedBill, setSelectedBill] = useState(null)
   const [billDetails, setBillDetails] = useState(null)
@@ -44,6 +48,10 @@ const BillHistory = () => {
     const today = new Date()
     const yesterday = new Date(today)
     yesterday.setDate(yesterday.getDate() - 1)
+    const last48hStart = new Date(today)
+    last48hStart.setDate(today.getDate() - 1) // yesterday's date covers the 48h window
+    const last7Start = new Date(today)
+    last7Start.setDate(today.getDate() - 6) // inclusive of today → 7 days total
     const weekStart = new Date(today)
     weekStart.setDate(today.getDate() - today.getDay())
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -53,6 +61,11 @@ const BillHistory = () => {
         return { start: formatLocalDate(today), end: formatLocalDate(today) }
       case 'yesterday':
         return { start: formatLocalDate(yesterday), end: formatLocalDate(yesterday) }
+      case 'last48h':
+        // Covers yesterday+today as calendar dates; backend clamps staff to exact 48h anyway.
+        return { start: formatLocalDate(last48hStart), end: formatLocalDate(today) }
+      case 'last7':
+        return { start: formatLocalDate(last7Start), end: formatLocalDate(today) }
       case 'week':
         return { start: formatLocalDate(weekStart), end: formatLocalDate(today) }
       case 'month':
@@ -100,12 +113,6 @@ const BillHistory = () => {
     fetchBills(1)
   }, [fetchBills, currentBranch])
 
-  useEffect(() => {
-    const handleBranchChange = () => fetchBills(1)
-    window.addEventListener('branchChanged', handleBranchChange)
-    return () => window.removeEventListener('branchChanged', handleBranchChange)
-  }, [fetchBills])
-
   const filteredBills = bills.filter((bill) => {
     if (!searchQuery.trim()) return true
     const q = searchQuery.toLowerCase()
@@ -141,6 +148,34 @@ const BillHistory = () => {
     } catch {
       return ''
     }
+  }
+
+  // Format a stored "HH:MM:SS" / "HH:MM" string to "h:MM AM/PM".
+  // Used for the bill's actual booking time (the start_time the user picked
+  // when adding a service in QuickSale). bill_date is normalized to noon-IST
+  // by the backend, so it can't represent the real booking time.
+  const formatStartTime = (timeStr) => {
+    if (!timeStr || typeof timeStr !== 'string') return ''
+    const parts = timeStr.split(':')
+    if (parts.length < 2) return ''
+    const hours = parseInt(parts[0], 10)
+    const minutes = parseInt(parts[1], 10)
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return ''
+    const ampm = hours >= 12 ? 'PM' : 'AM'
+    const hour12 = hours % 12 || 12
+    return `${hour12}:${String(minutes).padStart(2, '0')} ${ampm}`
+  }
+
+  // Display the booking time the user picked if present; otherwise fall back
+  // to the bill_date time (legacy/imported bills with no per-item start_time).
+  // Listing payload exposes `start_time` at the top level; the detail payload
+  // exposes per-item start_time on `items[0].start_time`.
+  const getBillDisplayTime = (bill) => {
+    if (!bill) return ''
+    const itemStartTime = bill.start_time
+      || (Array.isArray(bill.items) && bill.items[0] && bill.items[0].start_time)
+      || null
+    return formatStartTime(itemStartTime) || formatTime(bill.bill_date)
   }
 
   const formatCurrency = (amount) => {
@@ -285,27 +320,31 @@ const BillHistory = () => {
               )}
             </div>
 
-            <select
-              className="bh-date-select"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-            >
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
-              <option value="week">This Week</option>
-              <option value="month">This Month</option>
-              <option value="custom">Pick a Date</option>
-              <option value="all">All Bills</option>
-            </select>
+            {isStaff ? (
+              <span className="bh-date-label">Last 48 Hours</span>
+            ) : (
+              <select
+                className="bh-date-select"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+              >
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="last7">Past 7 Days</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="custom">Pick a Date</option>
+                <option value="all">All Bills</option>
+              </select>
+            )}
           </div>
 
           {dateFilter === 'custom' && (
             <div className="bh-filter-row">
-              <input
-                type="date"
-                className="bh-date-picker"
+              <ClassicDatePicker
                 value={customDate}
-                onChange={(e) => setCustomDate(e.target.value)}
+                onChange={(v) => setCustomDate(v)}
+                placeholder="Pick a date"
               />
             </div>
           )}
@@ -333,10 +372,15 @@ const BillHistory = () => {
                   </div>
                   <span className="bh-card-amount">{formatCurrency(bill.final_amount)}</span>
                 </div>
+                {bill.attending_staff_names && (
+                  <div className="bh-card-attended">
+                    Attended by <strong>{bill.attending_staff_names}</strong>
+                  </div>
+                )}
                 <div className="bh-card-bottom">
                   <div className="bh-card-meta">
                     <span className="bh-card-date">
-                      <FaCalendarAlt /> {formatDate(bill.bill_date)} {formatTime(bill.bill_date)}
+                      <FaCalendarAlt /> {formatDate(bill.bill_date)} {getBillDisplayTime(bill)}
                     </span>
                     <span className="bh-card-billno">{bill.bill_number}</span>
                   </div>
@@ -398,7 +442,7 @@ const BillHistory = () => {
                         <span className="bh-label">Date</span>
                         <span className="bh-value">
                           {formatDate((billDetails || selectedBill).bill_date)}{' '}
-                          {formatTime((billDetails || selectedBill).bill_date)}
+                          {getBillDisplayTime(billDetails || selectedBill)}
                         </span>
                       </div>
                       <div className="bh-detail-item">
@@ -439,11 +483,28 @@ const BillHistory = () => {
                     <div className="bh-detail-section">
                       <h3>Services & Items</h3>
                       <div className="bh-items-list">
-                        {billDetails.items.map((item, idx) => (
+                        {billDetails.items.map((item, idx) => {
+                          const memberDiscount = parseFloat(item.membership_discount) || 0
+                          const memberPct = parseFloat(item.membership_discount_pct) || 0
+                          return (
                           <div key={idx} className="bh-item-row">
                             <div className="bh-item-info">
                               <span className="bh-item-name">
                                 {item.service_name || item.product_name || item.package_name || item.name || 'Item'}
+                                {memberDiscount > 0 && (
+                                  <span style={{
+                                    marginLeft: 8,
+                                    padding: '1px 8px',
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    background: '#d1fae5',
+                                    color: '#047857',
+                                    borderRadius: 10,
+                                    letterSpacing: 0.3,
+                                  }}>
+                                    MEMBER · {memberPct}% OFF
+                                  </span>
+                                )}
                               </span>
                               <span className="bh-item-type">{item.item_type || 'service'}</span>
                               {item.staff_name && (
@@ -453,9 +514,19 @@ const BillHistory = () => {
                             <div className="bh-item-pricing">
                               <span className="bh-item-qty">x{item.quantity || 1}</span>
                               <span className="bh-item-total">{formatCurrency(item.total || item.price || 0)}</span>
+                              {memberDiscount > 0 && (
+                                <span style={{
+                                  fontSize: 11,
+                                  color: '#047857',
+                                  fontWeight: 600,
+                                }}>
+                                  −{formatCurrency(memberDiscount)} via membership
+                                </span>
+                              )}
                             </div>
                           </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     </div>
                   )}

@@ -1,0 +1,73 @@
+- generic [ref=f3e3]:
+  - complementary [ref=f3e19]:
+    - generic [ref=f3e20]:
+      - button "Collapse sidebar" [ref=f3e21] [cursor=pointer]
+      - img "Priyanka Nature Cure" [ref=f3e25]
+    - navigation [ref=f3e26]:
+      - generic [ref=f3e27]: Quick Sale
+      - generic [ref=f3e33]:
+        - generic: BILLING
+        - generic [ref=f3e34]: Cash Register
+        - generic [ref=f3e40]: Bill History
+        - generic [ref=f3e46]: Appointment
+        - generic [ref=f3e52]: Customers
+        - generic [ref=f3e61]: Inventory
+        - generic [ref=f3e67]: Offer Management
+      - generic [ref=f3e73]: Dashboard
+      - generic [ref=f3e79]: ANALYTICS
+      - generic [ref=f3e80]:
+        - generic: MASTER
+        - generic [ref=f3e81]: Saloon Settings
+  - banner [ref=f3e90]:
+    - generic [ref=f3e91]:
+      - generic "Priyanka Nature Cure" [ref=f3e94]
+      - generic [ref=f3e95]:
+        - button "QA Temp Branch ▼" [ref=f3e97] [cursor=pointer]:
+          - generic [ref=f3e98]: QA Temp Branch
+          - generic [ref=f3e99]: ▼
+        - button "Logout" [ref=f3e100] [cursor=pointer]
+        - button "Notifications" [ref=f3e105] [cursor=pointer]
+        - button "QS" [ref=f3e108] [cursor=pointer]
+  - main [ref=f3e110]:
+    - generic [ref=f3e220]:
+      - generic [ref=f3e221]:
+        - generic [ref=f3e222]:
+          - button "Daily" [ref=f3e223] [cursor=pointer]
+          - button "Monthly" [ref=f3e224] [cursor=pointer]
+        - generic [ref=f3e225]:
+          - generic [ref=f3e226]: "Date:"
+          - button [ref=f3e227] [cursor=pointer]:
+            - textbox "Select date" [ref=f3e230]: 27/07/2026
+            - generic: 27-07-2026
+        - button "Download Report" [ref=f3e231] [cursor=pointer]
+      - generic [ref=f3e236]:
+        - button "↑ Add Cash In" [ref=f3e237] [cursor=pointer]:
+          - generic [ref=f3e238]: ↑
+          - text: Add Cash In
+        - button "↓ Remove Cash Out" [ref=f3e239] [cursor=pointer]:
+          - generic [ref=f3e240]: ↓
+          - text: Remove Cash Out
+      - generic [ref=f3e241]:
+        - heading "Transactions for 27 Jul, 2026" [level=2] [ref=f3e242]
+        - table [ref=f3e244]:
+          - rowgroup [ref=f3e245]:
+            - row [ref=f3e246]:
+              - columnheader "Date" [ref=f3e247]
+              - columnheader "Time" [ref=f3e248]
+              - columnheader "Type" [ref=f3e249]
+              - columnheader "Method" [ref=f3e250]
+              - columnheader "Reason / Notes" [ref=f3e251]
+              - columnheader "Amount" [ref=f3e252]
+              - columnheader "Actions" [ref=f3e253]
+          - rowgroup [ref=f3e254]:
+            - row [ref=f3e255]:
+              - cell "2026-07-27" [ref=f3e256]
+              - cell "10:32:22" [ref=f3e257]
+              - cell "Cash In" [ref=f3e258]
+              - cell "Cash" [ref=f3e260]
+              - cell "QA test cash in" [ref=f3e262]
+              - cell "₹500.00" [ref=f3e263]
+              - cell [ref=f3e264]:
+                - generic [ref=f3e265]:
+                  - button "Edit" [ref=f3e266] [cursor=pointer]
+                  - button "Delete" [ref=f3e269] [cursor=pointer]

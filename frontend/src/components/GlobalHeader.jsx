@@ -226,6 +226,14 @@ const GlobalHeader = ({ onMobileMenuToggle }) => {
           <div className="logout-modal" onClick={(e) => e.stopPropagation()}>
             <div className="logout-modal-header">
               <h3>Confirm Logout</h3>
+              <button
+                type="button"
+                className="logout-modal-close-btn"
+                onClick={() => setShowLogoutConfirm(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
             </div>
             <div className="logout-modal-body">
               <p>Are you sure you want to logout?</p>

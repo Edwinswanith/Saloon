@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../config';
 import Header from './Header';
 import './OwnerSettings.css';
+import PasswordInput from './shared/PasswordInput';
 
 const OwnerSettings = () => {
   const { user, token } = useAuth();
@@ -116,8 +117,7 @@ const OwnerSettings = () => {
               <label htmlFor="password" className="form-label">
                 New Password (optional)
               </label>
-              <input
-                type="password"
+              <PasswordInput
                 id="password"
                 name="password"
                 className="form-input"
@@ -125,6 +125,7 @@ const OwnerSettings = () => {
                 value={formData.password}
                 onChange={handleChange}
                 minLength={6}
+                autoComplete="new-password"
               />
               <small className="form-help-text">
                 Leave blank if you don't want to change the password
@@ -136,8 +137,7 @@ const OwnerSettings = () => {
                 <label htmlFor="confirmPassword" className="form-label">
                   Confirm New Password
                 </label>
-                <input
-                  type="password"
+                <PasswordInput
                   id="confirmPassword"
                   name="confirmPassword"
                   className="form-input"
@@ -145,6 +145,7 @@ const OwnerSettings = () => {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   minLength={6}
+                  autoComplete="new-password"
                 />
               </div>
             )}

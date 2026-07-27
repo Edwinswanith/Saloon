@@ -1,12 +1,21 @@
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import {
   FaEdit,
   FaTrash,
   FaPlus,
+  FaTimes,
 } from 'react-icons/fa'
 import './Manager.css'
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 import { useAuth } from '../contexts/AuthContext'
+import PasswordInput from './shared/PasswordInput'
+import CompactSelect from './shared/CompactSelect'
+
+const STATUS_OPTIONS = [
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
+]
 
 const Manager = () => {
   const { user, branches, fetchBranches } = useAuth()
@@ -236,10 +245,20 @@ const Manager = () => {
       </div>
 
       {/* Add/Edit Modal */}
-      {showAddModal && (
+      {showAddModal && createPortal(
         <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>{editingManager ? 'Edit Manager' : 'Add Manager'}</h2>
+            <div className="std-modal-header">
+              <h2>{editingManager ? 'Edit Manager' : 'Add Manager'}</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowAddModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <div className="modal-form-container">
               <form onSubmit={handleSubmit}>
                 <div className="form-group">
@@ -299,40 +318,32 @@ const Manager = () => {
               </div>
               <div className="form-group">
                 <label>Status</label>
-                <select
+                <CompactSelect
                   value={formData.status}
-                  onChange={(e) =>
-                    setFormData({ ...formData, status: e.target.value })
+                  onChange={(v) =>
+                    setFormData({ ...formData, status: v })
                   }
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
+                  options={STATUS_OPTIONS}
+                  placeholder="Status"
+                />
               </div>
               {user && (user.role === 'owner' || user.role === 'manager') && (
                 <div className="form-group">
                   <label>Branch *</label>
-                  <select
+                  <CompactSelect
                     value={formData.branch}
-                    onChange={(e) =>
-                      setFormData({ ...formData, branch: e.target.value })
+                    onChange={(v) =>
+                      setFormData({ ...formData, branch: v })
                     }
-                    required
-                  >
-                    <option value="">Select Branch</option>
-                    {branches.map((branch) => (
-                      <option key={branch.id} value={branch.id}>
-                        {branch.name}
-                      </option>
-                    ))}
-                  </select>
+                    options={branches.map((branch) => ({ value: branch.id, label: branch.name }))}
+                    placeholder="Select Branch"
+                  />
                 </div>
               )}
               {!editingManager && (
                 <div className="form-group">
                   <label>Password *</label>
-                  <input
-                    type="password"
+                  <PasswordInput
                     value={formData.password}
                     onChange={(e) =>
                       setFormData({ ...formData, password: e.target.value })
@@ -340,6 +351,7 @@ const Manager = () => {
                     placeholder="Enter initial password (min 6 characters)"
                     required
                     minLength={6}
+                    autoComplete="new-password"
                   />
                 </div>
               )}
@@ -358,7 +370,8 @@ const Manager = () => {
             </form>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

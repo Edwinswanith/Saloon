@@ -92,10 +92,13 @@ class Staff(Document):
         'collection': 'staffs',
         'indexes': [
             {'fields': ['branch', 'status']},  # Staff listing by branch
+            {'fields': ['mobile']},  # Lookup by mobile for login
         ]
     }
 
-    mobile = StringField(required=True, unique=True, max_length=15)
+    # Uniqueness is enforced at the application layer against active staff only,
+    # so a soft-deleted (status='inactive') mobile can be reused.
+    mobile = StringField(required=True, max_length=15)
     first_name = StringField(required=True, max_length=100)
     last_name = StringField(max_length=100)
     email = StringField(max_length=100)
@@ -187,7 +190,7 @@ class Package(Document):
 # Membership Plan Model (Template for membership plans)
 class MembershipPlan(Document):
     meta = {'collection': 'membership_plans'}
-    
+
     name = StringField(required=True, max_length=100)
     validity_days = IntField(required=True)  # Validity in days
     price = FloatField(required=True)
@@ -195,6 +198,9 @@ class MembershipPlan(Document):
     status = StringField(max_length=20, default='active')  # active, inactive
     description = StringField()
     branch = ReferenceField('Branch')  # None = available to all branches
+    # Empty list = applies to ALL non-membership items (legacy behavior).
+    # Non-empty = applies ONLY to bill items where item_type='service' and the service id is in the list.
+    applicable_services = ListField(ReferenceField('Service'), default=list)
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
 
@@ -214,6 +220,40 @@ class Membership(Document):
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
 
+# Offer Model (promotional discounts with validity windows)
+class Offer(Document):
+    meta = {
+        'collection': 'offers',
+        'indexes': [
+            {'fields': ['branch', 'status', 'end_date']},
+            {'fields': ['status', 'start_date', 'end_date']},
+        ]
+    }
+
+    name = StringField(required=True, max_length=120)
+    description = StringField()
+    # 'general' applies to any customer; 'membership' applies only when customer has an active membership
+    offer_type = StringField(required=True, max_length=20, choices=['general', 'membership'], default='general')
+    discount_percentage = FloatField(required=True, min_value=0, max_value=100)
+    start_date = DateTimeField(required=True)
+    end_date = DateTimeField(required=True)
+    status = StringField(max_length=20, default='active', choices=['active', 'inactive'])
+    branch = ReferenceField('Branch')  # None = available to all branches
+    created_by_name = StringField(max_length=100)
+    created_at = DateTimeField(default=datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.utcnow)
+
+    def is_currently_valid(self):
+        if self.status != 'active':
+            return False
+        now = datetime.utcnow()
+        if self.start_date and now < self.start_date:
+            return False
+        if self.end_date and now > self.end_date:
+            return False
+        return True
+
+
 # Bill Item Embedded Document (for embedding in Bill)
 class BillItemEmbedded(EmbeddedDocument):
     item_type = StringField(required=True, max_length=20)  # service, package, product, membership
@@ -228,6 +268,10 @@ class BillItemEmbedded(EmbeddedDocument):
     discount = FloatField(default=0.0)
     quantity = IntField(default=1)
     total = FloatField(required=True)
+    # ₹ amount of membership discount applied to this specific line at checkout.
+    # Defaults to 0 — old bills (pre-feature) and lines not covered by an active
+    # membership remain at 0 and render as "—" in the invoice / bill history.
+    membership_discount = FloatField(default=0.0)
     created_at = DateTimeField(default=datetime.utcnow)
 
 # Bill Model
@@ -264,6 +308,8 @@ class Bill(Document):
     discount_requested_by = ReferenceField('Staff')  # Phase 5: Who requested discount
     discount_approval_status = StringField(max_length=20, choices=['none', 'pending', 'approved', 'rejected'], default='none')  # Phase 5
     discount_approval_request = ReferenceField('DiscountApprovalRequest')  # Phase 5
+    # Offer snapshot when an Offer is applied: {id, name, type, percentage, amount}
+    applied_offer = DictField()
     items = ListField(EmbeddedDocumentField(BillItemEmbedded), default=list)
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
@@ -738,8 +784,11 @@ class Notification(Document):
 # Staff Leave Model
 class StaffLeave(Document):
     """Tracks staff leave/absence requests"""
-    meta = {'collection': 'staff_leaves'}
-    
+    meta = {
+        'collection': 'staff_leaves',
+        'strict': False,  # Tolerate legacy `covered_by` field on existing records
+    }
+
     staff = ReferenceField('Staff', required=True)
     branch = ReferenceField('Branch', required=True)
     start_date = DateField(required=True)
@@ -748,28 +797,8 @@ class StaffLeave(Document):
     reason = StringField(max_length=500)
     status = StringField(max_length=20, default='pending', choices=['pending', 'approved', 'rejected', 'cancelled'])
     coverage_required = BooleanField(default=True)
-    covered_by = ReferenceField('StaffTempAssignment')  # Links to temp assignment
     approved_by = ReferenceField('Staff')
     rejection_reason = StringField(max_length=500)
-    created_at = DateTimeField(default=datetime.utcnow)
-    updated_at = DateTimeField(default=datetime.utcnow)
-
-# Staff Temporary Assignment Model
-class StaffTempAssignment(Document):
-    """Tracks temporary staff assignments to different branches"""
-    meta = {'collection': 'staff_temp_assignments'}
-    
-    staff = ReferenceField('Staff', required=True)
-    original_branch = ReferenceField('Branch', required=True)  # Home branch
-    temp_branch = ReferenceField('Branch', required=True)  # Covering branch
-    start_date = DateField(required=True)
-    end_date = DateField(required=True)
-    reason = StringField(max_length=50, default='leave_coverage', choices=['leave_coverage', 'training', 'support', 'event', 'other'])
-    covering_for = ReferenceField('Staff')  # Optional: Staff member on leave
-    related_leave = ReferenceField('StaffLeave')  # Optional: Link to leave request
-    notes = StringField(max_length=500)
-    status = StringField(max_length=20, default='active', choices=['active', 'completed', 'cancelled'])
-    created_by = ReferenceField('Staff')  # Who created this assignment
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
 

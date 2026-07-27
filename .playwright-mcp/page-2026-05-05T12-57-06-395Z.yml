@@ -1,0 +1,399 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e46]:
+    - complementary [ref=e47]:
+      - generic [ref=e48]:
+        - button "Close sidebar" [ref=e49] [cursor=pointer]:
+          - img [ref=e50]
+        - img "Priyanka Nature Cure" [ref=e53]
+      - navigation [ref=e54]:
+        - generic [ref=e56] [cursor=pointer]:
+          - img [ref=e58]
+          - generic [ref=e60]: Quick Sale
+        - generic [ref=e61]:
+          - generic: BILLING
+          - generic [ref=e63] [cursor=pointer]:
+            - img [ref=e65]
+            - generic [ref=e67]: Cash Register
+          - generic [ref=e69] [cursor=pointer]:
+            - img [ref=e71]
+            - generic [ref=e73]: Bill History
+          - generic [ref=e75] [cursor=pointer]:
+            - img [ref=e77]
+            - generic [ref=e79]: Appointment
+          - generic [ref=e81] [cursor=pointer]:
+            - img [ref=e83]
+            - generic [ref=e85]: Customers
+            - img [ref=e87]
+          - generic [ref=e90] [cursor=pointer]:
+            - img [ref=e92]
+            - generic [ref=e94]: Inventory
+          - generic [ref=e96] [cursor=pointer]:
+            - img [ref=e98]
+            - generic [ref=e100]: Discount Approvals
+          - generic [ref=e102] [cursor=pointer]:
+            - img [ref=e104]
+            - generic [ref=e106]: Approval Codes
+          - generic [ref=e108] [cursor=pointer]:
+            - img [ref=e110]
+            - generic [ref=e112]: Offer Campaigns
+          - generic [ref=e114] [cursor=pointer]:
+            - img [ref=e116]
+            - generic [ref=e118]: Offer Management
+        - generic [ref=e120] [cursor=pointer]:
+          - img [ref=e122]
+          - generic [ref=e124]: Dashboard
+        - generic [ref=e125]:
+          - generic: ANALYTICS
+          - generic [ref=e127] [cursor=pointer]:
+            - img [ref=e129]
+            - generic [ref=e131]: Reports & Analytics
+        - generic [ref=e132]:
+          - generic: MASTER
+          - generic [ref=e134] [cursor=pointer]:
+            - img [ref=e136]
+            - generic [ref=e138]: Saloon Settings
+            - img [ref=e140]
+          - generic [ref=e143] [cursor=pointer]:
+            - img [ref=e145]
+            - generic [ref=e147]: Staff Attendance
+          - generic [ref=e149] [cursor=pointer]:
+            - img [ref=e151]
+            - generic [ref=e153]: Asset Management
+          - generic [ref=e155] [cursor=pointer]:
+            - img [ref=e157]
+            - generic [ref=e159]: Expense
+    - banner [ref=e160]:
+      - generic [ref=e161]:
+        - button "Toggle menu" [ref=e162] [cursor=pointer]:
+          - img [ref=e163]
+        - generic "Priyanka Nature Cure" [ref=e167]
+        - generic [ref=e168]:
+          - button "All Branches ▼" [ref=e170] [cursor=pointer]:
+            - generic [ref=e171]: All Branches
+            - generic [ref=e172]: ▼
+          - button "Click to logout" [ref=e173] [cursor=pointer]:
+            - img [ref=e174]
+          - button "5" [ref=e177] [cursor=pointer]:
+            - img [ref=e178]
+            - generic: "5"
+          - button "DO" [ref=e180] [cursor=pointer]:
+            - generic [ref=e181]: DO
+    - main [ref=e182]:
+      - generic [ref=e184]:
+        - heading "Dashboard" [level=1] [ref=e187]
+        - generic [ref=e188]:
+          - generic [ref=e189]:
+            - button "Sales" [ref=e190] [cursor=pointer]
+            - button "Staff" [ref=e191] [cursor=pointer]
+          - generic [ref=e192]:
+            - generic [ref=e193]: "Filter:"
+            - button "This Month" [ref=e196] [cursor=pointer]:
+              - generic [ref=e197]: This Month
+              - img
+        - generic [ref=e199]:
+          - generic [ref=e200]:
+            - generic [ref=e201]: Staff Performance (Branch)
+            - generic [ref=e204]:
+              - list [ref=e206]:
+                - listitem [ref=e207]:
+                  - img "Appointments legend icon" [ref=e208]
+                  - text: Appointments
+                - listitem [ref=e210]:
+                  - img "Revenue legend icon" [ref=e211]
+                  - text: Revenue
+                - listitem [ref=e213]:
+                  - img "Services legend icon" [ref=e214]
+                  - text: Services
+              - application [ref=e216]:
+                - generic [ref=e267]:
+                  - generic [ref=e268]:
+                    - generic [ref=e270]: Salomi
+                    - generic [ref=e272]: Ashmita Toto
+                    - generic [ref=e274]: Sunita
+                    - generic [ref=e276]: Paitika
+                  - generic [ref=e277]:
+                    - generic [ref=e279]: "0"
+                    - generic [ref=e281]: 15k
+                    - generic [ref=e283]: 30k
+                    - generic [ref=e285]: 45k
+                    - generic [ref=e287]: 60k
+          - generic [ref=e288]:
+            - generic [ref=e289]: Top Performer (Company-Wide)
+            - generic [ref=e291]:
+              - generic [ref=e292]:
+                - generic [ref=e293]:
+                  - generic [ref=e294]:
+                    - text: "N"
+                    - img [ref=e296]
+                  - generic [ref=e298]:
+                    - heading "Nisha" [level=3] [ref=e299]
+                    - generic [ref=e300]: TOP PERFORMER
+                - generic [ref=e301]:
+                  - generic [ref=e302]: "65.4"
+                  - generic [ref=e303]: /100 Score
+              - application [ref=e307]:
+                - generic [ref=e329]:
+                  - generic [ref=e330]:
+                    - generic [ref=e332]: 0%
+                    - generic [ref=e334]: 25%
+                    - generic [ref=e336]: 50%
+                    - generic [ref=e338]: 100%
+                  - generic [ref=e339]:
+                    - generic [ref=e341]: Revenue
+                    - generic [ref=e343]: Services
+                    - generic [ref=e345]: Rating
+                    - generic [ref=e347]: Appointments
+                    - generic [ref=e349]: Score
+              - generic [ref=e350]:
+                - generic [ref=e351]:
+                  - generic [ref=e352]: ₹ 45,395
+                  - generic [ref=e353]: Revenue
+                - generic [ref=e354]:
+                  - generic [ref=e355]: "95"
+                  - generic [ref=e356]: Services
+                - generic [ref=e357]:
+                  - generic [ref=e358]: 0/5
+                  - generic [ref=e359]: Rating
+                - generic [ref=e360]:
+                  - generic [ref=e361]: "0"
+                  - generic [ref=e362]: Appointments
+          - generic [ref=e363]:
+            - generic [ref=e364]: Employee Performance
+            - table [ref=e367]:
+              - rowgroup [ref=e368]:
+                - row "# Staff Name Item Count Service Package Product Membership Total Avg. Bill (₹) Info" [ref=e369]:
+                  - columnheader "#" [ref=e370]:
+                    - generic [ref=e372]: "#"
+                  - columnheader "Staff Name" [ref=e373]:
+                    - generic [ref=e375]: Staff Name
+                  - columnheader "Item Count" [ref=e376]:
+                    - generic [ref=e378]: Item Count
+                  - columnheader "Service" [ref=e379]:
+                    - generic [ref=e381]: Service
+                  - columnheader "Package" [ref=e382]:
+                    - generic [ref=e384]: Package
+                  - columnheader "Product" [ref=e385]:
+                    - generic [ref=e387]: Product
+                  - columnheader "Membership" [ref=e388]:
+                    - generic [ref=e390]: Membership
+                  - columnheader "Total" [ref=e391]:
+                    - generic [ref=e393]: Total
+                  - columnheader "Avg. Bill (₹)" [ref=e394]:
+                    - generic [ref=e396]: Avg. Bill (₹)
+                  - columnheader "Info" [ref=e397]:
+                    - generic [ref=e399]: Info
+              - rowgroup [ref=e400]:
+                - row "1 Nisha 95 95 - - - ₹ 45,395 ₹ 478 Info" [ref=e401]:
+                  - cell "1" [ref=e402]:
+                    - generic [ref=e403]: "1"
+                  - cell "Nisha" [ref=e404]:
+                    - generic [ref=e405]:
+                      - img [ref=e406]
+                      - generic [ref=e408]: Nisha
+                  - cell "95" [ref=e409]
+                  - cell "95" [ref=e410]
+                  - cell "-" [ref=e411]
+                  - cell "-" [ref=e412]
+                  - cell "-" [ref=e413]
+                  - cell "₹ 45,395" [ref=e414]
+                  - cell "₹ 478" [ref=e415]
+                  - cell "Info" [ref=e416]:
+                    - button "Info" [ref=e417] [cursor=pointer]:
+                      - img [ref=e418]
+                      - generic [ref=e420]: Info
+                - row "2 Salomi 58 58 - - - ₹ 24,030 ₹ 414 Info" [ref=e421]:
+                  - cell "2" [ref=e422]:
+                    - generic [ref=e423]: "2"
+                  - cell "Salomi" [ref=e424]:
+                    - generic [ref=e425]:
+                      - img [ref=e426]
+                      - generic [ref=e428]: Salomi
+                  - cell "58" [ref=e429]
+                  - cell "58" [ref=e430]
+                  - cell "-" [ref=e431]
+                  - cell "-" [ref=e432]
+                  - cell "-" [ref=e433]
+                  - cell "₹ 24,030" [ref=e434]
+                  - cell "₹ 414" [ref=e435]
+                  - cell "Info" [ref=e436]:
+                    - button "Info" [ref=e437] [cursor=pointer]:
+                      - img [ref=e438]
+                      - generic [ref=e440]: Info
+                - row "3 Baby Thapa 63 63 - - - ₹ 21,922 ₹ 348 Info" [ref=e441]:
+                  - cell "3" [ref=e442]:
+                    - generic [ref=e443]: "3"
+                  - cell "Baby Thapa" [ref=e444]:
+                    - generic [ref=e445]:
+                      - img [ref=e446]
+                      - generic [ref=e448]: Baby Thapa
+                  - cell "63" [ref=e449]
+                  - cell "63" [ref=e450]
+                  - cell "-" [ref=e451]
+                  - cell "-" [ref=e452]
+                  - cell "-" [ref=e453]
+                  - cell "₹ 21,922" [ref=e454]
+                  - cell "₹ 348" [ref=e455]
+                  - cell "Info" [ref=e456]:
+                    - button "Info" [ref=e457] [cursor=pointer]:
+                      - img [ref=e458]
+                      - generic [ref=e460]: Info
+                - row "4 Ashmita Toto 74 74 - - - ₹ 19,275 ₹ 260 Info" [ref=e461]:
+                  - cell "4" [ref=e462]:
+                    - generic [ref=e463]: "4"
+                  - cell "Ashmita Toto" [ref=e464]:
+                    - generic [ref=e465]:
+                      - img [ref=e466]
+                      - generic [ref=e468]: Ashmita Toto
+                  - cell "74" [ref=e469]
+                  - cell "74" [ref=e470]
+                  - cell "-" [ref=e471]
+                  - cell "-" [ref=e472]
+                  - cell "-" [ref=e473]
+                  - cell "₹ 19,275" [ref=e474]
+                  - cell "₹ 260" [ref=e475]
+                  - cell "Info" [ref=e476]:
+                    - button "Info" [ref=e477] [cursor=pointer]:
+                      - img [ref=e478]
+                      - generic [ref=e480]: Info
+                - row "5 Dummy Staff 12 12 - - - ₹ 12,230 ₹ 1,019 Info" [ref=e481]:
+                  - cell "5" [ref=e482]:
+                    - generic [ref=e483]: "5"
+                  - cell "Dummy Staff" [ref=e484]:
+                    - generic [ref=e485]:
+                      - img [ref=e486]
+                      - generic [ref=e488]: Dummy Staff
+                  - cell "12" [ref=e489]
+                  - cell "12" [ref=e490]
+                  - cell "-" [ref=e491]
+                  - cell "-" [ref=e492]
+                  - cell "-" [ref=e493]
+                  - cell "₹ 12,230" [ref=e494]
+                  - cell "₹ 1,019" [ref=e495]
+                  - cell "Info" [ref=e496]:
+                    - button "Info" [ref=e497] [cursor=pointer]:
+                      - img [ref=e498]
+                      - generic [ref=e500]: Info
+                - row "6 Sunita 42 42 - - - ₹ 7,180 ₹ 171 Info" [ref=e501]:
+                  - cell "6" [ref=e502]:
+                    - generic [ref=e503]: "6"
+                  - cell "Sunita" [ref=e504]:
+                    - generic [ref=e505]:
+                      - img [ref=e506]
+                      - generic [ref=e508]: Sunita
+                  - cell "42" [ref=e509]
+                  - cell "42" [ref=e510]
+                  - cell "-" [ref=e511]
+                  - cell "-" [ref=e512]
+                  - cell "-" [ref=e513]
+                  - cell "₹ 7,180" [ref=e514]
+                  - cell "₹ 171" [ref=e515]
+                  - cell "Info" [ref=e516]:
+                    - button "Info" [ref=e517] [cursor=pointer]:
+                      - img [ref=e518]
+                      - generic [ref=e520]: Info
+                - row "7 Rupsana 18 18 - - - ₹ 5,900 ₹ 328 Info" [ref=e521]:
+                  - cell "7" [ref=e522]:
+                    - generic [ref=e523]: "7"
+                  - cell "Rupsana" [ref=e524]:
+                    - generic [ref=e525]:
+                      - img [ref=e526]
+                      - generic [ref=e528]: Rupsana
+                  - cell "18" [ref=e529]
+                  - cell "18" [ref=e530]
+                  - cell "-" [ref=e531]
+                  - cell "-" [ref=e532]
+                  - cell "-" [ref=e533]
+                  - cell "₹ 5,900" [ref=e534]
+                  - cell "₹ 328" [ref=e535]
+                  - cell "Info" [ref=e536]:
+                    - button "Info" [ref=e537] [cursor=pointer]:
+                      - img [ref=e538]
+                      - generic [ref=e540]: Info
+                - row "8 Paitika 28 28 - - - ₹ 5,880 ₹ 210 Info" [ref=e541]:
+                  - cell "8" [ref=e542]:
+                    - generic [ref=e543]: "8"
+                  - cell "Paitika" [ref=e544]:
+                    - generic [ref=e545]:
+                      - img [ref=e546]
+                      - generic [ref=e548]: Paitika
+                  - cell "28" [ref=e549]
+                  - cell "28" [ref=e550]
+                  - cell "-" [ref=e551]
+                  - cell "-" [ref=e552]
+                  - cell "-" [ref=e553]
+                  - cell "₹ 5,880" [ref=e554]
+                  - cell "₹ 210" [ref=e555]
+                  - cell "Info" [ref=e556]:
+                    - button "Info" [ref=e557] [cursor=pointer]:
+                      - img [ref=e558]
+                      - generic [ref=e560]: Info
+                - row "9 Mahalakshmi 8 8 - - - ₹ 4,490 ₹ 561 Info" [ref=e561]:
+                  - cell "9" [ref=e562]:
+                    - generic [ref=e563]: "9"
+                  - cell "Mahalakshmi" [ref=e564]:
+                    - generic [ref=e565]:
+                      - img [ref=e566]
+                      - generic [ref=e568]: Mahalakshmi
+                  - cell "8" [ref=e569]
+                  - cell "8" [ref=e570]
+                  - cell "-" [ref=e571]
+                  - cell "-" [ref=e572]
+                  - cell "-" [ref=e573]
+                  - cell "₹ 4,490" [ref=e574]
+                  - cell "₹ 561" [ref=e575]
+                  - cell "Info" [ref=e576]:
+                    - button "Info" [ref=e577] [cursor=pointer]:
+                      - img [ref=e578]
+                      - generic [ref=e580]: Info
+                - row "10 Aditi Rai 15 15 - - - ₹ 2,680 ₹ 179 Info" [ref=e581]:
+                  - cell "10" [ref=e582]:
+                    - generic [ref=e583]: "10"
+                  - cell "Aditi Rai" [ref=e584]:
+                    - generic [ref=e585]:
+                      - img [ref=e586]
+                      - generic [ref=e588]: Aditi Rai
+                  - cell "15" [ref=e589]
+                  - cell "15" [ref=e590]
+                  - cell "-" [ref=e591]
+                  - cell "-" [ref=e592]
+                  - cell "-" [ref=e593]
+                  - cell "₹ 2,680" [ref=e594]
+                  - cell "₹ 179" [ref=e595]
+                  - cell "Info" [ref=e596]:
+                    - button "Info" [ref=e597] [cursor=pointer]:
+                      - img [ref=e598]
+                      - generic [ref=e600]: Info
+                - row "11 Ashika 3 3 - - - ₹ 2,460 ₹ 820 Info" [ref=e601]:
+                  - cell "11" [ref=e602]:
+                    - generic [ref=e603]: "11"
+                  - cell "Ashika" [ref=e604]:
+                    - generic [ref=e605]:
+                      - img [ref=e606]
+                      - generic [ref=e608]: Ashika
+                  - cell "3" [ref=e609]
+                  - cell "3" [ref=e610]
+                  - cell "-" [ref=e611]
+                  - cell "-" [ref=e612]
+                  - cell "-" [ref=e613]
+                  - cell "₹ 2,460" [ref=e614]
+                  - cell "₹ 820" [ref=e615]
+                  - cell "Info" [ref=e616]:
+                    - button "Info" [ref=e617] [cursor=pointer]:
+                      - img [ref=e618]
+                      - generic [ref=e620]: Info
+                - row "— Unassigned 73 1 - - 72 ₹ 9,083 ₹ 124 —" [ref=e621]:
+                  - cell "—" [ref=e622]:
+                    - generic [ref=e623]: —
+                  - cell "Unassigned" [ref=e624]:
+                    - generic "Items in checkouts where no staff was selected. Tag staff at checkout to attribute revenue correctly." [ref=e625]:
+                      - img [ref=e626]
+                      - generic [ref=e628]: Unassigned
+                  - cell "73" [ref=e629]
+                  - cell "1" [ref=e630]
+                  - cell "-" [ref=e631]
+                  - cell "-" [ref=e632]
+                  - cell "72" [ref=e633]
+                  - cell "₹ 9,083" [ref=e634]
+                  - cell "₹ 124" [ref=e635]
+                  - cell "—" [ref=e636]
+  - generic [ref=e637]: Revenue

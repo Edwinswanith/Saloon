@@ -22,6 +22,15 @@ import {
 import { PageTransition, StaggerContainer, StaggerItem, HoverScale } from './shared/PageTransition'
 import { StatSkeleton, ChartSkeleton, TableSkeleton } from './shared/SkeletonLoaders'
 import { EmptyTable } from './shared/EmptyStates'
+import CompactSelect from './shared/CompactSelect'
+
+const FILTER_OPTIONS = [
+  { value: 'today', label: 'Today' },
+  { value: 'yesterday', label: 'Yesterday' },
+  { value: 'week', label: 'This Week' },
+  { value: 'month', label: 'This Month' },
+  { value: 'year', label: 'This Year' },
+]
 import {
   FaCut,
   FaShoppingBag,
@@ -76,6 +85,7 @@ const Dashboard = () => {
   const [staffPerformance, setStaffPerformance] = useState([])
   const [topPerformer, setTopPerformer] = useState(null)
   const [staffLeaderboard, setStaffLeaderboard] = useState([])
+  const [branchComparison, setBranchComparison] = useState([])
   const [revenueBreakdown, setRevenueBreakdown] = useState({
     service: { amount: 0, percentage: 0 },
     product: { amount: 0, percentage: 0 },
@@ -218,13 +228,21 @@ const Dashboard = () => {
   // Fetch stats data (only needed for sales tab)
   const fetchStatsData = async (params, dateRange) => {
     try {
-      // Fetch stats
-      const statsRes = await apiGet(`/api/dashboard/stats?${params}`)
-      
+      // In "All Branches" mode also fetch the per-branch comparison strip in
+      // parallel — owner-only endpoint, returns 403 for staff/manager (which
+      // shouldn't reach here anyway since BranchSelector is owner-only).
+      const wantComparison = !!currentBranch?.isAll
+      const requests = [apiGet(`/api/dashboard/stats?${params}`)]
+      if (wantComparison) {
+        requests.push(apiGet(`/api/dashboard/branch-comparison?${params}`))
+      }
+
+      const [statsRes, comparisonRes] = await Promise.all(requests)
+
       if (!statsRes.ok) {
         throw new Error(`HTTP error! status: ${statsRes.status}`)
       }
-      
+
       const statsData = await statsRes.json()
 
       const statsResult = {
@@ -238,7 +256,16 @@ const Dashboard = () => {
       }
 
       setStats(statsResult)
-      
+
+      if (wantComparison && comparisonRes && comparisonRes.ok) {
+        const comparisonData = await comparisonRes.json()
+        setBranchComparison(comparisonData.branches || [])
+      } else {
+        // Single-branch view — clear the strip so it doesn't linger from a
+        // previous All-Branches selection.
+        setBranchComparison([])
+      }
+
       // Cache the stats data
       setDataCache(prev => ({
         ...prev,
@@ -607,19 +634,25 @@ const Dashboard = () => {
     { name: 'Membership', value: revenueBreakdown.membership?.amount || 0, color: COLORS.purple },
   ].filter(item => item.value > 0)
 
-  const staffChartData = staffPerformance.slice(0, 10).map(staff => ({
-    name: staff.staff_name.length > 15 ? staff.staff_name.substring(0, 15) + '...' : staff.staff_name,
-    revenue: staff.total_revenue,
-    services: staff.total_services,
-    appointments: staff.completed_appointments || 0,
-  }))
+  // Exclude the synthetic "Unassigned" row from the bar chart so it doesn't
+  // dominate when many items lack a staff tag — it's still visible in the table below.
+  const staffChartData = staffPerformance
+    .filter(staff => staff.staff_id !== 'unassigned')
+    .slice(0, 10)
+    .map(staff => ({
+      name: staff.staff_name.length > 15 ? staff.staff_name.substring(0, 15) + '...' : staff.staff_name,
+      revenue: staff.total_revenue,
+      services: staff.total_services,
+      appointments: staff.completed_appointments || 0,
+    }))
 
   // Prepare top performer bar chart data (normalized to 0-100 for visual consistency, but show actual values in tooltips)
   const topPerformerBarData = topPerformer ? (() => {
-    // Find max values for normalization (use reasonable max values for better visualization)
-    const maxRevenue = Math.max(...staffPerformance.map(s => s.total_revenue), topPerformer.revenue) || 1
-    const maxServices = Math.max(...staffPerformance.map(s => s.total_services), topPerformer.service_count) || 1
-    const maxAppointments = Math.max(...staffPerformance.map(s => s.completed_appointments || 0), topPerformer.completed_appointments) || 1
+    // Normalize against named staff only — the Unassigned row would skew the scale.
+    const namedStaff = staffPerformance.filter(s => s.staff_id !== 'unassigned')
+    const maxRevenue = Math.max(...namedStaff.map(s => s.total_revenue), topPerformer.revenue) || 1
+    const maxServices = Math.max(...namedStaff.map(s => s.total_services), topPerformer.service_count) || 1
+    const maxAppointments = Math.max(...namedStaff.map(s => s.completed_appointments || 0), topPerformer.completed_appointments) || 1
     
     return [
       { metric: 'Revenue', value: Math.min((topPerformer.revenue / maxRevenue) * 100, 100), formatted: formatCurrency(topPerformer.revenue), color: '#10b981' },
@@ -713,23 +746,14 @@ const Dashboard = () => {
           </div>
           <div className="filter-section">
             <label className="filter-label">Filter:</label>
-            <div className="filter-dropdown-wrapper">
-            <select
-              className="filter-dropdown"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-            >
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
-              <option value="week">This Week</option>
-              <option value="month">This Month</option>
-              <option value="year">This Year</option>
-            </select>
-              <div className="filter-dropdown-icon">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
+            <div className="filter-dropdown-wrapper" style={{ minWidth: 150 }}>
+              <CompactSelect
+                className="dashboard-filter-select"
+                value={filter}
+                onChange={(v) => setFilter(v)}
+                options={FILTER_OPTIONS}
+                placeholder="This Month"
+              />
             </div>
           </div>
         </div>
@@ -977,105 +1001,30 @@ const Dashboard = () => {
                     </div>
 
                     {/* Performance Metrics Summary */}
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(4, 1fr)',
-                      gap: '12px',
-                      padding: '16px',
-                      background: '#f9fafb',
-                      borderRadius: '12px'
-                    }}>
-                      <div style={{
-                        textAlign: 'center',
-                        minWidth: 0
-                      }}>
-                        <div style={{
-                          fontSize: '20px',
-                          fontWeight: '700',
-                          marginBottom: '4px',
-                          wordWrap: 'break-word',
-                          overflowWrap: 'break-word',
-                          lineHeight: 1.2,
-                          color: '#10b981'
-                        }}>
+                    <div className="top-performer-stats">
+                      <div className="top-performer-stat">
+                        <div className="top-performer-stat-value" style={{ color: '#10b981' }}>
                           {formatCurrency(topPerformer.revenue)}
                         </div>
-                        <div style={{
-                          fontSize: '11px',
-                          color: '#6b7280',
-                          textTransform: 'uppercase',
-                          wordWrap: 'break-word',
-                          overflowWrap: 'break-word'
-                        }}>Revenue</div>
+                        <div className="top-performer-stat-label">Revenue</div>
                       </div>
-                      <div style={{
-                        textAlign: 'center',
-                        minWidth: 0
-                      }}>
-                        <div style={{
-                          fontSize: '20px',
-                          fontWeight: '700',
-                          marginBottom: '4px',
-                          wordWrap: 'break-word',
-                          overflowWrap: 'break-word',
-                          lineHeight: 1.2,
-                          color: '#3b82f6'
-                        }}>
+                      <div className="top-performer-stat">
+                        <div className="top-performer-stat-value" style={{ color: '#3b82f6' }}>
                           {topPerformer.service_count}
                         </div>
-                        <div style={{
-                          fontSize: '11px',
-                          color: '#6b7280',
-                          textTransform: 'uppercase',
-                          wordWrap: 'break-word',
-                          overflowWrap: 'break-word'
-                        }}>Services</div>
+                        <div className="top-performer-stat-label">Services</div>
                       </div>
-                      <div style={{
-                        textAlign: 'center',
-                        minWidth: 0
-                      }}>
-                        <div style={{
-                          fontSize: '20px',
-                          fontWeight: '700',
-                          marginBottom: '4px',
-                          wordWrap: 'break-word',
-                          overflowWrap: 'break-word',
-                          lineHeight: 1.2,
-                          color: '#d97706'
-                        }}>
+                      <div className="top-performer-stat">
+                        <div className="top-performer-stat-value" style={{ color: '#d97706' }}>
                           {topPerformer.avg_rating}/5
                         </div>
-                        <div style={{
-                          fontSize: '11px',
-                          color: '#6b7280',
-                          textTransform: 'uppercase',
-                          wordWrap: 'break-word',
-                          overflowWrap: 'break-word'
-                        }}>Rating</div>
+                        <div className="top-performer-stat-label">Rating</div>
                       </div>
-                      <div style={{
-                        textAlign: 'center',
-                        minWidth: 0
-                      }}>
-                        <div style={{
-                          fontSize: '20px',
-                          fontWeight: '700',
-                          marginBottom: '4px',
-                          wordWrap: 'break-word',
-                          overflowWrap: 'break-word',
-                          lineHeight: 1.2,
-                          color: '#8b5cf6'
-                        }}>
+                      <div className="top-performer-stat">
+                        <div className="top-performer-stat-value" style={{ color: '#8b5cf6' }}>
                           {topPerformer.completed_appointments}
                         </div>
-                        <div style={{
-                          fontSize: '11px',
-                          color: '#6b7280',
-                          textTransform: 'uppercase',
-                          wordWrap: 'break-word',
-                          overflowWrap: 'break-word'
-                        }}>Appointments</div>
+                        <div className="top-performer-stat-label">Appointments</div>
                       </div>
                     </div>
                   </div>
@@ -1157,42 +1106,80 @@ const Dashboard = () => {
                           <td colSpan="11" className="empty-row">No data available</td>
                         </tr>
                       ) : (
-                        staffPerformance.map((staff, index) => {
-                          const isTopThree = index < 3
-                          const rowClass = index === 0 ? 'row-gold' : index === 1 ? 'row-silver' : index === 2 ? 'row-bronze' : ''
-                          return (
-                            <tr key={staff.staff_id} className={rowClass}>
-                              <td data-label="#">
-                                <span className="rank-badge-table">{index + 1}</span>
-                              </td>
-                              <td data-label="Staff Name">
-                                <div className="staff-name-cell">
-                                  <FaUser className="staff-icon" />
-                                  <span>{staff.staff_name}</span>
-                                </div>
-                              </td>
-                              <td data-label="Item Count">{staff.total_services.toLocaleString()}</td>
-                              <td data-label="Service">{staff.service_count ? staff.service_count.toLocaleString() : '-'}</td>
-                              <td data-label="Package">{staff.package_count ? staff.package_count.toLocaleString() : '-'}</td>
-                              <td data-label="Product">{staff.product_count ? staff.product_count.toLocaleString() : '-'}</td>
-                              <td data-label="Membership">{staff.membership_count ? staff.membership_count.toLocaleString() : '-'}</td>
-                              <td className="amount-cell" data-label="Total">{formatCurrency(staff.total_revenue)}</td>
-                              <td className="amount-cell" data-label="Avg. Bill">{formatCurrency(staff.total_revenue / (staff.total_services || 1))}</td>
-                              <td data-label="Info">
-                                <button 
-                                  className="info-btn"
-                                  onClick={() => {
-                                    setSelectedStaff(staff)
-                                    setShowStaffModal(true)
-                                  }}
-                                >
-                                  <FaInfoCircle className="info-icon" />
-                                  <span>Info</span>
-                                </button>
-                              </td>
-                          </tr>
-                          )
-                        })
+                        (() => {
+                          // Compute display rank ignoring the Unassigned row,
+                          // so the top staff still shows as #1.
+                          let namedRank = 0
+                          return staffPerformance.map((staff) => {
+                            const isUnassigned = staff.staff_id === 'unassigned'
+                            const isInactive = staff.staff_status === 'inactive'
+                            const rank = isUnassigned ? null : ++namedRank
+                            const rowClass = isUnassigned
+                              ? 'row-unassigned'
+                              : rank === 1 ? 'row-gold' : rank === 2 ? 'row-silver' : rank === 3 ? 'row-bronze' : ''
+                            return (
+                              <tr key={staff.staff_id} className={rowClass}>
+                                <td data-label="#">
+                                  {isUnassigned ? (
+                                    <span className="rank-badge-table" style={{ opacity: 0.4 }}>—</span>
+                                  ) : (
+                                    <span className="rank-badge-table">{rank}</span>
+                                  )}
+                                </td>
+                                <td data-label="Staff Name">
+                                  <div
+                                    className="staff-name-cell"
+                                    title={isUnassigned ? 'Items in checkouts where no staff was selected. Tag staff at checkout to attribute revenue correctly.' : undefined}
+                                    style={isUnassigned ? { fontStyle: 'italic', color: '#6b7280' } : undefined}
+                                  >
+                                    <FaUser className="staff-icon" />
+                                    <span>{staff.staff_name}</span>
+                                    {isInactive && (
+                                      <span
+                                        style={{
+                                          marginLeft: 8,
+                                          padding: '2px 8px',
+                                          fontSize: 10,
+                                          fontWeight: 600,
+                                          textTransform: 'uppercase',
+                                          letterSpacing: 0.5,
+                                          background: '#f3f4f6',
+                                          color: '#6b7280',
+                                          borderRadius: 12,
+                                        }}
+                                      >
+                                        Inactive
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td data-label="Item Count">{staff.total_services.toLocaleString()}</td>
+                                <td data-label="Service">{staff.service_count ? staff.service_count.toLocaleString() : '-'}</td>
+                                <td data-label="Package">{staff.package_count ? staff.package_count.toLocaleString() : '-'}</td>
+                                <td data-label="Product">{staff.product_count ? staff.product_count.toLocaleString() : '-'}</td>
+                                <td data-label="Membership">{staff.membership_count ? staff.membership_count.toLocaleString() : '-'}</td>
+                                <td className="amount-cell" data-label="Total">{formatCurrency(staff.total_revenue)}</td>
+                                <td className="amount-cell" data-label="Avg. Bill">{formatCurrency(staff.total_revenue / (staff.total_services || 1))}</td>
+                                <td data-label="Info">
+                                  {isUnassigned ? (
+                                    <span style={{ color: '#9ca3af' }}>—</span>
+                                  ) : (
+                                    <button
+                                      className="info-btn"
+                                      onClick={() => {
+                                        setSelectedStaff(staff)
+                                        setShowStaffModal(true)
+                                      }}
+                                    >
+                                      <FaInfoCircle className="info-icon" />
+                                      <span>Info</span>
+                                    </button>
+                                  )}
+                                </td>
+                            </tr>
+                            )
+                          })
+                        })()
                       )}
                     </tbody>
                   </table>
@@ -1203,8 +1190,41 @@ const Dashboard = () => {
         ) : (
           <>
             <div className="dashboard-main">
+            {/* Per-branch comparison strip — visible only in "All Branches" mode
+                so the owner can see overall totals AND per-branch contribution.
+                Layout is grid-based and shrinks responsively (see Dashboard.css). */}
+            {currentBranch?.isAll && branchComparison.length > 0 && (
+              <div className="branch-comparison-strip">
+                <div className="branch-comparison-title">
+                  Branch Breakdown · {branchComparison.length} branches
+                </div>
+                <div className="branch-comparison-grid">
+                  {branchComparison.map((b) => (
+                    <div key={b.branch_id || 'unknown'} className="branch-comparison-card">
+                      <div className="branch-comparison-card-head">
+                        <span className="branch-comparison-card-name">{b.branch_name}</span>
+                        <span className="branch-comparison-card-pct">{b.percent_of_total}%</span>
+                      </div>
+                      <div className="branch-comparison-card-revenue">
+                        {formatCurrency(b.total_revenue)}
+                      </div>
+                      <div className="branch-comparison-card-bar">
+                        <div
+                          className="branch-comparison-card-bar-fill"
+                          style={{ width: `${Math.min(b.percent_of_total, 100)}%` }}
+                        />
+                      </div>
+                      <div className="branch-comparison-card-meta">
+                        {b.total_transactions} {b.total_transactions === 1 ? 'transaction' : 'transactions'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Statistics Cards */}
-            <DashboardStatsCards 
+            <DashboardStatsCards
               stats={stats}
               loading={loading}
               formatCurrency={formatCurrency}

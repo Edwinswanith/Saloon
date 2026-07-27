@@ -31,6 +31,9 @@ const QuickSale = () => {
   const [pointsToUse, setPointsToUse] = useState(0)
   const [loyaltySettings, setLoyaltySettings] = useState(null)
   const [pointsDiscount, setPointsDiscount] = useState(0)
+  // Offer Management integration
+  const [availableOffers, setAvailableOffers] = useState([])
+  const [appliedOffer, setAppliedOffer] = useState(null) // {id, name, offer_type, discount_percentage, ...}
   const appointmentCreatedRef = useRef(false)
 
   // Data from backend
@@ -101,7 +104,24 @@ const QuickSale = () => {
     fetchPrepaidPackages()
     fetchMembershipPlans()
     fetchLoyaltySettings()
-  }, [])
+    fetchActiveOffers()
+  }, [currentBranch])
+
+  // Fetch currently-valid offers for the active branch
+  const fetchActiveOffers = async () => {
+    try {
+      const response = await apiGet('/api/offers/active')
+      if (response.ok) {
+        const data = await response.json()
+        setAvailableOffers(data.offers || [])
+      } else {
+        setAvailableOffers([])
+      }
+    } catch (error) {
+      console.error('Error fetching active offers:', error)
+      setAvailableOffers([])
+    }
+  }
 
   // Fetch loyalty program settings
   const fetchLoyaltySettings = async () => {
@@ -637,12 +657,26 @@ const QuickSale = () => {
   }
 
   const handleSelectMembership = (selectedMembership) => {
+    // Capture the discount + service whitelist on the cart entry so the
+    // per-service preview helpers can mirror what the backend will compute
+    // at checkout (which considers BOTH existing active memberships AND any
+    // plan being purchased in this bill — see bill_routes.py:candidate_plans).
+    const allocatedDiscount = parseFloat(
+      selectedMembership.allocated_discount ?? selectedMembership.allocatedDiscount ?? 0
+    ) || 0
+    const applicableServices = Array.isArray(selectedMembership.applicable_services)
+      ? selectedMembership.applicable_services
+      : []
+    const applicableServiceIds = applicableServices.map(s => s.id || s).filter(Boolean)
+
     setMemberships([...memberships, {
       id: Date.now(),
       membership_id: selectedMembership.id,
       name: selectedMembership.name,
       price: selectedMembership.price,
       validity: selectedMembership.validity_days,
+      allocated_discount: allocatedDiscount,
+      applicable_service_ids: applicableServiceIds,
     }])
     setShowMembershipModal(false)
     showSuccess(`${selectedMembership.name} added to bill`)
@@ -699,10 +733,13 @@ const QuickSale = () => {
     setSelectedCustomer(customer)
     setSearchQuery(`${customer.firstName || ''} ${customer.lastName || ''} - ${customer.mobile}`.trim())
     setShowCustomerDropdown(false)
-    
+
+    // Reset any previously selected offer — eligibility may differ for the new customer
+    setAppliedOffer(null)
+
     // Fetch detailed customer information
     await fetchCustomerDetails(customer.id)
-    
+
     // Check for active membership when customer is selected
     if (customer && customer.id) {
       await checkCustomerMembership(customer.id)
@@ -878,9 +915,14 @@ const QuickSale = () => {
       return
     }
 
-    // Validate mobile number
-    const cleanMobile = newCustomerData.mobile.trim().replace(/\s+/g, '').replace(/^\+91/, '').replace(/^91/, '')
-    if (cleanMobile.length !== 10 || !/^\d{10}$/.test(cleanMobile)) {
+    // Normalize mobile: strip spaces and a leading "+", then strip a leading
+    // "91" only when the total length is exactly 12 (the country-code form).
+    // This preserves real 10-digit numbers that happen to start with 91.
+    let cleanMobile = newCustomerData.mobile.trim().replace(/\s+/g, '').replace(/^\+/, '')
+    if (cleanMobile.length === 12 && cleanMobile.startsWith('91')) {
+      cleanMobile = cleanMobile.slice(2)
+    }
+    if (!/^\d{10}$/.test(cleanMobile)) {
       showWarning('Please enter a valid 10-digit mobile number')
       return
     }
@@ -984,21 +1026,164 @@ const QuickSale = () => {
     return servicesTotal + packagesTotal + productsTotal
   }
 
+  const calculateOfferEligibleSubtotal = () => {
+    // Offers don't apply to the membership-plan purchase line itself
+    const servicesTotal = services.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0)
+    const packagesTotal = packages.reduce((sum, p) => sum + (parseFloat(p.total) || 0), 0)
+    const productsTotal = products.reduce((sum, p) => sum + (parseFloat(p.total) || 0), 0)
+    return servicesTotal + packagesTotal + productsTotal
+  }
+
+  // ── Per-service membership eligibility ────────────────────────────────────
+  // Mirrors the backend's `candidate_plans` logic in bill_routes.py:1436-1510:
+  // both the customer's existing active membership AND any plan being purchased
+  // in the current bill (Add Membership) discount eligible items. Removing one
+  // source never affects the other — the two are independent.
+  //
+  // Rules per plan:
+  //   • Empty `applicable_service_ids` → covers everything (legacy mode):
+  //     services + packages + products all get the discount.
+  //   • Non-empty list → covers only services whose service_id is in the list.
+  //     Packages/products are not eligible under that plan.
+  // When multiple plans cover the same item, the highest matching % wins.
+
+  // All plans in play right now: customer's existing active membership +
+  // every plan currently in the cart's "Add Membership" list. Each entry is
+  // normalised to { name, allocated_discount, applicable_service_ids }.
+  const activeMembershipPlans = (() => {
+    const plans = []
+    if (membershipInfo && membershipInfo.plan) {
+      const p = membershipInfo.plan
+      plans.push({
+        name: p.name || 'Membership',
+        allocated_discount: parseFloat(p.allocated_discount) || 0,
+        applicable_service_ids: Array.isArray(p.applicable_service_ids)
+          ? p.applicable_service_ids
+          : (Array.isArray(p.applicable_services)
+            ? p.applicable_services.map(s => s.id || s).filter(Boolean)
+            : []),
+        source: 'existing',
+      })
+    }
+    for (const m of memberships) {
+      const pct = parseFloat(m.allocated_discount) || 0
+      if (pct <= 0) continue
+      plans.push({
+        name: m.name || 'New Membership',
+        allocated_discount: pct,
+        applicable_service_ids: Array.isArray(m.applicable_service_ids)
+          ? m.applicable_service_ids
+          : [],
+        source: 'cart',
+      })
+    }
+    return plans.filter(p => p.allocated_discount > 0)
+  })()
+
+  // Returns { pct, planName } for the best plan that covers a given service id,
+  // or { pct: 0, planName: null } if nothing applies.
+  const getBestPlanForService = (serviceId) => {
+    let bestPct = 0
+    let bestPlanName = null
+    for (const plan of activeMembershipPlans) {
+      const whitelist = plan.applicable_service_ids
+      const covers = whitelist.length === 0  // legacy: covers everything
+        ? true
+        : (serviceId && whitelist.includes(serviceId))
+      if (covers && plan.allocated_discount > bestPct) {
+        bestPct = plan.allocated_discount
+        bestPlanName = plan.name
+      }
+    }
+    return { pct: bestPct, planName: bestPlanName }
+  }
+
+  const getMembershipDiscountPercentForService = (serviceId) => {
+    return getBestPlanForService(serviceId).pct
+  }
+
+  const getMembershipDiscountPercentForLegacyItem = () => {
+    // Packages/products only get a membership discount under a legacy plan
+    // (one with empty whitelist). Highest such % wins across all plans.
+    let best = 0
+    for (const plan of activeMembershipPlans) {
+      if (plan.applicable_service_ids.length === 0 && plan.allocated_discount > best) {
+        best = plan.allocated_discount
+      }
+    }
+    return best
+  }
+
+  // Total membership discount across the whole cart (sum of per-line eligible
+  // amounts). Mirrors the backend's per-item walk so the preview total matches
+  // what will be charged.
+  const calculateMembershipDiscount = () => {
+    if (activeMembershipPlans.length === 0) return 0
+    let total = 0
+    for (const s of services) {
+      const lineTotal = parseFloat(s.total) || 0
+      if (lineTotal <= 0) continue
+      const pct = getMembershipDiscountPercentForService(s.service_id)
+      if (pct > 0) total += lineTotal * pct / 100
+    }
+    const legacyPct = getMembershipDiscountPercentForLegacyItem()
+    if (legacyPct > 0) {
+      for (const p of packages) {
+        total += (parseFloat(p.total) || 0) * legacyPct / 100
+      }
+      for (const p of products) {
+        total += (parseFloat(p.total) || 0) * legacyPct / 100
+      }
+    }
+    return total
+  }
+
+  // Auto-sync discountType to 'membership' when any plan provides discount,
+  // or revert to 'fix' when none remain. This ensures:
+  //  • Adding a plan via "Add Membership" turns the discount UI on.
+  //  • Removing the cart membership doesn't kill the existing customer's
+  //    membership coverage — discountType only flips back if NOTHING is left.
+  //  • The user's manual choice of fix/percentage with a non-zero amount is
+  //    preserved (we only auto-flip from the default 'fix' with amount=0).
+  useEffect(() => {
+    if (appliedOffer) return  // offer wins; don't touch discountType
+    const anyPlanWithDiscount = activeMembershipPlans.length > 0
+    if (anyPlanWithDiscount) {
+      if (discountType !== 'membership') {
+        const isDefaultFixZero = discountType === 'fix' && (!discountAmount || parseFloat(discountAmount) === 0)
+        if (isDefaultFixZero) {
+          setDiscountType('membership')
+        }
+      }
+    } else if (discountType === 'membership') {
+      // All plans removed (cart cleared and customer membership gone) — revert.
+      setDiscountType('fix')
+      setDiscountAmount(0)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [memberships, membershipInfo, appliedOffer])
+
   const calculateDiscount = () => {
     const subtotal = calculateSubtotal()
-    
-    // Handle membership discount
-    if (discountType === 'membership' && membershipInfo && membershipInfo.plan) {
-      const discountPercent = membershipInfo.plan.allocated_discount || 0
-      return subtotal * (discountPercent / 100)
+
+    // Offer takes precedence (single-offer rule: offer wins over membership/manual)
+    if (appliedOffer) {
+      const pct = parseFloat(appliedOffer.discount_percentage) || 0
+      return calculateOfferEligibleSubtotal() * (pct / 100)
     }
-    
+
+    // Membership applies whenever ANY plan is in play (existing OR cart) and
+    // the user hasn't opted into a manual fix/% override.
+    if (discountType === 'membership' && activeMembershipPlans.length > 0) {
+      return calculateMembershipDiscount()
+    }
+
     if (discountType === 'fix') {
       return parseFloat(discountAmount) || 0
     } else if (discountType === '%') {
       return subtotal * (parseFloat(discountAmount) || 0) / 100
     }
-    
+
     return 0
   }
 
@@ -1097,6 +1282,7 @@ const QuickSale = () => {
     setBookingStatus('confirmed')
     setPointsToUse(0)
     setPointsDiscount(0)
+    setAppliedOffer(null)
     appointmentCreatedRef.current = false
     setEditingAppointmentId(null)
   }
@@ -1371,10 +1557,15 @@ const QuickSale = () => {
           'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`
         },
         body: JSON.stringify({
-          discount_amount: membershipInfo && membershipInfo.plan && discountType === 'membership' 
-            ? membershipInfo.plan.allocated_discount 
-            : parseFloat(discountAmount) || 0,
-          discount_type: discountType === 'membership' ? 'membership' : (discountType === '%' ? 'percentage' : 'fix'),
+          discount_amount: appliedOffer
+            ? 0 // backend computes from offer percentage
+            : (membershipInfo && membershipInfo.plan && discountType === 'membership'
+              ? membershipInfo.plan.allocated_discount
+              : parseFloat(discountAmount) || 0),
+          discount_type: appliedOffer
+            ? 'offer'
+            : (discountType === 'membership' ? 'membership' : (discountType === '%' ? 'percentage' : 'fix')),
+          applied_offer_id: appliedOffer ? appliedOffer.id : undefined,
           discount_reason: approvalReason || undefined, // Phase 5: Include reason
           tax_rate: 18.0, // GST rate - ensure it's a float
           payment_mode: paymentMode,
@@ -1644,8 +1835,43 @@ const QuickSale = () => {
           </div>
 
           {/* Service Rows */}
-          {services.map((service) => (
+          {services.map((service) => {
+            const bestPlan = discountType === 'membership'
+              ? getBestPlanForService(service.service_id)
+              : { pct: 0, planName: null }
+            const memberPct = bestPlan.pct
+            const lineTotal = parseFloat(service.total) || 0
+            const memberSavings = lineTotal > 0 && memberPct > 0
+              ? lineTotal * memberPct / 100
+              : 0
+            return (
             <div key={service.id} className="service-row">
+              {memberPct > 0 && (
+                <div
+                  className="membership-eligible-banner"
+                  style={{
+                    gridColumn: '1 / -1',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '6px 12px',
+                    marginBottom: 8,
+                    background: 'linear-gradient(135deg, rgba(13, 148, 136, 0.08) 0%, rgba(13, 148, 136, 0.02) 100%)',
+                    border: '1px solid rgba(13, 148, 136, 0.25)',
+                    borderRadius: 6,
+                    fontSize: 12,
+                  }}
+                >
+                  <span style={{ color: '#0f766e', fontWeight: 600 }}>
+                    🎟 Member discount applies — {memberPct}% off via {bestPlan.planName || 'Membership'}
+                  </span>
+                  {memberSavings > 0 && (
+                    <span style={{ color: '#047857', fontWeight: 700 }}>
+                      Saves ₹{memberSavings.toFixed(2)}
+                    </span>
+                  )}
+                </div>
+              )}
               <div className="form-field">
                 <label className="field-label">Service</label>
                 <select
@@ -1720,6 +1946,23 @@ const QuickSale = () => {
                   value={service.total.toFixed(2)}
                   readOnly
                 />
+                {memberPct > 0 && memberSavings > 0 && (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 2,
+                    marginTop: 4,
+                    fontSize: 11,
+                    lineHeight: 1.3,
+                  }}>
+                    <span style={{ color: '#9ca3af', textDecoration: 'line-through' }}>
+                      ₹{lineTotal.toFixed(2)}
+                    </span>
+                    <span style={{ color: '#047857', fontWeight: 700 }}>
+                      ₹{(lineTotal - memberSavings).toFixed(2)} after member discount
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="service-actions">
                 <button
@@ -1737,7 +1980,8 @@ const QuickSale = () => {
                 </button>
               </div>
             </div>
-          ))}
+            )
+          })}
 
         {/* Pill Buttons Row */}
         <div className="pill-buttons-row">
@@ -1868,8 +2112,77 @@ const QuickSale = () => {
             </div>
           </div>
 
+        {/* Offers Section — only one can be applied at a time (single-offer rule) */}
+        <div className="discount-section offer-section">
+          <label className="form-label">
+            <FaGift size={14} style={{ marginRight: 6 }} />
+            Available Offers
+          </label>
+          {availableOffers.length === 0 ? (
+            <div className="membership-note-box" style={{ marginTop: 4 }}>
+              No active offers. Create one in <strong>Offer Management</strong>.
+            </div>
+          ) : (
+            <>
+              <select
+                className="form-input"
+                value={appliedOffer ? appliedOffer.id : ''}
+                onChange={(e) => {
+                  const id = e.target.value
+                  if (!id) {
+                    setAppliedOffer(null)
+                    return
+                  }
+                  const offer = availableOffers.find(o => o.id === id)
+                  if (!offer) return
+                  // Membership-only offer requires the customer to have an active membership
+                  if (offer.offer_type === 'membership' && !(membershipInfo && membershipInfo.plan)) {
+                    showWarning(`"${offer.name}" applies only to membership customers`)
+                    return
+                  }
+                  setAppliedOffer(offer)
+                  showInfo(`Offer applied: ${offer.name} (${offer.discount_percentage}% off)`)
+                }}
+              >
+                <option value="">-- No offer selected --</option>
+                {availableOffers
+                  .filter(o => o.offer_type === 'general' || (membershipInfo && membershipInfo.plan))
+                  .map(o => (
+                    <option key={o.id} value={o.id}>
+                      {o.name} — {o.discount_percentage}% {o.offer_type === 'membership' ? '(Membership)' : ''}
+                    </option>
+                  ))}
+              </select>
+              {appliedOffer && (
+                <div className="membership-note-box" style={{ marginTop: 8 }}>
+                  <strong>{appliedOffer.name}</strong> — {appliedOffer.discount_percentage}% off
+                  {membershipInfo && membershipInfo.plan && (
+                    <span> · Membership auto-discount is replaced while this offer is active</span>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
         {/* Discount Section */}
-        {membershipInfo && membershipInfo.plan ? (
+        {appliedOffer ? (
+          // Offer is applied — show as the active discount source (single-offer rule)
+          <div className="discount-section">
+            <div className="membership-info-badge">
+              <div className="membership-info-header">
+                <FaGift size={16} />
+                <strong>Offer: {appliedOffer.name}</strong>
+              </div>
+              <div className="membership-info-detail">
+                {appliedOffer.discount_percentage}% discount applied to services, packages and products
+              </div>
+            </div>
+            <div className="membership-note-box">
+              Only one offer is applied at a time. Remove the offer to switch back to membership/manual discount.
+            </div>
+          </div>
+        ) : membershipInfo && membershipInfo.plan ? (
           // Membership discount active - show info badge
           <div className="discount-section">
             <div className="membership-info-badge">
@@ -1986,7 +2299,18 @@ const QuickSale = () => {
                 <span className="summary-label">Subtotal:</span>
                 <span className="summary-value">₹ {calculateSubtotal().toFixed(2)}</span>
               </div>
-              {membershipInfo && membershipInfo.plan && discountType === 'membership' && calculateDiscount() > 0 && (
+              {appliedOffer && calculateDiscount() > 0 && (
+                <div className="summary-row membership-discount-row">
+                  <span className="summary-label membership-discount-label">
+                    <FaGift style={{ fontSize: '14px' }} />
+                    Offer ({appliedOffer.name} – {appliedOffer.discount_percentage}%):
+                  </span>
+                  <span className="summary-value membership-discount-value">
+                    - ₹ {calculateDiscount().toFixed(2)}
+                  </span>
+                </div>
+              )}
+              {!appliedOffer && membershipInfo && membershipInfo.plan && discountType === 'membership' && calculateDiscount() > 0 && (
                 <div className="summary-row membership-discount-row">
                   <span className="summary-label membership-discount-label">
                     <FaGift style={{ fontSize: '14px' }} />

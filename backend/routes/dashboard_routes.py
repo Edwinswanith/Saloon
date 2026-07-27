@@ -5,11 +5,12 @@ from mongoengine import Q
 from mongoengine.errors import DoesNotExist
 from bson import ObjectId
 import traceback
-from utils.auth import require_auth
+from utils.auth import require_auth, require_role
 from utils.branch_filter import get_selected_branch, filter_by_branch
 from utils.date_utils import get_ist_date_range, ist_to_utc_start, ist_to_utc_end, get_ist_today
 from utils.redis_cache import cache_response
 from utils.performance import log_performance
+from utils.staff_revenue import attributed_revenue_pipeline
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
@@ -278,27 +279,21 @@ def get_staff_performance(current_user=None):
 
         branch = get_selected_branch(request, current_user)
 
-        # OPTIMIZED: Single aggregation for all staff performance
+        # Revenue is allocated proportionally from each bill's final_amount
+        # (the cash actually collected) — see utils/staff_revenue.py. This makes
+        # Σ(per-staff revenue) == Σ(bill.final_amount) == Cash Register's
+        # bill-sourced total_in, so the dashboard reconciles with Cash Register.
         match_stage = {
             "is_deleted": False,
             "bill_date": {"$gte": start, "$lte": end}
         }
         if branch:
-            # Convert branch.id to ObjectId for MongoDB aggregation
             match_stage["branch"] = ObjectId(str(branch.id))
 
-        # Build staff match condition (filter staff by branch after $lookup)
-        staff_match_condition = {"staff_doc.status": "active"}
-        if branch:
-            staff_match_condition["staff_doc.branch"] = ObjectId(str(branch.id))
-
-        pipeline = [
-            {"$match": match_stage},
-            {"$unwind": "$items"},
-            {"$match": {"items.staff": {"$ne": None}}},
+        pipeline = attributed_revenue_pipeline(match_stage) + [
             {"$group": {
                 "_id": "$items.staff",
-                "total_revenue": {"$sum": {"$ifNull": ["$items.total", 0]}},
+                "total_revenue": {"$sum": "$_attributed_revenue"},
                 "total_services": {"$sum": {"$ifNull": ["$items.quantity", 1]}},
                 "service_count": {
                     "$sum": {"$cond": [
@@ -332,7 +327,10 @@ def get_staff_performance(current_user=None):
                 "as": "staff_doc"
             }},
             {"$unwind": {"path": "$staff_doc", "preserveNullAndEmptyArrays": True}},
-            {"$match": staff_match_condition},
+            # Note: no longer filter by staff_doc.status — inactive staff with
+            # historical revenue must still appear (frontend renders an
+            # "Inactive" badge). Items with staff=None pass through as the
+            # synthetic "Unassigned" row (handled in Python below).
             {"$project": {
                 "staff_id": {"$toString": "$_id"},
                 "staff_name": {
@@ -342,6 +340,7 @@ def get_staff_performance(current_user=None):
                         {"$ifNull": ["$staff_doc.last_name", ""]}
                     ]
                 },
+                "staff_status": {"$ifNull": ["$staff_doc.status", None]},
                 "total_revenue": {"$round": ["$total_revenue", 2]},
                 "total_services": 1,
                 "service_count": 1,
@@ -356,12 +355,12 @@ def get_staff_performance(current_user=None):
                 }
             }},
             {"$sort": {"total_revenue": -1}},
-            {"$limit": 50}
+            {"$limit": 51}  # +1 in case Unassigned is in the top 50
         ]
 
         performance_results = list(Bill.objects.aggregate(pipeline))
 
-        # Get staff IDs from aggregation results for appointment counts
+        # Get real staff IDs from aggregation results (skip null = Unassigned bucket)
         staff_ids = [r.get('_id') for r in performance_results if r.get('_id')]
 
         # Batch fetch appointment counts for all staff
@@ -385,13 +384,34 @@ def get_staff_performance(current_user=None):
             appt_results = list(Appointment.objects.aggregate(appt_pipeline))
             appt_counts = {str(r['_id']): r['count'] for r in appt_results}
 
-        # Format final response
+        # Format final response. Items whose `staff` was null collapse into a
+        # synthetic "Unassigned" row so Σ(total_revenue) still equals
+        # Σ(bill.final_amount) and the gap is visible to the user.
         performance = []
+        unassigned_row = None
         for r in performance_results:
+            raw_id = r.get('_id')
+            if raw_id is None:
+                unassigned_row = {
+                    'staff_id': 'unassigned',
+                    'staff_name': 'Unassigned',
+                    'staff_status': None,
+                    'total_revenue': r.get('total_revenue', 0),
+                    'total_services': r.get('total_services', 0),
+                    'service_count': r.get('service_count', 0),
+                    'package_count': r.get('package_count', 0),
+                    'product_count': r.get('product_count', 0),
+                    'membership_count': r.get('membership_count', 0),
+                    'commission_earned': 0,
+                    'completed_appointments': 0,
+                }
+                continue
+
             staff_id = r.get('staff_id', '')
             performance.append({
                 'staff_id': staff_id,
-                'staff_name': r.get('staff_name', '').strip(),
+                'staff_name': r.get('staff_name', '').strip() or 'Unknown',
+                'staff_status': r.get('staff_status'),
                 'total_revenue': r.get('total_revenue', 0),
                 'total_services': r.get('total_services', 0),
                 'service_count': r.get('service_count', 0),
@@ -402,12 +422,101 @@ def get_staff_performance(current_user=None):
                 'completed_appointments': appt_counts.get(staff_id, 0)
             })
 
+        # Trim to 50 named staff and pin Unassigned at the bottom (if any).
+        performance = performance[:50]
+        if unassigned_row and unassigned_row['total_revenue'] > 0:
+            performance.append(unassigned_row)
+
         return jsonify(performance)
     except Exception as e:
         error_trace = traceback.format_exc()
         print(f"[DASHBOARD STATS] Error in get_staff_performance: {str(e)}")
         print(f"[DASHBOARD STATS] Traceback: {error_trace}")
         return jsonify({'error': str(e), 'traceback': error_trace}), 500
+
+
+@dashboard_bp.route('/branch-comparison', methods=['GET'])
+@require_role('owner')
+@cache_response(ttl=300)
+@log_performance
+def get_branch_comparison(current_user=None):
+    """Per-branch revenue + transactions for the period.
+
+    Owner-only. Powers the comparison strip shown on the Dashboard when the
+    owner has selected "All Branches". Each row reports a branch's contribution
+    so owners can see at a glance which branches lead/lag the combined total.
+    """
+    try:
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+
+        if not start_date:
+            today_ist = get_ist_today()
+            start_date_obj = datetime.strptime(today_ist, '%Y-%m-%d') - timedelta(days=30)
+            start_date = start_date_obj.strftime('%Y-%m-%d')
+        if not end_date:
+            end_date = get_ist_today()
+
+        start = datetime.strptime(start_date, '%Y-%m-%d')
+        end = datetime.strptime(end_date, '%Y-%m-%d').replace(
+            hour=23, minute=59, second=59, microsecond=999999
+        )
+
+        pipeline = [
+            {"$match": {
+                "is_deleted": False,
+                "bill_date": {"$gte": start, "$lte": end},
+            }},
+            {"$group": {
+                "_id": "$branch",
+                "total_revenue": {"$sum": {"$ifNull": ["$final_amount", 0]}},
+                "total_transactions": {"$sum": 1},
+            }},
+            {"$lookup": {
+                "from": "branches",
+                "localField": "_id",
+                "foreignField": "_id",
+                "as": "branch_doc",
+            }},
+            {"$unwind": {"path": "$branch_doc", "preserveNullAndEmptyArrays": True}},
+            {"$project": {
+                "branch_id": {"$toString": "$_id"},
+                "branch_name": {"$ifNull": ["$branch_doc.name", "Unknown"]},
+                "branch_city": {"$ifNull": ["$branch_doc.city", None]},
+                "total_revenue": {"$round": ["$total_revenue", 2]},
+                "total_transactions": 1,
+            }},
+            {"$sort": {"total_revenue": -1}},
+        ]
+
+        rows = list(Bill.objects.aggregate(pipeline))
+        grand_total = sum(r.get('total_revenue', 0) or 0 for r in rows)
+
+        result = []
+        for r in rows:
+            revenue = r.get('total_revenue', 0) or 0
+            result.append({
+                'branch_id': r.get('branch_id') or None,
+                'branch_name': r.get('branch_name', 'Unknown'),
+                'branch_city': r.get('branch_city'),
+                'total_revenue': revenue,
+                'total_transactions': r.get('total_transactions', 0),
+                'percent_of_total': (
+                    round(revenue / grand_total * 100, 1) if grand_total > 0 else 0
+                ),
+            })
+
+        return jsonify({
+            'branches': result,
+            'grand_total': round(grand_total, 2),
+            'start_date': start_date,
+            'end_date': end_date,
+        })
+    except Exception as e:
+        print(f"[DASHBOARD] Error in get_branch_comparison: {str(e)}")
+        print(f"[DASHBOARD] Traceback: {traceback.format_exc()}")
+        return jsonify({'error': str(e)}), 500
+
 
 @dashboard_bp.route('/top-customers', methods=['GET'])
 @require_auth
@@ -1462,17 +1571,18 @@ def get_top_performer(current_user=None):
         end = datetime.strptime(end_date, '%Y-%m-%d')
         end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
 
-        # OPTIMIZED: Single aggregation pipeline for all staff revenue and service metrics
-        bills_pipeline = [
-            {"$match": {
-                "is_deleted": False,
-                "bill_date": {"$gte": start, "$lte": end}
-            }},
-            {"$unwind": "$items"},
+        # Revenue is allocated proportionally from each bill's final_amount so
+        # the leaderboard reconciles with the dashboard total and Cash Register.
+        # Leaderboard filters to active staff (a ranking view), and skips items
+        # with no staff assigned (those don't belong on a leaderboard).
+        bills_pipeline = attributed_revenue_pipeline({
+            "is_deleted": False,
+            "bill_date": {"$gte": start, "$lte": end}
+        }) + [
             {"$match": {"items.staff": {"$ne": None}}},
             {"$group": {
                 "_id": "$items.staff",
-                "revenue": {"$sum": {"$ifNull": ["$items.total", 0]}},
+                "revenue": {"$sum": "$_attributed_revenue"},
                 "service_count": {
                     "$sum": {
                         "$cond": [

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { FaClipboard, FaEdit, FaTrash } from 'react-icons/fa'
+import { FaClipboard, FaEdit, FaTrash, FaTimes } from 'react-icons/fa'
 import './CustomerList.css'
 import { API_BASE_URL } from '../config'
 import { useAuth } from '../contexts/AuthContext'
@@ -10,6 +10,27 @@ import 'react-datepicker/dist/react-datepicker.css'
 import { PageTransition } from './shared/PageTransition'
 import { TableSkeleton } from './shared/SkeletonLoaders'
 import { EmptyCustomers, EmptySearch } from './shared/EmptyStates'
+import CompactSelect from './shared/CompactSelect'
+
+const SOURCE_OPTIONS = [
+  { value: 'Walk-in', label: 'Walk-in' },
+  { value: 'Facebook', label: 'Facebook' },
+  { value: 'Instagram', label: 'Instagram' },
+  { value: 'Referral', label: 'Referral' },
+  { value: 'Google', label: 'Google' },
+  { value: 'Website', label: 'Website' },
+  { value: 'Other', label: 'Other' },
+]
+const GENDER_OPTIONS = [
+  { value: 'Male', label: 'Male' },
+  { value: 'Female', label: 'Female' },
+  { value: 'Other', label: 'Other' },
+]
+const DOB_RANGE_OPTIONS = [
+  { value: 'Young', label: 'Young' },
+  { value: 'Mid', label: 'Mid' },
+  { value: 'Old', label: 'Old' },
+]
 
 const CustomerList = () => {
   const { currentBranch, user } = useAuth()
@@ -214,14 +235,17 @@ const CustomerList = () => {
     }
 
     try {
-      // Clean mobile number (remove spaces, +91, etc.)
-      let cleanMobile = customerFormData.mobile.toString().trim()
-      cleanMobile = cleanMobile.replace(/\s+/g, '') // Remove spaces
-      cleanMobile = cleanMobile.replace(/^\+91/, '') // Remove +91 prefix
-      cleanMobile = cleanMobile.replace(/^91/, '') // Remove 91 prefix
-      
-      if (cleanMobile.length < 10) {
-        showWarning('Please enter a valid mobile number (at least 10 digits)')
+      // Normalize mobile: strip spaces and a leading "+", then strip a leading
+      // "91" only when the total length is exactly 12 (the country-code form).
+      // This preserves real 10-digit numbers that happen to start with 91.
+      let cleanMobile = customerFormData.mobile.toString().trim().replace(/\s+/g, '')
+      cleanMobile = cleanMobile.replace(/^\+/, '')
+      if (cleanMobile.length === 12 && cleanMobile.startsWith('91')) {
+        cleanMobile = cleanMobile.slice(2)
+      }
+
+      if (!/^\d{10}$/.test(cleanMobile)) {
+        showWarning('Please enter a valid 10-digit mobile number')
         return
       }
 
@@ -650,7 +674,17 @@ const CustomerList = () => {
       {showCustomerModal && (
         <div className="modal-overlay" onClick={() => setShowCustomerModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>{editingCustomer ? 'Edit Customer' : 'Add Customer'}</h2>
+            <div className="std-modal-header">
+              <h2>{editingCustomer ? 'Edit Customer' : 'Add Customer'}</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowCustomerModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <div className="form-group">
               <label>Mobile *</label>
               <input
@@ -688,41 +722,33 @@ const CustomerList = () => {
             </div>
             <div className="form-group">
               <label>Source</label>
-              <select
+              <CompactSelect
+                className="form-select"
                 value={customerFormData.source}
-                onChange={(e) => setCustomerFormData({ ...customerFormData, source: e.target.value })}
-              >
-                <option value="Walk-in">Walk-in</option>
-                <option value="Facebook">Facebook</option>
-                <option value="Instagram">Instagram</option>
-                <option value="Referral">Referral</option>
-                <option value="Google">Google</option>
-                <option value="Other">Other</option>
-              </select>
+                onChange={(v) => setCustomerFormData({ ...customerFormData, source: v })}
+                options={SOURCE_OPTIONS.filter(o => o.value !== 'Website')}
+                placeholder="Select source"
+              />
             </div>
             <div className="form-group">
               <label>Gender</label>
-              <select
+              <CompactSelect
+                className="form-select"
                 value={customerFormData.gender}
-                onChange={(e) => setCustomerFormData({ ...customerFormData, gender: e.target.value })}
-              >
-                <option value="">Select Gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-              </select>
+                onChange={(v) => setCustomerFormData({ ...customerFormData, gender: v })}
+                options={GENDER_OPTIONS}
+                placeholder="Select Gender"
+              />
             </div>
             <div className="form-group">
               <label>DOB Range</label>
-              <select
+              <CompactSelect
+                className="form-select"
                 value={customerFormData.dobRange}
-                onChange={(e) => setCustomerFormData({ ...customerFormData, dobRange: e.target.value })}
-              >
-                <option value="">Select Range</option>
-                <option value="Young">Young</option>
-                <option value="Mid">Mid</option>
-                <option value="Old">Old</option>
-              </select>
+                onChange={(v) => setCustomerFormData({ ...customerFormData, dobRange: v })}
+                options={DOB_RANGE_OPTIONS}
+                placeholder="Select Range"
+              />
             </div>
             <div className="form-group">
               <label>Date of Birth</label>
@@ -749,47 +775,47 @@ const CustomerList = () => {
       {showSourcesModal && (
         <div className="modal-overlay" onClick={() => setShowSourcesModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Filter Customers</h2>
+            <div className="std-modal-header">
+              <h2>Filter Customers</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowSourcesModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <div className="filter-form">
               <div className="form-group">
                 <label>Source</label>
-                <select
+                <CompactSelect
+                  className="form-select"
                   value={filters.source}
-                  onChange={(e) => setFilters({ ...filters, source: e.target.value })}
-                >
-                  <option value="">All Sources</option>
-                  <option value="Walk-in">Walk-in</option>
-                  <option value="Facebook">Facebook</option>
-                  <option value="Instagram">Instagram</option>
-                  <option value="Referral">Referral</option>
-                  <option value="Google">Google</option>
-                  <option value="Website">Website</option>
-                  <option value="Other">Other</option>
-                </select>
+                  onChange={(v) => setFilters({ ...filters, source: v })}
+                  options={[{ value: '', label: 'All Sources' }, ...SOURCE_OPTIONS]}
+                  placeholder="All Sources"
+                />
               </div>
               <div className="form-group">
                 <label>Gender</label>
-                <select
+                <CompactSelect
+                  className="form-select"
                   value={filters.gender}
-                  onChange={(e) => setFilters({ ...filters, gender: e.target.value })}
-                >
-                  <option value="">All Genders</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
+                  onChange={(v) => setFilters({ ...filters, gender: v })}
+                  options={[{ value: '', label: 'All Genders' }, ...GENDER_OPTIONS]}
+                  placeholder="All Genders"
+                />
               </div>
               <div className="form-group">
                 <label>Date of Birth Range</label>
-                <select
+                <CompactSelect
+                  className="form-select"
                   value={filters.dobRange}
-                  onChange={(e) => setFilters({ ...filters, dobRange: e.target.value })}
-                >
-                  <option value="">All Ranges</option>
-                  <option value="Young">Young</option>
-                  <option value="Mid">Mid</option>
-                  <option value="Old">Old</option>
-                </select>
+                  onChange={(v) => setFilters({ ...filters, dobRange: v })}
+                  options={[{ value: '', label: 'All Ranges' }, ...DOB_RANGE_OPTIONS]}
+                  placeholder="All Ranges"
+                />
               </div>
             </div>
             <div className="modal-actions">
@@ -804,7 +830,17 @@ const CustomerList = () => {
       {showImportModal && (
         <div className="modal-overlay" onClick={() => setShowImportModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Import Customers</h2>
+            <div className="std-modal-header">
+              <h2>Import Customers</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowImportModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <div className="import-instructions">
               <p>Upload a CSV file with the following columns:</p>
               <ul>
@@ -836,7 +872,17 @@ const CustomerList = () => {
       {showMergePreviewModal && mergePreview && (
         <div className="modal-overlay" onClick={() => setShowMergePreviewModal(false)}>
           <div className="modal-content merge-preview-modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Merge Customers Preview</h2>
+            <div className="std-modal-header">
+              <h2>Merge Customers Preview</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowMergePreviewModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
 
             <div className="merge-comparison">
               <div className="merge-card merge-primary">

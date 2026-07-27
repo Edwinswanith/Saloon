@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Header from './Header';
 import { FaExclamationTriangle, FaTimes } from 'react-icons/fa';
 import './ApprovalCodes.css';
 import { apiGet, apiPost, apiPut } from '../utils/api';
 import { showSuccess, showError, showWarning } from '../utils/toast.jsx';
+import CompactSelect from './shared/CompactSelect';
+
+const ROLE_OPTIONS = [
+  { value: 'manager', label: 'Manager' },
+  { value: 'owner', label: 'Owner' },
+];
 
 const ApprovalCodes = () => {
   const [codes, setCodes] = useState([]);
@@ -160,7 +167,7 @@ const ApprovalCodes = () => {
         </div>
 
         {/* Generate Modal */}
-        {showGenerateModal && (
+        {showGenerateModal && createPortal(
           <div className="modal-overlay" onClick={() => { setShowGenerateModal(false); setFormData({ role: 'manager', max_uses: '', expires_in_days: '' }); }}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
@@ -178,14 +185,12 @@ const ApprovalCodes = () => {
                 <div className="modal-form-fields">
                   <div className="form-group">
                     <label>Role *</label>
-                    <select
+                    <CompactSelect
                       value={formData.role}
-                      onChange={(e) => setFormData({...formData, role: e.target.value})}
-                      required
-                    >
-                      <option value="manager">Manager</option>
-                      <option value="owner">Owner</option>
-                    </select>
+                      onChange={(v) => setFormData({...formData, role: v})}
+                      options={ROLE_OPTIONS}
+                      placeholder="Manager"
+                    />
                   </div>
                   <div className="form-group">
                     <label>Max Uses (Optional)</label>
@@ -216,7 +221,8 @@ const ApprovalCodes = () => {
                 </div>
               </form>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     </div>

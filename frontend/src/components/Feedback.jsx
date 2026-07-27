@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { FaStar, FaPlus, FaExclamationTriangle, FaFrown } from 'react-icons/fa'
+import { createPortal } from 'react-dom'
+import { FaStar, FaPlus, FaExclamationTriangle, FaFrown, FaTimes } from 'react-icons/fa'
 import './Feedback.css'
 import { apiGet, apiPost, apiPut } from '../utils/api'
 import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
 import { useAuth } from '../contexts/AuthContext'
+import CompactSelect from './shared/CompactSelect'
 
 const Feedback = () => {
   const { currentBranch } = useAuth()
@@ -341,53 +343,56 @@ const Feedback = () => {
       </div>
 
       {/* Add Feedback Modal */}
-      {showFeedbackModal && (
+      {showFeedbackModal && createPortal(
         <div className="modal-overlay" onClick={() => setShowFeedbackModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Add Customer Feedback</h2>
+            <div className="std-modal-header">
+              <h2>Add Customer Feedback</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowFeedbackModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <div className="form-group">
               <label>Customer *</label>
-              <select
+              <CompactSelect
                 value={feedbackFormData.customer_id}
-                onChange={handleCustomerChange}
-                required
-              >
-                <option value="">Select Customer</option>
-                {customers.map(customer => (
-                  <option key={customer.id} value={customer.id}>
-                    {customer.firstName || customer.first_name} {customer.lastName || customer.last_name} - {customer.mobile}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => handleCustomerChange({ target: { value: v } })}
+                options={customers.map(customer => ({
+                  value: customer.id,
+                  label: `${customer.firstName || customer.first_name} ${customer.lastName || customer.last_name} - ${customer.mobile}`
+                }))}
+                placeholder="Select Customer"
+              />
             </div>
             <div className="form-group">
               <label>Bill (Optional)</label>
-              <select
+              <CompactSelect
                 value={feedbackFormData.bill_id}
-                onChange={handleBillChange}
+                onChange={(v) => handleBillChange({ target: { value: v } })}
                 disabled={!feedbackFormData.customer_id}
-              >
-                <option value="">No Bill Selected</option>
-                {bills.map(bill => (
-                  <option key={bill.id} value={bill.id}>
-                    {bill.bill_number} - ₹{bill.final_amount} ({new Date(bill.bill_date).toLocaleDateString()})
-                  </option>
-                ))}
-              </select>
+                options={bills.map(bill => ({
+                  value: bill.id,
+                  label: `${bill.bill_number} - ₹${bill.final_amount} (${new Date(bill.bill_date).toLocaleDateString()})`
+                }))}
+                placeholder="No Bill Selected"
+              />
             </div>
             <div className="form-group">
               <label>Staff Member (Optional)</label>
-              <select
+              <CompactSelect
                 value={feedbackFormData.staff_id}
-                onChange={(e) => setFeedbackFormData({ ...feedbackFormData, staff_id: e.target.value })}
-              >
-                <option value="">Select Staff (Auto-detected from bill)</option>
-                {staffList.map(staff => (
-                  <option key={staff.id} value={staff.id}>
-                    {staff.first_name} {staff.last_name}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setFeedbackFormData({ ...feedbackFormData, staff_id: v })}
+                options={staffList.map(staff => ({
+                  value: staff.id,
+                  label: `${staff.first_name} ${staff.last_name}`
+                }))}
+                placeholder="Select Staff (Auto-detected from bill)"
+              />
             </div>
             <div className="form-group">
               <label>Rating *</label>
@@ -409,16 +414,27 @@ const Feedback = () => {
               <button className="btn-save" onClick={handleSaveFeedback}>Save Feedback</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Google Review Modal (Phase 3 - Placeholder) */}
-      {showGoogleReviewModal && (
+      {showGoogleReviewModal && createPortal(
         <div className="modal-overlay" onClick={() => setShowGoogleReviewModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              Thank You for Your Feedback! <FaStar size={20} color="#fbbf24" />
-            </h2>
+            <div className="std-modal-header">
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                Thank You for Your Feedback! <FaStar size={20} color="#fbbf24" />
+              </h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowGoogleReviewModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <p>We're thrilled you had a great experience! Would you like to share your review on Google?</p>
             <div className="modal-actions">
               <button className="btn-cancel" onClick={() => setShowGoogleReviewModal(false)}>
@@ -453,16 +469,27 @@ const Feedback = () => {
               <FaExclamationTriangle size={14} /> Google Review integration is in placeholder mode. Link will be activated when provided.
             </p>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Service Recovery Message (Phase 3) */}
-      {showServiceRecoveryMessage && (
+      {showServiceRecoveryMessage && createPortal(
         <div className="modal-overlay" onClick={() => setShowServiceRecoveryMessage(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              We're Sorry <FaFrown size={20} color="#6b7280" />
-            </h2>
+            <div className="std-modal-header">
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                We're Sorry <FaFrown size={20} color="#6b7280" />
+              </h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowServiceRecoveryMessage(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <p>We're sorry to hear about your experience. A service recovery case has been created and our team will reach out to you shortly to make things right.</p>
             <p>Thank you for helping us improve!</p>
             <div className="modal-actions">
@@ -471,7 +498,8 @@ const Feedback = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

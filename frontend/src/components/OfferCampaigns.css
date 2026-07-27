@@ -89,19 +89,21 @@
   min-height: 120px;
 }
 
-.image-upload-area {
+.offer-campaigns-page .image-upload-area {
   border: 2px dashed var(--gray-300);
   border-radius: 8px;
   padding: 0;
   text-align: center;
   transition: border-color 0.2s;
+  min-height: auto;
+  display: block;
 }
 
-.image-upload-area:hover {
+.offer-campaigns-page .image-upload-area:hover {
   border-color: var(--primary-500);
 }
 
-.image-upload-label {
+.offer-campaigns-page .image-upload-label {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -111,12 +113,28 @@
   color: var(--gray-600);
   padding: 20px;
   width: 100%;
+  height: auto;
   min-height: 160px;
   box-sizing: border-box;
+  border: none;
+  background: transparent;
+  border-radius: 0;
 }
 
-.image-upload-label:hover {
+.offer-campaigns-page .image-upload-label > svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+.offer-campaigns-page .image-upload-label > span {
+  display: block;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.offer-campaigns-page .image-upload-label:hover {
   color: var(--primary-600);
+  background: transparent;
 }
 
 .image-preview-container {
@@ -654,8 +672,9 @@
   }
 
   /* Image upload */
-  .image-upload-label {
+  .offer-campaigns-page .image-upload-label {
     min-height: 120px;
+    height: auto;
   }
 
   /* Customer list – keep it from eating the whole screen */
@@ -897,5 +916,141 @@
     padding: 10px;
     font-size: 13px;
   }
+}
+
+/* Send Queue Modal */
+.send-queue-modal {
+  max-width: 560px;
+}
+
+.queue-image-notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  margin-bottom: 14px;
+}
+
+.queue-image-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.queue-image-notice small {
+  color: var(--gray-700);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.queue-current {
+  padding: 14px 16px;
+  background: var(--primary-50, #f0f7ff);
+  border: 1px solid var(--primary-200, #c7dcfa);
+  border-radius: 8px;
+  margin-bottom: 14px;
+}
+
+.queue-current-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--gray-600);
+  margin-bottom: 4px;
+}
+
+.queue-current-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--gray-900);
+}
+
+.queue-current-mobile {
+  font-size: 13px;
+  color: var(--gray-600);
+  margin-top: 2px;
+}
+
+.queue-message-preview {
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.queue-message-preview strong {
+  display: block;
+  font-size: 12px;
+  color: var(--gray-700);
+  margin-bottom: 4px;
+}
+
+.queue-message-preview p {
+  font-size: 13px;
+  color: var(--gray-800);
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.queue-progress-list {
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+}
+
+.queue-progress-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.queue-progress-item:last-child {
+  border-bottom: none;
+}
+
+.queue-progress-item.current {
+  background: var(--primary-50, #f0f7ff);
+  font-weight: 600;
+}
+
+.queue-progress-item .queue-progress-status {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--gray-100);
+  color: var(--gray-700);
+}
+
+.queue-progress-item.status-sent .queue-progress-status {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.queue-progress-item.status-skipped .queue-progress-status {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.queue-done {
+  text-align: center;
+  padding: 24px 12px;
+  color: var(--gray-700);
+}
+
+.queue-done p {
+  margin-top: 10px;
+  font-size: 14px;
 }
 

@@ -118,6 +118,26 @@
   align-items: center;
 }
 
+/* Trigger for the CompactSelect replacement of the native status dropdown.
+   Kept separate from .status-dropdown so the legacy background-chevron doesn't
+   overlap with CompactSelect's own chevron icon. */
+.lead-status-select {
+  padding: 8px 12px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  background: white;
+  color: var(--gray-700);
+  cursor: pointer;
+  min-height: 38px;
+  transition: border-color 0.15s ease;
+}
+
+.lead-status-select:hover {
+  border-color: var(--primary-700);
+}
+
 .status-dropdown {
   padding: 10px 36px 10px 16px;
   border: 2px solid var(--gray-200);

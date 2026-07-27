@@ -5,11 +5,13 @@ import {
   FaCloudDownloadAlt,
   FaEdit,
   FaTrash,
+  FaTimes,
 } from 'react-icons/fa'
 import * as XLSX from 'xlsx'
 import './AssetManagement.css'
 import { API_BASE_URL } from '../config'
 import { useAuth } from '../contexts/AuthContext'
+import ClassicDatePicker from './shared/ClassicDatePicker'
 
 const AssetManagement = () => {
   const { currentBranch } = useAuth()
@@ -428,7 +430,17 @@ const AssetManagement = () => {
       {showAssetModal && (
         <div className="modal-overlay" onClick={() => setShowAssetModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>{editingAsset ? 'Edit Asset' : 'Add New Asset'}</h2>
+            <div className="std-modal-header">
+              <h2>{editingAsset ? 'Edit Asset' : 'Add New Asset'}</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowAssetModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <div className="form-group">
               <label>Asset Name *</label>
               <input
@@ -469,10 +481,10 @@ const AssetManagement = () => {
             </div>
             <div className="form-group">
               <label>Purchase Date</label>
-              <input
-                type="date"
+              <ClassicDatePicker
                 value={assetFormData.purchase_date}
-                onChange={(e) => setAssetFormData({ ...assetFormData, purchase_date: e.target.value })}
+                onChange={(v) => setAssetFormData({ ...assetFormData, purchase_date: v })}
+                placeholder="Select purchase date"
               />
             </div>
             <div className="form-group">
@@ -527,7 +539,17 @@ const AssetManagement = () => {
       {showUploadModal && (
         <div className="modal-overlay" onClick={() => setShowUploadModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Upload Assets</h2>
+            <div className="std-modal-header">
+              <h2>Upload Assets</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowUploadModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <div className="import-instructions">
               <p>Upload a CSV or Excel file (.csv, .xlsx, .xls) with the following columns:</p>
               <ul>

@@ -13,6 +13,8 @@ import { formatLocalDate } from '../utils/dateUtils'
 import { PageTransition } from './shared/PageTransition'
 import { EmptyList } from './shared/EmptyStates'
 import InvoicePreview from './InvoicePreview'
+import CompactSelect from './shared/CompactSelect'
+import ClassicTimePicker from './shared/ClassicTimePicker'
 
 const ServiceSearchSelect = ({ value, services, onChange, disabled, loadingServices }) => {
   const [isOpen, setIsOpen] = useState(false)
@@ -34,10 +36,20 @@ const ServiceSearchSelect = ({ value, services, onChange, disabled, loadingServi
   const updateDropdownPosition = () => {
     if (!inputRef.current) return
     const rect = inputRef.current.getBoundingClientRect()
+    // Give the dropdown a minimum readable width so service names don't truncate
+    // on narrow columns (tablet portrait, cramped Service column, etc.).
+    const MIN_WIDTH = 280
+    const viewportW = window.innerWidth
+    const width = Math.max(rect.width, Math.min(MIN_WIDTH, viewportW - 16))
+    // Keep the dropdown on-screen — shift left if the min-width would overflow the viewport.
+    let left = rect.left
+    if (left + width > viewportW - 8) {
+      left = Math.max(8, viewportW - width - 8)
+    }
     setDropdownPos({
       top: rect.bottom + 2,
-      left: rect.left,
-      width: rect.width,
+      left,
+      width,
     })
   }
 
@@ -206,6 +218,12 @@ const QuickSale = () => {
   const [customerDob, setCustomerDob] = useState(null)
   const [discountAmount, setDiscountAmount] = useState(0)
   const [membershipInfo, setMembershipInfo] = useState(null)
+  // Offer Management integration
+  const [availableOffers, setAvailableOffers] = useState([])
+  const [appliedOffer, setAppliedOffer] = useState(null)
+  const [showOfferModal, setShowOfferModal] = useState(false)
+  // Prevents duplicate bills from rapid Checkout clicks
+  const [isCheckingOut, setIsCheckingOut] = useState(false)
   const appointmentCreatedRef = useRef(false)
 
   // Helper function to get current time in HH:MM format
@@ -306,7 +324,24 @@ const QuickSale = () => {
     fetchServices()
     fetchTaxConfig()
     fetchReferralSettings()
-  }, [])
+    fetchActiveOffers()
+  }, [currentBranch])
+
+  // Fetch currently-valid offers for the selected branch
+  const fetchActiveOffers = async () => {
+    try {
+      const response = await apiGet('/api/offers/active')
+      if (response.ok) {
+        const data = await response.json()
+        setAvailableOffers(data.offers || [])
+      } else {
+        setAvailableOffers([])
+      }
+    } catch (error) {
+      console.error('Error fetching active offers:', error)
+      setAvailableOffers([])
+    }
+  }
 
   // Auto-select logged-in staff when staff members are loaded
   useEffect(() => {
@@ -748,9 +783,16 @@ const QuickSale = () => {
 
   const fetchStaff = async () => {
     try {
-      const response = await apiGet(`/api/staffs`)
+      // Request the largest page size the backend allows (max=100) so the full
+      // staff roster lands in one call — otherwise pagination can silently hide
+      // staff from the dropdown.
+      const response = await apiGet(`/api/staffs?per_page=100`)
       const data = await response.json()
-      setStaffMembers(data.staffs || [])
+      const list = data.staffs || []
+      if (!list.length) {
+        console.warn('[QuickSale] fetchStaff returned 0 staff — check branch filter or data')
+      }
+      setStaffMembers(list)
     } catch (error) {
       console.error('Error fetching staff:', error)
     }
@@ -1044,20 +1086,66 @@ const QuickSale = () => {
       showWarning('Please select a customer first')
       return
     }
+    if (memberships.length > 0) {
+      showWarning('Only one membership plan can be added per bill. Remove the existing one first.')
+      return
+    }
+    // If the customer already has an active plan, confirm upgrade/replacement.
+    // Backend will expire the old membership when the new one is checked out.
+    if (membershipInfo && membershipInfo.plan) {
+      const ok = window.confirm(
+        `${membershipInfo.plan.name} (${membershipInfo.plan.allocated_discount}%) is already active for this customer.\n\n` +
+        `Their discount is being applied automatically — you do NOT need to add a plan here to redeem benefits.\n\n` +
+        `Selecting a new plan will REPLACE ${membershipInfo.plan.name} at checkout.\n\n` +
+        `Continue only if you want to upgrade or renew. Otherwise click Cancel.`
+      )
+      if (!ok) return
+    }
     await fetchMembershipPlans()
     setShowMembershipModal(true)
   }
 
   const handleSelectMembership = (selectedMembership) => {
-    setMemberships([...memberships, {
+    if (memberships.length > 0) {
+      showWarning('Only one membership plan can be added per bill.')
+      setShowMembershipModal(false)
+      return
+    }
+    const planDiscount = parseFloat(
+      selectedMembership.allocated_discount ?? selectedMembership.allocatedDiscount ?? 0
+    ) || 0
+    // Capture the plan's whitelist of services it covers. Without this the cart
+    // entry's `applicable_service_ids` is undefined, which `getMembershipCoverageForService`
+    // treats as "covers all" — making the per-service discount logic apply to
+    // every line, even ones the plan doesn't actually cover.
+    const applicableServices = Array.isArray(selectedMembership.applicable_services)
+      ? selectedMembership.applicable_services
+      : []
+    const applicableServiceIds = applicableServices
+      .map(s => (s && (s.id || s)) || null)
+      .filter(Boolean)
+    setMemberships([{
       id: Date.now(),
       membership_id: selectedMembership.id,
       name: selectedMembership.name,
       price: selectedMembership.price,
       validity: selectedMembership.validity_days,
+      allocated_discount: planDiscount,
+      applicable_service_ids: applicableServiceIds,
     }])
     setShowMembershipModal(false)
-    showSuccess(`${selectedMembership.name} added to bill`)
+    // Auto-enable the membership discount toggle so the discount applies
+    // immediately on this bill. Staff can untick it from Bill Summary if
+    // they want to opt out for this transaction.
+    if (planDiscount > 0 && discountType !== 'membership') {
+      setDiscountType('membership')
+      setDiscountAmount(0)
+    }
+    if (planDiscount > 0) {
+      showSuccess(`${selectedMembership.name} added — ${planDiscount}% discount applied to covered services`)
+    } else {
+      showSuccess(`${selectedMembership.name} added to bill`)
+    }
   }
 
   const removePackage = (id) => {
@@ -1070,6 +1158,9 @@ const QuickSale = () => {
 
   const removeMembership = (id) => {
     setMemberships(memberships.filter(m => m.id !== id))
+    // Cart memberships no longer drive the discount, so removing one never
+    // toggles discountType. The discount path is governed solely by whether
+    // the customer has an existing active membership (set in checkCustomerMembership).
   }
 
   const removeService = (id) => {
@@ -1139,6 +1230,8 @@ const QuickSale = () => {
     setSelectedCustomer(customer)
     setSearchQuery(`${customer.firstName || ''} ${customer.lastName || ''} - ${customer.mobile}`.trim())
     setShowCustomerDropdown(false)
+    // Reset previously selected offer — eligibility may differ for the new customer
+    setAppliedOffer(null)
     // Customer details and membership will be fetched in background via useEffect
   }
 
@@ -1158,19 +1251,23 @@ const QuickSale = () => {
       const data = await response.json()
       
       if (data.active && data.membership && data.membership.plan) {
-        // Customer has active membership
-        // The backend returns: { active: true, membership: { id, name, plan: {...}, expiry_date, purchase_date, status } }
+        // Customer has an active membership — auto-tick the membership discount
+        // toggle so the discount applies immediately on this bill. Staff can
+        // untick it from Bill Summary if they need to opt out for a particular
+        // transaction. This removes the "staff forgot to tick the box → invoice
+        // shows ₹0 discount" failure mode.
         setMembershipInfo(data.membership)
-        // Auto-apply membership discount (will be calculated on checkout)
-        // We set the discount type to 'membership' and let backend calculate
-        setDiscountType('membership')
-        setDiscountAmount(data.membership.plan.allocated_discount) // Store percentage for display
-        showInfo(`Active Membership: ${data.membership.plan.name} - ${data.membership.plan.allocated_discount}% discount will be applied automatically`)
+        const planPct = parseFloat(data.membership.plan.allocated_discount) || 0
+        if (planPct > 0) {
+          setDiscountType('membership')
+          setDiscountAmount(0)
+        }
+        showInfo(
+          `${data.membership.plan.name} member — ${data.membership.plan.allocated_discount}% discount auto-applied to covered services`
+        )
       } else {
         // No active membership
         setMembershipInfo(null)
-        setDiscountAmount(0)
-        setDiscountType('fix')
       }
     } catch (error) {
       console.error('Error checking membership:', error)
@@ -1606,9 +1703,14 @@ const QuickSale = () => {
       return
     }
 
-    // Validate mobile number
-    const cleanMobile = newCustomerData.mobile.trim().replace(/\s+/g, '').replace(/^\+91/, '').replace(/^91/, '')
-    if (cleanMobile.length !== 10 || !/^\d{10}$/.test(cleanMobile)) {
+    // Normalize mobile: strip spaces and a leading "+", then strip a leading
+    // "91" only when the total length is exactly 12 (the country-code form).
+    // This preserves real 10-digit numbers that happen to start with 91.
+    let cleanMobile = newCustomerData.mobile.trim().replace(/\s+/g, '').replace(/^\+/, '')
+    if (cleanMobile.length === 12 && cleanMobile.startsWith('91')) {
+      cleanMobile = cleanMobile.slice(2)
+    }
+    if (!/^\d{10}$/.test(cleanMobile)) {
       showWarning('Please enter a valid 10-digit mobile number')
       return
     }
@@ -1737,6 +1839,14 @@ const QuickSale = () => {
     }, 0)
   }
 
+  // Per-category subtotals for the Bill Summary breakdown.
+  // Each is a plain sum of price × quantity for that category, before any
+  // item-level discount, offer, or membership discount is applied.
+  const getServicesOnlySubtotal = () =>
+    services.reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0)
+  const getPackagesOnlySubtotal = () =>
+    packages.reduce((sum, pkg) => sum + (parseFloat(pkg.price) || 0), 0)
+
   const calculateSubtotal = () => {
     return getServiceSubtotal() + getProductSubtotal()
   }
@@ -1762,13 +1872,87 @@ const QuickSale = () => {
     return servicesDisc + packagesDisc + productsDisc
   }
 
+  // Helper: total of membership plan purchases in the cart (excluded from membership discount base)
+  const getMembershipsTotal = () => {
+    return memberships.reduce((sum, m) => sum + (parseFloat(m.price) || 0), 0)
+  }
+
+  // Helper: highest membership discount % available for THIS bill — considering
+  // both the customer's active membership AND any plan being purchased now
+  // (in-cart). Drives the toggle label and the visibility check.
+  const getEffectiveMembershipPercent = () => {
+    const active = (membershipInfo && membershipInfo.plan)
+      ? parseFloat(membershipInfo.plan.allocated_discount) || 0
+      : 0
+    const inCart = memberships.reduce(
+      (max, m) => Math.max(max, parseFloat(m.allocated_discount) || 0),
+      0
+    )
+    return Math.max(active, inCart)
+  }
+
+  // Returns the matching membership coverage info for a given service id, or null.
+  // Considers BOTH the customer's EXISTING active membership AND any plan being
+  // purchased on this same bill (in-cart). When both cover the service, the
+  // higher discount % wins.
+  // STRICT MAPPING: a plan with empty `applicable_service_ids` covers nothing —
+  // it applies no discount until the owner ticks specific services for it in
+  // the Membership editor. Previously this defaulted to "covers all" which
+  // surprised staff when adding a generic plan to a bill.
+  const getMembershipCoverageForService = (serviceId) => {
+    if (!serviceId) return null
+    let best = null
+    const consider = (plan, source) => {
+      if (!plan) return
+      const pct = parseFloat(plan.allocated_discount) || 0
+      if (pct <= 0) return
+      const ids = plan.applicable_service_ids
+      // Strict: empty list = no coverage. The owner must explicitly tick services.
+      if (!ids || ids.length === 0) return
+      if (!ids.includes(serviceId)) return
+      if (!best || pct > best.percent) {
+        best = { name: plan.name || 'Membership', percent: pct, source }
+      }
+    }
+    if (membershipInfo && membershipInfo.plan) {
+      consider(membershipInfo.plan, 'active')
+    }
+    for (const m of memberships) {
+      consider(m, 'in-cart')
+    }
+    return best
+  }
+
+  // (Removed getLegacyCoverageMembershipPercent — strict mapping means
+  // packages and products are never discounted by membership. Membership
+  // coverage is services-only, ticked explicitly in the Membership editor.)
+
   const calculateDiscount = () => {
     const subtotal = calculateSubtotal()
 
-    // Handle membership discount
-    if (discountType === 'membership' && membershipInfo && membershipInfo.plan) {
-      const discountPercent = membershipInfo.plan.allocated_discount || 0
-      return subtotal * (discountPercent / 100)
+    // Offer takes precedence (single-offer rule: only one offer per bill)
+    if (appliedOffer) {
+      const pct = parseFloat(appliedOffer.discount_percentage) || 0
+      const eligibleBase = subtotal - getMembershipsTotal()
+      return Math.max(0, eligibleBase) * (pct / 100)
+    }
+
+    // Membership: walk per service line, apply each plan only to services it
+    // actually covers (via getMembershipCoverageForService). Strict mapping —
+    // packages and products are NOT discounted by membership; only services
+    // explicitly ticked in the plan's coverage list get the discount.
+    // Mirrors the backend's candidate_plans loop in bill_routes.py.
+    if (discountType === 'membership') {
+      let total = 0
+      for (const s of services) {
+        const lineTotal = parseFloat(s.total) || 0
+        if (lineTotal <= 0) continue
+        const coverage = getMembershipCoverageForService(s.service_id)
+        if (coverage && coverage.percent > 0) {
+          total += lineTotal * coverage.percent / 100
+        }
+      }
+      return total
     }
 
     if (discountType === 'fix') {
@@ -1923,6 +2107,7 @@ const QuickSale = () => {
     setCustomerDob(null)
     setBookingNote('')
     setBookingStatus('confirmed')
+    setAppliedOffer(null)
     appointmentCreatedRef.current = false
     setEditingAppointmentId(null)
     setPendingApproval(null)
@@ -1932,6 +2117,9 @@ const QuickSale = () => {
   }
 
   const handleCheckout = async () => {
+    // Re-entrancy guard — prevents duplicate bills when user clicks Checkout repeatedly
+    if (isCheckingOut) return
+    setIsCheckingOut(true)
     try {
       // Validation: Only allow checkout when status is 'service-completed'
       if (bookingStatus !== 'service-completed') {
@@ -1978,10 +2166,15 @@ const QuickSale = () => {
         const checkoutBillDate = formatLocalDate(selectedDate)
         const checkoutResponse = await apiPost(`/api/bills/${billId}/checkout`, {
           bill_date: checkoutBillDate,
-          discount_amount: membershipInfo && membershipInfo.plan && discountType === 'membership'
-            ? membershipInfo.plan.allocated_discount
-            : parseFloat(discountAmount) || 0,
-          discount_type: discountType === 'membership' ? 'membership' : (discountType === '%' ? 'percentage' : 'fix'),
+          discount_amount: appliedOffer
+            ? 0
+            : (membershipInfo && membershipInfo.plan && discountType === 'membership'
+              ? membershipInfo.plan.allocated_discount
+              : parseFloat(discountAmount) || 0),
+          discount_type: appliedOffer
+            ? 'offer'
+            : (discountType === 'membership' ? 'membership' : (discountType === '%' ? 'percentage' : 'fix')),
+          applied_offer_id: appliedOffer ? appliedOffer.id : undefined,
           discount_reason: approvalReason || undefined,
           approval_code: approvalCode.trim() || undefined,
           referral_discount: calculateReferralDiscount(),
@@ -2002,8 +2195,8 @@ const QuickSale = () => {
           handleReset()
           fetchProducts()
           setCurrentBillId(billId)
-          await fetchInvoiceData(billId)
           setShowInvoiceModal(true)
+          fetchInvoiceData(billId) // parallel, not awaited
           return
         } else {
           let errorMessage = 'Failed to complete checkout. Please try again.'
@@ -2036,12 +2229,74 @@ const QuickSale = () => {
         booking_status: bookingStatus,
         booking_note: bookingNote,
       }
-      
+
       // Include appointment_id if editing an appointment
       if (editingAppointmentId) {
         billPayload.appointment_id = editingAppointmentId
       }
-      
+
+      // Build the items list up front so we can send them alongside the bill creation
+      // (saves one HTTP round-trip). When editing an existing appointment bill, the
+      // backend clears and re-adds items, so skip inline-items in that path and use bulk.
+      const allItems = []
+      validServices.forEach(service => {
+        if (service.service_id && service.price > 0) {
+          allItems.push({
+            item_type: 'service',
+            service_id: service.service_id,
+            staff_id: service.staff_id || null,
+            start_time: service.startTime ? `${service.startTime}:00` : null,
+            price: parseFloat(service.price) || 0,
+            discount: parseFloat(service.discount) || 0,
+            quantity: 1,
+            total: parseFloat(service.total) || parseFloat(service.price) || 0,
+          })
+        }
+      })
+      packages.forEach(pkg => {
+        if (pkg.package_id) {
+          allItems.push({
+            item_type: 'package',
+            package_id: pkg.package_id,
+            price: parseFloat(pkg.price) || 0,
+            discount: parseFloat(pkg.discount) || 0,
+            quantity: 1,
+            total: parseFloat(pkg.total) || parseFloat(pkg.price) || 0,
+          })
+        }
+      })
+      products.forEach(product => {
+        if (product.product_id) {
+          allItems.push({
+            item_type: 'product',
+            product_id: product.product_id,
+            price: parseFloat(product.price) || 0,
+            discount: parseFloat(product.discount) || 0,
+            quantity: parseInt(product.quantity) || 1,
+            total: parseFloat(product.total) || parseFloat(product.price) * (parseInt(product.quantity) || 1) || 0,
+          })
+        }
+      })
+      memberships.forEach(membership => {
+        if (membership.membership_id || membership.name) {
+          allItems.push({
+            item_type: 'membership',
+            membership_id: membership.membership_id,
+            name: membership.name || '',
+            price: parseFloat(membership.price) || 0,
+            discount: 0,
+            quantity: 1,
+            total: parseFloat(membership.price) || 0,
+          })
+        }
+      })
+
+      // Only inline items when creating a fresh bill. Editing an appointment reuses
+      // an existing bill on the backend which clears items — use bulk-add after instead.
+      if (!editingAppointmentId && allItems.length > 0) {
+        billPayload.items = allItems
+      }
+
       const billResponse = await apiPost('/api/bills', billPayload)
 
       if (!billResponse.ok) {
@@ -2059,74 +2314,27 @@ const QuickSale = () => {
       const billData = await billResponse.json()
       const billId = billData.data.id
 
-      // Add all items to bill SEQUENTIALLY to avoid race conditions
-      const allItems = []
-
-      // Collect service items
-      validServices.forEach(service => {
-        if (service.service_id && service.price > 0) {
-          allItems.push({
-            item_type: 'service',
-            service_id: service.service_id,
-            staff_id: service.staff_id || null,
-            start_time: service.startTime ? `${service.startTime}:00` : null,
-            price: parseFloat(service.price) || 0,
-            discount: parseFloat(service.discount) || 0,
-            quantity: 1,
-            total: parseFloat(service.total) || parseFloat(service.price) || 0,
-          })
-        }
-      })
-
-      // Collect package items
-      packages.forEach(pkg => {
-        if (pkg.package_id) {
-          allItems.push({
-            item_type: 'package',
-            package_id: pkg.package_id,
-            price: parseFloat(pkg.price) || 0,
-            discount: parseFloat(pkg.discount) || 0,
-            quantity: 1,
-            total: parseFloat(pkg.total) || parseFloat(pkg.price) || 0,
-          })
-        }
-      })
-
-      // Collect product items
-      products.forEach(product => {
-        if (product.product_id) {
-          allItems.push({
-            item_type: 'product',
-            product_id: product.product_id,
-            price: parseFloat(product.price) || 0,
-            discount: parseFloat(product.discount) || 0,
-            quantity: parseInt(product.quantity) || 1,
-            total: parseFloat(product.total) || parseFloat(product.price) * (parseInt(product.quantity) || 1) || 0,
-          })
-        }
-      })
-
-      // Collect membership items
-      memberships.forEach(membership => {
-        if (membership.membership_id || membership.name) {
-          allItems.push({
-            item_type: 'membership',
-            membership_id: membership.membership_id,
-            name: membership.name || '',
-            price: parseFloat(membership.price) || 0,
-            discount: 0,
-            quantity: 1,
-            total: parseFloat(membership.price) || 0,
-          })
-        }
-      })
-
-      // Add items one at a time to avoid race conditions
-      for (const itemData of allItems) {
-        const response = await apiPost(`/api/bills/${billId}/items`, itemData)
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          throw new Error(errorData.error || `Failed to add ${itemData.item_type} to bill`)
+      // Items flow:
+      //  - Fresh bill with `items` inlined in POST /bills → already persisted server-side.
+      //  - Otherwise (editing an appointment, or older backend) → fall back to bulk-add,
+      //    then to per-item add if the bulk endpoint isn't available.
+      const itemsAlreadyPersisted = !editingAppointmentId && (billData.data.items_count || 0) > 0
+      if (!itemsAlreadyPersisted && allItems.length > 0) {
+        const bulkResp = await apiPost(`/api/bills/${billId}/items/bulk`, { items: allItems })
+        if (bulkResp.ok) {
+          // Bulk path succeeded
+        } else if (bulkResp.status === 404 || bulkResp.status === 405) {
+          console.warn('[CHECKOUT] Bulk items endpoint not available, falling back to per-item add')
+          for (const itemData of allItems) {
+            const r = await apiPost(`/api/bills/${billId}/items`, itemData)
+            if (!r.ok) {
+              const errorData = await r.json().catch(() => ({}))
+              throw new Error(errorData.error || `Failed to add ${itemData.item_type} to bill`)
+            }
+          }
+        } else {
+          const errorData = await bulkResp.json().catch(() => ({}))
+          throw new Error(errorData.error || 'Failed to add items to bill')
         }
       }
 
@@ -2154,10 +2362,15 @@ const QuickSale = () => {
       const checkoutBillDate = formatLocalDate(selectedDate) // Format as YYYY-MM-DD
       const checkoutResponse = await apiPost(`/api/bills/${billId}/checkout`, {
         bill_date: checkoutBillDate, // Send selected date to update bill_date during checkout
-        discount_amount: membershipInfo && membershipInfo.plan && discountType === 'membership'
-          ? membershipInfo.plan.allocated_discount
-          : parseFloat(discountAmount) || 0,
-        discount_type: discountType === 'membership' ? 'membership' : (discountType === '%' ? 'percentage' : 'fix'),
+        discount_amount: appliedOffer
+          ? 0
+          : (membershipInfo && membershipInfo.plan && discountType === 'membership'
+            ? membershipInfo.plan.allocated_discount
+            : parseFloat(discountAmount) || 0),
+        discount_type: appliedOffer
+          ? 'offer'
+          : (discountType === 'membership' ? 'membership' : (discountType === '%' ? 'percentage' : 'fix')),
+        applied_offer_id: appliedOffer ? appliedOffer.id : undefined,
         discount_reason: approvalReason || undefined,
         approval_code: approvalCode.trim() || undefined,
         referral_discount: calculateReferralDiscount(),
@@ -2233,11 +2446,17 @@ const QuickSale = () => {
         // Refresh products to show updated stock after checkout
         fetchProducts()
         
-        // Set bill ID and fetch invoice data, then show modal
-        // billId is already available from the checkout call
+        // Show the invoice modal immediately. If the checkout response already bundled
+        // the invoice data (new backend), use it directly — skips the GET /invoice round-trip
+        // entirely. Otherwise fall back to the background fetch.
         setCurrentBillId(billId)
-        await fetchInvoiceData(billId)
         setShowInvoiceModal(true)
+        if (checkoutData && checkoutData.invoice) {
+          setInvoiceData(checkoutData.invoice)
+          setLoadingInvoice(false)
+        } else {
+          fetchInvoiceData(billId) // not awaited — runs in parallel
+        }
       } else {
         let errorMessage = 'Failed to complete checkout. Please try again.'
         try {
@@ -2270,6 +2489,9 @@ const QuickSale = () => {
       } else {
         showError(`Error during checkout: ${error.message || 'Unknown error'}`)
       }
+    } finally {
+      // Always release the guard so the user can retry on validation/server errors
+      setIsCheckingOut(false)
     }
   }
 
@@ -2577,12 +2799,12 @@ const QuickSale = () => {
                   <div className="customer-info-header-cell">Date of Birth</div>
                 </div>
                 <div className="customer-info-row">
-                  <div className="customer-info-cell">{customerDetails.membership}</div>
-                  <div className="customer-info-cell">{customerDetails.lastVisit ? formatDate(customerDetails.lastVisit) : 'N/A'}</div>
-                  <div className="customer-info-cell">{customerDetails.totalVisits}</div>
-                  <div className="customer-info-cell">₹{customerDetails.totalRevenue.toFixed(2)}</div>
-                  <div className="customer-info-cell">{customerDetails.lastService}</div>
-                  <div className="customer-info-cell">
+                  <div className="customer-info-cell" data-label="Membership">{customerDetails.membership}</div>
+                  <div className="customer-info-cell" data-label="Last Visit">{customerDetails.lastVisit ? formatDate(customerDetails.lastVisit) : 'N/A'}</div>
+                  <div className="customer-info-cell" data-label="Total Visits">{customerDetails.totalVisits}</div>
+                  <div className="customer-info-cell" data-label="Total Revenue">₹{customerDetails.totalRevenue.toFixed(2)}</div>
+                  <div className="customer-info-cell" data-label="Last Service">{customerDetails.lastService}</div>
+                  <div className="customer-info-cell" data-label="Date of Birth">
                     {customerDetails.dob
                       ? (() => {
                           const d = new Date(customerDetails.dob)
@@ -2639,7 +2861,9 @@ const QuickSale = () => {
                     </td>
                   </tr>
                 ) : (
-                  services.map((service) => (
+                  services.map((service) => {
+                    const coverage = getMembershipCoverageForService(service.service_id)
+                    return (
                     <tr key={service.id} className="service-table-row">
                       <td>
                         <ServiceSearchSelect
@@ -2649,44 +2873,45 @@ const QuickSale = () => {
                           disabled={loadingServices}
                           loadingServices={loadingServices}
                         />
+                        {coverage && (
+                          <div
+                            title={`${coverage.name}: ${coverage.percent}% off applies when membership discount is enabled`}
+                            style={{
+                              marginTop: 4,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              padding: '2px 8px',
+                              borderRadius: 10,
+                              background: '#dcfce7',
+                              color: '#15803d',
+                              fontSize: 11,
+                              fontWeight: 600,
+                            }}
+                          >
+                            <FaGift size={10} />
+                            Membership {coverage.percent}%
+                          </div>
+                        )}
                       </td>
                       <td>
-                        <select
+                        <CompactSelect
                           className="table-select"
                           value={service.staff_id}
-                          onChange={(e) => updateService(service.id, 'staff_id', e.target.value)}
-                        >
-                          <option value="">Select staff</option>
-                          {staffMembers.map(staff => (
-                            <option key={staff.id} value={staff.id}>
-                              {staff.firstName} {staff.lastName}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(val) => updateService(service.id, 'staff_id', val)}
+                          placeholder="Select staff"
+                          options={staffMembers.map(staff => ({
+                            value: staff.id,
+                            label: `${staff.firstName} ${staff.lastName || ''}`.trim()
+                          }))}
+                        />
                       </td>
                       <td>
-                        <input
-                          type="time"
-                          className="table-time-input"
+                        <ClassicTimePicker
                           value={service.startTime || ''}
-                          onChange={(e) => {
-                            const timeValue = e.target.value
-                            if (timeValue) {
-                              updateService(service.id, 'startTime', timeValue)
-                            }
-                          }}
-                          onInput={(e) => {
-                            const timeValue = e.target.value
-                            if (timeValue) {
-                              updateService(service.id, 'startTime', timeValue)
-                            }
-                          }}
-                          onBlur={(e) => {
-                            const timeValue = e.target.value
-                            if (timeValue && timeValue !== service.startTime) {
-                              updateService(service.id, 'startTime', timeValue)
-                            }
-                          }}
+                          onChange={(v) => updateService(service.id, 'startTime', v)}
+                          placeholder="HH:MM"
+                          minuteStep={5}
                         />
                       </td>
                       <td>
@@ -2711,13 +2936,22 @@ const QuickSale = () => {
                         </div>
                       </td>
                       <td>
-                        <input
-                          type="number"
-                          className="table-input"
-                          placeholder="0"
-                          value={service.total.toFixed(2)}
-                          readOnly
-                        />
+                        {coverage && coverage.percent > 0 && (parseFloat(service.total) || 0) > 0 ? (
+                          <div className="row-total-with-discount">
+                            <span className="row-total-strike">₹{Number(service.total || 0).toFixed(2)}</span>
+                            <span className="row-total-net">
+                              ₹{(Number(service.total || 0) * (1 - coverage.percent / 100)).toFixed(2)}
+                            </span>
+                          </div>
+                        ) : (
+                          <input
+                            type="number"
+                            className="table-input"
+                            placeholder="0"
+                            value={service.total.toFixed(2)}
+                            readOnly
+                          />
+                        )}
                       </td>
                       <td>
                         <button
@@ -2729,7 +2963,8 @@ const QuickSale = () => {
                         </button>
                       </td>
                     </tr>
-                  ))
+                    )
+                  })
                 )}
               </tbody>
             </table>
@@ -2742,7 +2977,27 @@ const QuickSale = () => {
           </button>
           <button className="pill-button" onClick={addPackage}>Add Package</button>
           <button className="pill-button" onClick={addProduct}>Add Product</button>
-          <button className="pill-button" onClick={addMembership}>Add Membership</button>
+          <button
+            className="pill-button"
+            onClick={addMembership}
+            disabled={memberships.length > 0}
+            title={
+              memberships.length > 0
+                ? 'Only one membership plan per bill'
+                : (membershipInfo && membershipInfo.plan
+                    ? `Use this only to upgrade or renew ${membershipInfo.plan.name}. The customer's existing discount applies automatically — you don't need to add it here.`
+                    : undefined)
+            }
+          >
+            {membershipInfo && membershipInfo.plan ? 'Upgrade / Renew Membership' : 'Add Membership'}
+          </button>
+          <button
+            className="pill-button"
+            onClick={() => setShowOfferModal(true)}
+            title={appliedOffer ? `Currently applied: ${appliedOffer.name}` : 'Pick an active offer for this bill'}
+          >
+            {appliedOffer ? `Change Offer (${appliedOffer.discount_percentage}%)` : 'Add Offer'}
+          </button>
         </div>
 
         {/* Display Added Items in Grid Layout */}
@@ -2801,24 +3056,21 @@ const QuickSale = () => {
             <div className="bottom-column booking-column">
               <div className="booking-status-container">
                 <label className="form-label">Booking Status</label>
-                <select
+                <CompactSelect
                   className="form-select"
                   value={bookingStatus}
-                  onChange={(e) => {
-                    const newStatus = e.target.value
+                  onChange={(newStatus) => {
                     setBookingStatus(newStatus)
-                    
                     // Reset appointment created flag when changing status
-                    if (newStatus === 'service-completed') {
-                      appointmentCreatedRef.current = false
-                    } else if (newStatus === 'confirmed') {
+                    if (newStatus === 'service-completed' || newStatus === 'confirmed') {
                       appointmentCreatedRef.current = false
                     }
                   }}
-                >
-                  <option value="confirmed">Appointment</option>
-                  <option value="service-completed">Service Completed</option>
-                </select>
+                  options={[
+                    { value: 'confirmed', label: 'Appointment' },
+                    { value: 'service-completed', label: 'Service Completed' },
+                  ]}
+                />
               </div>
               
               {/* Mode of Payment */}
@@ -2904,29 +3156,69 @@ const QuickSale = () => {
                 {membershipInfo && membershipInfo.plan && (
                   <div className="membership-box-container">
                     <div className="membership-box">
-                      <div style={{ 
-                        padding: '12px', 
-                        background: '#dbeafe', 
+                      <div style={{
+                        padding: '12px',
+                        background: '#dbeafe',
                         borderRadius: '8px',
                         border: '1px solid #3b82f6',
                         color: '#1e40af',
-                        marginBottom: '12px'
+                        marginBottom: '8px'
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                           <FaGift size={16} />
                           <strong>Active Membership: {membershipInfo.plan.name}</strong>
                         </div>
                         <div className="membership-info-text">
-                          {membershipInfo.plan.allocated_discount}% discount will be applied automatically
+                          {membershipInfo.plan.allocated_discount}% discount available on services
                         </div>
                         {membershipInfo.expiry_date && (
                           <div className="membership-expiry-text">
                             Expires: {new Date(membershipInfo.expiry_date).toLocaleDateString()}
                           </div>
                         )}
-                      </div>
-                      <div className="membership-note-text">
-                        Membership discount is automatic and cannot be modified
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
+                          {discountType === 'membership' ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDiscountType('fix')
+                                setDiscountAmount(0)
+                              }}
+                              style={{
+                                padding: '6px 14px',
+                                background: '#fff',
+                                border: '1px solid #3b82f6',
+                                color: '#1e40af',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '13px',
+                                fontWeight: 600
+                              }}
+                            >
+                              Remove Membership Discount
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDiscountType('membership')
+                                setDiscountAmount(0)
+                              }}
+                              style={{
+                                padding: '6px 14px',
+                                background: '#3b82f6',
+                                border: '1px solid #3b82f6',
+                                color: '#fff',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '13px',
+                                fontWeight: 600
+                              }}
+                            >
+                              Apply {membershipInfo.plan.allocated_discount}% Discount
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2940,18 +3232,95 @@ const QuickSale = () => {
                 <h3 className="summary-title">Bill Summary</h3>
                 <div className="summary-title-separator"></div>
                 <div className="summary-values">
-                  {/* Subtotal Group */}
+                  {/* Per-category breakdown — only rows with > 0 are shown so the
+                      summary stays compact on simple bills. */}
                   <div className="summary-group">
-                    <div className="summary-row">
+                    {getServicesOnlySubtotal() > 0 && (
+                      <div className="summary-row">
+                        <span className="summary-label">Services</span>
+                        <span className="summary-value">₹ {getServicesOnlySubtotal().toFixed(2)}</span>
+                      </div>
+                    )}
+                    {getPackagesOnlySubtotal() > 0 && (
+                      <div className="summary-row">
+                        <span className="summary-label">Packages</span>
+                        <span className="summary-value">₹ {getPackagesOnlySubtotal().toFixed(2)}</span>
+                      </div>
+                    )}
+                    {getMembershipsTotal() > 0 && (
+                      <div className="summary-row">
+                        <span className="summary-label">
+                          Membership{memberships[0]?.name ? ` (${memberships[0].name})` : ''}
+                        </span>
+                        <span className="summary-value">₹ {getMembershipsTotal().toFixed(2)}</span>
+                      </div>
+                    )}
+                    {getProductSubtotal() > 0 && (
+                      <div className="summary-row">
+                        <span className="summary-label">Products</span>
+                        <span className="summary-value">₹ {getProductSubtotal().toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="summary-row" style={{ fontWeight: 600 }}>
                       <span className="summary-label">Subtotal</span>
                       <span className="summary-value">₹ {calculateSubtotal().toFixed(2)}</span>
                     </div>
                   </div>
 
+                  {/* Membership Discount Toggle — visible in the summary so staff
+                      can opt-in next to the totals. Shows only when the customer has
+                      an active plan OR a plan is being purchased in this bill. */}
+                  {(membershipInfo && membershipInfo.plan && parseFloat(membershipInfo.plan.allocated_discount) > 0) ||
+                   (memberships.some(m => parseFloat(m.allocated_discount) > 0)) ? (
+                    <>
+                      <div className="summary-divider"></div>
+                      <div className="summary-group">
+                        <div
+                          className="summary-row"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '8px',
+                            flexWrap: 'wrap'
+                          }}
+                        >
+                          <label style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            color: '#1e40af',
+                            fontWeight: 500
+                          }}>
+                            <input
+                              type="checkbox"
+                              checked={discountType === 'membership'}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setDiscountType('membership')
+                                  setDiscountAmount(0)
+                                } else {
+                                  setDiscountType('fix')
+                                  setDiscountAmount(0)
+                                }
+                              }}
+                              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                            />
+                            <FaGift style={{ fontSize: '14px' }} />
+                            Apply Membership Discount ({getEffectiveMembershipPercent()}%)
+                          </label>
+                        </div>
+                      </div>
+                    </>
+                  ) : null}
+
                   {/* Discounts Group */}
                   {(calculateItemLevelDiscount() > 0) ||
-                   (membershipInfo && membershipInfo.plan && discountType === 'membership' && calculateDiscount() > 0) ||
-                   (discountType !== 'membership' && discountAmount > 0) ? (
+                   (appliedOffer && calculateDiscount() > 0) ||
+                   (!appliedOffer && discountType === 'membership' && calculateDiscount() > 0) ||
+                   (!appliedOffer && discountType !== 'membership' && discountAmount > 0) ? (
                     <>
                       <div className="summary-divider"></div>
                       <div className="summary-group">
@@ -2965,18 +3334,36 @@ const QuickSale = () => {
                             </span>
                           </div>
                         )}
-                        {membershipInfo && membershipInfo.plan && discountType === 'membership' && calculateDiscount() > 0 && (
+                        {appliedOffer && calculateDiscount() > 0 && (
                           <div className="summary-row membership-discount-row">
                             <span className="summary-label discount-label">
                               <FaGift style={{ fontSize: '14px', marginRight: '6px' }} />
-                              Membership ({membershipInfo.plan.allocated_discount}%)
+                              Offer ({appliedOffer.name} – {appliedOffer.discount_percentage}%)
                             </span>
                             <span className="summary-value discount-value">
                               − ₹ {calculateDiscount().toFixed(2)}
                             </span>
                           </div>
                         )}
-                        {discountType !== 'membership' && discountAmount > 0 && (
+                        {!appliedOffer && discountType === 'membership' && calculateDiscount() > 0 && (
+                          <div className="summary-row membership-discount-row">
+                            <span className="summary-label discount-label">
+                              <FaGift style={{ fontSize: '14px', marginRight: '6px' }} />
+                              {(() => {
+                                const planName = (membershipInfo && membershipInfo.plan && membershipInfo.plan.name)
+                                  || (memberships[0] && memberships[0].name)
+                                  || null
+                                return planName
+                                  ? `Membership (${planName} – ${getEffectiveMembershipPercent()}%)`
+                                  : `Membership (${getEffectiveMembershipPercent()}%)`
+                              })()}
+                            </span>
+                            <span className="summary-value discount-value">
+                              − ₹ {calculateDiscount().toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                        {!appliedOffer && discountType !== 'membership' && discountAmount > 0 && (
                           <div className="summary-row manual-discount-row">
                             <span className="summary-label discount-label">
                               Discount{discountType === '%' ? ` (${discountAmount}%)` : ''}
@@ -3041,7 +3428,7 @@ const QuickSale = () => {
 
           {/* Bottom Buttons */}
           <div className="action-buttons">
-            <button className="reset-button" onClick={handleReset}>Reset</button>
+            <button className="reset-button" onClick={handleReset} disabled={isCheckingOut}>Reset</button>
             {bookingStatus === 'confirmed' ? (
               <button
                 className="checkout-button"
@@ -3076,10 +3463,14 @@ const QuickSale = () => {
                 <button
                   className="checkout-button"
                   onClick={handleCheckout}
+                  disabled={isCheckingOut}
+                  style={isCheckingOut ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
                 >
-                  {pendingApproval && pendingApproval.approval_status === 'pending'
-                    ? (approvalCode.trim() ? 'Approve & Checkout' : 'Retry Checkout (Pending Approval)')
-                    : 'Checkout'}
+                  {isCheckingOut
+                    ? 'Processing...'
+                    : (pendingApproval && pendingApproval.approval_status === 'pending'
+                        ? (approvalCode.trim() ? 'Approve & Checkout' : 'Retry Checkout (Pending Approval)')
+                        : 'Checkout')}
                 </button>
               </>
             )}
@@ -3091,7 +3482,21 @@ const QuickSale = () => {
       {showApprovalForm && (
         <div className="modal-overlay" onClick={() => setShowApprovalForm(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Discount Approval Required</h2>
+            <div className="std-modal-header">
+              <h2>Discount Approval Required</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => {
+                  setShowApprovalForm(false)
+                  setApprovalReason('')
+                  setApprovalCode('')
+                }}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <p>Discounts (including per-item discounts) require owner approval. Provide a reason, and enter an approval code if you have one.</p>
             <div className="form-group">
               <label>Reason for Discount *</label>
@@ -3135,8 +3540,11 @@ const QuickSale = () => {
                   }
                 }}
                 className="btn-primary"
+                disabled={isCheckingOut}
               >
-                {approvalCode.trim() ? 'Approve & Checkout' : 'Submit for Approval'}
+                {isCheckingOut
+                  ? 'Processing...'
+                  : (approvalCode.trim() ? 'Approve & Checkout' : 'Submit for Approval')}
               </button>
             </div>
           </div>
@@ -3144,7 +3552,7 @@ const QuickSale = () => {
       )}
 
       {/* New Customer Modal */}
-      {showNewCustomerForm && (
+      {showNewCustomerForm && createPortal(
         <div className="new-customer-modal-overlay" onClick={() => {
           setShowNewCustomerForm(false)
           setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '', dob: '', referralCode: '' }); setReferralValidation(null)
@@ -3171,11 +3579,11 @@ const QuickSale = () => {
                   </label>
                   <input
                     type="text"
-                    placeholder="Enter 10-digit mobile"
+                    placeholder="10-digit mobile or with +91 prefix"
                     value={newCustomerData.mobile}
                     onChange={(e) => setNewCustomerData({ ...newCustomerData, mobile: e.target.value })}
                     className="modal-input"
-                    maxLength={10}
+                    maxLength={15}
                     disabled={creatingCustomer}
                   />
                 </div>
@@ -3309,7 +3717,8 @@ const QuickSale = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Inventory Modal */}
@@ -3392,7 +3801,17 @@ const QuickSale = () => {
       {showBillActivityModal && (
         <div className="bill-activity-modal-overlay" onClick={() => setShowBillActivityModal(false)}>
           <div className="bill-activity-modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Bill Activity - {selectedCustomer?.firstName} {selectedCustomer?.lastName}</h2>
+            <div className="bill-activity-modal-header">
+              <h2>Bill Activity - {selectedCustomer?.firstName} {selectedCustomer?.lastName}</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowBillActivityModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <div className="bill-activity-modal-body">
               {loadingBills ? (
                 <div className="loading-container">
@@ -3647,6 +4066,80 @@ const QuickSale = () => {
                   <p>No membership plans available</p>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Offer Selection Modal — single offer per bill (single-offer rule) */}
+      {showOfferModal && (
+        <div className="selection-modal-overlay" onClick={() => setShowOfferModal(false)}>
+          <div className="selection-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="selection-modal-header">
+              <h2>Select Offer</h2>
+              <button className="modal-close-btn" onClick={() => setShowOfferModal(false)}>
+                <FaTimes />
+              </button>
+            </div>
+            <div className="selection-modal-body">
+              {(() => {
+                const eligible = availableOffers.filter(o =>
+                  o.offer_type === 'general' || (membershipInfo && membershipInfo.plan)
+                )
+                if (eligible.length === 0) {
+                  return (
+                    <div className="selection-empty">
+                      <p>No active offers. Create one in <strong>Offer Management</strong>.</p>
+                    </div>
+                  )
+                }
+                return (
+                  <div className="selection-grid">
+                    {appliedOffer && (
+                      <div
+                        className="selection-item"
+                        onClick={() => {
+                          setAppliedOffer(null)
+                          setShowOfferModal(false)
+                          showInfo('Offer removed')
+                        }}
+                        style={{ borderStyle: 'dashed' }}
+                      >
+                        <div className="selection-item-header">
+                          <h3>Remove Offer</h3>
+                          <span className="selection-price">—</span>
+                        </div>
+                        <div className="selection-item-details">
+                          <p>Clear "{appliedOffer.name}" from this bill</p>
+                        </div>
+                      </div>
+                    )}
+                    {eligible.map(offer => (
+                      <div
+                        key={offer.id}
+                        className={`selection-item ${appliedOffer && appliedOffer.id === offer.id ? 'selected' : ''}`}
+                        onClick={() => {
+                          if (offer.offer_type === 'membership' && !(membershipInfo && membershipInfo.plan)) {
+                            showWarning(`"${offer.name}" applies only to membership customers`)
+                            return
+                          }
+                          setAppliedOffer(offer)
+                          setShowOfferModal(false)
+                          showInfo(`Offer applied: ${offer.name} (${offer.discount_percentage}% off)`)
+                        }}
+                      >
+                        <div className="selection-item-header">
+                          <h3>{offer.name}</h3>
+                          <span className="selection-price">{offer.discount_percentage}%</span>
+                        </div>
+                        <div className="selection-item-details">
+                          <p>Type: {offer.offer_type === 'membership' ? 'Membership customers only' : 'All customers'}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
             </div>
           </div>
         </div>

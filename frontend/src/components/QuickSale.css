@@ -298,19 +298,37 @@
   .top-row {
     flex-wrap: wrap;
   }
-  
+
   .customer-info-card {
     width: 100%;
     margin-left: 0;
     margin-top: 16px;
   }
-  
+
+  /* Hide the separate header row — labels pair with values inline via data-label
+     so each field reads correctly instead of labels floating above a value grid. */
   .customer-info-header {
-    grid-template-columns: repeat(2, 1fr);
+    display: none;
   }
-  
+
   .customer-info-row {
     grid-template-columns: repeat(2, 1fr);
+    gap: 12px 16px;
+  }
+
+  .customer-info-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .customer-info-cell::before {
+    content: attr(data-label);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--gray-500, #6b7280);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
   }
 }
 
@@ -682,10 +700,46 @@
 }
 
 .bill-activity-modal h2 {
-  margin: 0 0 20px 0;
+  margin: 0;
   font-size: 20px;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.bill-activity-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 20px 0;
+}
+
+.bill-activity-modal-header .modal-close-btn,
+.std-modal-header .modal-close-btn {
+  background: var(--gray-100);
+  color: var(--text-secondary);
+  margin-left: 0;
+}
+
+.bill-activity-modal-header .modal-close-btn:hover:not(:disabled),
+.std-modal-header .modal-close-btn:hover:not(:disabled) {
+  background: var(--gray-200);
+  color: var(--text-primary);
+  transform: none;
+}
+
+.std-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 16px 0;
+}
+
+.std-modal-header h2 {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
 }
 
 .bill-activity-modal-body {
@@ -2163,6 +2217,9 @@
   border: 1px solid var(--gray-300);
   border-radius: 6px;
   font-size: 14px;
+  font-weight: 400;
+  font-family: inherit;
+  color: var(--gray-800, #1f2937);
   background: white;
   transition: all 0.2s ease;
   min-height: 38px;
@@ -2331,6 +2388,29 @@ select.table-select:focus {
 .table-input[readOnly] {
   background: var(--gray-50);
   cursor: not-allowed;
+}
+
+/* Per-row Total cell when a membership discount applies to the line.
+   Stacks the gross (struck through) above the post-membership total in green/bold. */
+.row-total-with-discount {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-end;
+  padding: 4px 6px;
+  line-height: 1.2;
+}
+
+.row-total-strike {
+  font-size: 11px;
+  color: var(--gray-500, #6b7280);
+  text-decoration: line-through;
+}
+
+.row-total-net {
+  font-size: 14px;
+  font-weight: 700;
+  color: #047857;
 }
 
 .table-time-input {
@@ -3725,9 +3805,25 @@ select.table-select:focus {
 
 /* Responsive Design */
 @media (max-width: 1024px) {
+  /* Stack the booking form and bill summary vertically — the 2-column layout
+     pushes Bill Summary off-screen on tablet portrait. */
   .bottom-section-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 16px;
+  }
+
+  /* Same for the Booking Note + Active Membership wrapper — shouldn't sit beside
+     another column at this width. */
+  .booking-note-membership-wrapper {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* Summary column should take the full width it's allotted */
+  .summary-column,
+  .booking-column {
+    width: 100%;
+    max-width: 100%;
   }
 
   .service-table-container {

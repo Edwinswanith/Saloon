@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import {
   FaList,
   FaEdit,
   FaTrash,
+  FaTimes,
 } from 'react-icons/fa'
 import './Staffs.css'
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
 import { useAuth } from '../contexts/AuthContext'
+import PasswordInput from './shared/PasswordInput'
+import CompactSelect from './shared/CompactSelect'
 
 const Staffs = () => {
   const { getBranchId, currentBranch, user, branches, fetchBranches } = useAuth()
@@ -128,6 +132,11 @@ const Staffs = () => {
       showError('Password must be at least 6 characters')
       return
     }
+    // When editing, password is optional — but if provided, must be at least 6 chars
+    if (editingStaff && staffFormData.password.trim() && staffFormData.password.trim().length < 6) {
+      showError('Password must be at least 6 characters')
+      return
+    }
 
     try {
       const staffData = {
@@ -140,8 +149,12 @@ const Staffs = () => {
         status: 'active'
       }
 
+      // Send password for new staff (required) or when editing and user typed a new one
+      const pwd = staffFormData.password.trim()
       if (!editingStaff) {
-        staffData.password = staffFormData.password.trim()
+        staffData.password = pwd
+      } else if (pwd) {
+        staffData.password = pwd
       }
 
       // Add branch_id if owner or manager selected a branch
@@ -276,10 +289,20 @@ const Staffs = () => {
       </div>
 
       {/* Add/Edit Staff Modal */}
-      {showStaffModal && (
+      {showStaffModal && createPortal(
         <div className="modal-overlay" onClick={() => setShowStaffModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>{editingStaff ? 'Edit Staff' : 'Add Staff'}</h2>
+            <div className="std-modal-header">
+              <h2>{editingStaff ? 'Edit Staff' : 'Add Staff'}</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowStaffModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <div className="form-group">
               <label>Mobile Number *</label>
               <input
@@ -341,46 +364,51 @@ const Staffs = () => {
             {user && (user.role === 'owner' || user.role === 'manager') && (
               <div className="form-group">
                 <label>Branch *</label>
-                <select
+                <CompactSelect
                   value={staffFormData.branch}
-                  onChange={(e) => setStaffFormData({ ...staffFormData, branch: e.target.value })}
-                  required
-                >
-                  <option value="">Select Branch</option>
-                  {branches.map((branch) => (
-                    <option key={branch.id} value={branch.id}>
-                      {branch.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            {!editingStaff && (
-              <div className="form-group">
-                <label>Password *</label>
-                <input
-                  type="password"
-                  value={staffFormData.password}
-                  onChange={(e) => setStaffFormData({ ...staffFormData, password: e.target.value })}
-                  placeholder="Enter initial password (min 6 characters)"
-                  required
-                  minLength={6}
+                  onChange={(v) => setStaffFormData({ ...staffFormData, branch: v })}
+                  options={branches.map((branch) => ({ value: branch.id, label: branch.name }))}
+                  placeholder="Select Branch"
                 />
               </div>
             )}
+            <div className="form-group">
+              <label>{editingStaff ? 'Reset Password' : 'Password *'}</label>
+              <PasswordInput
+                value={staffFormData.password}
+                onChange={(e) => setStaffFormData({ ...staffFormData, password: e.target.value })}
+                placeholder={editingStaff
+                  ? 'Leave blank to keep current password'
+                  : 'Enter initial password (min 6 characters)'}
+                required={!editingStaff}
+                minLength={editingStaff ? undefined : 6}
+                autoComplete="new-password"
+              />
+            </div>
             <div className="modal-actions">
               <button className="btn-cancel" onClick={() => setShowStaffModal(false)}>Cancel</button>
               <button className="btn-save" onClick={handleSaveStaff}>Save</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* View Staff Modal */}
-      {showViewModal && viewingStaff && (
+      {showViewModal && viewingStaff && createPortal(
         <div className="modal-overlay" onClick={() => setShowViewModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Staff Details</h2>
+            <div className="std-modal-header">
+              <h2>Staff Details</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowViewModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
             <div className="view-details">
               <div className="detail-row">
                 <label>Mobile Number:</label>
@@ -415,7 +443,8 @@ const Staffs = () => {
               <button className="btn-cancel" onClick={() => setShowViewModal(false)}>Close</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

@@ -6,6 +6,8 @@
   display: flex;
   width: 100%;
   height: 100vh;
+  height: calc(var(--vh, 1vh) * 100);
+  height: 100dvh;
   overflow: hidden;
   position: relative;
   background: #ffffff;
@@ -18,6 +20,8 @@
   justify-content: center;
   width: 100vw;
   height: 100vh;
+  height: calc(var(--vh, 1vh) * 100);
+  height: 100dvh;
   background: linear-gradient(135deg, var(--primary-50) 0%, var(--primary-100) 100%);
 }
 
@@ -57,6 +61,8 @@
   overflow-x: hidden;
   background: #f8fafc;
   height: calc(100vh - 72px);
+  height: calc(var(--vh, 1vh) * 100 - 72px);
+  height: calc(100dvh - 72px);
   position: relative;
   transition: margin-left var(--transition-slow);
 }
@@ -255,18 +261,100 @@
     margin-left: 240px;
     margin-top: 88px;
     height: calc(100vh - 88px);
+    height: calc(var(--vh, 1vh) * 100 - 88px);
+    height: calc(100dvh - 88px);
   }
-  
+
   .app.sidebar-collapsed .main-content {
     margin-left: 64px;
   }
-  
+
   .main-content::before {
     left: 240px;
   }
-  
+
   .page-container {
     padding: var(--space-6);
+  }
+}
+
+/* Tablet landscape (iPad Pro, Surface Pro, 1025-1366 @ any orientation).
+   Target: 1340×800 — staff primary device. Narrow the sidebar, tighten paddings,
+   bump tap targets, and ensure no horizontal overflow. */
+@media (min-width: 1025px) and (max-width: 1366px) {
+  .main-content {
+    margin-left: 220px;
+  }
+  .app.sidebar-collapsed .main-content {
+    margin-left: 64px;
+  }
+  .page-container {
+    padding: var(--space-4);
+    max-width: 100%;
+  }
+
+  /* Touch-friendly controls — min 40px so fingers hit reliably */
+  .btn,
+  button.pill-button,
+  button.btn-primary,
+  button.btn-secondary,
+  input[type="button"],
+  input[type="submit"] {
+    min-height: 40px;
+  }
+
+  /* Keep the form inputs readable on touch without being huge.
+     Scoped to form-level controls only — table-embedded inputs/selects
+     (.table-input, .table-select, .table-time-input) must stay compact so
+     row heights don't balloon. */
+  .form-input,
+  .form-select,
+  .form-textarea {
+    font-size: 15px;
+    min-height: 40px;
+  }
+
+  /* Modal dialogs fit the viewport cleanly at 800px height */
+  .modal-content,
+  .selection-modal-content,
+  .new-customer-modal-content,
+  .bh-modal {
+    max-width: min(960px, 92vw);
+    max-height: calc(100dvh - 40px);
+  }
+
+  /* Tables breathe less on tablet — denser rows, smaller cell padding */
+  table th,
+  table td {
+    padding: 8px 10px;
+  }
+
+  /* Prevent body-level horizontal scroll that sometimes shows up on this viewport */
+  body,
+  .main-content {
+    overflow-x: hidden;
+  }
+}
+
+/* Tablet portrait (iPad / 10-11" portrait, 768-1024) — sidebar overlays, no left offset.
+   Header grows to 88px here (two rows: banner + controls), so match margin-top to avoid overlap. */
+@media (min-width: 600px) and (max-width: 1024px) and (orientation: portrait) {
+  .main-content {
+    margin-left: 0;
+    margin-top: 88px;
+    height: calc(100vh - 88px);
+    height: calc(var(--vh, 1vh) * 100 - 88px);
+    height: calc(100dvh - 88px);
+  }
+  .app.sidebar-collapsed .main-content {
+    margin-left: 0;
+  }
+  .main-content::before {
+    left: 0;
+  }
+  .page-container {
+    padding: var(--space-5);
+    max-width: 100%;
   }
 }
 
@@ -324,5 +412,48 @@
 /* Mobile Sidebar Open State */
 .app.mobile-sidebar-open .main-content {
   pointer-events: none;
+}
+
+/* ========== KEYBOARD-SAFE MODALS ==========
+   Generic rule so modal overlays across the app shrink with the on-screen keyboard
+   (visualViewport) instead of being clipped behind it. `!important` is intentional —
+   this is cross-cutting keyboard/viewport safety that per-component CSS must not override.
+   `100dvh` handles the keyboard automatically on modern mobile/tablet browsers; `--vh` is
+   the JS-synced fallback for older ones. */
+.modal-overlay,
+.selection-modal-overlay,
+.new-customer-modal-overlay,
+.bill-activity-modal-overlay,
+.invoice-modal-overlay,
+.inventory-modal-overlay,
+.bh-modal-overlay {
+  height: 100vh !important;
+  height: calc(var(--vh, 1vh) * 100) !important;
+  height: 100dvh !important;
+  max-height: 100vh !important;
+  max-height: calc(var(--vh, 1vh) * 100) !important;
+  max-height: 100dvh !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.modal-content,
+.selection-modal-content,
+.new-customer-modal-content,
+.bh-modal {
+  max-height: calc(100vh - 32px) !important;
+  max-height: calc(var(--vh, 1vh) * 100 - 32px) !important;
+  max-height: calc(100dvh - 32px) !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure focused inputs stay visible when the keyboard appears */
+input:focus,
+select:focus,
+textarea:focus {
+  scroll-margin-top: 88px;
+  scroll-margin-bottom: 24px;
 }
 

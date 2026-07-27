@@ -363,18 +363,41 @@ const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
           <div className="grid-col-amt">Amt</div>
         </div>
         {items && items.length > 0 ? (
-          items.map((item, index) => (
-            <div key={index} className="items-grid-row">
-              <div className="grid-col-item">{item.name || 'Item'}</div>
-              <div className="grid-col-staff">{item.staff_name || 'N/A'}</div>
-              <div className="grid-col-type">{item.type ? item.type.charAt(0).toUpperCase() + item.type.slice(1) : 'Service'}</div>
-              <div className="grid-col-qty">{item.quantity || 1}</div>
-              <div className="grid-col-price">{formatCurrency(item.price || 0)}</div>
-              <div className="grid-col-tax">{formatCurrency(item.tax || 0)}</div>
-              <div className="grid-col-discount">{formatCurrency(item.discount || 0)}</div>
-              <div className="grid-col-amt">{formatCurrency(item.total || 0)}</div>
-            </div>
-          ))
+          items.map((item, index) => {
+            // Per-line discount = manual item-level discount (₹) + membership discount (₹).
+            // Mirrors the HTML invoice template so the React modal preview matches the PDF.
+            const lineDiscount = (Number(item.discount) || 0) + (Number(item.membership_discount) || 0)
+            return (
+              <div key={index} className="items-grid-row">
+                <div className="grid-col-item">
+                  {item.name || 'Item'}
+                  {item.membership_discount > 0 && (
+                    <div style={{
+                      marginTop: 2,
+                      display: 'inline-block',
+                      padding: '1px 6px',
+                      fontSize: 9,
+                      fontWeight: 700,
+                      background: '#d1fae5',
+                      color: '#047857',
+                      borderRadius: 8,
+                      letterSpacing: 0.3,
+                      marginLeft: 6,
+                    }}>
+                      MEMBER · {item.membership_discount_pct}% OFF
+                    </div>
+                  )}
+                </div>
+                <div className="grid-col-staff">{item.staff_name || 'N/A'}</div>
+                <div className="grid-col-type">{item.type ? item.type.charAt(0).toUpperCase() + item.type.slice(1) : 'Service'}</div>
+                <div className="grid-col-qty">{item.quantity || 1}</div>
+                <div className="grid-col-price">{formatCurrency(item.price || 0)}</div>
+                <div className="grid-col-tax">{formatCurrency(item.tax || 0)}</div>
+                <div className="grid-col-discount">{lineDiscount > 0 ? formatCurrency(lineDiscount) : '—'}</div>
+                <div className="grid-col-amt">{formatCurrency(item.total || 0)}</div>
+              </div>
+            )
+          })
         ) : (
           <div className="items-grid-row no-items">
             <div className="grid-col-item">No items found</div>
@@ -389,7 +412,18 @@ const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
           <span className="summary-value">{formatCurrency(summary?.subtotal || 0)}</span>
         </div>
         <div className="summary-row">
-          <span className="summary-label">Discount</span>
+          <span className="summary-label">
+            Discount
+            {(summary?.offer?.name || invoiceData?.applied_offer?.name) && (
+              <>
+                {' ('}
+                {summary?.offer?.name || invoiceData.applied_offer.name}
+                {' – '}
+                {Math.round(Number(summary?.offer?.percentage ?? invoiceData?.applied_offer?.percentage ?? 0))}%
+                {')'}
+              </>
+            )}
+          </span>
           <span className="summary-value">{formatCurrency(summary?.discount || 0)}</span>
         </div>
         {summary?.referral_discount > 0 && (

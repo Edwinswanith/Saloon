@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from models import Staff, StaffTempAssignment, Branch
+from models import Staff, Branch
 from datetime import datetime, date
 from mongoengine.errors import DoesNotExist, NotUniqueError, ValidationError
 from bson import ObjectId
@@ -21,17 +21,15 @@ def handle_preflight():
 @staff_bp.route('/', methods=['GET'])
 @require_role('staff', 'manager', 'owner')
 def get_staffs(current_user=None):
-    """Get all staff members including temp-assigned staff"""
+    """Get all staff members.
+
+    All staff are visible across every branch — there is no per-branch filter.
+    The Staff.branch field is retained as the staff's home branch (HR/payroll
+    attribution) but does not restrict who appears in operational dropdowns.
+    """
     try:
-        # Get branch for filtering
-        branch = get_selected_branch(request, current_user)
-        today = date.today()
-        
-        # Get permanent staff for this branch
         query = Staff.objects()
-        if branch:
-            query = query.filter(branch=branch)
-        
+
         # Filter by active status if specified, otherwise show all
         status_filter = request.args.get('status')
         if status_filter:
@@ -40,94 +38,40 @@ def get_staffs(current_user=None):
             # Default: show active staff, but also include staff without status set
             from mongoengine import Q
             query = query.filter(Q(status='active') | Q(status__exists=False))
-        
+
         # Get pagination parameters
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 20, type=int), 100)
         sort_by = request.args.get('sort_by', 'first_name')
         sort_order = request.args.get('sort_order', 'asc')
-        
-        # Apply sorting to permanent staff query
+
+        # Apply sorting
         if sort_by in ['first_name', 'last_name']:
             order_field = f"{sort_by},{'last_name' if sort_by == 'first_name' else 'first_name'}"
             if sort_order == 'desc':
                 order_field = f"-{order_field}"
         else:
             order_field = f"-{sort_by}" if sort_order == 'desc' else sort_by
-        
-        permanent_staffs = list(query.order_by(order_field))
-        
-        # Auto-complete any assignments that have passed their end date
-        StaffTempAssignment.objects(
-            status='active',
-            end_date__lt=today
-        ).update(set__status='completed', set__updated_at=datetime.utcnow())
 
-        # Get temp-assigned staff for this branch (currently active) - force evaluation
-        temp_assigned_staffs = []
-        if branch:
-            temp_assignments = list(StaffTempAssignment.objects(
-                temp_branch=branch,
-                status='active',
-                start_date__lte=today,
-                end_date__gte=today
-            ))
-            for assignment in temp_assignments:
-                temp_assigned_staffs.append({
-                    'staff': assignment.staff,
-                    'is_temp': True,
-                    'original_branch': assignment.original_branch.name if assignment.original_branch else None,
-                    'original_branch_id': str(assignment.original_branch.id) if assignment.original_branch else None,
-                    'end_date': assignment.end_date.isoformat(),
-                    'assignment_id': str(assignment.id)
-                })
-        
-        # Build response
-        staff_list = []
-        
-        # Add permanent staff
-        for s in permanent_staffs:
-            staff_list.append({
-                'id': str(s.id),
-                'mobile': s.mobile,
-                'firstName': s.first_name,
-                'lastName': s.last_name,
-                'email': s.email,
-                'salary': s.salary,
-                'commissionRate': s.commission_rate,
-                'branch': s.branch.name if s.branch else None,
-                'branchId': str(s.branch.id) if s.branch else None,
-                'isTemp': False,
-                'originalBranch': None,
-                'originalBranchId': None,
-                'tempEndDate': None,
-                'assignmentId': None
-            })
-        
-        # Add temp-assigned staff
-        for item in temp_assigned_staffs:
-            s = item['staff']
-            staff_list.append({
-                'id': str(s.id),
-                'mobile': s.mobile,
-                'firstName': s.first_name,
-                'lastName': s.last_name,
-                'email': s.email,
-                'salary': s.salary,
-                'commissionRate': s.commission_rate,
-                'isTemp': True,
-                'originalBranch': item['original_branch'],
-                'originalBranchId': item['original_branch_id'],
-                'tempEndDate': item['end_date'],
-                'assignmentId': item['assignment_id']
-            })
-        
-        # Apply pagination to combined list
+        all_staffs = list(query.order_by(order_field))
+
+        staff_list = [{
+            'id': str(s.id),
+            'mobile': s.mobile,
+            'firstName': s.first_name,
+            'lastName': s.last_name,
+            'email': s.email,
+            'salary': s.salary,
+            'commissionRate': s.commission_rate,
+            'branch': s.branch.name if s.branch else None,
+            'branchId': str(s.branch.id) if s.branch else None,
+        } for s in all_staffs]
+
         total = len(staff_list)
         start_idx = (page - 1) * per_page
         end_idx = start_idx + per_page
         paginated_staff_list = staff_list[start_idx:end_idx]
-        
+
         response = jsonify({
             'staffs': paginated_staff_list,
             'pagination': {
@@ -203,7 +147,10 @@ def create_staff(current_user=None):
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 400
         
-        if Staff.objects(mobile=data.get('mobile')).first():
+        # Mobile must be globally unique among ACTIVE staff. Staff are pooled
+        # across all branches (no branch lock), so the same mobile in two
+        # different branches would be ambiguous at login.
+        if Staff.objects(mobile=data.get('mobile'), status='active').first():
             response = jsonify({'error': 'Staff with this mobile number already exists'})
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 400
@@ -257,10 +204,16 @@ def update_staff(staff_id, current_user=None):
         staff = Staff.objects.get(id=staff_id)
         data = request.get_json()
         
-        # Update mobile with uniqueness check
+        # Update mobile with global uniqueness check among ACTIVE staff
+        # (excluding self). Staff are pooled across all branches.
         new_mobile = data.get('mobile')
         if new_mobile and new_mobile != staff.mobile:
-            if Staff.objects(mobile=new_mobile).first():
+            conflict = Staff.objects(
+                mobile=new_mobile,
+                status='active',
+                id__ne=staff.id
+            ).first()
+            if conflict:
                 response = jsonify({'error': 'Mobile number already in use'})
                 response.headers.add('Access-Control-Allow-Origin', '*')
                 return response, 400
@@ -272,6 +225,15 @@ def update_staff(staff_id, current_user=None):
         staff.salary = data.get('salary', staff.salary)
         staff.commission_rate = data.get('commissionRate', staff.commission_rate)
         staff.status = data.get('status', staff.status)
+
+        # Optional password reset by manager/owner
+        new_password = (data.get('password') or '').strip() if data.get('password') is not None else ''
+        if new_password:
+            if len(new_password) < 6:
+                response = jsonify({'error': 'Password must be at least 6 characters'})
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response, 400
+            staff.password_hash = hash_password(new_password)
         
         # Update branch if branch_id is provided
         branch_id = data.get('branch_id')
@@ -312,6 +274,8 @@ def delete_staff(staff_id, current_user=None):
             return jsonify({'error': 'Invalid staff ID format'}), 400
         staff = Staff.objects.get(id=staff_id)
         staff.status = 'inactive'
+        # Also revoke login access so a deleted staff can't sign in
+        staff.is_active = False
         staff.updated_at = datetime.utcnow()
         staff.save()
         response = jsonify({'message': 'Staff deleted successfully'})

@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../config';
 import { FaExclamationTriangle } from 'react-icons/fa';
 import './Login.css';
+import PasswordInput from './shared/PasswordInput';
 
 const Login = ({ onLoginSuccess }) => {
   const { login, isAuthenticated } = useAuth();
@@ -424,8 +425,7 @@ const Login = ({ onLoginSuccess }) => {
                   <label htmlFor="staff-password" className="form-label">
                     Password
                   </label>
-                  <input
-                    type="password"
+                  <PasswordInput
                     id="staff-password"
                     className="form-input"
                     placeholder="Enter your password"
@@ -493,8 +493,7 @@ const Login = ({ onLoginSuccess }) => {
                   <label htmlFor="manager-password" className="form-label">
                     Password
                   </label>
-                  <input
-                    type="password"
+                  <PasswordInput
                     id="manager-password"
                     className="form-input"
                     placeholder="Enter your password"
@@ -528,8 +527,7 @@ const Login = ({ onLoginSuccess }) => {
                   <label htmlFor="owner-password" className="form-label">
                     Password
                   </label>
-                  <input
-                    type="password"
+                  <PasswordInput
                     id="owner-password"
                     className="form-input"
                     placeholder="Enter your password"

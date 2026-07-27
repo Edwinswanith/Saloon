@@ -27,6 +27,7 @@ const ServiceRecovery = lazy(() => import('./components/ServiceRecovery'))
 const DiscountApprovals = lazy(() => import('./components/DiscountApprovals'))
 const ApprovalCodes = lazy(() => import('./components/ApprovalCodes'))
 const OfferCampaigns = lazy(() => import('./components/OfferCampaigns'))
+const OfferManagement = lazy(() => import('./components/OfferManagement'))
 const Inventory = lazy(() => import('./components/Inventory'))
 const ReportsAnalytics = lazy(() => import('./components/ReportsAnalytics'))
 const Service = lazy(() => import('./components/Service'))
@@ -40,7 +41,6 @@ const Manager = lazy(() => import('./components/Manager'))
 const OwnerSettings = lazy(() => import('./components/OwnerSettings'))
 const Staffs = lazy(() => import('./components/Staffs'))
 const StaffAttendance = lazy(() => import('./components/StaffAttendance'))
-const StaffTempAssignment = lazy(() => import('./components/StaffTempAssignment'))
 const AssetManagement = lazy(() => import('./components/AssetManagement'))
 const Expense = lazy(() => import('./components/Expense'))
 const ServiceSalesAnalysis = lazy(() => import('./components/ServiceSalesAnalysis'))
@@ -73,8 +73,20 @@ const PageLoader = () => (
 )
 
 // Main application content (protected - requires authentication)
+// Staff land on Quick Sale (their primary workflow); manager/owner land on Dashboard.
+const getInitialPageForStoredUser = () => {
+  try {
+    const raw = sessionStorage.getItem('auth_user')
+    if (!raw) return 'dashboard'
+    const u = JSON.parse(raw)
+    return u && u.role === 'staff' ? 'quick-sale' : 'dashboard'
+  } catch {
+    return 'dashboard'
+  }
+}
+
 function AppContent() {
-  const [activePage, setActivePage] = useState('dashboard')
+  const [activePage, setActivePage] = useState(getInitialPageForStoredUser)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     // Load from localStorage
     const saved = localStorage.getItem('sidebarCollapsed')
@@ -142,7 +154,10 @@ function AppContent() {
 
   // Show login screen if not authenticated
   if (!isAuthenticated) {
-    return <Login onLoginSuccess={() => setActivePage('dashboard')} />
+    return <Login onLoginSuccess={(loggedInUser) => {
+      const role = loggedInUser?.role || JSON.parse(sessionStorage.getItem('auth_user') || '{}')?.role
+      setActivePage(role === 'staff' ? 'quick-sale' : 'dashboard')
+    }} />
   }
 
   // Render authenticated app
@@ -193,6 +208,9 @@ function AppContent() {
               <RequireRole roles={['manager', 'owner']}>
                 <OfferCampaigns key="offer-campaigns" />
               </RequireRole>
+            )}
+            {activePage === 'offer-management' && (
+              <OfferManagement key="offer-management" />
             )}
             {activePage === 'bill-history' && <BillHistory key="bill-history" />}
             {activePage === 'inventory' && <Inventory key="inventory" />}
@@ -322,11 +340,6 @@ function AppContent() {
             {activePage === 'staff-attendance' && (
               <RequireRole roles={['manager', 'owner']}>
                 <StaffAttendance key="staff-attendance" />
-              </RequireRole>
-            )}
-            {activePage === 'staff-temp-assignment' && (
-              <RequireRole roles={['manager', 'owner']}>
-                <StaffTempAssignment key="staff-temp-assignment" />
               </RequireRole>
             )}
             {activePage === 'asset-management' && (

@@ -3,7 +3,7 @@ from models import Customer, Bill, Membership, ReferralProgramSettings, Referral
 from datetime import datetime
 from mongoengine import Q
 from mongoengine.errors import NotUniqueError
-from utils.auth import require_auth
+from utils.auth import require_auth, require_role
 from utils.branch_filter import get_selected_branch, filter_by_branch
 import random
 import string
@@ -345,6 +345,117 @@ def create_customer(current_user=None):
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 500
 
+
+@customer_bp.route('/bulk', methods=['POST'])
+@require_auth
+def bulk_create_customers(current_user=None):
+    """Batch-create customers from CSV import. Skips duplicates within the
+    current branch (one query) and bulk-inserts the rest (one round-trip)."""
+    try:
+        payload = request.json or {}
+        rows = payload.get('customers') or payload.get('rows') or []
+        if not isinstance(rows, list) or not rows:
+            response = jsonify({'error': 'customers array is required'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
+
+        branch = get_selected_branch(request, current_user)
+        if not branch:
+            response = jsonify({'error': 'Branch is required'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
+
+        def _pick(row, *keys):
+            for k in keys:
+                v = row.get(k)
+                if v is not None and str(v).strip():
+                    return str(v).strip()
+            return ''
+
+        valid = []
+        errors = []
+        for idx, row in enumerate(rows):
+            if not isinstance(row, dict):
+                errors.append({'row': idx + 1, 'error': 'not an object'})
+                continue
+            mobile = _pick(row, 'mobile')
+            first_name = _pick(row, 'firstName', 'first_name')
+            if not mobile:
+                errors.append({'row': idx + 1, 'error': 'mobile required'})
+                continue
+            if not first_name:
+                errors.append({'row': idx + 1, 'error': 'firstName required'})
+                continue
+            valid.append({
+                'mobile': mobile,
+                'first_name': first_name,
+                'last_name': _pick(row, 'lastName', 'last_name'),
+                'email': _pick(row, 'email'),
+                'source': _pick(row, 'source') or 'Walk-in',
+                'gender': _pick(row, 'gender'),
+                'dob_range': _pick(row, 'dobRange', 'dob_range'),
+            })
+
+        mobiles = [r['mobile'] for r in valid]
+        existing_mobiles = set()
+        if mobiles:
+            for c in Customer.objects(mobile__in=mobiles, branch=branch).only('mobile'):
+                existing_mobiles.add(c.mobile)
+
+        to_insert = []
+        skipped = []
+        for r in valid:
+            if r['mobile'] in existing_mobiles:
+                skipped.append({'mobile': r['mobile'], 'reason': 'already_exists_in_branch'})
+                continue
+            to_insert.append(Customer(
+                mobile=r['mobile'],
+                first_name=r['first_name'],
+                last_name=r['last_name'],
+                email=r['email'],
+                source=r['source'],
+                gender=r['gender'],
+                dob_range=r['dob_range'],
+                referral_code=generate_referral_code(r['first_name']),
+                branch=branch,
+            ))
+
+        created_count = 0
+        if to_insert:
+            try:
+                Customer.objects.insert(to_insert, load_bulk=False)
+                created_count = len(to_insert)
+            except NotUniqueError:
+                for c in to_insert:
+                    try:
+                        c.save()
+                        created_count += 1
+                    except NotUniqueError:
+                        try:
+                            c.referral_code = generate_referral_code(c.first_name)
+                            c.save()
+                            created_count += 1
+                        except Exception as e2:
+                            errors.append({'mobile': c.mobile, 'error': f'save_failed: {e2}'})
+                    except Exception as e3:
+                        errors.append({'mobile': c.mobile, 'error': str(e3)})
+
+        response = jsonify({
+            'created': created_count,
+            'skipped': len(skipped),
+            'errors': errors,
+            'skipped_details': skipped,
+            'total_received': len(rows),
+        })
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 200
+    except Exception as e:
+        print(f"[CUSTOMER BULK] Error: {str(e)}")
+        response = jsonify({'error': str(e)})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
+
+
 @customer_bp.route('/<customer_id>', methods=['PUT'])
 @require_auth
 def update_customer(customer_id, current_user=None):
@@ -402,9 +513,13 @@ def update_customer(customer_id, current_user=None):
         return response, 500
 
 @customer_bp.route('/<customer_id>', methods=['DELETE'])
-def delete_customer(customer_id):
-    """Delete customer"""
+@require_role('manager', 'owner')
+def delete_customer(customer_id, current_user=None):
+    """Delete customer (manager/owner only)"""
     try:
+        from bson import ObjectId
+        if not ObjectId.is_valid(customer_id):
+            return jsonify({'error': 'Invalid customer ID format'}), 400
         customer = Customer.objects.get(id=customer_id)
         customer.delete()
         response = jsonify({'message': 'Customer deleted successfully'})
@@ -466,12 +581,27 @@ def get_customer_active_membership(customer_id, current_user=None):
         }
         
         if active_membership.plan:
+            plan = active_membership.plan
+            # Resolve applicable services list — empty list = applies to all services
+            applicable_services = []
+            try:
+                raw_refs = plan._data.get('applicable_services') or []
+                for ref in raw_refs:
+                    sid = ref.id if hasattr(ref, 'id') else ref
+                    sid_str = str(sid)
+                    name = getattr(ref, 'name', None)
+                    applicable_services.append({'id': sid_str, 'name': name or 'Service'})
+            except Exception:
+                applicable_services = []
+
             membership_data['plan'] = {
-                'id': str(active_membership.plan.id),
-                'name': active_membership.plan.name,
-                'allocated_discount': active_membership.plan.allocated_discount,
-                'validity_days': active_membership.plan.validity_days,
-                'description': active_membership.plan.description
+                'id': str(plan.id),
+                'name': plan.name,
+                'allocated_discount': plan.allocated_discount,
+                'validity_days': plan.validity_days,
+                'description': plan.description,
+                'applicable_services': applicable_services,
+                'applicable_service_ids': [s['id'] for s in applicable_services],
             }
         
         response = jsonify({
@@ -492,16 +622,21 @@ def get_customer_active_membership(customer_id, current_user=None):
         return response, 500
 
 @customer_bp.route('/search', methods=['GET'])
-def search_customers():
-    """Search customers by mobile or name (min 3 chars)"""
+@require_auth
+def search_customers(current_user=None):
+    """Search customers by mobile or name (min 3 chars), scoped to current branch"""
     query = request.args.get('q', '')
-    
+
     if len(query) < 3:
         return jsonify({'customers': []})
-    
-    customers = Customer.objects.filter(
-        merged_into=None
-    ).filter(
+
+    # Scope to the caller's current branch so one branch cannot enumerate another's directory
+    branch = get_selected_branch(request, current_user)
+    customer_query = Customer.objects.filter(merged_into=None)
+    if branch:
+        customer_query = customer_query.filter(branch=branch)
+
+    customers = customer_query.filter(
         Q(mobile__icontains=query) |
         Q(first_name__icontains=query) |
         Q(last_name__icontains=query) |

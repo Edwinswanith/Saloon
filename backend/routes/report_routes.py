@@ -6,6 +6,7 @@ from bson import ObjectId
 from utils.auth import require_auth, require_role
 from utils.branch_filter import get_selected_branch
 from utils.date_utils import get_ist_date_range
+from utils.staff_revenue import attributed_revenue_pipeline
 
 report_bp = Blueprint('report', __name__)
 
@@ -67,48 +68,62 @@ def service_sales_analysis(current_user=None):
             if end:
                 bills_query = bills_query.filter(bill_date__lte=end)
 
-        # Force evaluation by converting to list
-        bills = list(bills_query)
+        bills = list(bills_query.no_dereference().only('items'))
 
-        # Group by service
+        def _ref_id(doc, field):
+            raw = doc._data.get(field) if hasattr(doc, '_data') else None
+            if raw is None:
+                return None
+            return raw.id if hasattr(raw, 'id') else raw
+
+        service_ids = set()
+        for bill in bills:
+            for item in bill.items:
+                if item.item_type == 'service':
+                    sid = _ref_id(item, 'service')
+                    if sid is not None:
+                        service_ids.add(sid)
+
+        service_map = {}
+        if service_ids:
+            for s in Service.objects(id__in=list(service_ids)).no_dereference().only('name', 'group'):
+                service_map[s.id] = s
+
+        group_ids = {_ref_id(s, 'group') for s in service_map.values()}
+        group_ids.discard(None)
+        group_name_map = {}
+        if group_ids:
+            for g in ServiceGroup.objects(id__in=list(group_ids)).only('name'):
+                group_name_map[g.id] = g.name
+
         service_stats = {}
         for bill in bills:
             for item in bill.items:
-                if item.item_type == 'service' and item.service:
-                    try:
-                        # Reload service to ensure it's dereferenced
-                        item.service.reload()
-                        service_id = str(item.service.id)
-                        
-                        # Get service group name
-                        service_group_name = None
-                        if hasattr(item.service, 'group') and item.service.group:
-                            try:
-                                item.service.group.reload()
-                                service_group_name = item.service.group.name if hasattr(item.service.group, 'name') else None
-                            except (DoesNotExist, AttributeError):
-                                pass
-                        
-                        # Filter by service group if specified
-                        if service_group and service_group != 'all':
-                            if not service_group_name or service_group_name.lower() != service_group.lower():
-                                continue
-                        
-                        if service_id not in service_stats:
-                            service_stats[service_id] = {
-                                'service_name': item.service.name if hasattr(item.service, 'name') else 'Unknown Service',
-                                'service_group': service_group_name,
-                                'count': 0,
-                                'revenue': 0
-                            }
-                        
-                        service_stats[service_id]['count'] += int(item.quantity) if item.quantity else 0
-                        service_stats[service_id]['revenue'] += float(item.total) if item.total else 0.0
-                    except (DoesNotExist, AttributeError, TypeError) as e:
-                        # Skip items with broken references
+                if item.item_type != 'service':
+                    continue
+                sid = _ref_id(item, 'service')
+                svc = service_map.get(sid) if sid is not None else None
+                if not svc:
+                    continue
+
+                gid = _ref_id(svc, 'group')
+                service_group_name = group_name_map.get(gid) if gid is not None else None
+
+                if service_group and service_group != 'all':
+                    if not service_group_name or service_group_name.lower() != service_group.lower():
                         continue
 
-        # Convert to list and sort by revenue
+                key = str(sid)
+                if key not in service_stats:
+                    service_stats[key] = {
+                        'service_name': svc.name or 'Unknown Service',
+                        'service_group': service_group_name,
+                        'count': 0,
+                        'revenue': 0
+                    }
+                service_stats[key]['count'] += int(item.quantity) if item.quantity else 0
+                service_stats[key]['revenue'] += float(item.total) if item.total else 0.0
+
         results = sorted(service_stats.values(), key=lambda x: x['revenue'], reverse=True)
 
         response = jsonify(results)
@@ -334,6 +349,11 @@ def membership_clients_report(current_user=None):
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         memberships_query = Membership.objects(status=status)
+        # When listing 'active' members, only those whose expiry_date is in the
+        # future actually count — otherwise expired-but-not-yet-flipped records
+        # leak in. Other status filters (expired/replaced) keep no expiry filter.
+        if status == 'active':
+            memberships_query = memberships_query.filter(expiry_date__gte=datetime.utcnow())
         if branch:
             memberships_query = memberships_query.filter(branch=branch)
         # Force evaluation by converting to list
@@ -705,31 +725,26 @@ def staff_performance_analysis(current_user=None):
             default_end = datetime.now().strftime('%Y-%m-%d')
             start, end = get_ist_date_range(default_start, default_end)
         
-        # OPTIMIZED: Use aggregation pipeline instead of loading all bills
-        # Company-wide: No branch filtering - show all staff performance
+        # Revenue is allocated proportionally from each bill's final_amount
+        # (cash collected) — see utils/staff_revenue.py — so totals here
+        # reconcile with the dashboard and Cash Register.
+        # Company-wide: No branch filtering - show all staff performance.
         match_stage = {
             "is_deleted": False,
             "bill_date": {"$gte": start, "$lte": end},
-            "items.staff": {"$ne": None}
         }
 
-        # Build staff match condition (only filter by active status, not branch)
-        staff_match_condition = {"staff_doc.status": "active"}
-
-        # Aggregation pipeline for staff performance
-        pipeline = [
-            {"$match": match_stage},
-            {"$unwind": "$items"},
+        pipeline = attributed_revenue_pipeline(match_stage) + [
             {"$match": {"items.staff": {"$ne": None}}},
             {"$group": {
                 "_id": "$items.staff",
-                "total_revenue": {"$sum": {"$ifNull": ["$items.total", 0]}},
+                "total_revenue": {"$sum": "$_attributed_revenue"},
                 "item_count": {"$sum": {"$ifNull": ["$items.quantity", 1]}},
                 "service_revenue": {
                     "$sum": {
                         "$cond": [
                             {"$eq": ["$items.item_type", "service"]},
-                            {"$ifNull": ["$items.total", 0]},
+                            "$_attributed_revenue",
                             0
                         ]
                     }
@@ -738,7 +753,7 @@ def staff_performance_analysis(current_user=None):
                     "$sum": {
                         "$cond": [
                             {"$eq": ["$items.item_type", "package"]},
-                            {"$ifNull": ["$items.total", 0]},
+                            "$_attributed_revenue",
                             0
                         ]
                     }
@@ -747,7 +762,7 @@ def staff_performance_analysis(current_user=None):
                     "$sum": {
                         "$cond": [
                             {"$eq": ["$items.item_type", "product"]},
-                            {"$ifNull": ["$items.total", 0]},
+                            "$_attributed_revenue",
                             0
                         ]
                     }
@@ -756,7 +771,7 @@ def staff_performance_analysis(current_user=None):
                     "$sum": {
                         "$cond": [
                             {"$eq": ["$items.item_type", "membership"]},
-                            {"$ifNull": ["$items.total", 0]},
+                            "$_attributed_revenue",
                             0
                         ]
                     }
@@ -768,7 +783,7 @@ def staff_performance_analysis(current_user=None):
                             {
                                 "service_id": "$items.service",
                                 "quantity": {"$ifNull": ["$items.quantity", 1]},
-                                "revenue": {"$ifNull": ["$items.total", 0]}
+                                "revenue": "$_attributed_revenue"
                             },
                             "$$REMOVE"
                         ]
@@ -782,7 +797,8 @@ def staff_performance_analysis(current_user=None):
                 "as": "staff_doc"
             }},
             {"$unwind": {"path": "$staff_doc", "preserveNullAndEmptyArrays": True}},
-            {"$match": staff_match_condition},
+            # Note: dropped staff_doc.status='active' filter — historical
+            # revenue from inactive staff must still appear in reports.
             {"$project": {
                 "staff_id": {"$toString": "$_id"},
                 "staff_name": {
@@ -796,6 +812,7 @@ def staff_performance_analysis(current_user=None):
                         }
                     }
                 },
+                "staff_status": {"$ifNull": ["$staff_doc.status", None]},
                 "total_revenue": {"$round": ["$total_revenue", 2]},
                 "item_count": 1,
                 "service_revenue": {"$round": ["$service_revenue", 2]},
@@ -867,6 +884,7 @@ def staff_performance_analysis(current_user=None):
 
             performance.append({
                 'staff_name': staff_name,
+                'staff_status': result.get('staff_status'),
                 'total_revenue': total_revenue,
                 'total_services': int(item_count),
                 'service_revenue': result.get('service_revenue', 0.0),
@@ -889,6 +907,7 @@ def staff_performance_analysis(current_user=None):
                 name = f"{staff.first_name or ''} {staff.last_name or ''}".strip()
                 performance.append({
                     'staff_name': name,
+                    'staff_status': 'active',
                     'total_revenue': 0.0,
                     'total_services': 0,
                     'service_revenue': 0.0,

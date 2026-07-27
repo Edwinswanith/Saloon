@@ -8,6 +8,135 @@
   background: transparent;
 }
 
+/* ========== BRANCH COMPARISON STRIP (All Branches mode) ========== */
+.branch-comparison-strip {
+  padding: 14px 16px;
+  margin: 0 0 16px 0;
+  background: linear-gradient(135deg, #f0fdfa 0%, #ffffff 100%);
+  border: 1px solid rgba(13, 148, 136, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.branch-comparison-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f766e;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+.branch-comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.branch-comparison-card {
+  padding: 10px 14px;
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  min-width: 0; /* allow flex/grid children to shrink under content */
+}
+
+.branch-comparison-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.branch-comparison-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.branch-comparison-card-pct {
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 500;
+  flex: 0 0 auto;
+}
+
+.branch-comparison-card-revenue {
+  font-size: 16px;
+  font-weight: 700;
+  color: #047857;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.branch-comparison-card-bar {
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.branch-comparison-card-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981 0%, #0d9488 100%);
+  transition: width 0.3s ease;
+}
+
+.branch-comparison-card-meta {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 6px;
+}
+
+/* Tablet — keep at least 2 cards per row, drop the min so cards shrink with
+   the available width (sidebar may be visible, narrowing the content area). */
+@media (max-width: 1024px) {
+  .branch-comparison-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+  }
+
+  .branch-comparison-card {
+    padding: 9px 12px;
+  }
+
+  .branch-comparison-card-revenue {
+    font-size: 15px;
+  }
+}
+
+/* Mobile — single column for portrait, comfortable touch targets. */
+@media (max-width: 600px) {
+  .branch-comparison-strip {
+    padding: 12px 12px;
+  }
+
+  .branch-comparison-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .branch-comparison-card {
+    padding: 10px 12px;
+  }
+
+  .branch-comparison-card-name {
+    font-size: 13px;
+  }
+
+  .branch-comparison-card-revenue {
+    font-size: 16px;
+  }
+}
+
 /* ========== ELEGANT HEADER ========== */
 .dashboard-header {
   display: flex;
@@ -204,6 +333,24 @@
 
 .filter-dropdown:hover {
   border-color: var(--border-medium);
+}
+
+/* Trigger styling for the CompactSelect replacement of the dashboard filter */
+.dashboard-filter-select {
+  padding: 8px 14px;
+  border: 1.5px solid var(--border-light);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  min-height: 38px;
+  transition: border-color 0.15s ease;
+}
+
+.dashboard-filter-select:hover {
+  border-color: var(--primary-700);
 }
 
 .filter-dropdown:focus {
@@ -697,19 +844,44 @@
 }
 
 /* ========== RESPONSIVE DESIGN ========== */
+/* Stack the two staff cards whenever either axis is tablet-sized — covers iPad Pro
+   portrait (~1024) and Surface landscape (≤1280), and any portrait tablet. */
+@media (max-width: 1280px) and (orientation: portrait),
+       (max-width: 1024px) {
+  .staff-dashboard {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .staff-panel {
+    height: auto;
+    min-height: 480px;
+  }
+
+  /* 4-up stats grid collapses to 2x2 in a narrower card */
+  .top-performer-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .top-performer-stat-value {
+    font-size: 18px;
+  }
+
+  .top-performer-stat-label {
+    font-size: 10px;
+  }
+}
+
 @media (max-width: 1024px) {
   .data-card.half,
   .data-card.third {
     grid-column: span 12;
   }
-  
+
   .stats-section {
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  }
-
-  .staff-dashboard {
-    grid-template-columns: 1fr;
-    gap: 20px;
   }
 
   .performance-metrics {
@@ -1010,6 +1182,39 @@
   grid-template-columns: repeat(2, 1fr);
   gap: 24px;
   margin-bottom: 24px;
+}
+
+/* Top Performer stats grid — responsive 4→2 columns so labels like "APPOINTMENTS"
+   don't mid-word wrap inside a cramped tablet card. */
+.top-performer-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 12px;
+}
+
+.top-performer-stat {
+  text-align: center;
+  min-width: 0;
+}
+
+.top-performer-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.2;
+}
+
+.top-performer-stat-label {
+  font-size: 11px;
+  color: #6b7280;
+  text-transform: uppercase;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .staff-panel {
@@ -2157,6 +2362,16 @@
 @media (max-width: 768px) {
   .staff-dashboard {
     grid-template-columns: 1fr;
+  }
+
+  .top-performer-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .top-performer-stat-value {
+    font-size: 16px;
   }
 
   /* Employee Performance Table - Mobile Card Layout */

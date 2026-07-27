@@ -1,10 +1,42 @@
 from flask import Blueprint, request, jsonify
-from models import MembershipPlan, Membership, Branch
+from models import MembershipPlan, Membership, Branch, Service
 from datetime import datetime
 from mongoengine.errors import DoesNotExist, ValidationError
 from mongoengine.queryset.visitor import Q
 from bson import ObjectId
 from utils.auth import require_role, optional_auth
+
+
+def _resolve_service_refs(service_ids):
+    """Turn a list of service id strings into Service refs, ignoring invalid ids."""
+    if not service_ids:
+        return []
+    valid_ids = [sid for sid in service_ids if sid and ObjectId.is_valid(sid)]
+    if not valid_ids:
+        return []
+    return list(Service.objects(id__in=valid_ids))
+
+
+def _serialize_applicable_services(plan):
+    services = []
+    raw_refs = plan._data.get('applicable_services') or []
+    if not raw_refs:
+        return services
+    for ref in raw_refs:
+        try:
+            sid = ref.id if hasattr(ref, 'id') else ref
+            sid_str = str(sid)
+            try:
+                svc = ref if hasattr(ref, 'name') and ref.name else Service.objects(id=sid_str).first()
+            except Exception:
+                svc = Service.objects(id=sid_str).first()
+            services.append({
+                'id': sid_str,
+                'name': svc.name if svc and getattr(svc, 'name', None) else 'Service',
+            })
+        except Exception:
+            continue
+    return services
 
 membership_plan_bp = Blueprint('membership_plans', __name__)
 
@@ -41,6 +73,7 @@ def get_membership_plans(current_user=None):
                 'description': p.description,
                 'branch_id': str(p.branch.id) if p.branch else None,
                 'branch_name': p.branch.name if p.branch else None,
+                'applicable_services': _serialize_applicable_services(p),
             } for p in plans]
 
         response = jsonify(result)
@@ -66,7 +99,8 @@ def get_membership_plan(plan_id):
             'price': plan.price,
             'allocatedDiscount': plan.allocated_discount,
             'status': plan.status,
-            'description': plan.description
+            'description': plan.description,
+            'applicable_services': _serialize_applicable_services(plan),
         })
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
@@ -107,6 +141,7 @@ def create_membership_plan(current_user=None):
             status=data.get('status', 'active'),
             description=data.get('description', ''),
             branch=branch,
+            applicable_services=_resolve_service_refs(data.get('applicable_service_ids') or []),
         )
         plan.save()
         
@@ -152,6 +187,10 @@ def update_membership_plan(plan_id, current_user=None):
                 plan.branch = branch
             else:
                 plan.branch = None
+
+        # Replace the applicable services list when present (empty list = applies to all services)
+        if 'applicable_service_ids' in data:
+            plan.applicable_services = _resolve_service_refs(data.get('applicable_service_ids') or [])
 
         plan.updated_at = datetime.utcnow()
         plan.save()

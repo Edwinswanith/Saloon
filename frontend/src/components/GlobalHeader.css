@@ -485,6 +485,10 @@
   padding: 20px 24px;
   border-bottom: 1px solid var(--gray-200);
   background: var(--primary-700);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .logout-modal-header h3 {
@@ -492,6 +496,30 @@
   color: white;
   font-size: 20px;
   font-weight: 600;
+}
+
+.logout-modal-close-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: white;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.logout-modal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
 }
 
 .logout-modal-body {
@@ -578,6 +606,16 @@
   }
 }
 
+/* Tablet landscape 1025-1366 — matches sidebar + main-content to 220px */
+@media (min-width: 1025px) and (max-width: 1366px) {
+  .global-header {
+    left: 220px;
+  }
+  .app.sidebar-collapsed .global-header {
+    left: 64px;
+  }
+}
+
 @media (max-width: 1024px) {
   .global-header {
     left: 240px;
@@ -645,12 +683,20 @@
   }
 }
 
-@media (max-width: 768px) {
+/* Phone AND tablet portrait use the overlay-sidebar layout: no left offset on the
+   header, hamburger visible to reopen the sidebar. Keeps the header aligned with
+   the main-content area which also uses margin-left: 0 at these sizes. */
+@media (max-width: 768px),
+       (max-width: 1024px) and (orientation: portrait) {
   .global-header {
     left: 0;
     padding: 0 12px;
     height: 88px;
     overflow: visible;
+  }
+
+  .app.sidebar-collapsed .global-header {
+    left: 0;
   }
 
   .global-header-content {
