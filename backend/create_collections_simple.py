@@ -4,9 +4,11 @@ Creates collections quickly using direct MongoDB commands
 """
 from pymongo import MongoClient
 import os
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 # MongoDB Configuration
-MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
+load_env()
+MONGODB_URI = get_mongodb_uri()
 MONGODB_DB = 'Saloon'
 
 # Parse connection string
@@ -92,4 +94,3 @@ except Exception as e:
     print("\nTip: Collections will be created automatically when you")
     print("use the app to create customers, bills, etc.")
     print("\nYou can also create them manually in MongoDB Atlas Data Explorer.")
-

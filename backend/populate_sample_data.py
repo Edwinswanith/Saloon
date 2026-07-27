@@ -3,9 +3,11 @@ from models import Branch, Staff, Customer, Service, ServiceGroup, Bill, BillIte
 from datetime import datetime, timedelta
 import random
 import os
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 # Connect to MongoDB
-MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
+load_env()
+MONGODB_URI = get_mongodb_uri()
 connect(host=MONGODB_URI, db='Saloon')
 
 def generate_sample_data():
@@ -229,4 +231,3 @@ def generate_sample_data():
 
 if __name__ == "__main__":
     generate_sample_data()
-

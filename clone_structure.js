@@ -1,4 +1,4 @@
-// mongosh "mongodb+srv://edwin:<db_password>@saloon.8fxk7vz.mongodb.net/?appName=Saloon" --file clone_structure.js
+// mongosh "mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/?appName=Saloon" --file clone_structure.js
 
 const sourceDB = "Saloon";
 const targetDB = "Saloon_prod";

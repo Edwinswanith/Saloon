@@ -9,12 +9,13 @@ from mongoengine import connect
 
 # Add the project root to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 from models import MissedEnquiry, Branch, Staff
 
 # MongoDB connection
-MONGO_URI = 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon'
-
+load_env()
+MONGO_URI = get_mongodb_uri()
 def populate_missed_enquiries():
     """Populate missed enquiries data for all branches"""
     
@@ -164,4 +165,3 @@ def populate_missed_enquiries():
     
 if __name__ == '__main__':
     populate_missed_enquiries()
-

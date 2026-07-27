@@ -5,9 +5,11 @@ Uses the same connection method as app.py to ensure compatibility
 from mongoengine import connect
 import os
 from datetime import datetime
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 # Same MongoDB configuration as app.py
-MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
+load_env()
+MONGODB_URI = get_mongodb_uri()
 MONGODB_DB = 'Saloon'
 
 # Parse connection string (same logic as app.py)
@@ -401,4 +403,3 @@ if skipped:
 print("\n" + "=" * 60)
 print("Done! Check MongoDB Atlas Data Explorer to see all collections.")
 print("=" * 60)
-

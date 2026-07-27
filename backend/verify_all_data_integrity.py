@@ -18,6 +18,7 @@ from collections import defaultdict
 
 # Add the backend directory to the path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 from mongoengine import connect, disconnect
 from models import (
@@ -26,7 +27,8 @@ from models import (
 )
 
 # MongoDB Configuration
-MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
+load_env()
+MONGODB_URI = get_mongodb_uri()
 MONGODB_DB = 'Saloon_prod'  # Production database
 
 # Connect to MongoDB
@@ -506,4 +508,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

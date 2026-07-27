@@ -5,6 +5,10 @@ from datetime import datetime, date, time
 import os
 from urllib.parse import unquote
 
+from utils.env_config import get_mongodb_db, get_mongodb_uri, load_env
+
+load_env()
+
 app = Flask(__name__, static_folder='static', static_url_path='', template_folder='templates')
 
 # Enable response compression (gzip) - reduces transfer sizes by 70-80%
@@ -18,9 +22,8 @@ app.config['COMPRESS_MIMETYPES'] = [
 app.config['COMPRESS_MIN_SIZE'] = 500
 
 # MongoDB Configuration
-MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
-# Default production DB; override with MONGODB_DB env (e.g. Cloud Run) for explicit alignment
-MONGODB_DB = os.environ.get('MONGODB_DB', 'Saloon_prod')
+MONGODB_URI = get_mongodb_uri()
+MONGODB_DB = get_mongodb_db()
 
 # Connect to MongoDB
 try:
@@ -175,31 +178,36 @@ except Exception as e:
     # shouldn't block startup, but the operator needs visibility if something else broke.
     print(f"[MIGRATION] Skipped index migration ({type(e).__name__}): {e}")
 
-# Serve React static files
-# Note: Public invoice routes (/i/<share_code>, /invoice/view/<token>, etc.) are handled separately
-# and will match before this catch-all route due to Flask's routing specificity
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def serve(path):
-    # Skip public routes - these are handled by dedicated routes
-    if path.startswith('i/') or path.startswith('invoice/') or path.startswith('feedback'):
-        return jsonify({'error': 'Not found'}), 404
-    
-    if path != "":
-        decoded_path = unquote(path)
-        file_path = os.path.join(app.static_folder, decoded_path)
-        if os.path.exists(file_path):
-            response = send_from_directory(app.static_folder, decoded_path)
-            # Cache hashed assets (JS/CSS from Vite) for 1 year
-            if any(decoded_path.endswith(ext) for ext in ['.js', '.css']) and '-' in decoded_path:
-                response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
-            # Cache images/fonts for 30 days
-            elif any(decoded_path.endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.woff', '.woff2', '.ttf']):
-                response.headers['Cache-Control'] = 'public, max-age=2592000'
-            return response
-    response = send_from_directory(app.static_folder, 'index.html')
-    response.headers['Cache-Control'] = 'no-cache'
-    return response
+# On Vercel, static SPA is served from root public/ via vercel.json rewrites.
+# Flask only handles /api/* and public invoice/feedback routes in that environment.
+IS_VERCEL = os.environ.get('VERCEL') == '1'
+
+if not IS_VERCEL:
+    # Serve React static files (Docker / Cloud Run / local dev with built frontend)
+    # Public invoice routes (/i/<share_code>, /invoice/view/<token>, etc.) are handled separately
+    # and will match before this catch-all route due to Flask's routing specificity
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def serve(path):
+        # Skip public routes - these are handled by dedicated routes
+        if path.startswith('i/') or path.startswith('invoice/') or path.startswith('feedback'):
+            return jsonify({'error': 'Not found'}), 404
+
+        if path != "":
+            decoded_path = unquote(path)
+            file_path = os.path.join(app.static_folder, decoded_path)
+            if os.path.exists(file_path):
+                response = send_from_directory(app.static_folder, decoded_path)
+                # Cache hashed assets (JS/CSS from Vite) for 1 year
+                if any(decoded_path.endswith(ext) for ext in ['.js', '.css']) and '-' in decoded_path:
+                    response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+                # Cache images/fonts for 30 days
+                elif any(decoded_path.endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.woff', '.woff2', '.ttf']):
+                    response.headers['Cache-Control'] = 'public, max-age=2592000'
+                return response
+        response = send_from_directory(app.static_folder, 'index.html')
+        response.headers['Cache-Control'] = 'no-cache'
+        return response
 
 @app.teardown_appcontext
 def close_db(error):

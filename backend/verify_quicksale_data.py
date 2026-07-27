@@ -5,10 +5,11 @@ Verification script to check QuickSale data availability in MongoDB
 import sys
 from mongoengine import connect
 from models import Customer, Staff, Service, Package, Product, PrepaidPackage, Membership, Branch
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 # MongoDB connection - Use Saloon database
-MONGODB_URI = "mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/Saloon?appName=Saloon"
-
+load_env()
+MONGODB_URI = get_mongodb_uri()
 def verify_quicksale_data():
     """Verify all data required for QuickSale is available"""
     
@@ -136,4 +137,3 @@ def verify_quicksale_data():
 if __name__ == "__main__":
     success = verify_quicksale_data()
     sys.exit(0 if success else 1)
-

@@ -1,0 +1,20 @@
+# Large data / migration artifacts (not needed at runtime)
+CustomerList.xlsx
+customer_list/
+backend/*.xlsx
+backend/*.csv
+backend/backup_*/
+tmp_pipeline.json
+
+# Local Python env
+venv/
+.venv/
+backend/myenv/
+
+# Dev-only
+.cursor/
+
+# Docker (Vercel uses serverless, not Docker)
+Dockerfile
+docker-compose.yml
+cloud_run.*

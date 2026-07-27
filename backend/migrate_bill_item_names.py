@@ -10,6 +10,7 @@ import os
 
 # Add backend directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 from mongoengine import connect
 from models import Bill, Service, Package, Product, PrepaidPackage, Membership
@@ -17,9 +18,9 @@ from datetime import datetime, timezone
 from bson import ObjectId
 
 # MongoDB connection - use same as app.py
-MONGO_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
-MONGODB_DB = os.environ.get('MONGODB_DB', 'Saloon_prod')
-
+load_env()
+MONGO_URI = get_mongodb_uri()
+MONGODB_DB = get_mongodb_db()
 def build_connection_uri(base_uri, db_name):
     """Build connection URI with database name"""
     if '@' in base_uri:

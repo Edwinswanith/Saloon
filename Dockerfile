@@ -13,8 +13,10 @@ RUN npm install
 # Copy frontend source
 COPY frontend/ ./
 
-# Set VITE_PUBLIC_BASE_URL build argument (defaults to empty if not provided)
+# Set Vite build args from root .env (via docker build --build-arg)
+ARG VITE_API_BASE_URL
 ARG VITE_PUBLIC_BASE_URL
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 ENV VITE_PUBLIC_BASE_URL=${VITE_PUBLIC_BASE_URL}
 
 # Build React app

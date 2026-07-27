@@ -13,15 +13,16 @@ These indexes are critical for:
 Performance target: <200ms per query
 """
 
-import os
 import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pymongo import MongoClient, ASCENDING, DESCENDING
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 # MongoDB Configuration (same as app.py)
-MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
-MONGODB_DB = os.environ.get('MONGODB_DB', 'Saloon_prod')
-
-
+load_env()
+MONGODB_URI = get_mongodb_uri()
+MONGODB_DB = get_mongodb_db()
 def create_dashboard_indexes():
     """Create all performance-critical indexes for dashboard queries"""
 
@@ -230,4 +231,3 @@ if __name__ == '__main__':
         import traceback
         traceback.print_exc()
         sys.exit(1)
-

@@ -2,13 +2,10 @@
 import os
 from collections import defaultdict
 from pymongo import MongoClient
-
-MONGODB_URI = os.environ.get(
-    'MONGODB_URI',
-    'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon'
-)
-MONGODB_DB = os.environ.get('MONGODB_DB', 'Saloon_prod')
-
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
+load_env()
+MONGODB_URI = get_mongodb_uri()
+MONGODB_DB = get_mongodb_db()
 client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=30000, tls=True)
 db = client[MONGODB_DB]
 

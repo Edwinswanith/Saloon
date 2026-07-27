@@ -9,12 +9,14 @@ from datetime import datetime, timedelta
 
 # Add backend directory to path
 sys.path.insert(0, os.path.dirname(__file__))
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 from mongoengine import connect
 from models import Staff, Branch, StaffTempAssignment, StaffLeave
 
 # MongoDB connection
-MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
+load_env()
+MONGODB_URI = get_mongodb_uri()
 connect(host=MONGODB_URI, db='Saloon')
 
 print("=" * 60)
@@ -101,4 +103,3 @@ except Exception as e:
     print("2. Connection string is correct")
     print("3. Database 'Saloon' exists")
     sys.exit(1)
-

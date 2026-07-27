@@ -10,6 +10,7 @@ import random
 
 # Add the backend directory to the path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 from mongoengine import connect
 from models import (
@@ -22,7 +23,7 @@ from models import (
 try:
     connect(
         db='Saloon',
-        host='mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon',
+        host=get_mongodb_uri(),
         serverSelectionTimeoutMS=30000,
         connectTimeoutMS=30000,
         socketTimeoutMS=30000
@@ -535,4 +536,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

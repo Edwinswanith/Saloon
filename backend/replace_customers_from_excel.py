@@ -20,10 +20,11 @@ import argparse
 import re
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 from models import Customer, Branch
-
-MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
+load_env()
+MONGODB_URI = get_mongodb_uri()
 MONGODB_DB = 'Saloon'
 
 def normalize_mobile(mobile):
@@ -466,4 +467,3 @@ if __name__ == '__main__':
         sys.exit(1)
     
     replace_customers(args.file, confirm=args.confirm, dry_run=args.dry_run)
-

@@ -9,12 +9,14 @@ from datetime import datetime, timezone
 from mongoengine import connect, disconnect
 from models import Manager
 from utils.auth import hash_password, verify_password
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 def connect_to_mongodb():
     """Connect to MongoDB using the same logic as app.py"""
     try:
         # Get MongoDB URI from environment or use default (same as app.py)
-        MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
+load_env()
+MONGODB_URI = get_mongodb_uri()
         MONGODB_DB = 'Saloon'
         
         # Build connection URI with database name (same logic as app.py)
@@ -185,4 +187,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

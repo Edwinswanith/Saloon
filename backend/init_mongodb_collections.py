@@ -6,9 +6,11 @@ from mongoengine import connect, disconnect
 from pymongo import MongoClient
 import os
 from datetime import datetime
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 # MongoDB Configuration (same as app.py)
-MONGODB_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
+load_env()
+MONGODB_URI = get_mongodb_uri()
 MONGODB_DB = 'Saloon'
 
 # Parse connection string

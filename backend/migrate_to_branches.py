@@ -7,6 +7,7 @@ import os
 
 # Add backend directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 from mongoengine import connect
 from models import (
@@ -19,9 +20,9 @@ from datetime import datetime
 
 # MongoDB connection - use same as app.py
 # Get from environment variable or use default Atlas connection
-MONGO_URI = os.environ.get('MONGODB_URI', 'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon')
-MONGODB_DB = os.environ.get('MONGODB_DB', 'Saloon')
-
+load_env()
+MONGO_URI = get_mongodb_uri()
+MONGODB_DB = get_mongodb_db()
 def migrate_to_branches():
     """Migrate all existing data to default branch"""
     try:
@@ -291,4 +292,3 @@ if __name__ == '__main__':
     else:
         print("\nMigration failed. Please check the errors above.")
         sys.exit(1)
-

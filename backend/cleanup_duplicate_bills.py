@@ -41,6 +41,7 @@ except Exception:
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, SCRIPT_DIR)
+from utils.env_config import load_env, get_mongodb_uri, get_mongodb_db
 
 from mongoengine import connect
 from bson import ObjectId
@@ -49,7 +50,7 @@ from bson import ObjectId
 def connect_db():
     uri = os.environ.get(
         'MONGODB_URI',
-        'mongodb+srv://edwin:Edwin006@saloon.8fxk7vz.mongodb.net/?appName=Saloon',
+        'get_mongodb_uri()',
     )
     db_name = os.environ.get('MONGODB_DB', 'Saloon_prod')
     base = uri
