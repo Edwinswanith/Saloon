@@ -20,6 +20,7 @@ const YEAR_OPTIONS = Array.from({ length: 6 }, (_, i) => {
 const CashRegister = () => {
   const { currentBranch, user } = useAuth()
   const isStaff = user?.role === 'staff'
+  const todayStr = new Date().toISOString().split('T')[0]
   const [viewMode, setViewMode] = useState('daily')
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)) // YYYY-MM
@@ -50,27 +51,33 @@ const CashRegister = () => {
     return { date: selectedDate }
   }
 
+  // Staff can see today's sales totals, but not a prior date or a monthly
+  // (multi-day) range - the /summary endpoint enforces this same rule server-side.
+  const isViewingToday = viewMode === 'daily' && selectedDate === todayStr
+  const canSeeSummary = !isStaff || isViewingToday
+
   useEffect(() => {
     fetchTransactions()
-    // Staff can't view sales totals - the /summary endpoint 403s for them, so skip it.
-    if (!isStaff) {
+    if (canSeeSummary) {
       fetchSummary()
+    } else {
+      setSummary({ totalIn: 0, totalOut: 0, netFlow: 0, cashTotal: 0, upiTotal: 0, cardTotal: 0 })
     }
-  }, [selectedDate, selectedMonth, viewMode, currentBranch, isStaff])
+  }, [selectedDate, selectedMonth, viewMode, currentBranch, canSeeSummary])
 
   // Listen for branch changes
   useEffect(() => {
     const handleBranchChange = () => {
       console.log('[CashRegister] Branch changed, refreshing transactions...')
       fetchTransactions()
-      if (!isStaff) {
+      if (canSeeSummary) {
         fetchSummary()
       }
     }
 
     window.addEventListener('branchChanged', handleBranchChange)
     return () => window.removeEventListener('branchChanged', handleBranchChange)
-  }, [currentBranch, isStaff])
+  }, [currentBranch, canSeeSummary])
 
   const fetchTransactions = async () => {
     try {
@@ -214,8 +221,8 @@ const CashRegister = () => {
         ]),
       ]
 
-      // Staff don't get the sales-total rollup, in the CSV either.
-      if (!isStaff) {
+      // Staff only get the sales-total rollup in the CSV when viewing today.
+      if (canSeeSummary) {
         rows.push(
           [],
           ['Summary', '', '', '', '', '', '', ''],
@@ -321,9 +328,9 @@ const CashRegister = () => {
           </button>
         </div>
 
-        {/* Cash Flow Summary Cards - sales totals, hidden from staff */}
-        <div className={`summary-cards${isStaff ? ' summary-cards--staff' : ''}`}>
-          {!isStaff && (
+        {/* Cash Flow Summary Cards - sales totals, staff only see today's */}
+        <div className={`summary-cards${!canSeeSummary ? ' summary-cards--staff' : ''}`}>
+          {canSeeSummary && (
             <>
               <div className="summary-card cash-in">
                 <div className="card-label">Total Cash In</div>
@@ -366,8 +373,8 @@ const CashRegister = () => {
           </div>
         </div>
 
-        {/* Payment Method Breakdown - also reveals total sales, hidden from staff */}
-        {!isStaff && (
+        {/* Payment Method Breakdown - also reveals total sales, staff only see today's */}
+        {canSeeSummary && (
           <div className="payment-method-cards">
             <div className="method-card method-cash">
               <div className="method-icon"><FaMoneyBillWave /></div>
