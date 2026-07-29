@@ -56,7 +56,7 @@ def get_safe_customer_info(customer_ref):
     return {'name': 'Walk-in', 'mobile': None, 'id': None, 'source': None, 'email': None}
 
 @dashboard_bp.route('/stats', methods=['GET'])
-@require_auth
+@require_role('manager', 'owner')
 @cache_response(ttl=300)  # Cache for 5 minutes
 @log_performance
 def get_dashboard_stats(current_user=None):
@@ -257,7 +257,7 @@ def get_dashboard_stats(current_user=None):
         return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/staff-performance', methods=['GET'])
-@require_auth
+@require_role('manager', 'owner')
 @cache_response(ttl=300)  # Cache for 5 minutes
 @log_performance
 def get_staff_performance(current_user=None):
@@ -572,7 +572,7 @@ def get_branch_comparison(current_user=None):
 
 
 @dashboard_bp.route('/top-customers', methods=['GET'])
-@require_auth
+@require_role('manager', 'owner')
 @cache_response(ttl=60)  # Cache for 60 seconds
 @log_performance
 def get_top_customers(current_user=None):
@@ -657,7 +657,7 @@ def get_top_customers(current_user=None):
         return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/top-offerings', methods=['GET'])
-@require_auth
+@require_role('manager', 'owner')
 @cache_response(ttl=60)  # Cache for 60 seconds
 @log_performance
 def get_top_offerings(current_user=None):
@@ -771,7 +771,7 @@ def get_top_offerings(current_user=None):
         return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/offering-clients', methods=['GET'])
-@require_auth
+@require_role('manager', 'owner')
 def get_offering_clients(current_user=None):
     """Get customers who purchased a specific offering"""
     try:
@@ -897,7 +897,7 @@ def get_offering_clients(current_user=None):
         return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/revenue-breakdown', methods=['GET'])
-@require_auth
+@require_role('manager', 'owner')
 @cache_response(ttl=300)
 @log_performance
 def get_revenue_breakdown(current_user=None):
@@ -960,7 +960,7 @@ def get_revenue_breakdown(current_user=None):
         return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/payment-distribution', methods=['GET'])
-@require_auth
+@require_role('manager', 'owner')
 @cache_response(ttl=300)
 @log_performance
 def get_payment_distribution(current_user=None):
@@ -1020,7 +1020,7 @@ def get_payment_distribution(current_user=None):
         return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/top-moving-items', methods=['GET'])
-@require_auth
+@require_role('manager', 'owner')
 @cache_response(ttl=60)  # Cache for 60 seconds
 @log_performance
 def get_top_moving_items(current_user=None):
@@ -1331,7 +1331,7 @@ def get_top_moving_items(current_user=None):
         return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/client-funnel', methods=['GET'])
-@require_auth
+@require_role('manager', 'owner')
 @cache_response(ttl=300)
 @log_performance
 def get_client_funnel(current_user=None):
@@ -1426,7 +1426,7 @@ def get_client_funnel(current_user=None):
         return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/client-source', methods=['GET'])
-@require_auth
+@require_role('manager', 'owner')
 def get_client_source(current_user=None):
     """Get client source distribution"""
     try:
@@ -1524,7 +1524,7 @@ def get_client_source(current_user=None):
         return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/alerts', methods=['GET'])
-@require_auth
+@require_role('manager', 'owner')
 def get_operational_alerts(current_user=None):
     """Get operational alerts"""
     try:
@@ -1603,7 +1603,7 @@ def get_operational_alerts(current_user=None):
         return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/top-performer', methods=['GET'])
-@require_auth
+@require_role('manager', 'owner')
 @cache_response(ttl=300)  # Cache for 5 minutes
 @log_performance
 def get_top_performer(current_user=None):
@@ -1840,7 +1840,7 @@ def get_top_performer(current_user=None):
         return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 @dashboard_bp.route('/staff-leaderboard', methods=['GET'])
-@require_auth
+@require_role('manager', 'owner')
 @cache_response(ttl=300)  # Cache for 5 minutes
 @log_performance
 def get_staff_leaderboard(current_user=None):

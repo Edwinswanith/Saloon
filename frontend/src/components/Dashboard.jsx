@@ -66,7 +66,7 @@ import {
   FaExclamationCircle
 } from 'react-icons/fa'
 
-const Dashboard = () => {
+const ManagerOwnerDashboard = () => {
   const { currentBranch } = useAuth()
   const [activeTab, setActiveTab] = useState('staff')
   const [filter, setFilter] = useState('month')
@@ -2176,6 +2176,67 @@ const Dashboard = () => {
     )}
     </PageTransition>
   )
+}
+
+// Staff only see their own weekly sales - never the shop-wide stats,
+// staff leaderboard, or other people's revenue that ManagerOwnerDashboard
+// shows. Resets weekly for the same reason as the backend: it's a fresh
+// Mon-Sun query every load, not a stored counter.
+const StaffWeekSalesView = () => {
+  const [myWeekSales, setMyWeekSales] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    const fetchMyWeekSales = async () => {
+      setLoading(true)
+      setError(false)
+      try {
+        const response = await apiGet('/api/dashboard/my-week-sales')
+        if (!response.ok) throw new Error('Failed to fetch weekly sales')
+        const data = await response.json()
+        if (!cancelled) setMyWeekSales(data)
+      } catch (err) {
+        console.error('Error fetching my week sales:', err)
+        if (!cancelled) setError(true)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    fetchMyWeekSales()
+    return () => { cancelled = true }
+  }, [])
+
+  return (
+    <PageTransition>
+      <div className="dashboard">
+        <Header title="Dashboard" />
+        <div className="my-week-sales-card">
+          {loading ? (
+            <StatSkeleton count={1} />
+          ) : error ? (
+            <div className="my-week-sales-error">Unable to load this week's sales</div>
+          ) : (
+            <>
+              <div className="my-week-sales-label">Your Sales This Week</div>
+              <div className="my-week-sales-value">
+                ₹{(myWeekSales?.total_revenue ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </PageTransition>
+  )
+}
+
+const Dashboard = () => {
+  const { user } = useAuth()
+  if (user?.role === 'staff') {
+    return <StaffWeekSalesView />
+  }
+  return <ManagerOwnerDashboard />
 }
 
 export default Dashboard
