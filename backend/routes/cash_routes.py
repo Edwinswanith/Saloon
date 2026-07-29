@@ -235,13 +235,24 @@ def delete_cash_transaction(id, current_user=None):
         return jsonify({'error': str(e)}), 500
 
 @cash_bp.route('/summary', methods=['GET'])
-@require_role('manager', 'owner')
+@require_auth
 def get_cash_summary(current_user=None):
-    """Get cash flow summary with payment method breakdown (Manager and Owner only - reveals total sales)"""
+    """Get cash flow summary with payment method breakdown.
+
+    Reveals total sales, so staff may only request today's summary -
+    any other single date, or a start/end range, is blocked for them.
+    """
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         date_param = request.args.get('date')
+
+        user_role = current_user.get('role') if current_user else None
+        if user_role == 'staff' and (start_date or end_date or date_param != date.today().isoformat()):
+            return jsonify({
+                'error': 'Insufficient permissions',
+                'message': "Staff can only view today's cash summary"
+            }), 403
 
         query = CashTransaction.objects
 
@@ -293,9 +304,9 @@ def get_cash_summary(current_user=None):
         return jsonify({'error': str(e)}), 500
 
 @cash_bp.route('/daily-summary', methods=['GET'])
-@require_auth
+@require_role('manager', 'owner')
 def get_daily_cash_summary(current_user=None):
-    """Get daily cash summary grouped by date"""
+    """Get daily cash summary grouped by date (Manager and Owner only - inherently multi-day/historical)"""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
@@ -346,9 +357,9 @@ def get_daily_cash_summary(current_user=None):
         return jsonify({'error': str(e)}), 500
 
 @cash_bp.route('/balance', methods=['GET'])
-@require_auth
+@require_role('manager', 'owner')
 def get_cash_balance(current_user=None):
-    """Get current cash balance"""
+    """Get current cash balance (Manager and Owner only - cumulative all-time total)"""
     try:
         query_in = CashTransaction.objects(transaction_type='in')
         query_out = CashTransaction.objects(transaction_type='out')

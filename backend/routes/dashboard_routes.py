@@ -435,6 +435,59 @@ def get_staff_performance(current_user=None):
         return jsonify({'error': str(e), 'traceback': error_trace}), 500
 
 
+@dashboard_bp.route('/my-week-sales', methods=['GET'])
+@require_auth
+@log_performance
+def get_my_week_sales(current_user=None):
+    """Personal 'my sales this week' stat for the logged-in staff member.
+    Mon-Sun of the current IST week, across ALL branches. current_user['user_id']
+    is the only source of identity - never a client-supplied param, so no
+    privilege-escalation surface.
+
+    Deliberately no @cache_response: that decorator's cache key doesn't include
+    caller identity, so every staff member would share one cached value.
+    """
+    try:
+        user_id = (current_user or {}).get('user_id')
+        if not user_id or not ObjectId.is_valid(user_id):
+            return jsonify({'error': 'Invalid user'}), 400
+
+        today_ist = datetime.strptime(get_ist_today(), '%Y-%m-%d').date()
+        monday = today_ist - timedelta(days=today_ist.weekday())  # Monday=0
+        sunday = monday + timedelta(days=6)
+        start, end = get_ist_date_range(monday.strftime('%Y-%m-%d'), sunday.strftime('%Y-%m-%d'))
+
+        staff_obj_id = ObjectId(user_id)
+        match_stage = {
+            "is_deleted": False,
+            "bill_date": {"$gte": start, "$lte": end},
+            "items.staff": staff_obj_id,  # bill-level prefilter, no `branch` key (all-branches scope)
+        }
+
+        pipeline = attributed_revenue_pipeline(match_stage) + [
+            # Post-unwind re-match: attributed_revenue_pipeline's own $match is
+            # bill-level only, so without this a bill shared with a coworker
+            # (e.g. haircut by this staff + product upsell by another) would
+            # also sum the COWORKER's attributed share into this total.
+            {"$match": {"items.staff": staff_obj_id}},
+            {"$group": {"_id": None, "total_revenue": {"$sum": "$_attributed_revenue"}}},
+            {"$project": {"_id": 0, "total_revenue": {"$round": ["$total_revenue", 2]}}},
+        ]
+        result = list(Bill.objects.aggregate(pipeline))
+        total_revenue = result[0]['total_revenue'] if result else 0.0
+
+        return jsonify({
+            'total_revenue': total_revenue,
+            'week_start': monday.strftime('%Y-%m-%d'),
+            'week_end': sunday.strftime('%Y-%m-%d'),
+        })
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        print(f"[DASHBOARD STATS] Error in get_my_week_sales: {str(e)}")
+        print(f"[DASHBOARD STATS] Traceback: {error_trace}")
+        return jsonify({'error': str(e), 'traceback': error_trace}), 500
+
+
 @dashboard_bp.route('/branch-comparison', methods=['GET'])
 @require_role('owner')
 @cache_response(ttl=300)
