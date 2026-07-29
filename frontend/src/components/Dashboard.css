@@ -8,6 +8,36 @@
   background: transparent;
 }
 
+/* ========== STAFF "MY WEEK" VIEW ========== */
+.my-week-sales-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin: 0 16px 16px 16px;
+  border: 1px solid rgba(13, 148, 136, 0.15);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.my-week-sales-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gray-600, #4b5563);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.my-week-sales-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #0f766e;
+  margin-top: 6px;
+}
+
+.my-week-sales-error {
+  font-size: 14px;
+  color: var(--gray-500, #6b7280);
+}
+
 /* ========== BRANCH COMPARISON STRIP (All Branches mode) ========== */
 .branch-comparison-strip {
   padding: 14px 16px;

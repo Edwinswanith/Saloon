@@ -6,7 +6,6 @@ import { API_BASE_URL } from '../config'
 import { useAuth } from '../contexts/AuthContext'
 import { apiGet, apiPost, apiPut } from '../utils/api'
 import { showSuccess, showError, showWarning, showInfo } from '../utils/toast.jsx'
-import { StatSkeleton } from './shared/SkeletonLoaders'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import { celebrateBig } from '../utils/confetti'
@@ -226,32 +225,6 @@ const QuickSale = () => {
   // Prevents duplicate bills from rapid Checkout clicks
   const [isCheckingOut, setIsCheckingOut] = useState(false)
   const appointmentCreatedRef = useRef(false)
-
-  // Personal "my sales this week" widget - staff only, resets weekly because
-  // the backend always queries the current Mon-Sun window, not a stored counter.
-  const [myWeekSales, setMyWeekSales] = useState(null)
-  const [myWeekSalesLoading, setMyWeekSalesLoading] = useState(false)
-  const [myWeekSalesError, setMyWeekSalesError] = useState(false)
-
-  const fetchMyWeekSales = async () => {
-    setMyWeekSalesLoading(true)
-    setMyWeekSalesError(false)
-    try {
-      const response = await apiGet('/api/dashboard/my-week-sales')
-      if (!response.ok) throw new Error('Failed to fetch weekly sales')
-      setMyWeekSales(await response.json())
-    } catch (err) {
-      console.error('Error fetching my week sales:', err)
-      setMyWeekSalesError(true)
-    } finally {
-      setMyWeekSalesLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    if (!user || user.role !== 'staff') return
-    fetchMyWeekSales()
-  }, [user?.id, user?.role])
 
   // Helper function to get current time in HH:MM format
   const getCurrentTime = () => {
@@ -2460,11 +2433,6 @@ const QuickSale = () => {
           showSuccess(`Bill created successfully! Bill Number: ${checkoutData.bill_number} | Final Amount: ₹${checkoutData.final_amount.toFixed(2)}`)
         }
 
-        // Keep the "my week" widget in sync with the bill that was just created
-        if (user?.role === 'staff') {
-          fetchMyWeekSales()
-        }
-
         // Save customer DOB if entered/updated
         if (customerDob && selectedCustomer) {
           apiPut(`/api/customers/${selectedCustomer.id}`, {
@@ -2641,22 +2609,6 @@ const QuickSale = () => {
     <PageTransition>
       <div className="quick-sale-page">
       <div className="quick-sale-container">
-        {user?.role === 'staff' && (
-          <div className="my-week-sales-card">
-            {myWeekSalesLoading ? (
-              <StatSkeleton count={1} />
-            ) : myWeekSalesError ? (
-              <div className="my-week-sales-error">Unable to load this week's sales</div>
-            ) : (
-              <>
-                <div className="my-week-sales-label">Your Sales This Week</div>
-                <div className="my-week-sales-value">
-                  ₹{(myWeekSales?.total_revenue ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-              </>
-            )}
-          </div>
-        )}
         <div className="quick-sale-card">
           <h1 className="card-title">New Booking</h1>
           <div className="title-separator"></div>
