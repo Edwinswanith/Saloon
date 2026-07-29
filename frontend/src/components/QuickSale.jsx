@@ -4197,8 +4197,13 @@ const QuickSale = () => {
       {showInvoiceModal && (
         <div className="invoice-modal-overlay" onClick={handleCloseInvoiceModal}>
           <div className="invoice-modal-container" onClick={(e) => e.stopPropagation()}>
-            <h2>Invoice</h2>
-            
+            <div className="invoice-modal-header">
+              <button className="invoice-back-btn" onClick={handleCloseInvoiceModal}>
+                ← Back
+              </button>
+              <h2>Invoice</h2>
+            </div>
+
             {loadingInvoice ? (
               <div className="invoice-loading-state">
                 <p>Loading invoice data...</p>

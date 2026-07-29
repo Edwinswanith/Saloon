@@ -717,8 +717,13 @@ const Appointment = ({ setActivePage }) => {
             {showInvoiceView ? (
               // Invoice View
               <>
-                <h2>Invoice</h2>
-                
+                <div className="invoice-modal-header">
+                  <button className="invoice-back-btn" onClick={handleBackToAppointment}>
+                    <FaArrowLeft /> Back
+                  </button>
+                  <h2>Invoice</h2>
+                </div>
+
                 {loadingInvoice ? (
                   <div className="invoice-loading-state">
                     <p>Loading invoice data...</p>

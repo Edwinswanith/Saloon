@@ -3758,10 +3758,43 @@ select.table-select:focus {
 }
 
 .invoice-modal-container h2 {
-  margin: 0 0 20px 0;
+  margin: 0;
   font-size: 20px;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+/* Sticky so staff always have a visible way back out, even after
+   scrolling down into a long invoice - tap-outside-to-close alone
+   isn't reachable once the card fills the screen on mobile. */
+.invoice-modal-header {
+  position: sticky;
+  top: -24px;
+  margin: -24px -24px 20px -24px;
+  padding: 16px 24px;
+  background: white;
+  border-bottom: 1px solid var(--gray-200);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 2;
+}
+
+.invoice-back-btn {
+  padding: 6px 14px;
+  background: var(--gray-100);
+  color: var(--gray-700);
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.invoice-back-btn:hover {
+  background: var(--gray-200);
 }
 
 .invoice-preview-wrapper {
