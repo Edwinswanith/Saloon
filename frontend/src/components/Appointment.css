@@ -777,6 +777,46 @@
   padding: 24px 24px 0 24px;
 }
 
+/* Sticky so staff always have a visible way back out of the invoice
+   view, even after scrolling down into a long invoice. */
+.invoice-modal-header {
+  position: sticky;
+  top: 0;
+  margin: 0 0 20px 0;
+  padding: 24px 24px 16px 24px;
+  background: white;
+  border-bottom: 1px solid var(--gray-200);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 2;
+}
+
+.invoice-modal-header h2 {
+  margin: 0;
+  padding: 0;
+}
+
+.invoice-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--gray-100);
+  color: var(--gray-700);
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.invoice-back-btn:hover {
+  background: var(--gray-200);
+}
+
 .appointment-invoice-modal {
   background: white;
   border-radius: 12px;
