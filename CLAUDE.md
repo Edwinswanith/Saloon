@@ -10,9 +10,15 @@ Saloon Management System - A multi-branch salon/spa business management applicat
 
 - **Backend**: Flask 3.0, MongoEngine ODM, MongoDB Atlas
 - **Frontend**: React 18, Vite, Ant Design 6, Zustand, React Query
-- **Deployment**: Google Cloud Run via Docker (multi-stage build)
+- **Deployment**: Google Cloud Run via Docker (multi-stage build), and Vercel (SPA + Flask serverless function)
+
+## Environment Setup
+
+Config is a single root-level `.env` (copy from `.env.example`), loaded by `backend/utils/env_config.py::load_env()` (checks project root, then `backend/`) and by Vite for `VITE_*` vars. Required: `MONGODB_URI`, `JWT_SECRET`. `MONGODB_DB` defaults to `Saloon_prod`; set it to `Saloon` for a dev database. There is no more in-code toggle in `app.py` — do not edit `MONGODB_DB` there.
 
 ## Development Commands
+
+The root is an npm workspace monorepo (`package.json` → `workspaces: ["frontend"]`).
 
 ### Backend
 ```bash
@@ -24,20 +30,24 @@ python app.py  # Port 5000
 
 ### Frontend
 ```bash
-cd frontend
-npm install
-npm run dev   # Port 5173
-npm run build # Production build
+npm install        # from repo root (installs frontend workspace)
+npm run dev         # or: npm run dev:frontend — Vite on port 5173
+npm run dev:backend # cd backend && python app.py, from root
+npm run build       # frontend/npm run build directly, or `npm run build` at root for the Vercel bundle (see below)
 ```
 
-### Docker
+### Docker (Cloud Run target)
 ```bash
-docker-compose up  # Full stack locally
+docker-compose up  # Full stack locally: backend :5000, frontend :5173
 cloud_run.bat      # Deploy to Cloud Run (Windows)
 cloud_run.sh       # Deploy to Cloud Run (Linux/macOS)
 ```
 
 Production image runs gunicorn with `gthread` workers (2 workers × 4 threads, 120s timeout) - see [Dockerfile](Dockerfile#L70). `python app.py` is dev-only.
+
+### Vercel (alternate deployment target)
+
+The repo also deploys as a single Vercel project: SPA + Flask served same-origin. `api/index.py` is the actual Vercel Python entrypoint — a thin shim that adds `backend/` to `sys.path` and imports the Flask `app` object from `backend/app.py` (Vercel's Python builder requires the function file to live under `api/`; it auto-installs `backend/requirements.txt` itself, so `installCommand` in `vercel.json` must not also run `pip install` — that fails on Vercel's `uv`-managed Python image with `externally-managed-environment`). `vercel.json` rewrites `/api/*`, `/i/*`, `/invoice/*`, `/feedback*` to `/api/index` and everything else to the SPA. `npm run vercel-build` (→ [scripts/vercel-build.mjs](scripts/vercel-build.mjs)) builds the frontend with empty `VITE_API_BASE_URL`/`VITE_PUBLIC_BASE_URL` so production web calls same-origin `/api/...`, then copies `frontend/dist` and `backend/static/css` into `public/`. When adding a new public (non-`/api`) route prefix, update both the Flask skip-list (see Static/Public Route Precedence below) *and* the `rewrites` array in `vercel.json`, or Vercel will serve `index.html` instead of routing to Flask.
 
 ## Architecture
 
@@ -45,7 +55,7 @@ Production image runs gunicorn with `gthread` workers (2 workers × 4 threads, 1
 
 **Entry Point**: `backend/app.py` - Flask app initialization, MongoDB connection, route registration
 
-**Database Toggle**: In `app.py`, switch `MONGODB_DB` between `'Saloon_prod'` (production) and `'Saloon'` (development)
+**Database Toggle**: set `MONGODB_DB` in `.env` (see Environment Setup above) — not a code edit
 
 **Models**: `backend/models.py` - MongoEngine documents with `to_dict()` helper for JSON serialization
 
@@ -65,7 +75,7 @@ Production image runs gunicorn with `gthread` workers (2 workers × 4 threads, 1
 
 ### Frontend Structure
 
-**API Configuration**: `frontend/src/config.js` - Toggle `API_BASE_URL` between local and Cloud Run URL
+**API Configuration**: `frontend/src/config.js` - `API_BASE_URL` resolves from `VITE_API_BASE_URL` if set, else `window.location.origin` in prod builds (same-origin, used by the Vercel target), else `http://127.0.0.1:5000` in dev
 
 **API Utility**: `frontend/src/utils/api.js` - Centralized fetch with auth headers
 - Use `apiGet()`, `apiPost()`, `apiPut()`, `apiDelete()` for all API calls

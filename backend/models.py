@@ -318,6 +318,15 @@ class Bill(Document):
     pdf_generated_at = DateTimeField()  # When PDF was generated
     pdf_file_size = IntField()  # PDF file size in bytes
     invoice = ReferenceField('Invoice')  # Reference to Invoice document
+    checked_out_by = ReferenceField('Staff')  # Staff who processed checkout (customer signature feature)
+
+# Customer Signature feature: set on the ORIGINAL Invoice when a manager/owner
+# voids it via an administrative correction. The original is never mutated further.
+class InvoiceCorrection(EmbeddedDocument):
+    voided_by = ReferenceField('Staff', required=True)
+    voided_at = DateTimeField(default=datetime.utcnow, required=True)
+    void_reason = StringField(required=True)
+    corrected_invoice = ReferenceField('Invoice')
 
 # Invoice Model
 class Invoice(Document):
@@ -337,7 +346,7 @@ class Invoice(Document):
     invoice_number = StringField(required=True, unique=True, max_length=50)  # Unique invoice number (e.g., INV-000400)
     customer = ReferenceField('Customer')  # Customer reference for easy querying
     branch = ReferenceField('Branch')  # Branch reference for easy querying
-    pdf_file_id = ObjectIdField(required=True)  # GridFS file ID reference
+    pdf_file_id = ObjectIdField()  # GridFS file ID reference. Not required: absent until first generated.
     invoice_data = DictField(required=True)  # Full invoice data snapshot for historical reference
     generated_at = DateTimeField(required=True, default=datetime.utcnow)  # When invoice was generated
     status = StringField(max_length=20, default='generated', choices=['generated', 'shared', 'viewed', 'downloaded'])  # Invoice status
@@ -347,6 +356,66 @@ class Invoice(Document):
     downloaded_at = DateTimeField()  # When invoice was downloaded
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
+
+    # --- Customer Signature feature ---
+    # Confirmation lifecycle, independent of `status` above (which tracks distribution:
+    # generated/shared/viewed/downloaded, not whether the customer has confirmed the bill).
+    invoice_status = StringField(max_length=30, default='awaiting_customer_confirmation',
+        choices=['awaiting_customer_confirmation', 'finalized', 'voided'])
+    signature_status = StringField(max_length=20, default='pending',
+        choices=['pending', 'signed', 'skipped', 'not_required'])
+    pdf_status = StringField(max_length=20, default='not_generated',
+        choices=['not_generated', 'generating', 'ready', 'failed'])
+    pdf_error = StringField()
+
+    # Frozen snapshot binding — the customer signs against this exact version/hash.
+    invoice_version = IntField(default=1)
+    snapshot_hash = StringField()  # sha256 of material fields inside invoice_data
+
+    # Signature payload + metadata
+    signature_image = StringField()  # base64 PNG data-URL, normalized server-side
+    signature_hash = StringField()  # sha256 of the NORMALIZED bytes — never the raw upload
+    signed_at = DateTimeField()
+    signed_by_customer_name = StringField(max_length=150)
+    skip_reason = StringField()
+    finalized_by = ReferenceField('Staff')
+    finalized_at = DateTimeField()
+    acknowledgment_version = StringField()
+
+    # Idempotency
+    finalize_idempotency_key = StringField()
+    finalize_request_hash = StringField()
+
+    # Correction / revision chain
+    correction = EmbeddedDocumentField(InvoiceCorrection)  # set on the OLD invoice when voided
+    revision_of = ReferenceField('Invoice')  # set on the NEW invoice
+
+
+# Customer Signature feature: append-only audit trail for the invoice confirmation
+# lifecycle. Never logs stroke-level drawing data or raw signature bytes — only
+# discrete lifecycle events and, where relevant, signature_hash.
+class InvoiceLifecycleEvent(Document):
+    meta = {
+        'collection': 'invoice_lifecycle_events',
+        'indexes': ['invoice', 'bill', 'created_at']
+    }
+    event_type = StringField(required=True, choices=[
+        'invoice_generated', 'invoice_finalized_signed', 'invoice_finalized_skipped',
+        'pdf_generated', 'pdf_generation_failed',
+        'invoice_downloaded', 'whatsapp_share_initiated',
+    ])
+    bill = ReferenceField('Bill')
+    invoice = ReferenceField('Invoice')
+    invoice_version = IntField()
+    snapshot_hash = StringField()
+    signature_hash = StringField()
+    actor = ReferenceField('Staff')
+    customer = ReferenceField('Customer')
+    server_timestamp = DateTimeField(default=datetime.utcnow, required=True)
+    reason = StringField()
+    acknowledgment_version = StringField()
+    created_at = DateTimeField(default=datetime.utcnow)
+
 
 # Appointment Model
 class Appointment(Document):

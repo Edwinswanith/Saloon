@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, make_response
-from models import Bill, Customer, Product, BillItemEmbedded, DiscountApprovalRequest, ApprovalCode, Staff, Membership, Branch, CashTransaction, Service, Package, MembershipPlan, ReferralProgramSettings, Referral, Invoice, Notification, Offer
+from models import Bill, Customer, Product, BillItemEmbedded, DiscountApprovalRequest, ApprovalCode, Staff, Membership, Branch, CashTransaction, Service, Package, MembershipPlan, ReferralProgramSettings, Referral, Invoice, Notification, Offer, InvoiceLifecycleEvent
 from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 from mongoengine import Q
@@ -8,7 +8,204 @@ from utils.branch_filter import get_selected_branch
 from utils.date_utils import get_ist_date_range
 import uuid
 import re
+import base64
+import hashlib
+import json
+from io import BytesIO
 from utils.approval_codes import hash_approval_code, is_code_expired, can_use_code
+
+# Customer Signature feature — acknowledgment statement shown above the pad.
+# Bump the version string (and add the old text to ACK_STATEMENT_TEXT below)
+# whenever the wording changes, so historical invoices retain proof of exactly
+# what the customer agreed to.
+SIGNATURE_ACK_VERSION = 'salon_invoice_confirmation_v1'
+ACK_STATEMENT_TEXT = {
+    'salon_invoice_confirmation_v1': (
+        'I confirm that I have reviewed the services, products, charges, '
+        'discounts, taxes, and final amount shown on this invoice.'
+    ),
+}
+
+# Material fields — anything that changes the customer's financial obligation
+# or the identity of the transaction. Only these are hashed for snapshot binding.
+_MATERIAL_ITEM_KEYS = ('type', 'name', 'price', 'discount', 'quantity', 'total')
+
+
+def _material_snapshot(invoice_data):
+    """Extract just the material fields from an invoice_data dict, in a stable
+    shape, so the same bill content always hashes identically."""
+    items = [
+        {k: item.get(k) for k in _MATERIAL_ITEM_KEYS}
+        for item in (invoice_data.get('items') or [])
+    ]
+    summary = invoice_data.get('summary') or {}
+    customer = invoice_data.get('customer') or {}
+    branch = invoice_data.get('branch') or {}
+    payment = invoice_data.get('payment') or {}
+    return {
+        'items': items,
+        'subtotal': summary.get('subtotal'),
+        'discount': summary.get('discount'),
+        'referral_discount': summary.get('referral_discount'),
+        'tax': summary.get('tax'),
+        'tax_rate': summary.get('tax_rate'),
+        'total': summary.get('total'),
+        'payment_mode': payment.get('mode'),
+        'customer_id': customer.get('id'),
+        'branch_id': branch.get('id'),
+        'applied_offer': invoice_data.get('applied_offer'),
+    }
+
+
+def compute_snapshot_hash(invoice_data):
+    """sha256 of the canonical material-fields snapshot. Two calls with the
+    same bill content always produce the same hash regardless of key order."""
+    canonical = json.dumps(_material_snapshot(invoice_data), sort_keys=True, default=str, separators=(',', ':'))
+    return hashlib.sha256(canonical.encode('utf-8')).hexdigest()
+
+
+def compute_request_hash(action, invoice_version, snapshot_hash, signature_hash=None,
+                          skip_reason=None, acknowledgment_version=None):
+    """sha256 binding what was actually submitted, so a reused idempotency key
+    with different content is rejected instead of silently replayed."""
+    canonical = json.dumps({
+        'action': action,
+        'invoice_version': invoice_version,
+        'snapshot_hash': snapshot_hash,
+        'signature_hash': signature_hash,
+        'skip_reason': skip_reason,
+        'acknowledgment_version': acknowledgment_version,
+    }, sort_keys=True, separators=(',', ':'))
+    return hashlib.sha256(canonical.encode('utf-8')).hexdigest()
+
+
+def validate_and_normalize_signature(data_url):
+    """Decode, verify, and re-encode a client-submitted signature PNG.
+
+    Never trusts the client-supplied MIME prefix or dimensions. Returns
+    (normalized_data_url, signature_hash) or raises ValueError with a
+    user-facing message.
+    """
+    from PIL import Image
+
+    if not data_url or not isinstance(data_url, str):
+        raise ValueError('signature_image is required')
+
+    if ',' in data_url:
+        raw_b64 = data_url.split(',', 1)[1]
+    else:
+        raw_b64 = data_url
+
+    try:
+        raw_bytes = base64.b64decode(raw_b64, validate=True)
+    except Exception:
+        raise ValueError('signature_image is not valid base64')
+
+    if len(raw_bytes) > 300 * 1024:
+        raise ValueError('Signature image is too large')
+
+    try:
+        img = Image.open(BytesIO(raw_bytes))
+        img.verify()
+        img = Image.open(BytesIO(raw_bytes))  # verify() invalidates the handle — reopen
+        if img.format != 'PNG':
+            raise ValueError('Signature must be a PNG image')
+    except Exception:
+        raise ValueError('Signature image is not a valid PNG')
+
+    width, height = img.size
+    if width > 1600 or height > 600:
+        raise ValueError('Signature image dimensions are too large')
+
+    img = img.convert('RGBA')
+
+    # Bounding box + coverage of non-transparent/non-white pixels, computed
+    # relative to the drawn bounding box (not the whole canvas) so a small,
+    # legitimate single-stroke signature isn't penalized for not filling the pad.
+    pixels = img.load()
+    min_x, min_y, max_x, max_y = width, height, -1, -1
+    non_blank = 0
+    for y in range(height):
+        for x in range(width):
+            r, g, b, a = pixels[x, y]
+            is_blank = a == 0 or (r > 250 and g > 250 and b > 250)
+            if not is_blank:
+                non_blank += 1
+                if x < min_x: min_x = x
+                if x > max_x: max_x = x
+                if y < min_y: min_y = y
+                if y > max_y: max_y = y
+
+    if non_blank == 0 or max_x < 0:
+        raise ValueError('Signature appears blank. Please sign again.')
+
+    box_w = max_x - min_x + 1
+    box_h = max_y - min_y + 1
+    if box_w < 20 or box_h < 10:
+        raise ValueError('Signature appears too small. Please sign again.')
+
+    coverage = non_blank / float(box_w * box_h)
+    if coverage < 0.02:
+        raise ValueError('Signature appears blank. Please sign again.')
+
+    # Normalize: strip metadata, re-encode onto a clean canvas.
+    clean = Image.new('RGBA', img.size, (255, 255, 255, 0))
+    clean.paste(img, (0, 0), img)
+    out_buffer = BytesIO()
+    clean.save(out_buffer, format='PNG')
+    normalized_bytes = out_buffer.getvalue()
+
+    signature_hash = hashlib.sha256(normalized_bytes).hexdigest()
+    normalized_data_url = 'data:image/png;base64,' + base64.b64encode(normalized_bytes).decode('ascii')
+    return normalized_data_url, signature_hash
+
+
+def reject_if_not_finalized(invoice):
+    """Backend enforcement for Download/WhatsApp/public PDF routes — a frontend
+    disabled button alone is not sufficient. Only blocks while genuinely
+    'awaiting_customer_confirmation'; 'finalized' and 'voided' (compliance
+    access to a superseded original) both pass, as does a missing/legacy
+    invoice with no invoice_status field at all."""
+    if invoice and invoice.invoice_status == 'awaiting_customer_confirmation':
+        return True
+    return False
+
+
+def reject_if_finalized(bill):
+    """Guard used by every route that can mutate material bill content.
+    Returns a (response, status) tuple to return early with if the bill's
+    linked invoice is already finalized/voided, else None.
+    """
+    invoice = Invoice.objects(bill=bill.id).first()
+    if invoice and invoice.invoice_status in ('finalized', 'voided'):
+        response = jsonify({
+            'error': 'invoice_finalized',
+            'message': 'This bill has already been finalized and signed. It can no longer be edited.'
+        })
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 409
+    return None
+
+
+def refresh_pending_snapshot(bill):
+    """Called after a material edit to a bill that's still awaiting the
+    customer's signature. Rebuilds the frozen snapshot and bumps the version,
+    which invalidates any signature attempt already in flight against the
+    old version (the client's next finalize call gets 409 invoice_changed).
+    No-op if the bill has no linked invoice yet (pre-checkout).
+    """
+    try:
+        invoice = Invoice.objects(bill=bill.id).first()
+        if not invoice or invoice.invoice_status != 'awaiting_customer_confirmation':
+            return
+        invoice_data = _build_invoice_data_live(bill)
+        Invoice.objects(id=invoice.id).update_one(
+            set__invoice_data=invoice_data,
+            inc__invoice_version=1,
+            set__snapshot_hash=compute_snapshot_hash(invoice_data),
+        )
+    except Exception as e:
+        print(f"[SIGNATURE] Warning: failed to refresh pending snapshot for bill {bill.id}: {e}")
 
 # Discount limits by role - Only owner can apply discounts
 DISCOUNT_LIMITS = {
@@ -265,8 +462,111 @@ def _resolve_bill_metadata(bill):
     return customer_data, branch_data
 
 
+def _staff_display_name(staff):
+    """Staff has first_name/last_name, no single 'name' field."""
+    if not staff:
+        return None
+    try:
+        return f"{staff.first_name or ''} {staff.last_name or ''}".strip() or None
+    except Exception:
+        return None
+
+
+_IST_OFFSET = timedelta(hours=5, minutes=30)
+
+
+def _format_dt_display(dt):
+    """Human-readable IST timestamp matching the invoice's existing booking-date/
+    time style (e.g. '01 Sep 2026, 10:55 am') — not a raw isoformat() dump.
+
+    `dt` is stored as naive UTC (datetime.utcnow()). A server-rendered PDF/HTML
+    caption has no concept of "the viewer's timezone", so — matching this
+    codebase's existing IST assumption in create_bill()'s date parsing — this
+    shifts +5:30 before formatting rather than printing raw UTC.
+    """
+    if not dt:
+        return None
+    ist_dt = dt + _IST_OFFSET
+    return f"{ist_dt.strftime('%d %b %Y')}, {ist_dt.strftime('%I:%M %p').lower()}"
+
+
+def _to_utc_iso(dt):
+    """ISO string explicitly marked UTC ('Z' suffix) so browser-side
+    `new Date(...)` parses it as UTC and correctly converts to the viewer's
+    own local time — a bare isoformat() with no offset gets misread by JS as
+    already-local, which was the root cause of the wrong time shown here."""
+    if not dt:
+        return None
+    return dt.isoformat() + 'Z'
+
+
+def _signature_block(invoice):
+    """Build the client-facing 'signature' dict for an invoice's current state.
+
+    Both a UTC-marked ISO string (`signed_at`/`finalized_at` — parsed by the
+    React on-screen preview via `new Date(...)`, which then converts to the
+    viewer's own local timezone automatically) and a pre-formatted IST display
+    string (`signed_at_display`/`finalized_at_display` — used verbatim by the
+    PDF and the public HTML view, which can't know the future viewer's
+    timezone at render time) are included.
+    """
+    if invoice.signature_status == 'signed' and invoice.signature_image:
+        finalized_by_name = _staff_display_name(invoice.finalized_by)
+        return {
+            'status': 'signed',
+            'image': invoice.signature_image,
+            'signed_at': _to_utc_iso(invoice.signed_at),
+            'signed_at_display': _format_dt_display(invoice.signed_at),
+            'signed_by_customer_name': invoice.signed_by_customer_name,
+            'finalized_by_name': finalized_by_name,
+        }
+    if invoice.signature_status == 'skipped':
+        finalized_by_name = _staff_display_name(invoice.finalized_by)
+        return {
+            'status': 'skipped',
+            'skip_reason': invoice.skip_reason,
+            'finalized_by_name': finalized_by_name,
+            'finalized_at': _to_utc_iso(invoice.finalized_at),
+            'finalized_at_display': _format_dt_display(invoice.finalized_at),
+        }
+    if invoice.signature_status == 'not_required':
+        return {'status': 'not_required'}
+    return None
+
+
 def _build_invoice_data(bill):
-    """Build complete invoice data dict for a bill. Used by all invoice endpoints."""
+    """Build complete invoice data dict for a bill. Used by all invoice endpoints.
+
+    Customer Signature feature: once the linked Invoice is finalized, this
+    returns the FROZEN snapshot captured at checkout (Invoice.invoice_data),
+    never rebuilding from the (possibly since-changed) live Bill — the customer
+    signed the exact snapshot they were shown. Pre-finalization, it still
+    live-builds from Bill so staff see up-to-date totals while editing.
+    """
+    invoice = Invoice.objects(bill=bill.id).first()
+
+    if invoice and invoice.invoice_status == 'finalized' and invoice.invoice_data:
+        data = dict(invoice.invoice_data)
+    else:
+        data = _build_invoice_data_live(bill)
+
+    if invoice:
+        data['invoice_status'] = invoice.invoice_status
+        data['signature_status'] = invoice.signature_status
+        data['pdf_status'] = invoice.pdf_status
+        data['invoice_version'] = invoice.invoice_version
+        data['snapshot_hash'] = invoice.snapshot_hash
+        data['signature'] = _signature_block(invoice)
+        data['acknowledgment_statement'] = ACK_STATEMENT_TEXT.get(SIGNATURE_ACK_VERSION)
+        data['acknowledgment_version'] = SIGNATURE_ACK_VERSION
+    else:
+        data['signature'] = None
+
+    return data
+
+
+def _build_invoice_data_live(bill):
+    """The original live-from-Bill invoice builder (unchanged logic)."""
     customer_data, branch_data = _resolve_bill_metadata(bill)
     items = _resolve_bill_items(bill)
 
@@ -964,6 +1264,9 @@ def add_bill_item(id):
             return jsonify({'error': f'Invalid bill ID format: {id}'}), 400
         
         bill = Bill.objects.get(id=id)
+        guard = reject_if_finalized(bill)
+        if guard:
+            return guard
         data = request.get_json()
 
         # Get start time as string (model expects StringField)
@@ -1105,6 +1408,7 @@ def add_bill_item(id):
         print(f"[ADD_ITEM] Bill {id}: $push result={result}, item_type={data['item_type']}, name={item_name}")
         bill.reload()
         print(f"[ADD_ITEM] Bill {id}: after reload, items count={len(bill.items)}, items={[i.name for i in bill.items]}")
+        refresh_pending_snapshot(bill)
 
         return jsonify({
             'id': len(bill.items) - 1,  # Return index
@@ -1248,6 +1552,9 @@ def add_bill_items_bulk(id):
             return jsonify({'error': f'Invalid bill ID format: {id}'}), 400
 
         bill = Bill.objects.get(id=id)
+        guard = reject_if_finalized(bill)
+        if guard:
+            return guard
         data = request.get_json() or {}
         items_payload = data.get('items') or []
         if not isinstance(items_payload, list) or not items_payload:
@@ -1290,6 +1597,7 @@ def add_bill_items_bulk(id):
         # push_all__items=list.
         if embedded_items:
             Bill.objects(id=id).update_one(push_all__items=embedded_items)
+            refresh_pending_snapshot(bill)
 
         return jsonify({
             'message': f'Added {len(embedded_items)} item(s) to bill',
@@ -1308,12 +1616,16 @@ def remove_bill_item(bill_id, item_id):
     """Remove item from bill"""
     try:
         bill = Bill.objects.get(id=bill_id)
-        
+        guard = reject_if_finalized(bill)
+        if guard:
+            return guard
+
         if item_id < 0 or item_id >= len(bill.items):
             return jsonify({'error': 'Item not found'}), 404
-        
+
         bill.items.pop(item_id)
         bill.save()
+        refresh_pending_snapshot(bill)
 
         return jsonify({'message': 'Item removed from bill successfully'})
     except Bill.DoesNotExist:
@@ -1742,6 +2054,22 @@ def checkout_bill(id, current_user=None):
         # Get card bank if payment mode is card
         card_bank = data.get('card_bank') if data.get('payment_mode') == 'card' else None
 
+        # Customer Signature feature: if this bill was already checked out (an Invoice
+        # already exists), do NOT re-run the financial-field overwrite below — this was
+        # a pre-existing latent bug (checkout could silently rewrite subtotal/discount/
+        # tax/final_amount/payment_mode on a second call with no guard). Now that a
+        # signed invoice's frozen snapshot must never drift, a repeat checkout call
+        # just returns the existing invoice instead of mutating anything.
+        _existing_invoice_for_bill = Invoice.objects(bill=bill.id).first()
+        if _existing_invoice_for_bill:
+            existing_invoice_data = _build_invoice_data(bill)
+            return jsonify({
+                'message': 'Bill was already checked out',
+                'bill_number': bill.bill_number,
+                'final_amount': bill.final_amount,
+                'invoice': existing_invoice_data,
+            })
+
         # Update bill
         bill.subtotal = subtotal
         bill.discount_amount = discount_amount
@@ -1757,6 +2085,13 @@ def checkout_bill(id, current_user=None):
         bill.card_bank = card_bank
         # Always set to 'service-completed' when checkout happens to mark as paid
         bill.booking_status = 'service-completed'
+        # Customer Signature feature: staff who processed this checkout, for the
+        # invoice's audit trail (no bill-level equivalent existed before this).
+        if current_user and current_user.get('user_id'):
+            try:
+                bill.checked_out_by = Staff.objects(id=current_user['user_id']).first()
+            except Exception:
+                pass
         # Only reset approval status if owner is checking out without prior approval flow
         if bill.discount_approval_status not in ('approved',):
             bill.discount_approval_status = 'none'
@@ -1952,20 +2287,32 @@ def checkout_bill(id, current_user=None):
         invoice_data = None
         if not is_already_checked_out:
             try:
-                invoice_data = _build_invoice_data(bill)
+                # Customer Signature feature: freeze the exact snapshot the customer
+                # will be shown/signs against, once, here. Not the wrapped
+                # _build_invoice_data (which merges live status fields) — this is
+                # the pure material-content snapshot that becomes permanent at
+                # finalization.
+                material_invoice_data = _build_invoice_data_live(bill)
+                snapshot_hash = compute_snapshot_hash(material_invoice_data)
                 invoice = Invoice(
                     bill=bill,
-                    invoice_number=invoice_data.get('invoice_number', bill.bill_number),
+                    invoice_number=material_invoice_data.get('invoice_number', bill.bill_number),
                     customer=bill.customer,
                     branch=bill.branch,
                     pdf_file_id=None,  # Generated lazily on first download/share
-                    invoice_data=invoice_data,
+                    invoice_data=material_invoice_data,
                     generated_at=datetime.utcnow(),
-                    status='generated'
+                    status='generated',
+                    invoice_status='awaiting_customer_confirmation',
+                    signature_status='pending',
+                    pdf_status='not_generated',
+                    invoice_version=1,
+                    snapshot_hash=snapshot_hash,
                 )
                 invoice.save()
                 bill.invoice = invoice
                 print(f"[CHECKOUT] Invoice document created (PDF deferred): invoice_id={invoice.id}, invoice_number={invoice.invoice_number}")
+                invoice_data = _build_invoice_data(bill)  # wrapped, for the checkout response
             except Exception as e:
                 print(f"[CHECKOUT] Warning: Failed to create Invoice document: {e}")
                 import traceback
@@ -2002,12 +2349,211 @@ def checkout_bill(id, current_user=None):
         traceback.print_exc()
         return jsonify({'error': error_msg}), 500
 
+@bill_bp.route('/bills/<id>/signature', methods=['GET'])
+@require_auth
+def get_bill_signature(id, current_user=None):
+    """Fetch current signature/finalization state for a bill's invoice, without
+    mutating anything. Used when reopening a bill — renders read-only instead
+    of a blank pad if already finalized."""
+    try:
+        bill = Bill.objects.get(id=id)
+        invoice = Invoice.objects(bill=bill.id).first()
+        if not invoice:
+            return jsonify({'error': 'Invoice not found for this bill'}), 404
+
+        checked_out_by_name = _staff_display_name(bill.checked_out_by)
+
+        return jsonify({
+            'invoice_status': invoice.invoice_status,
+            'signature_status': invoice.signature_status,
+            'pdf_status': invoice.pdf_status,
+            'invoice_version': invoice.invoice_version,
+            'snapshot_hash': invoice.snapshot_hash,
+            'signature': _signature_block(invoice),
+            'checked_out_by': checked_out_by_name,
+            'acknowledgment_statement': ACK_STATEMENT_TEXT.get(SIGNATURE_ACK_VERSION),
+            'acknowledgment_version': SIGNATURE_ACK_VERSION,
+        })
+    except Bill.DoesNotExist:
+        return jsonify({'error': 'Bill not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@bill_bp.route('/bills/<id>/signature', methods=['POST'])
+@require_auth
+def submit_bill_signature(id, current_user=None):
+    """Confirm (sign) or explicitly skip the customer signature for a bill,
+    atomically finalizing the invoice. See the design plan for the full
+    rationale — this mirrors the atomic-conditional-update pattern already
+    used in discount_approval_routes.py's approve_with_code."""
+    try:
+        bill = Bill.objects.get(id=id)
+        data = request.get_json() or {}
+
+        action = data.get('action')
+        if action not in ('sign', 'skip'):
+            return jsonify({'error': 'action must be "sign" or "skip"'}), 400
+
+        idempotency_key = data.get('idempotency_key')
+        if not idempotency_key:
+            return jsonify({'error': 'idempotency_key is required'}), 400
+
+        submitted_version = data.get('invoice_version')
+        submitted_hash = data.get('snapshot_hash')
+        if submitted_version is None or not submitted_hash:
+            return jsonify({'error': 'invoice_version and snapshot_hash are required'}), 400
+
+        invoice = Invoice.objects(bill=bill.id).first()
+        if not invoice:
+            return jsonify({'error': 'Invoice not found for this bill'}), 404
+
+        # 1. Validate + normalize BEFORE touching the DB (so a bad signature never
+        #    partially commits anything).
+        signature_image = None
+        signature_hash = None
+        skip_reason = None
+        if action == 'sign':
+            try:
+                signature_image, signature_hash = validate_and_normalize_signature(data.get('signature_image'))
+            except ValueError as ve:
+                return jsonify({'error': str(ve)}), 400
+        else:
+            skip_reason = (data.get('skip_reason') or '').strip()
+            if not skip_reason:
+                return jsonify({'error': 'skip_reason is required when action is "skip"'}), 400
+
+        request_hash = compute_request_hash(
+            action=action,
+            invoice_version=submitted_version,
+            snapshot_hash=submitted_hash,
+            signature_hash=signature_hash,
+            skip_reason=skip_reason,
+            acknowledgment_version=SIGNATURE_ACK_VERSION,
+        )
+
+        # 2. Idempotency: reused key on an already-finalized invoice.
+        if invoice.invoice_status == 'finalized':
+            if invoice.finalize_idempotency_key == idempotency_key:
+                if invoice.finalize_request_hash == request_hash:
+                    return jsonify(_finalize_result(invoice))  # genuine safe replay
+                return jsonify({'error': 'idempotency_key_reused_with_different_payload'}), 409
+            return jsonify({
+                'error': 'already_finalized',
+                **_finalize_result(invoice),
+            }), 409
+
+        # 3. Version/snapshot binding — reject if the bill changed since the
+        #    customer was shown this snapshot.
+        if invoice.invoice_version != submitted_version or invoice.snapshot_hash != submitted_hash:
+            return jsonify({
+                'error': 'invoice_changed',
+                'current_version': invoice.invoice_version,
+            }), 409
+
+        # 4. THE atomic write. Filtered on current state + version, so only one
+        #    concurrent request can ever match — every other request (double
+        #    tap, two tabs, two devices) falls through to the branches above.
+        update_kwargs = {
+            'set__invoice_status': 'finalized',
+            'set__signature_status': 'signed' if action == 'sign' else 'skipped',
+            'set__finalized_by': None,
+            'set__finalized_at': datetime.utcnow(),
+            'set__acknowledgment_version': SIGNATURE_ACK_VERSION,
+            'set__finalize_idempotency_key': idempotency_key,
+            'set__finalize_request_hash': request_hash,
+            'unset__pdf_file_id': True,
+            'set__pdf_status': 'not_generated',
+            'set__pdf_error': None,
+        }
+        if current_user and current_user.get('user_id'):
+            try:
+                finalized_by_staff = Staff.objects(id=current_user['user_id']).first()
+                if finalized_by_staff:
+                    update_kwargs['set__finalized_by'] = finalized_by_staff
+            except Exception:
+                pass
+        if action == 'sign':
+            update_kwargs['set__signature_image'] = signature_image
+            update_kwargs['set__signature_hash'] = signature_hash
+            update_kwargs['set__signed_at'] = datetime.utcnow()
+            update_kwargs['set__signed_by_customer_name'] = data.get('signed_by_customer_name')
+        else:
+            update_kwargs['set__skip_reason'] = skip_reason
+
+        matched = Invoice.objects(
+            id=invoice.id,
+            invoice_status='awaiting_customer_confirmation',
+            invoice_version=submitted_version,
+        ).update_one(**update_kwargs)
+
+        if matched == 0:
+            invoice.reload()
+            if invoice.invoice_status == 'finalized' and invoice.finalize_idempotency_key == idempotency_key:
+                return jsonify(_finalize_result(invoice))
+            return jsonify({
+                'error': 'already_finalized',
+                **_finalize_result(invoice),
+            }), 409
+
+        invoice.reload()
+
+        # 5. Durable-from-the-client's-perspective audit write. If this fails,
+        #    do not report success — the client's retry (same idempotency key)
+        #    replays through step 2 above and re-attempts this write before
+        #    returning 200, without re-touching the already-finalized Invoice.
+        try:
+            InvoiceLifecycleEvent(
+                event_type='invoice_finalized_signed' if action == 'sign' else 'invoice_finalized_skipped',
+                bill=bill,
+                invoice=invoice,
+                invoice_version=invoice.invoice_version,
+                snapshot_hash=invoice.snapshot_hash,
+                signature_hash=signature_hash,
+                actor=update_kwargs.get('set__finalized_by'),
+                customer=bill.customer,
+                reason=skip_reason,
+                acknowledgment_version=SIGNATURE_ACK_VERSION,
+            ).save()
+        except Exception as audit_err:
+            print(f"[SIGNATURE] Audit write failed for invoice {invoice.id}: {audit_err}")
+            return jsonify({'error': 'Finalization saved but confirmation is still processing — please retry.'}), 500
+
+        return jsonify(_finalize_result(invoice))
+    except Bill.DoesNotExist:
+        return jsonify({'error': 'Bill not found'}), 404
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+def _finalize_result(invoice):
+    """Response payload shared by the happy path and every idempotent-replay branch."""
+    finalized_by_name = _staff_display_name(invoice.finalized_by)
+    return {
+        'success': True,
+        'invoice_status': invoice.invoice_status,
+        'signature_status': invoice.signature_status,
+        'pdf_status': invoice.pdf_status,
+        'signature': _signature_block(invoice),
+        'finalized_by': finalized_by_name,
+        'finalized_at': _to_utc_iso(invoice.finalized_at),
+        'bill_locked': invoice.invoice_status == 'finalized',
+    }
+
+
 @bill_bp.route('/bills/<id>', methods=['PUT'])
 def update_bill(id):
     """Update bill details"""
     try:
         bill = Bill.objects.get(id=id)
         data = request.get_json()
+
+        if ('customer_id' in data or 'payment_mode' in data):
+            guard = reject_if_finalized(bill)
+            if guard:
+                return guard
 
         if 'customer_id' in data:
             if data['customer_id']:
@@ -2025,6 +2571,8 @@ def update_bill(id):
             bill.payment_mode = data['payment_mode']
         bill.updated_at = datetime.utcnow()
         bill.save()
+        if ('customer_id' in data or 'payment_mode' in data):
+            refresh_pending_snapshot(bill)
 
         return jsonify({
             'id': str(bill.id),
@@ -2040,6 +2588,9 @@ def delete_bill(id):
     """Soft delete a bill"""
     try:
         bill = Bill.objects.get(id=id)
+        guard = reject_if_finalized(bill)
+        if guard:
+            return guard
         data = request.get_json() or {}
 
         bill.is_deleted = True
@@ -2198,20 +2749,35 @@ def download_invoice_pdf(bill_id, current_user=None):
         from services.invoice_pdf_service import generate_invoice_pdf
 
         bill = Bill.objects.get(id=bill_id)
+        invoice = Invoice.objects(bill=bill.id).first()
+        if reject_if_not_finalized(invoice):
+            return jsonify({'error': 'invoice_not_finalized'}), 409
 
         # Always generate from current bill data so the PDF matches the popup
+        # (once finalized, this is the frozen snapshot — see _build_invoice_data)
         invoice_data = _build_invoice_data(bill)
-        pdf_bytes = generate_invoice_pdf(invoice_data)
+        try:
+            if invoice:
+                Invoice.objects(id=invoice.id).update_one(set__pdf_status='generating')
+            pdf_bytes = generate_invoice_pdf(invoice_data)
+        except Exception as pdf_err:
+            if invoice:
+                Invoice.objects(id=invoice.id).update_one(set__pdf_status='failed', set__pdf_error=str(pdf_err))
+            return jsonify({'error': f'Failed to generate PDF: {pdf_err}'}), 500
         invoice_number = invoice_data.get('invoice_number', bill.bill_number)
         print(f"[DOWNLOAD PDF] Generated fresh PDF for bill {bill_id}, size={len(pdf_bytes)} bytes")
 
         # Update Invoice download status if it exists
         try:
-            invoice = Invoice.objects(bill=bill).first()
             if invoice and invoice.status in ['generated', 'viewed', 'shared']:
                 invoice.status = 'downloaded'
                 invoice.downloaded_at = datetime.utcnow()
+            if invoice:
+                invoice.pdf_status = 'ready'
+                invoice.pdf_error = None
                 invoice.save()
+                InvoiceLifecycleEvent(event_type='invoice_downloaded', bill=bill, invoice=invoice,
+                                       customer=bill.customer).save()
         except Exception:
             pass
 
@@ -2241,6 +2807,11 @@ def generate_share_link(bill_id, current_user=None):
             response = jsonify({'error': 'Invoice not found for this bill'})
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 404
+
+        if reject_if_not_finalized(invoice):
+            response = jsonify({'error': 'invoice_not_finalized'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 409
 
         # Reuse existing share_code if already generated (idempotent)
         if invoice.share_code:
@@ -2289,8 +2860,11 @@ def public_invoice_view(token):
         payload = pyjwt.decode(token, JWT_SECRET, algorithms=['HS256'])
         bill_id = payload['bill_id']
         bill = Bill.objects.get(id=bill_id)
+        invoice = Invoice.objects(bill=bill.id).first()
+        if reject_if_not_finalized(invoice):
+            return '<h1>Invoice not finalized</h1><p>This invoice is still awaiting customer confirmation.</p>', 409, {'Content-Type': 'text/html'}
         invoice_data = _build_invoice_data(bill)
-        
+
         # Generate download URL for the PDF
         base_url = request.url_root.rstrip('/')
         download_url = f"{base_url}/invoice/pdf/{token}"
@@ -2321,13 +2895,16 @@ def public_invoice_pdf(token):
         payload = pyjwt.decode(token, JWT_SECRET, algorithms=['HS256'])
         bill_id = payload['bill_id']
         bill = Bill.objects.get(id=bill_id)
-        
+        _invoice_for_guard = Invoice.objects(bill=bill.id).first()
+        if reject_if_not_finalized(_invoice_for_guard):
+            return '<h1>Invoice not finalized</h1><p>This invoice is still awaiting customer confirmation.</p>', 409, {'Content-Type': 'text/html'}
+
         # Try to retrieve PDF from GridFS - check Invoice first (most reliable), then Bill
         pdf_bytes = None
         pdf_file_id = None
         pdf_source = None
         invoice_number = bill.bill_number
-        
+
         # First, try Invoice's pdf_file_id (most reliable - stored during checkout)
         try:
             invoice = Invoice.objects(bill=bill).first()
@@ -2409,11 +2986,13 @@ def short_invoice_view(share_code):
         invoice = Invoice.objects(share_code=share_code).first()
         if not invoice:
             return '<h1>Invoice not found</h1><p>This link is not valid.</p>', 404, {'Content-Type': 'text/html'}
+        if reject_if_not_finalized(invoice):
+            return '<h1>Invoice not finalized</h1><p>This invoice is still awaiting customer confirmation.</p>', 409, {'Content-Type': 'text/html'}
 
         # Invoice links remain accessible permanently unless manually deleted
         bill = invoice.bill
         invoice_data = _build_invoice_data(bill)
-        
+
         # Generate download URL for the PDF
         base_url = request.url_root.rstrip('/')
         download_url = f"{base_url}/i/{share_code}/pdf"
@@ -2443,6 +3022,8 @@ def short_invoice_pdf(share_code):
         invoice = Invoice.objects(share_code=share_code).first()
         if not invoice:
             return '<h1>Invoice not found</h1><p>This link is not valid.</p>', 404, {'Content-Type': 'text/html'}
+        if reject_if_not_finalized(invoice):
+            return '<h1>Invoice not finalized</h1><p>This invoice is still awaiting customer confirmation.</p>', 409, {'Content-Type': 'text/html'}
 
         # Invoice links remain accessible permanently unless manually deleted
         bill = invoice.bill

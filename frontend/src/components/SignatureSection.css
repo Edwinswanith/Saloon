@@ -1,0 +1,225 @@
+.signature-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1.5px solid var(--primary-600, #0d9488);
+}
+
+.signature-section-heading {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  margin: 0 0 8px 0;
+}
+
+.signature-ack-text {
+  font-size: 11px;
+  color: var(--text-tertiary, #64748b);
+  margin: 0 0 6px 0;
+  line-height: 1.4;
+}
+
+.signature-hint {
+  font-size: 10px;
+  font-style: italic;
+  color: var(--text-tertiary, #64748b);
+  text-align: right;
+  margin: 0 0 4px 0;
+}
+
+.signature-controls-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.signature-control-btn {
+  flex: 1;
+  padding: 10px 12px;
+  min-height: 40px;
+  background: var(--gray-100, #f1f3f5);
+  border: 1px solid var(--border-medium, #d1d5db);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #0f172a);
+  cursor: pointer;
+}
+
+.signature-control-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.signature-skip-link {
+  display: block;
+  width: 100%;
+  text-align: center;
+  background: none;
+  border: none;
+  font-size: 11px;
+  color: var(--text-tertiary, #64748b);
+  text-decoration: underline;
+  margin: 10px 0;
+  padding: 6px;
+  cursor: pointer;
+}
+
+.signature-confirm-btn {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  background: var(--primary-600, #0d9488);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.signature-confirm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.signature-error-box {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.signature-error {
+  font-size: 12px;
+  color: #dc2626;
+  margin: 8px 0 0 0;
+}
+
+.signature-actions-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.signature-actions-disabled .invoice-action-btn {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.signature-disabled-note {
+  text-align: center;
+  margin-top: 6px;
+}
+
+.signature-caption {
+  font-size: 11px;
+  color: var(--text-primary, #0f172a);
+  font-weight: 600;
+  margin: 8px 0 2px 0;
+}
+
+.signature-caption-muted {
+  font-size: 10px;
+  color: #94a3b8;
+  font-style: italic;
+  margin: 0;
+}
+
+.signature-readonly-box {
+  padding: 12px;
+  background: #f0fdf4;
+  border: 1px solid #16a34a;
+  border-radius: 8px;
+}
+
+.signature-skipped-box {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.signature-readonly-img {
+  max-width: 100%;
+  max-height: 90px;
+  display: block;
+}
+
+/* Skip-reason modal */
+.signature-skip-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.signature-skip-modal {
+  width: 100%;
+  max-width: 480px;
+  background: white;
+  border-radius: 12px 12px 0 0;
+  padding: 20px;
+}
+
+.signature-skip-modal h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: var(--text-primary, #0f172a);
+}
+
+.signature-skip-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.signature-skip-reason-btn {
+  padding: 12px;
+  min-height: 44px;
+  text-align: left;
+  background: var(--gray-100, #f1f3f5);
+  border: 1px solid var(--border-medium, #d1d5db);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-primary, #0f172a);
+  cursor: pointer;
+}
+
+.signature-skip-reason-btn.selected {
+  background: var(--primary-50, #f0fdfa);
+  border-color: var(--primary-600, #0d9488);
+  font-weight: 600;
+}
+
+.signature-skip-note {
+  width: 100%;
+  min-height: 60px;
+  padding: 10px;
+  border: 1px solid var(--border-medium, #d1d5db);
+  border-radius: 6px;
+  font-size: 13px;
+  resize: none;
+  box-sizing: border-box;
+}
+
+.signature-skip-note.focused {
+  border-color: var(--primary-600, #0d9488);
+}
+
+.signature-skip-modal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.signature-skip-modal-actions .signature-control-btn {
+  flex: 1;
+}
+
+.signature-skip-confirm-btn {
+  flex: 2;
+}

@@ -3,10 +3,11 @@ import { FaWhatsapp } from 'react-icons/fa'
 import { apiGet, apiPost } from '../utils/api'
 import { PUBLIC_BASE_URL } from '../config'
 import { useBusiness } from '../contexts/BusinessContext'
+import SignatureSection from './SignatureSection'
 import './InvoicePreview.css'
 
 // Branch information mapping
-const BRANCH_INFO = {
+export const BRANCH_INFO = {
   'Main Road': {
     address: [
       '55, Duraisamy Complex,',
@@ -63,6 +64,14 @@ const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
   const [useServerHtml, setUseServerHtml] = useState(false)
   const [gstNumber, setGstNumber] = useState('')
   const containerRef = useRef(null)
+  // Customer Signature feature: local overlay merged on top of the invoiceData
+  // prop once the customer signs/skips, so the UI updates immediately without
+  // needing the parent (QuickSale/Appointment) to refetch.
+  const [signatureOverlay, setSignatureOverlay] = useState(null)
+  const effectiveInvoiceData = invoiceData ? { ...invoiceData, ...signatureOverlay } : invoiceData
+  const handleSignatureFinalized = (result) => {
+    setSignatureOverlay((prev) => ({ ...prev, ...result }))
+  }
 
   // Fetch GST number from Tax Settings
   useEffect(() => {
@@ -138,7 +147,7 @@ const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
     return <div className="invoice-loading">Loading invoice data...</div>
   }
 
-  const { invoice_number, customer, branch, items, summary, payment, booking_date, booking_time } = invoiceData
+  const { invoice_number, customer, branch, items, summary, payment, booking_date, booking_time } = effectiveInvoiceData
 
   // Get branch information from mapping
   const getBranchInfo = () => {
@@ -453,24 +462,23 @@ const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
         <p className="contact-email"><strong>Email –</strong> <a href="mailto:priyankanaturecure@gmail.com" className="contact-link">priyankanaturecure@gmail.com</a></p>
       </div>
 
-      {/* Footer Buttons */}
-      <div className="invoice-actions-section">
-        {onReview && (
+      {onReview && (
+        <div className="invoice-actions-section invoice-review-row">
           <button className="invoice-action-btn review-btn" onClick={onReview}>
             Review Us
           </button>
-        )}
-        {customer?.mobile && (
-          <button className="invoice-action-btn whatsapp-btn" onClick={handleSendWhatsApp}>
-            <FaWhatsapp /> Send via WhatsApp
-          </button>
-        )}
-        {onDownload && (
-          <button className="invoice-action-btn download-btn" onClick={() => onDownload(billId)}>
-            Download Invoice
-          </button>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Customer Signature section — owns Confirm & Finalize plus the
+          Download/WhatsApp actions, gated on the signature being finalized. */}
+      {billId && (
+        <SignatureSection
+          billId={billId}
+          invoiceData={effectiveInvoiceData}
+          onFinalized={handleSignatureFinalized}
+        />
+      )}
     </div>
   )
 }

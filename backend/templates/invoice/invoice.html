@@ -140,6 +140,24 @@
       </div>
     </div>
 
+    <!-- Customer Signature Section -->
+    {% if signature %}
+    <div class="invoice-signature-block">
+      <p class="signature-heading">Customer Confirmation</p>
+      {% if signature.status == 'signed' %}
+        <img src="{{ signature.image }}" alt="Customer Signature" class="invoice-signature-img" />
+        <p class="signature-caption">
+          Signed by {{ signature.signed_by_customer_name or customer.name or 'Customer' }} on {{ signature.signed_at_display or signature.signed_at }}
+          {% if signature.finalized_by_name %} &middot; Processed by {{ signature.finalized_by_name }}{% endif %}
+        </p>
+      {% elif signature.status == 'skipped' %}
+        <p class="signature-caption">Signature not obtained &mdash; {{ signature.skip_reason or 'Customer declined to sign' }}</p>
+      {% elif signature.status == 'not_required' %}
+        <p class="signature-caption signature-caption-muted">Customer signature was not captured because this invoice was created before signature capture was introduced.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
     <!-- Contact Footer Section -->
     <div class="invoice-contact-footer">
       <p class="contact-enquiry">For Enquiry Contact – Geethalakshmi: <a href="tel:+919840192264" class="contact-link">+91 9840192264</a></p>
