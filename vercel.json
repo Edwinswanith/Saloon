@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run vercel-build",
-  "installCommand": "HUSKY=0 npm ci && pip install -r backend/requirements.txt",
+  "installCommand": "HUSKY=0 npm ci",
   "rewrites": [
     { "source": "/api/:path*", "destination": "/backend/app.py" },
     { "source": "/i/:path*", "destination": "/backend/app.py" },
