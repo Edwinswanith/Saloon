@@ -1,0 +1,144 @@
+*MASSAGE CUSTOMERS (1/5)*
+_June-July 2026 | Saloon_
+
+*1. Hamasa*
+Phone: 9441336385
+Branch: Kolapakkam
+Month: Jul
+Service: Ayurvedic Body Massage
+Visits: 2 | Spend: Rs 3,600
+
+*2. Milka*
+Phone: 6382570089
+Branch: Kolapakkam
+Month: Jun
+Service: Aroma Oil Massage, Hand Massage
+Visits: 4 | Spend: Rs 2,880
+
+*3. Sathya*
+Phone: 7845416037
+Branch: Madanandapuram
+Month: Jun
+Service: Aroma Body Massage
+Visits: 1 | Spend: Rs 2,500
+
+*4. Dipika*
+Phone: 8825975636
+Branch: Kolapakkam
+Month: Jun
+Service: Aroma Oil Massage, Ayurvedic Body Massage
+Visits: 2 | Spend: Rs 2,440
+
+*5. ratna*
+Phone: 9600053509
+Branch: Main Road
+Month: Jun/Jul
+Service: Aroma Oil Massage, Hot Oil Massage (Basic Length)
+Visits: 3 | Spend: Rs 1,920
+
+*6. GAYATHRY*
+Phone: 9444487999
+Branch: Main Road
+Month: Jun/Jul
+Service: Aroma Oil Massage, Hot Oil Massage (Basic Length)
+Visits: 3 | Spend: Rs 1,840
+
+*7. Momutha*
+Phone: 8849739864
+Branch: Main Road
+Month: Jun
+Service: Ayurvedic Body Massage
+Visits: 2 | Spend: Rs 1,800
+
+*8. Swatha*
+Phone: 6364326576
+Branch: Main Road
+Month: Jun
+Service: Ayurvedic Body Massage
+Visits: 2 | Spend: Rs 1,800
+
+*9. Analina*
+Phone: 9486322457
+Branch: Madanandapuram
+Month: Jun
+Service: Aroma Oil Massage, Cleanup + Cream Massage
+Visits: 2 | Spend: Rs 1,600
+
+*10. ashwiti*
+Phone: 8137961928
+Branch: Madanandapuram
+Month: Jun
+Service: Cleanup + Cream Massage
+Visits: 1 | Spend: Rs 1,500
+
+*11. subhramitakund*
+Phone: 9748668431
+Branch: Main Road
+Month: Jul
+Service: Aroma Oil Massage, Hot Oil Massage (Basic Length)
+Visits: 2 | Spend: Rs 1,440
+
+*12. Nikmai*
+Phone: 9841811409
+Branch: Kolapakkam
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 2 | Spend: Rs 1,360
+
+*13. YOGITA*
+Phone: 9840879614
+Branch: Main Road
+Month: Jun/Jul
+Service: Aroma Oil Massage
+Visits: 2 | Spend: Rs 1,280
+
+*14. prema*
+Phone: 7358002542
+Branch: Main Road
+Month: Jun/Jul
+Service: Aroma Oil Massage
+Visits: 2 | Spend: Rs 1,280
+
+*15. Nalini*
+Phone: 9840618016
+Branch: Madanandapuram
+Month: Jul
+Service: Cleanup + Cream Massage
+Visits: 1 | Spend: Rs 1,200
+
+*16. Anitha*
+Phone: 9751983632
+Branch: Kolapakkam
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 800
+
+*17. Arite*
+Phone: 8056225998
+Branch: Madanandapuram
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 800
+
+*18. Divya*
+Phone: 9500000726
+Branch: Madanandapuram
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 800
+
+*19. Divya*
+Phone: 8680068761
+Branch: Kolapakkam
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 800
+
+*20. Hema*
+Phone: 9597748010
+Branch: Kolapakkam
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 800
+
+*Shown: 20 customers*

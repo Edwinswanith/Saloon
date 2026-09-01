@@ -730,8 +730,9 @@ const Appointment = ({ setActivePage }) => {
                   </div>
                 ) : invoiceData ? (
                   <div className="invoice-preview-wrapper">
-                    <InvoicePreview 
+                    <InvoicePreview
                       invoiceData={invoiceData}
+                      billId={billId}
                       onDownload={handleDownloadInvoice}
                       onReview={handleReviewUs}
                     />

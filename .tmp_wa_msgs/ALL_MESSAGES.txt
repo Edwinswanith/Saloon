@@ -1,0 +1,722 @@
+
+
+========================================
+MESSAGE 1 (208 chars) - copy below
+========================================
+
+*SPA SERVICE CUSTOMERS*
+_June & July 2026_
+
+Full Body: *2* customers
+Massage: *91* customers
+Both services: *0*
+
+Total Massage spend: *Rs 78,650*
+Total Full Body spend: *Rs 2,700*
+
+Details in next messages...
+
+========================================
+MESSAGE 2 (279 chars) - copy below
+========================================
+
+*FULL BODY CUSTOMERS*
+_June-July 2026 | Saloon_
+
+*1. Sabitha*
+Phone: 9751251111
+Branch: Kovur
+Month: Jun
+Service: Full Body
+Visits: 1 | Spend: Rs 1,500
+
+*2. ganga*
+Phone: 9134767293
+Branch: Main Road
+Month: Jul
+Service: Full Body
+Visits: 1 | Spend: Rs 1,200
+
+*Shown: 2 customers*
+
+========================================
+MESSAGE 3 (2620 chars) - copy below
+========================================
+
+*MASSAGE CUSTOMERS (1/5)*
+_June-July 2026 | Saloon_
+
+*1. Hamasa*
+Phone: 9441336385
+Branch: Kolapakkam
+Month: Jul
+Service: Ayurvedic Body Massage
+Visits: 2 | Spend: Rs 3,600
+
+*2. Milka*
+Phone: 6382570089
+Branch: Kolapakkam
+Month: Jun
+Service: Aroma Oil Massage, Hand Massage
+Visits: 4 | Spend: Rs 2,880
+
+*3. Sathya*
+Phone: 7845416037
+Branch: Madanandapuram
+Month: Jun
+Service: Aroma Body Massage
+Visits: 1 | Spend: Rs 2,500
+
+*4. Dipika*
+Phone: 8825975636
+Branch: Kolapakkam
+Month: Jun
+Service: Aroma Oil Massage, Ayurvedic Body Massage
+Visits: 2 | Spend: Rs 2,440
+
+*5. ratna*
+Phone: 9600053509
+Branch: Main Road
+Month: Jun/Jul
+Service: Aroma Oil Massage, Hot Oil Massage (Basic Length)
+Visits: 3 | Spend: Rs 1,920
+
+*6. GAYATHRY*
+Phone: 9444487999
+Branch: Main Road
+Month: Jun/Jul
+Service: Aroma Oil Massage, Hot Oil Massage (Basic Length)
+Visits: 3 | Spend: Rs 1,840
+
+*7. Momutha*
+Phone: 8849739864
+Branch: Main Road
+Month: Jun
+Service: Ayurvedic Body Massage
+Visits: 2 | Spend: Rs 1,800
+
+*8. Swatha*
+Phone: 6364326576
+Branch: Main Road
+Month: Jun
+Service: Ayurvedic Body Massage
+Visits: 2 | Spend: Rs 1,800
+
+*9. Analina*
+Phone: 9486322457
+Branch: Madanandapuram
+Month: Jun
+Service: Aroma Oil Massage, Cleanup + Cream Massage
+Visits: 2 | Spend: Rs 1,600
+
+*10. ashwiti*
+Phone: 8137961928
+Branch: Madanandapuram
+Month: Jun
+Service: Cleanup + Cream Massage
+Visits: 1 | Spend: Rs 1,500
+
+*11. subhramitakund*
+Phone: 9748668431
+Branch: Main Road
+Month: Jul
+Service: Aroma Oil Massage, Hot Oil Massage (Basic Length)
+Visits: 2 | Spend: Rs 1,440
+
+*12. Nikmai*
+Phone: 9841811409
+Branch: Kolapakkam
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 2 | Spend: Rs 1,360
+
+*13. YOGITA*
+Phone: 9840879614
+Branch: Main Road
+Month: Jun/Jul
+Service: Aroma Oil Massage
+Visits: 2 | Spend: Rs 1,280
+
+*14. prema*
+Phone: 7358002542
+Branch: Main Road
+Month: Jun/Jul
+Service: Aroma Oil Massage
+Visits: 2 | Spend: Rs 1,280
+
+*15. Nalini*
+Phone: 9840618016
+Branch: Madanandapuram
+Month: Jul
+Service: Cleanup + Cream Massage
+Visits: 1 | Spend: Rs 1,200
+
+*16. Anitha*
+Phone: 9751983632
+Branch: Kolapakkam
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 800
+
+*17. Arite*
+Phone: 8056225998
+Branch: Madanandapuram
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 800
+
+*18. Divya*
+Phone: 9500000726
+Branch: Madanandapuram
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 800
+
+*19. Divya*
+Phone: 8680068761
+Branch: Kolapakkam
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 800
+
+*20. Hema*
+Phone: 9597748010
+Branch: Kolapakkam
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 800
+
+*Shown: 20 customers*
+
+========================================
+MESSAGE 4 (2422 chars) - copy below
+========================================
+
+*MASSAGE CUSTOMERS (2/5)*
+_June-July 2026 | Saloon_
+
+*21. Kavita*
+Phone: 8939546622
+Branch: Madanandapuram
+Month: Jun
+Service: Back Massage
+Visits: 1 | Spend: Rs 800
+
+*22. Kinnera*
+Phone: 9962236271
+Branch: Madanandapuram
+Month: Jul
+Service: Back Massage
+Visits: 1 | Spend: Rs 800
+
+*23. Lavanya*
+Phone: 9444971380
+Branch: Main Road
+Month: Jun
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 800
+
+*24. MAHALAKSHMI*
+Phone: 9941004016
+Branch: Main Road
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 800
+
+*25. Musha*
+Phone: 9841386767
+Branch: Kolapakkam
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 800
+
+*26. Nathini*
+Phone: 9597555425
+Branch: Kolapakkam
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 800
+
+*27. Nimay*
+Phone: 8072230635
+Branch: Madanandapuram
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 800
+
+*28. Rimpi*
+Phone: 8099400763
+Branch: Main Road
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 800
+
+*29. Sandiya*
+Phone: 9384685905
+Branch: Kolapakkam
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 800
+
+*30. Swarnalatha*
+Phone: 7708082831
+Branch: Main Road
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 800
+
+*31. sandya*
+Phone: 9791415311
+Branch: Main Road
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 800
+
+*32. No*
+Phone: 9789005470
+Branch: Madanandapuram
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 750
+
+*33. Ramiya*
+Phone: 9004394235
+Branch: Main Road
+Month: Jun
+Service: Half Leg Massage
+Visits: 1 | Spend: Rs 750
+
+*34. Sindu*
+Phone: 9176859883
+Branch: Madanandapuram
+Month: Jul
+Service: Half Leg Massage
+Visits: 1 | Spend: Rs 750
+
+*35. Deepna*
+Phone: 9176335527
+Branch: Kovur
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 720
+
+*36. Arif*
+Phone: 9019363448
+Branch: Main Road
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 700
+
+*37. Heema*
+Phone: 8220234081
+Branch: Madanandapuram
+Month: Jul
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 700
+
+*38. VIDHYA*
+Phone: 9884784463
+Branch: Main Road
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 700
+
+*39. AMUTHASANTHANAM*
+Phone: 9597109065
+Branch: Main Road
+Month: Jul
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 640
+
+*40. ANITHA*
+Phone: 9600074636
+Branch: Main Road
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*Shown: 20 customers*
+
+========================================
+MESSAGE 5 (2447 chars) - copy below
+========================================
+
+*MASSAGE CUSTOMERS (3/5)*
+_June-July 2026 | Saloon_
+
+*41. ANJALI*
+Phone: 9962585806
+Branch: Main Road
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*42. ASHA*
+Phone: 9444454796
+Branch: Main Road
+Month: Jul
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 640
+
+*43. BHARATHI*
+Phone: 9445045988
+Branch: Main Road
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*44. BHUVANA*
+Phone: 9791046544
+Branch: Main Road
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*45. Birjithi*
+Phone: 9677239779
+Branch: Kolapakkam
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*46. Diviya*
+Phone: 8807039026
+Branch: Kolapakkam
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*47. GAYATRI*
+Phone: 9176690599
+Branch: Main Road
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*48. Gathiya*
+Phone: 9985214753
+Branch: Madanandapuram
+Month: Jul
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 640
+
+*49. Haripriya*
+Phone: 9677139139
+Branch: Main Road
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*50. KEERTHI*
+Phone: 8056163789
+Branch: Main Road
+Month: Jun
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 640
+
+*51. NALANI*
+Phone: 7358316250
+Branch: Main Road
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*52. NEERAJA*
+Phone: 9972682253
+Branch: Main Road
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*53. Niya*
+Phone: 9036521862
+Branch: Madanandapuram
+Month: Jul
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 640
+
+*54. PRIYA*
+Phone: 9840262007
+Branch: Main Road
+Month: Jul
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 640
+
+*55. Prisilla*
+Phone: 9600023530
+Branch: Kolapakkam
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*56. RAJNI*
+Phone: 9840615892
+Branch: Main Road
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*57. Reshma*
+Phone: 9342985051
+Branch: Kovur
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*58. Riya*
+Phone: 9884246144
+Branch: Kolapakkam
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*59. SIMRAN*
+Phone: 9940074765
+Branch: Main Road
+Month: Jun
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 640
+
+*60. SMITA*
+Phone: 9600069181
+Branch: Main Road
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*Shown: 20 customers*
+
+========================================
+MESSAGE 6 (2483 chars) - copy below
+========================================
+
+*MASSAGE CUSTOMERS (4/5)*
+_June-July 2026 | Saloon_
+
+*61. Shiril*
+Phone: 9840045673
+Branch: Madanandapuram
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*62. Susmita*
+Phone: 7062200891
+Branch: Madanandapuram
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*63. Swetha*
+Phone: 9790470230
+Branch: Main Road
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*64. VASANTHA*
+Phone: 9677166249
+Branch: Main Road
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*65. VIDHYALAKSHMI*
+Phone: 9710036231
+Branch: Main Road
+Month: Jul
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 640
+
+*66. anuradha*
+Phone: 8056311486
+Branch: Main Road
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*67. archana*
+Phone: 9605861335
+Branch: Main Road
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*68. bhuvana*
+Phone: 7358354743
+Branch: Main Road
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*69. fara*
+Phone: 9962565587
+Branch: Main Road
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*70. lavanya*
+Phone: 9789821544
+Branch: Main Road
+Month: Jun
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 640
+
+*71. ramya*
+Phone: 9840220388
+Branch: Main Road
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*72. reslin*
+Phone: 9962018942
+Branch: Main Road
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*73. shemy*
+Phone: 9840847743
+Branch: Main Road
+Month: Jun
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 640
+
+*74. souaa*
+Phone: 9600536209
+Branch: Main Road
+Month: Jun
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 640
+
+*75. subalakshmi*
+Phone: 9597678555
+Branch: Main Road
+Month: Jun
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 640
+
+*76. Divya*
+Phone: 9500026389
+Branch: Kovur
+Month: Jul
+Service: Half Leg Massage
+Visits: 1 | Spend: Rs 600
+
+*77. Nivatha*
+Phone: 9884173990
+Branch: Madanandapuram
+Month: Jun
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 600
+
+*78. Poornima*
+Phone: 8056414136
+Branch: Kovur
+Month: Jul
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 600
+
+*79. Priyanka*
+Phone: 6379193256
+Branch: Main Road
+Month: Jun
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 600
+
+*80. Shani*
+Phone: 7358121317
+Branch: Kolapakkam
+Month: Jun
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 600
+
+*Shown: 20 customers*
+
+========================================
+MESSAGE 7 (1413 chars) - copy below
+========================================
+
+*MASSAGE CUSTOMERS (5/5)*
+_June-July 2026 | Saloon_
+
+*81. komal*
+Phone: 7410003299
+Branch: Main Road
+Month: Jun
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 600
+
+*82. sumathi*
+Phone: 9840479773
+Branch: Main Road
+Month: Jun
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 600
+
+*83. VIDHYA*
+Phone: 9841094189
+Branch: Main Road
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 560
+
+*84. Bhanu*
+Phone: 8015150750
+Branch: Kovur
+Month: Jun
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 500
+
+*85. Biday*
+Phone: 9884467197
+Branch: Madanandapuram
+Month: Jul
+Service: Neck Massage
+Visits: 1 | Spend: Rs 500
+
+*86. Parva*
+Phone: 9976089255
+Branch: Main Road
+Month: Jun
+Service: Neck Massage
+Visits: 1 | Spend: Rs 500
+
+*87. MOUNIKA*
+Phone: 9043048169
+Branch: Main Road
+Month: Jul
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 480
+
+*88. NATASHA*
+Phone: 8281272763
+Branch: Main Road
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 480
+
+*89. SAMUNDESWARI*
+Phone: 9884202784
+Branch: Main Road
+Month: Jul
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 480
+
+*90. SELVI*
+Phone: 8610149882
+Branch: Main Road
+Month: Jun
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 480
+
+*91. orjan*
+Phone: 9940398585
+Branch: Main Road
+Month: Jul
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 480
+
+*Shown: 11 customers*

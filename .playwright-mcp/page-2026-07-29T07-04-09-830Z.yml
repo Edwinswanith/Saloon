@@ -1,0 +1,117 @@
+- generic [ref=f1e3]:
+  - complementary [ref=f1e15]:
+    - generic [ref=f1e16]:
+      - button "Close sidebar" [ref=f1e17] [cursor=pointer]
+      - img "Priyanka Nature Cure" [ref=f1e21]
+    - navigation [ref=f1e22]:
+      - generic [ref=f1e23]: Quick Sale
+      - generic [ref=f1e29]:
+        - generic: BILLING
+        - generic [ref=f1e30]: Cash Register
+        - generic [ref=f1e36]: Bill History
+        - generic [ref=f1e42]: Appointment
+        - generic [ref=f1e48]: Customers
+        - generic [ref=f1e57]: Inventory
+        - generic [ref=f1e63]: Offer Management
+      - generic [ref=f1e69]: Dashboard
+      - generic [ref=f1e75]: ANALYTICS
+      - generic [ref=f1e76]:
+        - generic: MASTER
+        - generic [ref=f1e77]: Saloon Settings
+  - banner [ref=f1e86]:
+    - generic [ref=f1e87]:
+      - button "Toggle menu" [ref=f1e88] [cursor=pointer]
+      - generic "Priyanka Nature Cure" [ref=f1e93]
+      - generic [ref=f1e94]:
+        - button "QA Temp Branch ▼" [ref=f1e96] [cursor=pointer]:
+          - generic [ref=f1e97]: QA Temp Branch
+          - generic [ref=f1e98]: ▼
+        - button "Click to logout" [ref=f1e99] [cursor=pointer]
+        - button "Notifications" [ref=f1e103] [cursor=pointer]
+        - button "QS" [ref=f1e106] [cursor=pointer]
+  - main [ref=f1e108]:
+    - generic [ref=f1e111]:
+      - generic [ref=f1e112]:
+        - generic [ref=f1e113]: Your Sales This Week
+        - generic [ref=f1e114]: ₹3,780.00
+      - generic [ref=f1e115]:
+        - heading "New Booking" [level=1] [ref=f1e116]
+        - generic [ref=f1e117]:
+          - generic [ref=f1e118]:
+            - generic [ref=f1e119]:
+              - generic [ref=f1e120] [cursor=pointer]: Customer
+              - button "+ Add New Customer" [ref=f1e122] [cursor=pointer]:
+                - generic [ref=f1e123]: +
+                - text: Add New Customer
+            - textbox "Search by Mobile Number or Name" [ref=f1e125]
+          - generic [ref=f1e126]:
+            - generic [ref=f1e127]: Date
+            - generic [ref=f1e128] [cursor=pointer]:
+              - textbox "Select date" [ref=f1e131]: 29/07/2026
+              - generic: 29-07-2026
+        - table [ref=f1e133]:
+          - rowgroup [ref=f1e134]:
+            - row [ref=f1e135]:
+              - columnheader "Service" [ref=f1e136]
+              - columnheader "Staff" [ref=f1e137]
+              - columnheader "Start Time" [ref=f1e138]
+              - columnheader "Price" [ref=f1e139]
+              - columnheader "Discount" [ref=f1e140]
+              - columnheader "Total" [ref=f1e141]
+              - columnheader "Remove" [ref=f1e142]
+          - rowgroup [ref=f1e143]:
+            - row [ref=f1e144]:
+              - cell [ref=f1e145]:
+                - textbox "No services available" [ref=f1e148]
+              - cell [ref=f1e151]:
+                - button "Select staff" [ref=f1e153] [cursor=pointer]
+              - cell [ref=f1e155]:
+                - button "12:33" [ref=f1e156] [cursor=pointer]
+              - cell [ref=f1e160]:
+                - spinbutton "0" [ref=f1e161]
+              - cell [ref=f1e162]:
+                - generic [ref=f1e163]:
+                  - spinbutton "0" [ref=f1e164]
+                  - generic: "%"
+              - cell [ref=f1e165]:
+                - spinbutton "0" [ref=f1e166]: "0.00"
+              - cell [ref=f1e167]:
+                - button "Remove service" [ref=f1e168] [cursor=pointer]
+        - generic [ref=f1e171]:
+          - button "Add Service" [ref=f1e172] [cursor=pointer]
+          - button "Add Package" [ref=f1e173] [cursor=pointer]
+          - button "Add Product" [ref=f1e174] [cursor=pointer]
+          - button "Add Membership" [ref=f1e175] [cursor=pointer]
+          - button "Add Offer" [ref=f1e176] [cursor=pointer]
+        - generic [ref=f1e177]:
+          - generic [ref=f1e178]:
+            - generic [ref=f1e179]:
+              - generic [ref=f1e180]: Booking Status
+              - button "Service Completed" [ref=f1e182] [cursor=pointer]
+            - generic [ref=f1e184]:
+              - generic [ref=f1e185]: Payment Mode
+              - generic [ref=f1e186]:
+                - button "Cash" [ref=f1e187] [cursor=pointer]
+                - button "UPI" [ref=f1e188] [cursor=pointer]
+                - button "Card Payment" [ref=f1e189] [cursor=pointer]
+            - generic [ref=f1e191]:
+              - heading "Booking Note" [level=3] [ref=f1e192]
+              - textbox "Add booking notes (optional)" [ref=f1e193]
+          - generic [ref=f1e195]:
+            - heading "Bill Summary" [level=3] [ref=f1e196]
+            - generic [ref=f1e197]:
+              - generic [ref=f1e199]:
+                - generic [ref=f1e200]: Subtotal
+                - generic [ref=f1e201]: ₹ 0.00
+              - generic [ref=f1e204]:
+                - generic [ref=f1e205]: Net Amount
+                - generic [ref=f1e206]: ₹ 0.00
+              - generic [ref=f1e209]:
+                - generic [ref=f1e210]: Tax (0.0%)
+                - generic [ref=f1e211]: ₹ 0.00
+              - generic [ref=f1e214]:
+                - generic [ref=f1e215]: Total
+                - generic [ref=f1e216]: ₹ 0.00
+        - generic [ref=f1e217]:
+          - button "Reset" [ref=f1e218] [cursor=pointer]
+          - button "Checkout" [ref=f1e219] [cursor=pointer]

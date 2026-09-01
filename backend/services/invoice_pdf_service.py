@@ -70,6 +70,7 @@ def render_invoice_html(invoice_data, show_actions=False, download_url=None):
         items=invoice_data.get('items', []),
         summary=invoice_data.get('summary', {}),
         payment=invoice_data.get('payment', {}),
+        signature=invoice_data.get('signature'),
         show_actions=show_actions,
         download_url=download_url
     )
@@ -398,6 +399,62 @@ def generate_invoice_pdf_reportlab(invoice_data):
     ]))
     story.append(summary_wrapper)
     story.append(Spacer(1, 0.15*inch))
+
+    # === CUSTOMER SIGNATURE SECTION ===
+    # Customer Signature feature. No silent fallback: if a SIGNED invoice's
+    # image fails to decode/embed, this raises and the caller marks pdf_status
+    # 'failed' — a signed-looking PDF missing the actual signature is worse
+    # than no PDF. Only the genuinely signature-less states render text-only.
+    signature = invoice_data.get('signature')
+    if signature:
+        signature_caption_style = ParagraphStyle(
+            'SignatureCaption',
+            parent=styles['Normal'],
+            fontSize=9,
+            textColor=colors.HexColor('#4b5563'),
+            spaceAfter=2
+        )
+        signature_heading_style = ParagraphStyle(
+            'SignatureHeading',
+            parent=styles['Normal'],
+            fontSize=11,
+            textColor=colors.HexColor('#1f2937'),
+            fontName='Helvetica-Bold',
+            spaceAfter=6
+        )
+        story.append(Spacer(1, 0.1*inch))
+        story.append(Paragraph('Customer Confirmation', signature_heading_style))
+
+        if signature.get('status') == 'signed' and signature.get('image'):
+            from reportlab.platypus import Image as RLImage
+            import base64 as _b64
+
+            img_data_url = signature['image']
+            header, b64data = (img_data_url.split(',', 1) if ',' in img_data_url else (None, img_data_url))
+            img_bytes = _b64.b64decode(b64data)
+            img_buffer = BytesIO(img_bytes)
+            rl_img = RLImage(img_buffer, width=2.2*inch, height=0.9*inch)
+            rl_img.hAlign = 'LEFT'
+            story.append(rl_img)
+
+            signed_by = signature.get('signed_by_customer_name') or (customer.get('name') if customer else 'Customer')
+            caption = f"Signed by {signed_by} on {signature.get('signed_at_display') or signature.get('signed_at') or ''}"
+            finalized_by = signature.get('finalized_by_name')
+            if finalized_by:
+                caption += f" &middot; Processed by {finalized_by}"
+            story.append(Paragraph(caption, signature_caption_style))
+        elif signature.get('status') == 'skipped':
+            story.append(Paragraph(
+                f"Signature not obtained &mdash; {signature.get('skip_reason') or 'Customer declined to sign'}",
+                signature_caption_style
+            ))
+        elif signature.get('status') == 'not_required':
+            story.append(Paragraph(
+                "Customer signature was not captured because this invoice was created "
+                "before signature capture was introduced.",
+                signature_caption_style
+            ))
+        story.append(Spacer(1, 0.1*inch))
 
     # === CONTACT FOOTER SECTION ===
     contact_style = ParagraphStyle(

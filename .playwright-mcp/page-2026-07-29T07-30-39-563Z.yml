@@ -1,0 +1,213 @@
+- generic [ref=f2e2]:
+  - status [ref=f2e322]: "Bill created successfully! Bill Number: BILL-20260729130037-FF0D | Final Amount: ₹100.00"
+  - generic [ref=f2e3]:
+    - complementary [ref=f2e7]:
+      - generic [ref=f2e8]:
+        - button "Close sidebar" [ref=f2e9] [cursor=pointer]
+        - img "Priyanka Nature Cure" [ref=f2e13]
+      - navigation [ref=f2e14]:
+        - generic [ref=f2e15]: Quick Sale
+        - generic [ref=f2e21]:
+          - generic: BILLING
+          - generic [ref=f2e22]: Cash Register
+          - generic [ref=f2e28]: Bill History
+          - generic [ref=f2e34]: Appointment
+          - generic [ref=f2e40]: Customers
+          - generic [ref=f2e49]: Inventory
+          - generic [ref=f2e55]: Offer Management
+        - generic [ref=f2e61]: Dashboard
+        - generic [ref=f2e67]: ANALYTICS
+        - generic [ref=f2e68]:
+          - generic: MASTER
+          - generic [ref=f2e69]: Saloon Settings
+    - banner [ref=f2e78]:
+      - generic [ref=f2e79]:
+        - button "Toggle menu" [ref=f2e80] [cursor=pointer]
+        - generic "Priyanka Nature Cure" [ref=f2e85]
+        - generic [ref=f2e86]:
+          - button "QA Temp Branch ▼" [ref=f2e88] [cursor=pointer]:
+            - generic [ref=f2e89]: QA Temp Branch
+            - generic [ref=f2e90]: ▼
+          - button "Click to logout" [ref=f2e91] [cursor=pointer]
+          - button "Notifications" [ref=f2e95] [cursor=pointer]
+          - button "QS" [ref=f2e98] [cursor=pointer]
+    - main [ref=f2e100]:
+      - generic [ref=f2e102]:
+        - generic [ref=f2e103]:
+          - generic [ref=f2e104]:
+            - generic [ref=f2e323]: Your Sales This Week
+            - generic [ref=f2e324]: ₹100.00
+          - generic [ref=f2e107]:
+            - heading "New Booking" [level=1] [ref=f2e108]
+            - generic [ref=f2e109]:
+              - generic [ref=f2e110]:
+                - generic [ref=f2e112] [cursor=pointer]:
+                  - generic [ref=f2e113]: Customer
+                  - generic [ref=f2e295]: "✓ Selected: QA Test Customer"
+                - textbox "QA Test Customer - 9998887771" [ref=f2e296] [cursor=pointer]
+              - generic [ref=f2e118]:
+                - generic [ref=f2e119]: Date
+                - generic [ref=f2e120] [cursor=pointer]:
+                  - textbox "Select date" [ref=f2e123]: 29/07/2026
+                  - generic: 29-07-2026
+            - generic [ref=f2e298]:
+              - generic [ref=f2e299]:
+                - generic [ref=f2e300]:
+                  - generic [ref=f2e301]: Membership No Membership
+                  - generic [ref=f2e302]: Last Visit N/A
+                  - generic [ref=f2e303]: Total Visits 0
+                  - generic [ref=f2e304]: Total Revenue ₹0.00
+                  - generic [ref=f2e305]: Last Service N/A
+                  - generic [ref=f2e306]: Date of Birth N/A
+                - generic [ref=f2e307]:
+                  - generic [ref=f2e308]: "Customer Note:"
+                  - generic [ref=f2e309]: N/A
+              - button "Bill Activity" [ref=f2e311] [cursor=pointer]
+            - table [ref=f2e125]:
+              - rowgroup [ref=f2e126]:
+                - row [ref=f2e127]:
+                  - columnheader "Service" [ref=f2e128]
+                  - columnheader "Staff" [ref=f2e129]
+                  - columnheader "Start Time" [ref=f2e130]
+                  - columnheader "Price" [ref=f2e131]
+                  - columnheader "Discount" [ref=f2e132]
+                  - columnheader "Total" [ref=f2e133]
+                  - columnheader "Remove" [ref=f2e134]
+              - rowgroup [ref=f2e135]:
+                - row [ref=f2e242]:
+                  - cell [ref=f2e243]:
+                    - textbox [ref=f2e244]: QA Service 1 - ₹100
+                  - cell [ref=f2e143]:
+                    - button "QA StaffTemp" [ref=f2e145] [cursor=pointer]
+                  - cell [ref=f2e147]:
+                    - button "12:58" [ref=f2e148] [cursor=pointer]
+                  - cell [ref=f2e245]:
+                    - spinbutton "0" [ref=f2e153]: "100"
+                  - cell [ref=f2e154]:
+                    - generic [ref=f2e155]:
+                      - spinbutton "0" [ref=f2e156]
+                      - generic: "%"
+                  - cell [ref=f2e246]:
+                    - spinbutton "0" [ref=f2e158]: "100.00"
+                  - cell [ref=f2e159]:
+                    - button "Remove service" [ref=f2e160] [cursor=pointer]
+            - generic [ref=f2e163]:
+              - button "Add Service" [ref=f2e164] [cursor=pointer]
+              - button "Add Package" [ref=f2e165] [cursor=pointer]
+              - button "Add Product" [ref=f2e166] [cursor=pointer]
+              - button "Add Membership" [ref=f2e167] [cursor=pointer]
+              - button "Add Offer" [ref=f2e168] [cursor=pointer]
+            - generic [ref=f2e169]:
+              - generic [ref=f2e170]:
+                - generic [ref=f2e171]:
+                  - generic [ref=f2e172]: Booking Status
+                  - button "Service Completed" [ref=f2e174] [cursor=pointer]
+                - generic [ref=f2e176]:
+                  - generic [ref=f2e177]: Payment Mode
+                  - generic [ref=f2e178]:
+                    - button "Cash" [ref=f2e179] [cursor=pointer]
+                    - button "UPI" [ref=f2e180] [cursor=pointer]
+                    - button "Card Payment" [ref=f2e181] [cursor=pointer]
+                - generic [ref=f2e312]:
+                  - generic [ref=f2e313]: Date of Birth
+                  - textbox "Select date of birth" [ref=f2e316]
+                - generic [ref=f2e183]:
+                  - heading "Booking Note" [level=3] [ref=f2e184]
+                  - textbox "Add booking notes (optional)" [ref=f2e185]
+              - generic [ref=f2e187]:
+                - heading "Bill Summary" [level=3] [ref=f2e188]
+                - generic [ref=f2e189]:
+                  - generic [ref=f2e190]:
+                    - generic [ref=f2e247]:
+                      - generic [ref=f2e248]: Services
+                      - generic [ref=f2e249]: ₹ 100.00
+                    - generic [ref=f2e191]:
+                      - generic [ref=f2e192]: Subtotal
+                      - generic [ref=f2e193]: ₹ 100.00
+                  - generic [ref=f2e196]:
+                    - generic [ref=f2e197]: Net Amount
+                    - generic [ref=f2e198]: ₹ 100.00
+                  - generic [ref=f2e201]:
+                    - generic [ref=f2e202]: Tax (0.0%)
+                    - generic [ref=f2e203]: ₹ 0.00
+                  - generic [ref=f2e206]:
+                    - generic [ref=f2e207]: Total
+                    - generic [ref=f2e208]: ₹ 100.00
+            - generic [ref=f2e209]:
+              - button "Reset" [ref=f2e210] [cursor=pointer]
+              - button "Checkout" [ref=f2e211] [cursor=pointer]
+        - generic [ref=f2e326]:
+          - generic [ref=f2e327]:
+            - button "← Back" [ref=f2e328] [cursor=pointer]
+            - heading "Invoice" [level=2] [ref=f2e329]
+          - generic [ref=f2e331]:
+            - heading "Priyanka Nature Cure" [level=1] [ref=f2e333]
+            - generic [ref=f2e334]:
+              - generic [ref=f2e335]:
+                - paragraph [ref=f2e336]:
+                  - strong [ref=f2e337]: Billed to
+                  - text: QA Test Customer
+                - paragraph [ref=f2e338]:
+                  - strong [ref=f2e339]: "Mobile:"
+                  - link "+91 9998887771" [ref=f2e340] [cursor=pointer]:
+                    - /url: tel:9998887771
+              - generic [ref=f2e341]:
+                - paragraph [ref=f2e342]: "Invoice Number: INV-000001"
+                - paragraph [ref=f2e343]: "Wallet Balance: ₹0.00"
+            - generic [ref=f2e344]:
+              - generic [ref=f2e345]: Booking at
+              - generic [ref=f2e346]: Wed, 29 Jul, 2026, 12:58 pm
+            - generic [ref=f2e347]:
+              - generic [ref=f2e348]:
+                - generic [ref=f2e349]: Payment Status
+                - generic [ref=f2e350]: paid
+              - generic [ref=f2e351]:
+                - generic [ref=f2e352]: Payment Source
+                - generic [ref=f2e353]: "Cash: ₹100"
+            - generic [ref=f2e354]:
+              - generic [ref=f2e355]:
+                - generic [ref=f2e356]: Item
+                - generic [ref=f2e357]: Staff Name
+                - generic [ref=f2e358]: Qty
+                - generic [ref=f2e359]: Price
+                - generic [ref=f2e360]: Tax
+                - generic [ref=f2e361]: Amt
+              - generic [ref=f2e362]:
+                - generic [ref=f2e363]: QA Service 1
+                - generic [ref=f2e364]: QA StaffTemp
+                - generic [ref=f2e365]: "1"
+                - generic [ref=f2e366]: ₹100.00
+                - generic [ref=f2e367]: ₹0.00
+                - generic [ref=f2e368]: ₹100.00
+            - generic [ref=f2e369]:
+              - generic [ref=f2e370]:
+                - generic [ref=f2e371]: Subtotal
+                - generic [ref=f2e372]: ₹100.00
+              - generic [ref=f2e373]:
+                - generic [ref=f2e374]: Discount
+                - generic [ref=f2e375]: ₹0.00
+              - generic [ref=f2e376]:
+                - generic [ref=f2e377]: Net
+                - generic [ref=f2e378]: ₹100.00
+              - generic [ref=f2e379]:
+                - generic [ref=f2e380]: Tax
+                - generic [ref=f2e381]: ₹0.00
+              - generic [ref=f2e382]:
+                - generic [ref=f2e383]: Total
+                - generic [ref=f2e384]: ₹100
+            - generic [ref=f2e385]:
+              - paragraph [ref=f2e386]:
+                - text: "For Enquiry Contact – Geethalakshmi:"
+                - link "+91 9840192264" [ref=f2e387] [cursor=pointer]:
+                  - /url: tel:+919840192264
+              - paragraph [ref=f2e388]:
+                - link "www.priyankanaturecure.com" [ref=f2e389] [cursor=pointer]:
+                  - /url: https://www.priyankanaturecure.com
+              - paragraph [ref=f2e390]:
+                - strong [ref=f2e391]: Email –
+                - link "priyankanaturecure@gmail.com" [ref=f2e392] [cursor=pointer]:
+                  - /url: mailto:priyankanaturecure@gmail.com
+            - generic [ref=f2e393]:
+              - button "Review Us" [ref=f2e394] [cursor=pointer]
+              - button "Send via WhatsApp" [ref=f2e395] [cursor=pointer]
+              - button "Download Invoice" [ref=f2e398] [cursor=pointer]

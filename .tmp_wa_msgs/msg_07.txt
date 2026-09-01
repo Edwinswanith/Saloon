@@ -1,0 +1,81 @@
+*MASSAGE CUSTOMERS (5/5)*
+_June-July 2026 | Saloon_
+
+*81. komal*
+Phone: 7410003299
+Branch: Main Road
+Month: Jun
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 600
+
+*82. sumathi*
+Phone: 9840479773
+Branch: Main Road
+Month: Jun
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 600
+
+*83. VIDHYA*
+Phone: 9841094189
+Branch: Main Road
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 560
+
+*84. Bhanu*
+Phone: 8015150750
+Branch: Kovur
+Month: Jun
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 500
+
+*85. Biday*
+Phone: 9884467197
+Branch: Madanandapuram
+Month: Jul
+Service: Neck Massage
+Visits: 1 | Spend: Rs 500
+
+*86. Parva*
+Phone: 9976089255
+Branch: Main Road
+Month: Jun
+Service: Neck Massage
+Visits: 1 | Spend: Rs 500
+
+*87. MOUNIKA*
+Phone: 9043048169
+Branch: Main Road
+Month: Jul
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 480
+
+*88. NATASHA*
+Phone: 8281272763
+Branch: Main Road
+Month: Jul
+Service: Aroma Oil Massage
+Visits: 1 | Spend: Rs 480
+
+*89. SAMUNDESWARI*
+Phone: 9884202784
+Branch: Main Road
+Month: Jul
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 480
+
+*90. SELVI*
+Phone: 8610149882
+Branch: Main Road
+Month: Jun
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 480
+
+*91. orjan*
+Phone: 9940398585
+Branch: Main Road
+Month: Jul
+Service: Hot Oil Massage (Basic Length)
+Visits: 1 | Spend: Rs 480
+
+*Shown: 11 customers*

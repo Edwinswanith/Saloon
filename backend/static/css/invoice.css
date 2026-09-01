@@ -313,6 +313,37 @@
   text-decoration: underline;
 }
 
+/* Customer Signature Section */
+.invoice-signature-block {
+  padding: 12px 0;
+  margin-bottom: 12px;
+  border-top: 1.5px solid #0F766E;
+}
+
+.invoice-signature-block .signature-heading {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 8px 0;
+}
+
+.invoice-signature-img {
+  max-width: 220px;
+  max-height: 90px;
+  display: block;
+}
+
+.invoice-signature-block .signature-caption {
+  font-size: 10px;
+  color: #4b5563;
+  margin: 6px 0 0 0;
+}
+
+.invoice-signature-block .signature-caption-muted {
+  color: #94a3b8;
+  font-style: italic;
+}
+
 /* Footer Buttons */
 .invoice-actions-section {
   display: flex;
