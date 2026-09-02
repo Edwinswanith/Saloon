@@ -2,7 +2,7 @@
 
 A full-stack, multi-branch salon and spa business management application. Handles point-of-sale billing, appointments, inventory, staff management, customer relationships, and analytics -- all from a single dashboard.
 
-**Live URL:** https://saloon-management-system-895210689446.europe-west2.run.app
+**Live URL:** deployed on Vercel (see Deployment section below)
 
 ---
 
@@ -14,7 +14,7 @@ A full-stack, multi-branch salon and spa business management application. Handle
 | Backend    | Flask 3, MongoEngine, PyJWT, bcrypt, ReportLab               |
 | Database   | MongoDB Atlas (cloud)                                        |
 | Cache      | Redis (optional, in-memory fallback)                         |
-| Deployment | Docker (multi-stage) on Google Cloud Run                     |
+| Deployment | Vercel (SPA + Flask serverless function, same-origin)         |
 
 ---
 
@@ -25,7 +25,6 @@ A full-stack, multi-branch salon and spa business management application. Handle
 - Python 3.11+
 - Node.js 18+
 - MongoDB Atlas connection string (or a local MongoDB instance)
-- (Optional) Docker & Docker Compose
 
 ### Backend
 
@@ -44,12 +43,6 @@ python app.py                 # Runs on http://127.0.0.1:5000
 cd frontend
 npm install
 npm run dev                   # Runs on http://localhost:5173
-```
-
-### Docker (full stack)
-
-```bash
-docker-compose up             # Backend :5000, Frontend :5173
 ```
 
 ---
@@ -81,10 +74,9 @@ Saloon/
 |   |-- package.json
 |   +-- vite.config.js
 |
-|-- Dockerfile                # Multi-stage (Node build -> Python serve)
-|-- docker-compose.yml        # Local dev orchestration
-|-- cloud_run.bat             # One-click deploy to Google Cloud Run
-+-- cloud_run.sh
+|-- api/
+|   +-- index.py              # Vercel Python entrypoint (imports backend/app.py)
++-- vercel.json                # Rewrites + build config for the Vercel deployment
 ```
 
 ---
@@ -117,23 +109,15 @@ Saloon/
 
 | Variable       | Description                                  |
 |----------------|----------------------------------------------|
-| `API_BASE_URL` | `http://127.0.0.1:5000` (dev) or Cloud Run URL (prod) |
+| `API_BASE_URL` | `http://127.0.0.1:5000` (dev) or same-origin (prod, via Vercel) |
 
 ---
 
 ## Deployment
 
-Production runs on **Google Cloud Run** (region: `europe-west2`).
+Production runs on **Vercel** — a single project serving the built SPA and the Flask API from the same origin. Deploys automatically on every push to `main`. See the "Vercel (the only deployment target)" section in `CLAUDE.md` for how the Python entrypoint (`api/index.py`) and `vercel.json` rewrites are wired up.
 
-```bash
-# Windows
-cloud_run.bat
-
-# Linux / macOS
-./cloud_run.sh
-```
-
-The script builds a Docker image, pushes it to Google Artifact Registry, and deploys a new Cloud Run revision.
+Cloud Run was previously used for production and has been retired — do not reintroduce Docker/Cloud Run deployment tooling.
 
 ---
 

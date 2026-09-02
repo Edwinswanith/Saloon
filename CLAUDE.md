@@ -10,7 +10,7 @@ Saloon Management System - A multi-branch salon/spa business management applicat
 
 - **Backend**: Flask 3.0, MongoEngine ODM, MongoDB Atlas
 - **Frontend**: React 18, Vite, Ant Design 6, Zustand, React Query
-- **Deployment**: Google Cloud Run via Docker (multi-stage build), and Vercel (SPA + Flask serverless function)
+- **Deployment**: Vercel (SPA + Flask serverless function) — the only deployment target. Cloud Run was retired; do not reintroduce Docker/Cloud Run tooling (`Dockerfile`, `docker-compose.yml`, `cloud_run.*`) without being asked.
 
 ## Environment Setup
 
@@ -36,18 +36,9 @@ npm run dev:backend # cd backend && python app.py, from root
 npm run build       # frontend/npm run build directly, or `npm run build` at root for the Vercel bundle (see below)
 ```
 
-### Docker (Cloud Run target)
-```bash
-docker-compose up  # Full stack locally: backend :5000, frontend :5173
-cloud_run.bat      # Deploy to Cloud Run (Windows)
-cloud_run.sh       # Deploy to Cloud Run (Linux/macOS)
-```
+### Vercel (the only deployment target)
 
-Production image runs gunicorn with `gthread` workers (2 workers × 4 threads, 120s timeout) - see [Dockerfile](Dockerfile#L70). `python app.py` is dev-only.
-
-### Vercel (alternate deployment target)
-
-The repo also deploys as a single Vercel project: SPA + Flask served same-origin. `api/index.py` is the actual Vercel Python entrypoint — a thin shim that adds `backend/` to `sys.path` and imports the Flask `app` object from `backend/app.py` (Vercel's Python builder requires the function file to live under `api/`; it auto-installs `backend/requirements.txt` itself, so `installCommand` in `vercel.json` must not also run `pip install` — that fails on Vercel's `uv`-managed Python image with `externally-managed-environment`). `vercel.json` rewrites `/api/*`, `/i/*`, `/invoice/*`, `/feedback*` to `/api/index` and everything else to the SPA. `npm run vercel-build` (→ [scripts/vercel-build.mjs](scripts/vercel-build.mjs)) builds the frontend with empty `VITE_API_BASE_URL`/`VITE_PUBLIC_BASE_URL` so production web calls same-origin `/api/...`, then copies `frontend/dist` and `backend/static/css` into `public/`. When adding a new public (non-`/api`) route prefix, update both the Flask skip-list (see Static/Public Route Precedence below) *and* the `rewrites` array in `vercel.json`, or Vercel will serve `index.html` instead of routing to Flask.
+The repo deploys as a single Vercel project: SPA + Flask served same-origin. `api/index.py` is the actual Vercel Python entrypoint — a thin shim that adds `backend/` to `sys.path` and imports the Flask `app` object from `backend/app.py` (Vercel's Python builder requires the function file to live under `api/`; it auto-installs `backend/requirements.txt` itself, so `installCommand` in `vercel.json` must not also run `pip install` — that fails on Vercel's `uv`-managed Python image with `externally-managed-environment`). `vercel.json` rewrites `/api/*`, `/i/*`, `/invoice/*`, `/feedback*` to `/api/index` and everything else to the SPA. `npm run vercel-build` (→ [scripts/vercel-build.mjs](scripts/vercel-build.mjs)) builds the frontend with empty `VITE_API_BASE_URL`/`VITE_PUBLIC_BASE_URL` so production web calls same-origin `/api/...`, then copies `frontend/dist` and `backend/static/css` into `public/`. When adding a new public (non-`/api`) route prefix, update both the Flask skip-list (see Static/Public Route Precedence below) *and* the `rewrites` array in `vercel.json`, or Vercel will serve `index.html` instead of routing to Flask.
 
 ## Architecture
 
@@ -72,6 +63,8 @@ The repo also deploys as a single Vercel project: SPA + Flask served same-origin
 - `auth.py` - JWT handling, decorators: `@require_auth`, `@require_role('manager', 'owner')`, `@optional_auth`
 - `branch_filter.py` - Multi-branch filtering: `get_selected_branch()`, `filter_by_branch()`
 - `redis_cache.py` - Caching layer (optional, falls back to in-memory)
+
+**Services** (`backend/services/`): `invoice_pdf_service.py` (ReportLab PDF generation) and `pdf_storage_service.py`, used by the public invoice routes and `bill_routes.py`
 
 ### Frontend Structure
 
