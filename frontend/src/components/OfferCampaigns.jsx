@@ -28,9 +28,9 @@ const OfferCampaigns = () => {
   const fetchCampaigns = async () => {
     try {
       setLoadingCampaigns(true);
-      const url = campaignTypeFilter === 'all' 
-        ? '/api/campaigns/' 
-        : `/api/campaigns/?type=${campaignTypeFilter}`;
+      const url = campaignTypeFilter === 'all'
+        ? '/api/campaigns'
+        : `/api/campaigns?type=${campaignTypeFilter}`;
       const response = await apiGet(url);
       if (!response.ok) throw new Error('Failed to fetch campaigns');
       const data = await response.json();

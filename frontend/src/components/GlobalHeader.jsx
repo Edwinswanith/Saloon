@@ -24,7 +24,7 @@ const GlobalHeader = ({ onMobileMenuToggle }) => {
   const fetchNotifications = useCallback(async () => {
     if (!isManagerOrOwner) return;
     try {
-      const res = await apiGet('/api/notifications/');
+      const res = await apiGet('/api/notifications');
       if (res.ok) {
         const data = await res.json();
         setNotifications(data.notifications || []);
