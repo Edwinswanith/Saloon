@@ -97,7 +97,7 @@ const OfferManagement = () => {
   const fetchOffers = async () => {
     try {
       setLoading(true)
-      const response = await apiGet('/api/offers/')
+      const response = await apiGet('/api/offers')
       if (!response.ok) throw new Error('Failed to load offers')
       const data = await response.json()
       setOffers(data.offers || [])
@@ -196,7 +196,7 @@ const OfferManagement = () => {
     try {
       const response = editingOffer
         ? await apiPut(`/api/offers/${editingOffer.id}`, payload)
-        : await apiPost('/api/offers/', payload)
+        : await apiPost('/api/offers', payload)
       if (response.ok) {
         showSuccess(editingOffer ? 'Offer updated' : 'Offer created')
         setShowAddModal(false)
