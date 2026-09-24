@@ -161,7 +161,7 @@ const ListOfBills = ({ setActivePage }) => {
             fetchBills()
           } else {
             const err = await response.json().catch(() => ({}))
-            showError(err.error || 'Failed to delete bill')
+            showError(err.message || err.error || 'Failed to delete bill')
           }
         } catch (error) {
           console.error('Error deleting bill:', error)
