@@ -25,16 +25,26 @@ def get_demo_branch_id():
     return None
 
 
+def get_demo_branch_name():
+    """Configured demo branch name fallback."""
+    return os.environ.get('DEMO_BRANCH_NAME', 'Dummy Branch').strip()
+
+
 def get_demo_branch():
     """Configured demo branch document, or None when unavailable."""
     branch_id = get_demo_branch_id()
-    if not branch_id:
-        return None
     try:
-        return Branch.objects(id=branch_id).first()
+        if branch_id:
+            branch = Branch.objects(id=branch_id).first()
+            if branch:
+                return branch
+
+        branch_name = get_demo_branch_name()
+        if branch_name:
+            return Branch.objects(name=branch_name).first()
     except Exception as e:
-        print(f"Warning: Could not load demo branch {branch_id}: {e}")
-        return None
+        print(f"Warning: Could not load demo branch: {e}")
+    return None
 
 
 def _get_user_id(user):
@@ -73,14 +83,14 @@ def _load_user_document(user):
 
 def is_demo_user(user):
     """
-    True when the authenticated user should be locked to DEMO_BRANCH_ID.
+    True when the authenticated user should be locked to the demo branch.
 
-    A staff/manager assigned to DEMO_BRANCH_ID is automatically treated as demo.
-    Owner/demo accounts without a branch can be listed in DEMO_USER_IDS,
+    A staff/manager assigned to DEMO_BRANCH_ID, or to the branch named by
+    DEMO_BRANCH_NAME (defaults to "Dummy Branch"), is automatically treated as
+    demo. Owner/demo accounts without a branch can be listed in DEMO_USER_IDS,
     DEMO_USER_EMAILS, or DEMO_USER_MOBILES.
     """
-    demo_branch_id = get_demo_branch_id()
-    if not demo_branch_id or not user:
+    if not user:
         return False
 
     user_id = _get_user_id(user)
@@ -100,8 +110,14 @@ def is_demo_user(user):
 
     branch = getattr(doc, 'branch', None)
     try:
-        if branch and str(branch.id) == str(demo_branch_id):
-            return True
+        if branch:
+            demo_branch = get_demo_branch()
+            if demo_branch and str(branch.id) == str(demo_branch.id):
+                return True
+
+            branch_name = get_demo_branch_name()
+            if branch_name and getattr(branch, 'name', '').strip().lower() == branch_name.lower():
+                return True
     except Exception:
         pass
 
