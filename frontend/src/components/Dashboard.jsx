@@ -399,7 +399,7 @@ const ManagerOwnerDashboard = () => {
       }
       setStaffPerformance(staffPerformanceData)
 
-      // Process top performer (company-wide)
+      // Process top performer (company-wide for All Branches, otherwise branch-scoped)
       let topPerformerData = null
       let staffLeaderboardData = []
       if (topPerformerRes.status === 'fulfilled' && topPerformerRes.value.ok) {
@@ -834,7 +834,9 @@ const ManagerOwnerDashboard = () => {
 
             {/* Top Performer Panel */}
             <div className="staff-panel">
-              <div className="panel-header">Top Performer (Company-Wide)</div>
+              <div className="panel-header">
+                Top Performer ({currentBranch?.isAll ? 'Company-Wide' : 'Branch'})
+              </div>
               <div className="panel-content">
                 {loading ? (
                   <ChartSkeleton height={400} />

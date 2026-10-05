@@ -1607,7 +1607,7 @@ def get_operational_alerts(current_user=None):
 @cache_response(ttl=300)  # Cache for 5 minutes
 @log_performance
 def get_top_performer(current_user=None):
-    """Calculate top performer based on weighted scoring system (company-wide) - OPTIMIZED with aggregation"""
+    """Calculate top performer based on weighted scoring system."""
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
@@ -1623,15 +1623,21 @@ def get_top_performer(current_user=None):
         start = datetime.strptime(start_date, '%Y-%m-%d')
         end = datetime.strptime(end_date, '%Y-%m-%d')
         end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
+        branch = get_selected_branch(request, current_user)
+        branch_oid = ObjectId(str(branch.id)) if branch else None
 
         # Revenue is allocated proportionally from each bill's final_amount so
         # the leaderboard reconciles with the dashboard total and Cash Register.
         # Leaderboard filters to active staff (a ranking view), and skips items
         # with no staff assigned (those don't belong on a leaderboard).
-        bills_pipeline = attributed_revenue_pipeline({
+        bill_match = {
             "is_deleted": False,
             "bill_date": {"$gte": start, "$lte": end}
-        }) + [
+        }
+        if branch_oid:
+            bill_match["branch"] = branch_oid
+
+        bills_pipeline = attributed_revenue_pipeline(bill_match) + [
             {"$match": {"items.staff": {"$ne": None}}},
             {"$group": {
                 "_id": "$items.staff",
@@ -1687,12 +1693,16 @@ def get_top_performer(current_user=None):
         appt_start_datetime = start.replace(hour=0, minute=0, second=0, microsecond=0)
         appt_end_datetime = end.replace(hour=23, minute=59, second=59, microsecond=999999)
         
+        appt_match = {
+            "staff": {"$in": staff_ids},
+            "appointment_date": {"$gte": appt_start_datetime, "$lte": appt_end_datetime},
+            "status": "completed"
+        }
+        if branch_oid:
+            appt_match["branch"] = branch_oid
+
         appt_pipeline = [
-            {"$match": {
-                "staff": {"$in": staff_ids},
-                "appointment_date": {"$gte": appt_start_datetime, "$lte": appt_end_datetime},
-                "status": "completed"
-            }},
+            {"$match": appt_match},
             {"$group": {
                 "_id": "$staff",
                 "count": {"$sum": 1}
@@ -1702,11 +1712,15 @@ def get_top_performer(current_user=None):
         appt_counts = {str(r['_id']): r['count'] for r in appt_results}
 
         # OPTIMIZED: Single aggregation for all feedbacks
+        feedback_match = {
+            "staff": {"$in": staff_ids},
+            "created_at": {"$gte": start, "$lte": end}
+        }
+        if branch_oid:
+            feedback_match["branch"] = branch_oid
+
         feedback_pipeline = [
-            {"$match": {
-                "staff": {"$in": staff_ids},
-                "created_at": {"$gte": start, "$lte": end}
-            }},
+            {"$match": feedback_match},
             {"$group": {
                 "_id": "$staff",
                 "avg_rating": {"$avg": "$rating"},
@@ -1726,12 +1740,16 @@ def get_top_performer(current_user=None):
             }
 
         # OPTIMIZED: Single aggregation for customer retention (count visits per staff-customer pair)
+        retention_match = {
+            "is_deleted": False,
+            "bill_date": {"$gte": start, "$lte": end},
+            "customer": {"$ne": None}
+        }
+        if branch_oid:
+            retention_match["branch"] = branch_oid
+
         retention_pipeline = [
-            {"$match": {
-                "is_deleted": False,
-                "bill_date": {"$gte": start, "$lte": end},
-                "customer": {"$ne": None}
-            }},
+            {"$match": retention_match},
             {"$unwind": "$items"},
             {"$match": {
                 "items.staff": {"$ne": None},
