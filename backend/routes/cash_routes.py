@@ -4,7 +4,7 @@ from datetime import datetime, date
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
 from utils.auth import require_auth, require_role
-from utils.branch_filter import get_selected_branch
+from utils.branch_filter import apply_branch_scope, get_selected_branch
 
 cash_bp = Blueprint('cash', __name__)
 
@@ -40,8 +40,7 @@ def get_cash_transactions(current_user=None):
 
         # Branch filter
         branch = get_selected_branch(request, current_user)
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         # Apply type filter
         if transaction_type:
@@ -258,8 +257,7 @@ def get_cash_summary(current_user=None):
 
         # Branch filter
         branch = get_selected_branch(request, current_user)
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         if date_param:
             target_date = datetime.strptime(date_param, '%Y-%m-%d').date()
@@ -315,8 +313,7 @@ def get_daily_cash_summary(current_user=None):
 
         # Branch filter
         branch = get_selected_branch(request, current_user)
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         if start_date:
             start = datetime.strptime(start_date, '%Y-%m-%d').date()
@@ -366,9 +363,8 @@ def get_cash_balance(current_user=None):
 
         # Branch filter
         branch = get_selected_branch(request, current_user)
-        if branch:
-            query_in = query_in.filter(branch=branch)
-            query_out = query_out.filter(branch=branch)
+        query_in = apply_branch_scope(query_in, branch, current_user)
+        query_out = apply_branch_scope(query_out, branch, current_user)
 
         cash_in = sum([float(t.amount) for t in query_in]) if query_in else 0.0
         cash_out = sum([float(t.amount) for t in query_out]) if query_out else 0.0

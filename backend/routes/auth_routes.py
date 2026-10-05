@@ -11,7 +11,13 @@ from utils.auth import (
     require_auth,
     get_current_user
 )
-from utils.branch_filter import demo_forbidden_response, get_demo_branch_for_user
+from utils.branch_filter import (
+    apply_branch_scope,
+    demo_forbidden_response,
+    get_demo_branch_for_user,
+    is_demo_branch,
+    is_demo_user,
+)
 from datetime import datetime
 from bson import ObjectId
 import os
@@ -1141,7 +1147,13 @@ def get_staff_list():
         if branch_id and ObjectId.is_valid(branch_id):
             branch = Branch.objects(id=branch_id).first()
 
-        all_staff = Staff.objects().only(
+        all_staff = Staff.objects()
+        if branch and is_demo_branch(branch):
+            all_staff = all_staff.filter(branch=branch)
+        else:
+            all_staff = apply_branch_scope(all_staff, None, None)
+
+        all_staff = all_staff.only(
             'id', 'mobile', 'first_name', 'last_name', 'role', 'is_active', 'status', 'branch'
         )
 
@@ -1221,8 +1233,12 @@ def get_manager_list():
         if role_filter == 'owner':
             owners = Owner.objects()
             print(f"DEBUG: Found {owners.count()} owners in database")
+            demo_login_branch = bool(branch and is_demo_branch(branch))
             
             for owner in owners:
+                if is_demo_user(owner) != demo_login_branch:
+                    continue
+
                 # Skip only if explicitly marked as inactive
                 is_active = owner.is_active if owner.is_active is not None else True
                 status = owner.status if owner.status else 'active'
@@ -1249,6 +1265,8 @@ def get_manager_list():
                 # Filter by branch ID (more reliable than branch object for MongoEngine ReferenceField)
                 query = query.filter(branch=branch.id)
                 print(f"DEBUG: Filtering managers by branch: {branch.name} (ID: {branch.id})")
+            else:
+                query = apply_branch_scope(query, None, None)
             
             # Get managers with only needed fields
             all_managers = query.only(

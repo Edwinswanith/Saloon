@@ -3,7 +3,7 @@ from mongoengine import Q
 from datetime import datetime
 from models import ServiceRecoveryCase, Feedback, Customer, Bill, Manager
 from utils.auth import require_auth, require_role, get_current_user
-from utils.branch_filter import get_selected_branch, filter_by_branch
+from utils.branch_filter import apply_branch_scope, get_selected_branch, filter_by_branch
 from models import to_dict
 
 service_recovery_bp = Blueprint('service_recovery', __name__)
@@ -22,10 +22,6 @@ def list_cases(current_user=None):
         
         query = Q()
         
-        # Filter by branch if specified
-        if branch:
-            query &= Q(branch=branch)
-        
         if status:
             query &= Q(status=status)
         if issue_type:
@@ -34,7 +30,8 @@ def list_cases(current_user=None):
             query &= Q(assigned_manager=assigned_manager_id)
         
         # Force evaluation by converting to list
-        cases = list(ServiceRecoveryCase.objects(query).order_by('-created_at'))
+        cases_query = apply_branch_scope(ServiceRecoveryCase.objects(query), branch, current_user)
+        cases = list(cases_query.order_by('-created_at'))
         
         result = []
         for case in cases:
@@ -152,19 +149,13 @@ def get_stats(current_user=None):
         
         # Build base query with branch filter
         base_query = Q()
-        if branch:
-            base_query &= Q(branch=branch)
-        
-        total = ServiceRecoveryCase.objects(base_query).count()
-        open_query = base_query & Q(status='open')
-        in_progress_query = base_query & Q(status='in_progress')
-        resolved_query = base_query & Q(status='resolved')
-        closed_query = base_query & Q(status='closed')
-        
-        open_count = ServiceRecoveryCase.objects(open_query).count()
-        in_progress_count = ServiceRecoveryCase.objects(in_progress_query).count()
-        resolved_count = ServiceRecoveryCase.objects(resolved_query).count()
-        closed_count = ServiceRecoveryCase.objects(closed_query).count()
+        base_cases = apply_branch_scope(ServiceRecoveryCase.objects(base_query), branch, current_user)
+
+        total = base_cases.count()
+        open_count = base_cases.filter(status='open').count()
+        in_progress_count = base_cases.filter(status='in_progress').count()
+        resolved_count = base_cases.filter(status='resolved').count()
+        closed_count = base_cases.filter(status='closed').count()
         
         resolution_rate = (resolved_count / total * 100) if total > 0 else 0
         

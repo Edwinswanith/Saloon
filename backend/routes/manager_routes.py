@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from models import Manager, Branch
 from datetime import datetime
 from bson import ObjectId
-from utils.branch_filter import get_selected_branch
+from utils.branch_filter import apply_branch_scope, get_selected_branch
 from utils.auth import require_auth, require_role
 from mongoengine.errors import NotUniqueError, DoesNotExist
 
@@ -46,6 +46,8 @@ def get_managers(current_user=None):
             except Exception as e:
                 print(f"Warning: Could not filter by branch: {e}")
                 # Continue without branch filter
+        else:
+            query = apply_branch_scope(query, None, current_user)
         
         if status != 'all':
             query = query.filter(status=status)

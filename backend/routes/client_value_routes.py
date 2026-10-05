@@ -3,7 +3,7 @@ from models import Customer, Bill, Membership, Branch
 from datetime import datetime, timedelta
 from mongoengine.errors import DoesNotExist
 from bson import ObjectId
-from utils.branch_filter import get_selected_branch
+from utils.branch_filter import apply_branch_scope, apply_branch_scope_to_match, get_selected_branch
 from utils.date_utils import get_ist_date_range
 from utils.auth import require_auth
 
@@ -32,7 +32,6 @@ def client_revenue_pareto(current_user=None):
 
         # Get branch filter
         branch = get_selected_branch(request, current_user)
-        branch_id = str(branch.id) if branch else None
 
         # Default to last 12 months if no dates provided
         if not start_date or not end_date:
@@ -54,9 +53,7 @@ def client_revenue_pareto(current_user=None):
             'customer': {'$exists': True, '$ne': None}
         }
         
-        # Add branch filter if specified
-        if branch_id and ObjectId.is_valid(branch_id):
-            match_stage['branch'] = ObjectId(branch_id)
+        apply_branch_scope_to_match(match_stage, branch, current_user)
         
         pipeline.append({'$match': match_stage})
 
@@ -457,7 +454,6 @@ def customer_details(customer_id, current_user=None):
 
         # Get branch filter
         branch = get_selected_branch(request, current_user)
-        branch_id = str(branch.id) if branch else None
 
         # Build customer name
         full_name = f"{customer.first_name or ''} {customer.last_name or ''}".strip()
@@ -469,9 +465,7 @@ def customer_details(customer_id, current_user=None):
             customer=customer,
             is_deleted=False
         )
-        
-        if branch_id:
-            bills_query = bills_query.filter(branch=ObjectId(branch_id))
+        bills_query = apply_branch_scope(bills_query, branch, current_user)
         
         bills = list(bills_query.order_by('-bill_date').limit(10))
         
@@ -487,8 +481,7 @@ def customer_details(customer_id, current_user=None):
             status='active',
             expiry_date__gt=datetime.utcnow()
         )
-        if branch_id:
-            membership_query = membership_query.filter(branch=ObjectId(branch_id))
+        membership_query = apply_branch_scope(membership_query, branch, current_user)
         
         active_membership = membership_query.first()
         membership_status = 'active' if active_membership else 'none'
@@ -596,8 +589,7 @@ def customer_details(customer_id, current_user=None):
         # Calculate VIP status and reasons
         # Get all customers for comparison
         all_customers_query = Bill.objects.filter(is_deleted=False)
-        if branch_id:
-            all_customers_query = all_customers_query.filter(branch=ObjectId(branch_id))
+        all_customers_query = apply_branch_scope(all_customers_query, branch, current_user)
         
         all_customer_stats = {}
         for bill in all_customers_query:
@@ -675,4 +667,3 @@ def customer_details(customer_id, current_user=None):
         response = jsonify({'error': str(e)})
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 500
-

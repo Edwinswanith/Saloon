@@ -131,6 +131,56 @@ def get_demo_branch_for_user(user):
     return get_demo_branch()
 
 
+def is_demo_branch(branch):
+    """True when branch is the configured demo branch."""
+    if not branch:
+        return False
+
+    demo_branch = get_demo_branch()
+    try:
+        return bool(demo_branch and str(branch.id) == str(demo_branch.id))
+    except Exception:
+        return False
+
+
+def get_demo_branch_exclusion(user=None, branch=None):
+    """
+    Return the demo branch that should be excluded from production-wide queries.
+
+    Demo users must see their demo branch, and an explicitly selected branch must
+    be honored. For normal users in all-branches mode, demo data is excluded so
+    client test activity does not affect production totals.
+    """
+    if get_demo_branch_for_user(user):
+        return None
+    if is_demo_branch(branch):
+        return None
+    return get_demo_branch()
+
+
+def apply_branch_scope(query, branch, user=None):
+    """Apply selected branch filtering, excluding demo data in all-branches mode."""
+    if branch:
+        return query.filter(branch=branch)
+
+    demo_branch = get_demo_branch_exclusion(user=user, branch=branch)
+    if demo_branch:
+        return query.filter(branch__ne=demo_branch)
+    return query
+
+
+def apply_branch_scope_to_match(match_stage, branch, user=None):
+    """Apply branch scope to a Mongo aggregation $match stage."""
+    if branch:
+        match_stage["branch"] = ObjectId(str(branch.id))
+        return match_stage
+
+    demo_branch = get_demo_branch_exclusion(user=user, branch=branch)
+    if demo_branch:
+        match_stage["branch"] = {"$ne": ObjectId(str(demo_branch.id))}
+    return match_stage
+
+
 def demo_forbidden_response(action='perform this action'):
     return {
         'error': 'Demo account is restricted',
@@ -275,6 +325,9 @@ def filter_by_branch(query, branch):
         # Filter by branch AND explicitly exclude customers with null branch_id
         return query.filter(branch=branch).filter(branch__ne=None)
     # If no branch specified, still exclude null branch customers for safety
+    demo_branch = get_demo_branch_exclusion(branch=branch)
+    if demo_branch:
+        return query.filter(branch__ne=None).filter(branch__ne=demo_branch)
     return query.filter(branch__ne=None)
 
 

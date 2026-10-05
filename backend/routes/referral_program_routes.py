@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from models import ReferralProgramSettings, Customer, Referral
 from datetime import datetime
 from utils.auth import require_auth, require_role
-from utils.branch_filter import get_selected_branch
+from utils.branch_filter import apply_branch_scope, get_selected_branch
 
 referral_program_bp = Blueprint('referral_program', __name__)
 
@@ -143,8 +143,7 @@ def get_referrals(current_user=None):
         per_page = request.args.get('per_page', 20, type=int)
 
         query = Referral.objects()
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         total = query.count()
         referrals = list(query.order_by('-created_at').skip((page - 1) * per_page).limit(per_page))

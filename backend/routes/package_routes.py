@@ -5,7 +5,7 @@ from mongoengine.errors import DoesNotExist, ValidationError
 from mongoengine import Q
 from bson import ObjectId
 from utils.auth import require_auth, require_role
-from utils.branch_filter import get_selected_branch
+from utils.branch_filter import apply_branch_scope, get_selected_branch
 import json
 
 package_bp = Blueprint('package', __name__)
@@ -75,10 +75,13 @@ def get_packages(current_user=None):
         branch = get_selected_branch(request, current_user)
         if branch:
             print(f"[PACKAGE GET] Filtering by branch: {branch.name} (ID: {branch.id})")
-            query = query.filter(branch=branch)
+        else:
+            print(f"[PACKAGE GET] No branch selected. Showing production packages only.")
+        query = apply_branch_scope(query, branch, current_user)
+        if branch:
             print(f"[PACKAGE GET] After branch filter count: {query.count()}")
         else:
-            print(f"[PACKAGE GET] WARNING: No branch found for user. Showing all packages.")
+            print(f"[PACKAGE GET] After production scope count: {query.count()}")
 
         # Apply filters
         # Allow status override if explicitly requested (e.g., for admin views)
@@ -299,8 +302,7 @@ def get_active_packages(current_user=None):
 
         # Filter by branch - strict filtering, only show packages belonging to selected branch
         branch = get_selected_branch(request, current_user)
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         packages = list(query.order_by('name'))
 

@@ -4,7 +4,7 @@ from datetime import datetime, date
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
 from mongoengine import Q
-from utils.branch_filter import get_selected_branch
+from utils.branch_filter import apply_branch_scope, get_selected_branch
 from utils.auth import require_auth, require_role
 
 expense_bp = Blueprint('expense', __name__)
@@ -146,8 +146,7 @@ def get_expenses(current_user=None):
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         query = Expense.objects
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         # Apply filters
         if category_id:
@@ -352,8 +351,7 @@ def get_expense_summary(current_user=None):
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         query = Expense.objects
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         # Apply date filters
         if start_date:
@@ -406,8 +404,7 @@ def get_total_expenses(current_user=None):
 
         # Branch scope so one branch's dashboard doesn't count another branch's expenses
         branch = get_selected_branch(request, current_user)
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         if start_date:
             start = datetime.strptime(start_date, '%Y-%m-%d').date()

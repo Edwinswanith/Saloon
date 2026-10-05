@@ -4,7 +4,12 @@ from datetime import datetime
 from mongoengine import Q
 from mongoengine.errors import NotUniqueError
 from utils.auth import require_auth, require_role
-from utils.branch_filter import get_selected_branch, filter_by_branch
+from utils.branch_filter import (
+    apply_branch_scope,
+    apply_branch_scope_to_match,
+    get_selected_branch,
+    filter_by_branch,
+)
 import random
 import string
 
@@ -45,12 +50,7 @@ def get_customers(current_user=None):
     branch = get_selected_branch(request, current_user)
     query = Customer.objects.filter(merged_into=None)
 
-    # Only filter by branch if a branch is explicitly selected
-    # This allows Owners to see all customers when no branch is selected
-    if branch:
-        query = query.filter(branch=branch)
-    # If no branch is selected, show all customers (for Owners viewing all branches)
-    # Note: This is intentional - Owners can see all customers when no branch filter is applied
+    query = apply_branch_scope(query, branch, current_user)
     
     # Apply source filter
     if source_filter:
@@ -103,8 +103,7 @@ def get_customer(customer_id, current_user=None):
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         query = Customer.objects(id=customer_id)
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
         customer = query.first()
         if not customer:
             response = jsonify({'error': 'Customer not found'})
@@ -117,8 +116,7 @@ def get_customer(customer_id, current_user=None):
             "customer": ObjectId(customer_id),
             "is_deleted": False
         }
-        if branch:
-            match_stage["branch"] = ObjectId(str(branch.id))
+        apply_branch_scope_to_match(match_stage, branch, current_user)
         
         bills_pipeline = [
             {"$match": match_stage},
@@ -143,7 +141,7 @@ def get_customer(customer_id, current_user=None):
         
         # Get last service from most recent bill
         last_service = None
-        latest_bill = Bill.objects(**match_stage).order_by('-bill_date').first()
+        latest_bill = Bill.objects(__raw__=match_stage).order_by('-bill_date').first()
         if latest_bill:
             for item in latest_bill.items or []:
                 if item.item_type in ('service', 'package') and item.name:
@@ -464,8 +462,7 @@ def update_customer(customer_id, current_user=None):
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         query = Customer.objects(id=customer_id)
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
         customer = query.first()
         if not customer:
             response = jsonify({'error': 'Customer not found'})
@@ -542,8 +539,7 @@ def get_customer_active_membership(customer_id, current_user=None):
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         query = Customer.objects(id=customer_id)
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
         customer = query.first()
         
         if not customer:
@@ -557,8 +553,7 @@ def get_customer_active_membership(customer_id, current_user=None):
             status='active',
             expiry_date__gte=datetime.utcnow()
         )
-        if branch:
-            membership_query = membership_query.filter(branch=branch)
+        membership_query = apply_branch_scope(membership_query, branch, current_user)
         
         active_membership = membership_query.first()
         
@@ -633,8 +628,7 @@ def search_customers(current_user=None):
     # Scope to the caller's current branch so one branch cannot enumerate another's directory
     branch = get_selected_branch(request, current_user)
     customer_query = Customer.objects.filter(merged_into=None)
-    if branch:
-        customer_query = customer_query.filter(branch=branch)
+    customer_query = apply_branch_scope(customer_query, branch, current_user)
 
     customers = customer_query.filter(
         Q(mobile__icontains=query) |

@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime
 from models import Offer, Branch
 from utils.auth import require_auth, require_role
-from utils.branch_filter import get_selected_branch
+from utils.branch_filter import apply_branch_scope, get_selected_branch
 
 offer_bp = Blueprint('offers', __name__)
 
@@ -104,6 +104,8 @@ def list_offers(current_user=None):
             # Branch-scoped + globally available offers (branch=None)
             from mongoengine import Q
             query = query.filter(Q(branch=branch) | Q(branch=None))
+        else:
+            query = apply_branch_scope(query, branch, current_user)
 
         status = request.args.get('status')
         if status:
@@ -139,6 +141,8 @@ def active_offers(current_user=None):
         query = Offer.objects(status='active')
         if branch:
             query = query.filter(Q(branch=branch) | Q(branch=None))
+        else:
+            query = apply_branch_scope(query, branch, current_user)
         offers = [o for o in query if o.is_currently_valid()]
         result = [_serialize_offer(o) for o in offers]
         response = jsonify({'offers': result, 'count': len(result)})

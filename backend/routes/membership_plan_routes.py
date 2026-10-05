@@ -5,6 +5,7 @@ from mongoengine.errors import DoesNotExist, ValidationError
 from mongoengine.queryset.visitor import Q
 from bson import ObjectId
 from utils.auth import require_role, optional_auth
+from utils.branch_filter import apply_branch_scope
 
 
 def _resolve_service_refs(service_ids):
@@ -58,6 +59,8 @@ def get_membership_plans(current_user=None):
             branch = Branch.objects(id=branch_id_header).first()
             if branch:
                 query = query.filter(Q(branch=branch) | Q(branch=None))
+        else:
+            query = apply_branch_scope(query, None, current_user)
 
         plans = list(query.order_by('-created_at'))
 

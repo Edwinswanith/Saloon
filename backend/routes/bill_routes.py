@@ -4,7 +4,7 @@ from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 from mongoengine import Q
 from utils.auth import get_current_user, require_auth, JWT_SECRET
-from utils.branch_filter import get_selected_branch
+from utils.branch_filter import apply_branch_scope, get_selected_branch
 from utils.date_utils import get_ist_date_range
 import uuid
 import re
@@ -723,8 +723,7 @@ def get_bills(current_user=None):
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         query = Bill.objects
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         # Staff can only see bills where they attended at least one item, and only
         # within the last 48 hours. Manager/owner see all bills for the branch.
@@ -2635,6 +2634,7 @@ def get_deleted_bills():
         end_date = request.args.get('end_date')
 
         query = Bill.objects.filter(is_deleted=True)
+        query = apply_branch_scope(query, None, None)
 
         if start_date:
             start = datetime.strptime(start_date, '%Y-%m-%d')
@@ -2676,6 +2676,7 @@ def get_bill_stats():
         end_date = request.args.get('end_date')
 
         query = Bill.objects.filter(is_deleted=False)
+        query = apply_branch_scope(query, None, None)
 
         if start_date:
             start = datetime.strptime(start_date, '%Y-%m-%d')
@@ -3128,8 +3129,7 @@ def get_invoices(current_user=None):
         else:
             # Filter by user's selected branch if no branch_id provided
             branch = get_selected_branch(request, current_user)
-            if branch:
-                query = query.filter(branch=branch)
+            query = apply_branch_scope(query, branch, current_user)
         
         if start_date or end_date:
             start, end = get_ist_date_range(start_date, end_date)

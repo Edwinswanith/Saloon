@@ -4,7 +4,7 @@ from datetime import datetime, date, time, timedelta
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
 from mongoengine import Q
-from utils.branch_filter import get_selected_branch
+from utils.branch_filter import apply_branch_scope, apply_branch_scope_to_match, get_selected_branch
 from utils.auth import require_auth
 
 appointment_bp = Blueprint('appointment', __name__)
@@ -24,8 +24,7 @@ def get_appointments(current_user=None):
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         query = Appointment.objects
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         # Apply filters
         if customer_id:
@@ -506,8 +505,7 @@ def get_calendar_view(current_user=None):
             appointment_date__gte=start_date,
             appointment_date__lte=end_date
         )
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         if staff_id:
             try:
@@ -647,8 +645,7 @@ def get_appointment_stats(current_user=None):
         branch = get_selected_branch(request, current_user)
 
         match = {}
-        if branch:
-            match['branch'] = ObjectId(str(branch.id))
+        apply_branch_scope_to_match(match, branch, current_user)
         if start_date:
             match.setdefault('appointment_date', {})['$gte'] = datetime.combine(
                 datetime.strptime(start_date, '%Y-%m-%d').date(), time.min)

@@ -5,7 +5,7 @@ from models import (Customer, Bill, Appointment, Membership,
 from datetime import datetime
 from bson import ObjectId
 from utils.auth import require_role
-from utils.branch_filter import get_selected_branch
+from utils.branch_filter import apply_branch_scope, get_selected_branch
 
 customer_merge_bp = Blueprint('customer_merge', __name__)
 
@@ -258,8 +258,7 @@ def merge_history(current_user=None):
         branch = get_selected_branch(request, current_user)
 
         query = CustomerMergeLog.objects
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         logs = query.order_by('-created_at').limit(50)
 

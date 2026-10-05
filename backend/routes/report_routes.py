@@ -4,7 +4,11 @@ from datetime import datetime, timedelta
 from mongoengine.errors import DoesNotExist
 from bson import ObjectId
 from utils.auth import require_auth, require_role
-from utils.branch_filter import get_selected_branch
+from utils.branch_filter import (
+    apply_branch_scope,
+    apply_branch_scope_to_match,
+    get_selected_branch,
+)
 from utils.date_utils import get_ist_date_range
 from utils.staff_revenue import attributed_revenue_pipeline
 
@@ -58,8 +62,7 @@ def service_sales_analysis(current_user=None):
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         bills_query = Bill.objects(is_deleted=False)
-        if branch:
-            bills_query = bills_query.filter(branch=branch)
+        bills_query = apply_branch_scope(bills_query, branch, current_user)
 
         if start_date or end_date:
             start, end = get_ist_date_range(start_date, end_date)
@@ -146,8 +149,7 @@ def list_of_bills(current_user=None):
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         query = Bill.objects(is_deleted=False)
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         if start_date or end_date:
             start, end = get_ist_date_range(start_date, end_date)
@@ -242,8 +244,7 @@ def deleted_bills_report(current_user=None):
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         query = Bill.objects(is_deleted=True)
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         if start_date:
             start = datetime.strptime(start_date, '%Y-%m-%d')
@@ -292,8 +293,7 @@ def sales_by_service_group(current_user=None):
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         bills_query = Bill.objects(is_deleted=False)
-        if branch:
-            bills_query = bills_query.filter(branch=branch)
+        bills_query = apply_branch_scope(bills_query, branch, current_user)
 
         if start_date or end_date:
             start, end = get_ist_date_range(start_date, end_date)
@@ -354,8 +354,7 @@ def membership_clients_report(current_user=None):
         # leak in. Other status filters (expired/replaced) keep no expiry filter.
         if status == 'active':
             memberships_query = memberships_query.filter(expiry_date__gte=datetime.utcnow())
-        if branch:
-            memberships_query = memberships_query.filter(branch=branch)
+        memberships_query = apply_branch_scope(memberships_query, branch, current_user)
         # Force evaluation by converting to list
         memberships = list(memberships_query.order_by('-purchase_date'))
 
@@ -389,16 +388,14 @@ def staff_incentive_report(current_user=None):
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         staff_query = Staff.objects(status='active')
-        if branch:
-            staff_query = staff_query.filter(branch=branch)
+        staff_query = apply_branch_scope(staff_query, branch, current_user)
         # Force evaluation by converting to list
         staff_list = list(staff_query)
 
         report = []
         for staff in staff_list:
             bills_query = Bill.objects(is_deleted=False)
-            if branch:
-                bills_query = bills_query.filter(branch=branch)
+            bills_query = apply_branch_scope(bills_query, branch, current_user)
 
             if start_date:
                 start = datetime.strptime(start_date, '%Y-%m-%d')
@@ -479,8 +476,7 @@ def expense_report(current_user=None):
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         query = Expense.objects
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         if start_date:
             start = datetime.strptime(start_date, '%Y-%m-%d').date()
@@ -530,6 +526,7 @@ def inventory_report():
         low_stock_only = request.args.get('low_stock_only', type=bool, default=False)
 
         query = Product.objects(status='active')
+        query = apply_branch_scope(query, None, None)
 
         if category_id and ObjectId.is_valid(category_id):
             try:
@@ -581,6 +578,7 @@ def staff_combined_report():
         staff_id = request.args.get('staff_id')
 
         query = Bill.objects.filter(is_deleted=False)
+        query = apply_branch_scope(query, None, None)
 
         if start_date:
             start = datetime.strptime(start_date, '%Y-%m-%d')
@@ -654,11 +652,13 @@ def business_growth_report():
         end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
 
         # Get all bills in date range - force evaluation
-        bills = list(Bill.objects.filter(
+        bills_query = Bill.objects.filter(
             is_deleted=False,
             bill_date__gte=start,
             bill_date__lte=end
-        ))
+        )
+        bills_query = apply_branch_scope(bills_query, None, None)
+        bills = list(bills_query)
 
         # Group bills by month
         monthly_revenue = {}
@@ -670,10 +670,12 @@ def business_growth_report():
             monthly_revenue[month_key]['bills'] += 1
 
         # Get all expenses in date range - force evaluation
-        expenses = list(Expense.objects.filter(
+        expenses_query = Expense.objects.filter(
             expense_date__gte=start.date(),
             expense_date__lte=end.date()
-        ))
+        )
+        expenses_query = apply_branch_scope(expenses_query, None, None)
+        expenses = list(expenses_query)
 
         # Group expenses by month
         monthly_expenses = {}
@@ -724,15 +726,18 @@ def staff_performance_analysis(current_user=None):
             default_start = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
             default_end = datetime.now().strftime('%Y-%m-%d')
             start, end = get_ist_date_range(default_start, default_end)
+
+        branch = get_selected_branch(request, current_user)
         
         # Revenue is allocated proportionally from each bill's final_amount
         # (cash collected) — see utils/staff_revenue.py — so totals here
         # reconcile with the dashboard and Cash Register.
-        # Company-wide: No branch filtering - show all staff performance.
+        # Company-wide means all production branches, excluding the demo branch.
         match_stage = {
             "is_deleted": False,
             "bill_date": {"$gte": start, "$lte": end},
         }
+        apply_branch_scope_to_match(match_stage, branch, current_user)
 
         pipeline = attributed_revenue_pipeline(match_stage) + [
             {"$match": {"items.staff": {"$ne": None}}},
@@ -898,8 +903,7 @@ def staff_performance_analysis(current_user=None):
         # Include all active staff in the selected branch (even those with zero revenue in this period)
         from models import Staff as StaffModel
         all_active_staff_query = StaffModel.objects(status='active')
-        if branch:
-            all_active_staff_query = all_active_staff_query.filter(branch=branch)
+        all_active_staff_query = apply_branch_scope(all_active_staff_query, branch, current_user)
         all_active_staff = list(all_active_staff_query)
         
         for staff in all_active_staff:
@@ -951,19 +955,23 @@ def period_summary():
         end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
 
         # Revenue - force evaluation
-        bills = list(Bill.objects.filter(
+        bills_query = Bill.objects.filter(
             is_deleted=False,
             bill_date__gte=start,
             bill_date__lte=end
-        ))
+        )
+        bills_query = apply_branch_scope(bills_query, None, None)
+        bills = list(bills_query)
         total_revenue = sum(bill.final_amount or 0 for bill in bills)
         total_bills = len(bills)
 
         # Expenses - force evaluation
-        expenses = list(Expense.objects.filter(
+        expenses_query = Expense.objects.filter(
             expense_date__gte=start.date(),
             expense_date__lte=end.date()
-        ))
+        )
+        expenses_query = apply_branch_scope(expenses_query, None, None)
+        expenses = list(expenses_query)
         total_expenses = sum(expense.amount or 0 for expense in expenses)
 
         # Profit
@@ -977,10 +985,12 @@ def period_summary():
         customers_served = len(customer_ids)
 
         # Appointments
-        appointments = Appointment.objects.filter(
+        appointments_query = Appointment.objects.filter(
             appointment_date__gte=start.date(),
             appointment_date__lte=end.date()
-        ).count()
+        )
+        appointments_query = apply_branch_scope(appointments_query, None, None)
+        appointments = appointments_query.count()
 
         response = jsonify({
             'period': {

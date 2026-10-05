@@ -4,7 +4,7 @@ from datetime import datetime
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
 from utils.auth import require_auth, require_role
-from utils.branch_filter import get_selected_branch
+from utils.branch_filter import apply_branch_scope, apply_branch_scope_to_match, get_selected_branch
 from utils.redis_cache import cache_response
 
 service_bp = Blueprint('services', __name__)
@@ -42,8 +42,7 @@ def get_service_groups(current_user=None):
     groups = list(ServiceGroup.objects.order_by('display_order'))
 
     match = {'status': 'active'}
-    if branch:
-        match['branch'] = ObjectId(str(branch.id))
+    apply_branch_scope_to_match(match, branch, current_user)
     counts_by_group = {}
     for row in Service.objects.aggregate([
         {'$match': match},
@@ -134,8 +133,7 @@ def get_services(current_user=None):
 
     # Build query with all filters upfront
     query = Service.objects(status='active')
-    if branch:
-        query = query.filter(branch=branch)
+    query = apply_branch_scope(query, branch, current_user)
 
     if group_id and ObjectId.is_valid(group_id):
         try:

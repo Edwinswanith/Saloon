@@ -41,6 +41,9 @@ def list_branches():
             branches = Branch.objects(id=demo_branch.id, is_active=True) if demo_branch else []
         else:
             branches = Branch.objects(is_active=True).order_by('name')
+            demo_branch = get_demo_branch()
+            if demo_branch:
+                branches = branches.filter(id__ne=demo_branch.id)
         
         result = []
         for branch in branches:

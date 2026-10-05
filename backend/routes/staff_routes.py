@@ -3,7 +3,7 @@ from models import Staff, Branch
 from datetime import datetime, date
 from mongoengine.errors import DoesNotExist, NotUniqueError, ValidationError
 from bson import ObjectId
-from utils.branch_filter import get_selected_branch
+from utils.branch_filter import apply_branch_scope, get_demo_branch_for_user, get_selected_branch
 from utils.auth import require_auth, require_role, hash_password
 
 staff_bp = Blueprint('staffs', __name__)
@@ -29,6 +29,8 @@ def get_staffs(current_user=None):
     """
     try:
         query = Staff.objects()
+        demo_branch = get_demo_branch_for_user(current_user)
+        query = apply_branch_scope(query, demo_branch, current_user)
 
         # Filter by active status if specified, otherwise show all
         status_filter = request.args.get('status')

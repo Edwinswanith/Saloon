@@ -5,7 +5,7 @@ from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
 from mongoengine import Q
 from utils.auth import require_auth, require_role
-from utils.branch_filter import get_selected_branch
+from utils.branch_filter import apply_branch_scope, get_selected_branch
 
 inventory_bp = Blueprint('inventory', __name__)
 
@@ -22,8 +22,7 @@ def get_suppliers(current_user=None):
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         query = Supplier.objects
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         # Apply filters
         if status:
@@ -168,8 +167,7 @@ def get_orders(current_user=None):
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         query = Order.objects
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         # Apply filters
         if supplier_id:
@@ -418,8 +416,7 @@ def get_inventory_products(current_user=None):
 
         # Filter by branch - strict filtering
         branch = get_selected_branch(request, current_user)
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         products = list(query)
 
@@ -453,8 +450,7 @@ def get_low_stock_items(current_user=None):
 
         # Filter by branch - strict filtering
         branch = get_selected_branch(request, current_user)
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         # Get all active products and filter in Python
         all_products = list(query)
@@ -483,8 +479,7 @@ def get_inventory_summary(current_user=None):
 
         # Filter by branch - strict filtering
         branch = get_selected_branch(request, current_user)
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         products = list(query)
 

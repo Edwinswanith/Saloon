@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from models import Notification, to_dict
 from utils.auth import require_auth
-from utils.branch_filter import get_selected_branch
+from utils.branch_filter import apply_branch_scope, get_selected_branch
 
 notification_bp = Blueprint('notification', __name__)
 
@@ -16,8 +16,7 @@ def list_notifications(current_user=None):
 
         branch = get_selected_branch(request, current_user)
         query = Notification.objects(for_roles=user_role, is_resolved=False)
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         notifications = query.order_by('-created_at').limit(50)
 
@@ -63,8 +62,7 @@ def mark_all_read(current_user=None):
 
         branch = get_selected_branch(request, current_user)
         query = Notification.objects(for_roles=user_role, is_resolved=False)
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         for n in query:
             if user_id not in (n.read_by or []):

@@ -4,7 +4,7 @@ from datetime import datetime
 from mongoengine.errors import DoesNotExist, ValidationError, NotUniqueError
 from mongoengine import Q
 from bson import ObjectId
-from utils.branch_filter import get_selected_branch
+from utils.branch_filter import apply_branch_scope, apply_branch_scope_to_match, get_selected_branch
 from utils.auth import require_auth
 
 lead_bp = Blueprint('lead', __name__)
@@ -36,8 +36,7 @@ def get_leads(current_user=None):
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         query = Lead.objects
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         # Apply filters
         if status:
@@ -299,8 +298,7 @@ def get_lead_stats(current_user=None):
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         match_stage = {}
-        if branch:
-            match_stage['branch'] = branch.id
+        apply_branch_scope_to_match(match_stage, branch, current_user)
 
         # Use aggregation pipeline instead of loading all docs
         pipeline = [

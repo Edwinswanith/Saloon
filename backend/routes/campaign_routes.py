@@ -3,7 +3,7 @@ from models import Customer, Bill, OfferCampaign, WhatsAppMessage, Branch
 from datetime import datetime, timedelta
 from bson import ObjectId
 from utils.auth import require_auth, require_role
-from utils.branch_filter import get_selected_branch
+from utils.branch_filter import apply_branch_scope, get_selected_branch
 from utils.whatsapp_service import send_whatsapp_message
 from models import to_dict
 
@@ -428,8 +428,7 @@ def get_campaigns(current_user=None):
         campaign_type = request.args.get('type')  # Optional filter: 'general' or 'birthday'
         
         query = OfferCampaign.objects()
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
         if campaign_type:
             query = query.filter(campaign_type=campaign_type)
         

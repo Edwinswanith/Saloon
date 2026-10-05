@@ -4,7 +4,7 @@ from datetime import datetime, date
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
 from utils.auth import require_role, require_auth
-from utils.branch_filter import get_selected_branch
+from utils.branch_filter import apply_branch_scope, get_selected_branch
 
 leave_bp = Blueprint('leaves', __name__)
 
@@ -37,6 +37,9 @@ def get_leaves(current_user=None):
                 query = query.filter(branch=branch)
             except DoesNotExist:
                 pass
+        else:
+            branch = get_selected_branch(request, current_user)
+            query = apply_branch_scope(query, branch, current_user)
         
         # Filter by status
         if status:

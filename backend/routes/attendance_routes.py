@@ -4,7 +4,7 @@ from datetime import datetime, date, time
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
 from mongoengine import Q
-from utils.branch_filter import get_selected_branch
+from utils.branch_filter import apply_branch_scope, get_selected_branch
 from utils.auth import require_auth, require_role
 
 attendance_bp = Blueprint('attendance', __name__)
@@ -24,8 +24,7 @@ def get_attendance(current_user=None):
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         query = StaffAttendance.objects
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         # Apply filters
         if staff_id:
@@ -439,8 +438,7 @@ def get_staff_attendance(staff_id, current_user=None):
         end_date = request.args.get('end_date')
 
         query = StaffAttendance.objects.filter(staff=staff)
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         if start_date:
             start = datetime.strptime(start_date, '%Y-%m-%d').date()
@@ -473,8 +471,7 @@ def get_attendance_summary(current_user=None):
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         query = StaffAttendance.objects
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         if start_date:
             start = datetime.strptime(start_date, '%Y-%m-%d').date()
@@ -485,6 +482,7 @@ def get_attendance_summary(current_user=None):
 
         # Group by staff
         staff_list = Staff.objects.filter(status='active')
+        staff_list = apply_branch_scope(staff_list, branch, current_user)
 
         summary = []
         for staff in staff_list:

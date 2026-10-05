@@ -4,7 +4,7 @@ from datetime import datetime
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
 from utils.auth import require_auth, require_role
-from utils.branch_filter import get_selected_branch
+from utils.branch_filter import apply_branch_scope, get_selected_branch
 from utils.redis_cache import cache_response
 
 product_bp = Blueprint('product', __name__)
@@ -49,8 +49,7 @@ def get_product_categories(current_user=None):
         for cat in categories:
             # Count active products in this category, filtered by branch
             query = Product.objects(category=cat, status='active')
-            if branch:
-                query = query.filter(branch=branch)
+            query = apply_branch_scope(query, branch, current_user)
             count = query.count()
 
             result.append({
@@ -174,8 +173,7 @@ def get_products(current_user=None):
 
         # Filter by branch - strict filtering, only show products belonging to selected branch
         branch = get_selected_branch(request, current_user)
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         # Apply filters
         if category_id and ObjectId.is_valid(category_id):
@@ -423,8 +421,7 @@ def get_low_stock_products(current_user=None):
 
         # Filter by branch - strict filtering, only show products belonging to selected branch
         branch = get_selected_branch(request, current_user)
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         # Force evaluation by converting to list
         products = list(query.order_by('stock_quantity'))

@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request
 from models import Bill, Service, Product, ServiceGroup, ProductCategory
 from datetime import datetime, timedelta
 from bson import ObjectId
-from utils.branch_filter import get_selected_branch
+from utils.branch_filter import apply_branch_scope_to_match, get_selected_branch
 from utils.date_utils import get_ist_date_range
 from utils.auth import require_auth
 
@@ -30,7 +30,6 @@ def service_product_performance(current_user=None):
         type_filter = request.args.get('type', 'all')
 
         branch = get_selected_branch(request, current_user)
-        branch_id = str(branch.id) if branch else None
 
         if not start_date or not end_date:
             end = datetime.now()
@@ -45,8 +44,7 @@ def service_product_performance(current_user=None):
             'bill_date': {'$gte': start_utc, '$lte': end_utc}
         }
         
-        if branch_id and ObjectId.is_valid(branch_id):
-            match_stage['branch'] = ObjectId(branch_id)
+        apply_branch_scope_to_match(match_stage, branch, current_user)
 
         service_pipeline = [
             {'$match': match_stage},
@@ -515,4 +513,3 @@ def service_product_performance(current_user=None):
         response = jsonify({'error': str(e)})
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 500
-

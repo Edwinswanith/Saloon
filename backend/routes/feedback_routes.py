@@ -1,10 +1,11 @@
+import os
 from flask import Blueprint, request, jsonify, render_template
 from models import Feedback, Customer, Bill, ServiceRecoveryCase
 from datetime import datetime
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
 from mongoengine import Q
-from utils.branch_filter import get_selected_branch
+from utils.branch_filter import apply_branch_scope, apply_branch_scope_to_match, get_selected_branch
 from utils.auth import require_auth, require_role
 from utils.date_utils import get_ist_date_range
 
@@ -36,8 +37,7 @@ def get_feedback(current_user=None):
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
         query = Feedback.objects
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
 
         # Apply filters
         if customer_id:
@@ -397,8 +397,7 @@ def get_feedback_stats(current_user=None):
         branch = get_selected_branch(request, current_user)
 
         match = {}
-        if branch:
-            match['branch'] = ObjectId(str(branch.id))
+        apply_branch_scope_to_match(match, branch, current_user)
         if start_date:
             match.setdefault('created_at', {})['$gte'] = datetime.strptime(start_date, '%Y-%m-%d')
         if end_date:
@@ -457,8 +456,7 @@ def get_recent_feedback(current_user=None):
         query = Feedback.objects.no_dereference().only(
             'customer', 'rating', 'comment', 'created_at'
         )
-        if branch:
-            query = query.filter(branch=branch)
+        query = apply_branch_scope(query, branch, current_user)
         feedbacks = list(query.order_by('-created_at').limit(limit))
 
         customer_ids = set()
@@ -507,7 +505,7 @@ def public_feedback_page():
     """Serve the public feedback form page - no auth required"""
     return render_template('feedback/feedback.html',
         account_name='Priyanka Nature Cure',
-        google_review_url=''
+        google_review_url=os.environ.get('GOOGLE_REVIEW_URL', '')
     )
 
 

@@ -4,7 +4,7 @@ from mongoengine.errors import DoesNotExist
 from datetime import datetime, timedelta
 from models import DiscountApprovalRequest, ApprovalCode, Bill, Staff, Manager, Owner, Notification
 from utils.auth import require_auth, require_role, get_current_user
-from utils.branch_filter import get_selected_branch
+from utils.branch_filter import apply_branch_scope, get_selected_branch
 from utils.approval_codes import (
     generate_approval_code, hash_approval_code, verify_approval_code,
     is_code_expired, can_use_code
@@ -38,7 +38,10 @@ def list_approvals(current_user=None):
         if requested_by_id:
             query &= Q(requested_by=requested_by_id)
 
-        approvals = DiscountApprovalRequest.objects(query).order_by('-created_at')
+        approvals_query = DiscountApprovalRequest.objects(query)
+        if not branch:
+            approvals_query = apply_branch_scope(approvals_query, branch, current_user)
+        approvals = approvals_query.order_by('-created_at')
         
         result = []
         for approval in approvals:

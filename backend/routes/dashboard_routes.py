@@ -6,7 +6,12 @@ from mongoengine.errors import DoesNotExist
 from bson import ObjectId
 import traceback
 from utils.auth import require_auth, require_role
-from utils.branch_filter import get_selected_branch, filter_by_branch
+from utils.branch_filter import (
+    apply_branch_scope,
+    apply_branch_scope_to_match,
+    filter_by_branch,
+    get_selected_branch,
+)
 from utils.date_utils import get_ist_date_range, ist_to_utc_start, ist_to_utc_end, get_ist_today
 from utils.redis_cache import cache_response
 from utils.performance import log_performance
@@ -84,8 +89,7 @@ def get_dashboard_stats(current_user=None):
             date_match = {
                 "bill_date": {"$gte": start, "$lte": end}
             }
-            if branch:
-                date_match["branch"] = ObjectId(str(branch.id))
+            apply_branch_scope_to_match(date_match, branch, current_user)
 
             # Active bills: revenue, transactions, tax
             active_match = {**date_match, "is_deleted": False}
@@ -152,9 +156,7 @@ def get_dashboard_stats(current_user=None):
             expenses_match = {
                 "expense_date": {"$gte": ist_start_datetime, "$lte": ist_end_datetime}
             }
-            if branch:
-                # Convert branch.id to ObjectId for MongoDB aggregation
-                expenses_match["branch"] = ObjectId(str(branch.id))
+            apply_branch_scope_to_match(expenses_match, branch, current_user)
 
             expenses_pipeline = [
                 {"$match": expenses_match},
@@ -176,21 +178,18 @@ def get_dashboard_stats(current_user=None):
 
         # Use .count() for other stats (efficient with indexes)
         customers_query = Customer.objects.filter(merged_into=None)
-        if branch:
-            customers_query = customers_query.filter(branch=branch)
+        customers_query = apply_branch_scope(customers_query, branch, current_user)
         total_customers = customers_query.count()
 
         new_customers_query = Customer.objects(
             created_at__gte=start,
             created_at__lte=end
         ).filter(merged_into=None)
-        if branch:
-            new_customers_query = new_customers_query.filter(branch=branch)
+        new_customers_query = apply_branch_scope(new_customers_query, branch, current_user)
         new_customers = new_customers_query.count()
 
         staff_query = Staff.objects(status='active')
-        if branch:
-            staff_query = staff_query.filter(branch=branch)
+        staff_query = apply_branch_scope(staff_query, branch, current_user)
         active_staff = staff_query.count()
 
         # Appointments stats with branch filter
@@ -198,8 +197,7 @@ def get_dashboard_stats(current_user=None):
             appointment_date__gte=ist_start_date,
             appointment_date__lte=ist_end_date
         )
-        if branch:
-            appt_query = appt_query.filter(branch=branch)
+        appt_query = apply_branch_scope(appt_query, branch, current_user)
         total_appointments = appt_query.count()
 
         completed_appt_query = Appointment.objects(
@@ -207,8 +205,7 @@ def get_dashboard_stats(current_user=None):
             appointment_date__lte=ist_end_date,
             status='completed'
         )
-        if branch:
-            completed_appt_query = completed_appt_query.filter(branch=branch)
+        completed_appt_query = apply_branch_scope(completed_appt_query, branch, current_user)
         completed_appointments = completed_appt_query.count()
 
         return jsonify({
@@ -287,8 +284,7 @@ def get_staff_performance(current_user=None):
             "is_deleted": False,
             "bill_date": {"$gte": start, "$lte": end}
         }
-        if branch:
-            match_stage["branch"] = ObjectId(str(branch.id))
+        apply_branch_scope_to_match(match_stage, branch, current_user)
 
         pipeline = attributed_revenue_pipeline(match_stage) + [
             {"$group": {
@@ -370,12 +366,14 @@ def get_staff_performance(current_user=None):
             # MongoDB aggregation cannot encode Python date objects
             appt_start_datetime = start.replace(hour=0, minute=0, second=0, microsecond=0)
             appt_end_datetime = end.replace(hour=23, minute=59, second=59, microsecond=999999)
+            appt_match = {
+                "staff": {"$in": staff_ids},
+                "appointment_date": {"$gte": appt_start_datetime, "$lte": appt_end_datetime},
+                "status": "completed"
+            }
+            apply_branch_scope_to_match(appt_match, branch, current_user)
             appt_pipeline = [
-                {"$match": {
-                    "staff": {"$in": staff_ids},
-                    "appointment_date": {"$gte": appt_start_datetime, "$lte": appt_end_datetime},
-                    "status": "completed"
-                }},
+                {"$match": appt_match},
                 {"$group": {
                     "_id": "$staff",
                     "count": {"$sum": 1}
@@ -515,11 +513,14 @@ def get_branch_comparison(current_user=None):
             hour=23, minute=59, second=59, microsecond=999999
         )
 
+        match_stage = {
+            "is_deleted": False,
+            "bill_date": {"$gte": start, "$lte": end},
+        }
+        apply_branch_scope_to_match(match_stage, None, current_user)
+
         pipeline = [
-            {"$match": {
-                "is_deleted": False,
-                "bill_date": {"$gte": start, "$lte": end},
-            }},
+            {"$match": match_stage},
             {"$group": {
                 "_id": "$branch",
                 "total_revenue": {"$sum": {"$ifNull": ["$final_amount", 0]}},
@@ -592,9 +593,7 @@ def get_top_customers(current_user=None):
                 match_stage["bill_date"] = {"$gte": start}
             if end:
                 match_stage.setdefault("bill_date", {})["$lte"] = end
-        if branch:
-            # Convert branch.id to ObjectId for MongoDB aggregation
-            match_stage["branch"] = ObjectId(str(branch.id))
+        apply_branch_scope_to_match(match_stage, branch, current_user)
 
         # OPTIMIZED: Single aggregation pipeline
         pipeline = [
@@ -678,9 +677,7 @@ def get_top_offerings(current_user=None):
                 match_stage["bill_date"] = {"$gte": start}
             if end:
                 match_stage.setdefault("bill_date", {})["$lte"] = end
-        if branch:
-            # Convert branch.id to ObjectId for MongoDB aggregation
-            match_stage["branch"] = ObjectId(str(branch.id))
+        apply_branch_scope_to_match(match_stage, branch, current_user)
         
         # OPTIMIZED: Use aggregation pipeline instead of loading all bills
         pipeline = [
@@ -796,8 +793,7 @@ def get_offering_clients(current_user=None):
                 bills_query = bills_query.filter(bill_date__lte=end)
         
         # Apply branch filter
-        if branch:
-            bills_query = bills_query.filter(branch=branch)
+        bills_query = apply_branch_scope(bills_query, branch, current_user)
         
         bills = list(bills_query)
         
@@ -920,8 +916,7 @@ def get_revenue_breakdown(current_user=None):
             "is_deleted": False,
             "bill_date": {"$gte": start, "$lte": end}
         }
-        if branch:
-            match_stage["branch"] = ObjectId(str(branch.id))
+        apply_branch_scope_to_match(match_stage, branch, current_user)
 
         pipeline = [
             {"$match": match_stage},
@@ -984,8 +979,7 @@ def get_payment_distribution(current_user=None):
             "bill_date": {"$gte": start, "$lte": end},
             "payment_mode": {"$ne": None}
         }
-        if branch:
-            match_stage["branch"] = ObjectId(str(branch.id))
+        apply_branch_scope_to_match(match_stage, branch, current_user)
 
         pipeline = [
             {"$match": match_stage},
@@ -1066,16 +1060,14 @@ def get_top_moving_items(current_user=None):
             "is_deleted": False,
             "bill_date": {"$gte": start, "$lte": end}
         }
-        if branch:
-            current_match["branch"] = ObjectId(str(branch.id))
+        apply_branch_scope_to_match(current_match, branch, current_user)
         
         # Build match stage for previous period
         prev_match = {
             "is_deleted": False,
             "bill_date": {"$gte": prev_start, "$lte": prev_end}
         }
-        if branch:
-            prev_match["branch"] = ObjectId(str(branch.id))
+        apply_branch_scope_to_match(prev_match, branch, current_user)
         
         # OPTIMIZED: Aggregation pipeline for services (current period)
         # Uses denormalized 'name' field from bill items when available, falls back to service lookup
@@ -1357,8 +1349,7 @@ def get_client_funnel(current_user=None):
 
         # Total customers
         customers_query = Customer.objects.filter(merged_into=None)
-        if branch:
-            customers_query = customers_query.filter(branch=branch)
+        customers_query = apply_branch_scope(customers_query, branch, current_user)
         total_customers = customers_query.count()
 
         # New customers in period
@@ -1366,8 +1357,7 @@ def get_client_funnel(current_user=None):
             created_at__gte=start,
             created_at__lte=end
         ).filter(merged_into=None)
-        if branch:
-            new_customers_query = new_customers_query.filter(branch=branch)
+        new_customers_query = apply_branch_scope(new_customers_query, branch, current_user)
         new_customers = new_customers_query.count()
 
         # OPTIMIZED: Use aggregation to count returning customers instead of loading all bills
@@ -1376,8 +1366,7 @@ def get_client_funnel(current_user=None):
             "bill_date": {"$gte": start, "$lte": end},
             "customer": {"$ne": None}
         }
-        if branch:
-            returning_match["branch"] = ObjectId(str(branch.id))
+        apply_branch_scope_to_match(returning_match, branch, current_user)
 
         returning_pipeline = [
             {"$match": returning_match},
@@ -1393,8 +1382,7 @@ def get_client_funnel(current_user=None):
 
         # Leads - count by status
         leads_query = Lead.objects
-        if branch:
-            leads_query = leads_query.filter(branch=branch)
+        leads_query = apply_branch_scope(leads_query, branch, current_user)
         total_leads = leads_query.count()
         contacted_leads = leads_query.filter(status='contacted').count()
         followup_leads = leads_query.filter(status='follow-up').count()
@@ -1457,8 +1445,7 @@ def get_client_source(current_user=None):
             created_at__gte=start,
             created_at__lte=end
         ).filter(merged_into=None)
-        if branch:
-            customers_query = customers_query.filter(branch=branch)
+        customers_query = apply_branch_scope(customers_query, branch, current_user)
 
         # Force evaluation by converting to list
         customers = list(customers_query)
@@ -1480,8 +1467,7 @@ def get_client_source(current_user=None):
             bill_date__gte=start,
             bill_date__lte=end
         )
-        if branch:
-            bills_query = bills_query.filter(branch=branch)
+        bills_query = apply_branch_scope(bills_query, branch, current_user)
         
         bills = list(bills_query)
         for bill in bills:
@@ -1624,7 +1610,6 @@ def get_top_performer(current_user=None):
         end = datetime.strptime(end_date, '%Y-%m-%d')
         end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
         branch = get_selected_branch(request, current_user)
-        branch_oid = ObjectId(str(branch.id)) if branch else None
 
         # Revenue is allocated proportionally from each bill's final_amount so
         # the leaderboard reconciles with the dashboard total and Cash Register.
@@ -1634,8 +1619,7 @@ def get_top_performer(current_user=None):
             "is_deleted": False,
             "bill_date": {"$gte": start, "$lte": end}
         }
-        if branch_oid:
-            bill_match["branch"] = branch_oid
+        apply_branch_scope_to_match(bill_match, branch, current_user)
 
         bills_pipeline = attributed_revenue_pipeline(bill_match) + [
             {"$match": {"items.staff": {"$ne": None}}},
@@ -1698,8 +1682,7 @@ def get_top_performer(current_user=None):
             "appointment_date": {"$gte": appt_start_datetime, "$lte": appt_end_datetime},
             "status": "completed"
         }
-        if branch_oid:
-            appt_match["branch"] = branch_oid
+        apply_branch_scope_to_match(appt_match, branch, current_user)
 
         appt_pipeline = [
             {"$match": appt_match},
@@ -1716,8 +1699,7 @@ def get_top_performer(current_user=None):
             "staff": {"$in": staff_ids},
             "created_at": {"$gte": start, "$lte": end}
         }
-        if branch_oid:
-            feedback_match["branch"] = branch_oid
+        apply_branch_scope_to_match(feedback_match, branch, current_user)
 
         feedback_pipeline = [
             {"$match": feedback_match},
@@ -1745,8 +1727,7 @@ def get_top_performer(current_user=None):
             "bill_date": {"$gte": start, "$lte": end},
             "customer": {"$ne": None}
         }
-        if branch_oid:
-            retention_match["branch"] = branch_oid
+        apply_branch_scope_to_match(retention_match, branch, current_user)
 
         retention_pipeline = [
             {"$match": retention_match},
