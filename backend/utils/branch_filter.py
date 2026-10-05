@@ -1,9 +1,125 @@
 """
 Branch filtering utilities for multi-branch support
 """
+import os
+
 from flask import request
-from models import Branch, Staff, Manager
+from models import Branch, Staff, Manager, Owner
 from bson import ObjectId
+
+
+def _env_list(name):
+    """Return a normalized comma-separated environment variable as a set."""
+    return {
+        value.strip().lower()
+        for value in os.environ.get(name, '').split(',')
+        if value.strip()
+    }
+
+
+def get_demo_branch_id():
+    """Configured demo branch id, or None when demo isolation is disabled."""
+    branch_id = os.environ.get('DEMO_BRANCH_ID', '').strip()
+    if branch_id and ObjectId.is_valid(branch_id):
+        return branch_id
+    return None
+
+
+def get_demo_branch():
+    """Configured demo branch document, or None when unavailable."""
+    branch_id = get_demo_branch_id()
+    if not branch_id:
+        return None
+    try:
+        return Branch.objects(id=branch_id).first()
+    except Exception as e:
+        print(f"Warning: Could not load demo branch {branch_id}: {e}")
+        return None
+
+
+def _get_user_id(user):
+    if isinstance(user, dict):
+        return user.get('user_id') or user.get('id')
+    if hasattr(user, 'id'):
+        return str(user.id)
+    return None
+
+
+def _load_user_document(user):
+    """Load the user document behind a token/dict. Documents are returned as-is."""
+    if not user:
+        return None
+
+    if not isinstance(user, dict):
+        return user
+
+    user_id = _get_user_id(user)
+    if not user_id or not ObjectId.is_valid(user_id):
+        return None
+
+    try:
+        role = user.get('role')
+        user_type = user.get('user_type', 'staff')
+
+        if role == 'owner':
+            return Owner.objects(id=user_id).first()
+        if user_type == 'manager':
+            return Manager.objects(id=user_id).first()
+        return Staff.objects(id=user_id).first()
+    except Exception as e:
+        print(f"Warning: Could not load user document for demo check {user_id}: {e}")
+        return None
+
+
+def is_demo_user(user):
+    """
+    True when the authenticated user should be locked to DEMO_BRANCH_ID.
+
+    A staff/manager assigned to DEMO_BRANCH_ID is automatically treated as demo.
+    Owner/demo accounts without a branch can be listed in DEMO_USER_IDS,
+    DEMO_USER_EMAILS, or DEMO_USER_MOBILES.
+    """
+    demo_branch_id = get_demo_branch_id()
+    if not demo_branch_id or not user:
+        return False
+
+    user_id = _get_user_id(user)
+    if user_id and user_id.lower() in _env_list('DEMO_USER_IDS'):
+        return True
+
+    doc = _load_user_document(user)
+    if not doc:
+        return False
+
+    email = getattr(doc, 'email', None)
+    mobile = getattr(doc, 'mobile', None)
+    if email and email.strip().lower() in _env_list('DEMO_USER_EMAILS'):
+        return True
+    if mobile and mobile.strip().lower() in _env_list('DEMO_USER_MOBILES'):
+        return True
+
+    branch = getattr(doc, 'branch', None)
+    try:
+        if branch and str(branch.id) == str(demo_branch_id):
+            return True
+    except Exception:
+        pass
+
+    return False
+
+
+def get_demo_branch_for_user(user):
+    """Return the demo branch when this user is demo-locked."""
+    if not is_demo_user(user):
+        return None
+    return get_demo_branch()
+
+
+def demo_forbidden_response(action='perform this action'):
+    return {
+        'error': 'Demo account is restricted',
+        'message': f'Demo accounts cannot {action}.'
+    }
 
 
 def get_user_branch(user):
@@ -94,6 +210,14 @@ def get_selected_branch(request_obj, user):
         user_id = 'unknown'
     
     print(f"[BRANCH_FILTER] User: {user_id}, Role: {user_role}")
+
+    demo_branch = get_demo_branch_for_user(user)
+    if demo_branch:
+        print(
+            f"[BRANCH_FILTER] Demo user locked to branch: "
+            f"{demo_branch.name} (ID: {demo_branch.id})"
+        )
+        return demo_branch
     
     # Check for branch_id in header (Owner can switch branches)
     branch_id_header = request_obj.headers.get('X-Branch-Id') or request_obj.headers.get('x-branch-id')
@@ -150,6 +274,12 @@ def require_branch_access(branch_id, user):
         return False, None
 
     try:
+        demo_branch = get_demo_branch_for_user(user)
+        if demo_branch:
+            if str(demo_branch.id) == str(branch_id):
+                return True, demo_branch
+            return False, None
+
         if not ObjectId.is_valid(branch_id):
             return False, None
 

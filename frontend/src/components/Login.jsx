@@ -7,6 +7,8 @@ import PasswordInput from './shared/PasswordInput';
 
 const Login = ({ onLoginSuccess }) => {
   const { login, isAuthenticated } = useAuth();
+  const isDemoLoginMode = typeof window !== 'undefined'
+    && new URLSearchParams(window.location.search).get('demo') === '1';
 
   // Form state
   const [userType, setUserType] = useState('staff'); // 'staff', 'manager', or 'owner'
@@ -36,7 +38,8 @@ const Login = ({ onLoginSuccess }) => {
     const fetchBranches = async () => {
       setLoadingBranches(true);
       try {
-        const response = await fetch(`${API_BASE_URL}/api/branches`, {
+        const branchUrl = `${API_BASE_URL}/api/branches${isDemoLoginMode ? '?demo=1' : ''}`;
+        const response = await fetch(branchUrl, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -59,7 +62,7 @@ const Login = ({ onLoginSuccess }) => {
     };
 
     fetchBranches();
-  }, []);
+  }, [isDemoLoginMode]);
 
   // Fetch staff list for dropdown when branch or userType changes
   useEffect(() => {
@@ -361,7 +364,7 @@ const Login = ({ onLoginSuccess }) => {
                     setError('');
                   }}
                   required
-                  disabled={branches.length === 0}
+                  disabled={branches.length === 0 || (isDemoLoginMode && branches.length === 1)}
                 >
                   <option value="">
                     {branches.length === 0

@@ -103,6 +103,59 @@ CORS(app, resources={
     }
 })
 
+
+DEMO_BLOCKED_MUTATION_PREFIXES = (
+    '/api/settings',
+    '/api/tax',
+    '/api/referral-program',
+)
+
+DEMO_BLOCKED_MUTATION_PATHS = {
+    '/api/auth/owner/update-credentials': 'update owner credentials',
+    '/api/campaigns/send': 'send campaigns',
+    '/api/customer-lifecycle/send-whatsapp': 'send WhatsApp messages',
+}
+
+
+@app.before_request
+def block_demo_restricted_actions():
+    """Prevent demo accounts from touching production-wide or destructive actions."""
+    if request.method == 'OPTIONS':
+        return None
+
+    path = request.path.rstrip('/') or '/'
+    method = request.method.upper()
+    is_write = method in {'POST', 'PUT', 'PATCH', 'DELETE'}
+    if not is_write:
+        return None
+
+    action = None
+    if method == 'DELETE':
+        action = 'delete records'
+    elif path in DEMO_BLOCKED_MUTATION_PATHS:
+        action = DEMO_BLOCKED_MUTATION_PATHS[path]
+    elif path.startswith('/api/branches'):
+        action = 'change branch configuration'
+    elif any(path.startswith(prefix) for prefix in DEMO_BLOCKED_MUTATION_PREFIXES):
+        action = 'change global settings'
+
+    if not action:
+        return None
+
+    try:
+        from utils.auth import get_current_user
+        from utils.branch_filter import demo_forbidden_response, get_demo_branch_for_user
+
+        current_user = get_current_user()
+        if current_user and get_demo_branch_for_user(current_user):
+            response = jsonify(demo_forbidden_response(action))
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 403
+    except Exception as e:
+        print(f"Warning: demo safety guard skipped ({type(e).__name__}): {e}")
+
+    return None
+
 # Initialize Redis cache (if available)
 try:
     from utils.redis_cache import init_redis

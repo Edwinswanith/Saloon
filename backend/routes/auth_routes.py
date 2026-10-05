@@ -11,6 +11,7 @@ from utils.auth import (
     require_auth,
     get_current_user
 )
+from utils.branch_filter import demo_forbidden_response, get_demo_branch_for_user
 from datetime import datetime
 from bson import ObjectId
 import os
@@ -178,7 +179,10 @@ def login():
 
             # Validate and set selected branch
             selected_branch = None
-            if branch_id:
+            demo_branch = get_demo_branch_for_user(staff)
+            if demo_branch:
+                selected_branch = demo_branch
+            elif branch_id:
                 # Validate branch_id format
                 if not ObjectId.is_valid(branch_id):
                     response = jsonify({'error': 'Invalid branch ID format'})
@@ -232,6 +236,7 @@ def login():
                     'email': staff.email,
                     'role': staff_role,
                     'user_type': 'staff',
+                    'is_demo': bool(demo_branch),
                     'branch_id': str(selected_branch.id) if selected_branch else None,
                     'branch': branch_info
                 },
@@ -350,7 +355,10 @@ def login():
 
                 # Validate and set selected branch (Owner can access any branch)
                 selected_branch = None
-                if branch_id:
+                demo_branch = get_demo_branch_for_user(owner)
+                if demo_branch:
+                    selected_branch = demo_branch
+                elif branch_id:
                     # Validate branch_id format
                     if not ObjectId.is_valid(branch_id):
                         response = jsonify({'error': 'Invalid branch ID format'})
@@ -401,6 +409,7 @@ def login():
                         'role': 'owner',
                         'salon': owner.salon,
                         'user_type': 'manager',
+                        'is_demo': bool(demo_branch),
                         'branch_id': str(selected_branch.id) if selected_branch else None,
                         'branch': branch_info
                     },
@@ -518,7 +527,10 @@ def login():
 
             # Validate and set selected branch
             selected_branch = None
-            if branch_id:
+            demo_branch = get_demo_branch_for_user(manager)
+            if demo_branch:
+                selected_branch = demo_branch
+            elif branch_id:
                 # Validate branch_id format
                 if not ObjectId.is_valid(branch_id):
                     response = jsonify({'error': 'Invalid branch ID format'})
@@ -607,6 +619,7 @@ def login():
                     'role': manager.role,
                     'salon': manager.salon,
                     'user_type': 'manager',
+                    'is_demo': bool(demo_branch),
                     'branch_id': str(selected_branch.id) if selected_branch else None,
                     'branch': branch_info
                 },
@@ -666,6 +679,16 @@ def get_current_user_info(current_user=None):
                 response.headers.add('Access-Control-Allow-Origin', '*')
                 return response, 404
 
+            demo_branch = get_demo_branch_for_user(staff)
+            branch = demo_branch or staff.branch
+            branch_info = None
+            if branch:
+                branch_info = {
+                    'id': str(branch.id),
+                    'name': branch.name,
+                    'city': branch.city
+                }
+
             response = jsonify({
                 'user': {
                     'id': str(staff.id),
@@ -675,6 +698,9 @@ def get_current_user_info(current_user=None):
                     'email': staff.email,
                     'role': staff.role,
                     'user_type': 'staff',
+                    'is_demo': bool(demo_branch),
+                    'branch_id': str(branch.id) if branch else None,
+                    'branch': branch_info,
                     'status': staff.status
                 }
             })
@@ -691,6 +717,15 @@ def get_current_user_info(current_user=None):
                     response.headers.add('Access-Control-Allow-Origin', '*')
                     return response, 404
 
+                demo_branch = get_demo_branch_for_user(owner)
+                branch_info = None
+                if demo_branch:
+                    branch_info = {
+                        'id': str(demo_branch.id),
+                        'name': demo_branch.name,
+                        'city': demo_branch.city
+                    }
+
                 response = jsonify({
                     'user': {
                         'id': str(owner.id),
@@ -701,6 +736,9 @@ def get_current_user_info(current_user=None):
                         'role': 'owner',
                         'salon': owner.salon,
                         'user_type': 'manager',
+                        'is_demo': bool(demo_branch),
+                        'branch_id': str(demo_branch.id) if demo_branch else None,
+                        'branch': branch_info,
                         'status': owner.status
                     }
                 })
@@ -713,6 +751,16 @@ def get_current_user_info(current_user=None):
                     response.headers.add('Access-Control-Allow-Origin', '*')
                     return response, 404
 
+                demo_branch = get_demo_branch_for_user(manager)
+                branch = demo_branch or manager.branch
+                branch_info = None
+                if branch:
+                    branch_info = {
+                        'id': str(branch.id),
+                        'name': branch.name,
+                        'city': branch.city
+                    }
+
                 response = jsonify({
                     'user': {
                         'id': str(manager.id),
@@ -723,6 +771,9 @@ def get_current_user_info(current_user=None):
                         'role': manager.role,
                         'salon': manager.salon,
                         'user_type': 'manager',
+                        'is_demo': bool(demo_branch),
+                        'branch_id': str(branch.id) if branch else None,
+                        'branch': branch_info,
                         'status': manager.status
                     }
                 })
@@ -1305,6 +1356,11 @@ def update_owner_credentials(current_user=None):
             response = jsonify({'error': 'Only Owner can update credentials'})
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 403
+
+        if get_demo_branch_for_user(current_user):
+            response = jsonify(demo_forbidden_response('update owner credentials'))
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 403
         
         data = request.get_json()
         if not data:
@@ -1406,6 +1462,24 @@ def switch_branch(current_user=None):
             return response, 400
 
         branch_id = data.get('branch_id')
+
+        demo_branch = get_demo_branch_for_user(current_user)
+        if demo_branch:
+            if branch_id is None or str(branch_id) != str(demo_branch.id):
+                response = jsonify({'error': 'Demo account can only use the demo branch'})
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response, 403
+
+            response = jsonify({
+                'message': 'Branch switched successfully',
+                'branch': {
+                    'id': str(demo_branch.id),
+                    'name': demo_branch.name,
+                    'city': demo_branch.city
+                }
+            })
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 200
 
         # The synthetic "All Branches" (null) view aggregates dashboards across every
         # branch — only meaningful for owners. Staff/manager must pick a specific branch.

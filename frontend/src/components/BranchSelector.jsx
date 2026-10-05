@@ -21,7 +21,8 @@ const BranchSelector = () => {
   if (!user) {
     return null;
   }
-  const isOwner = user.role === 'owner';
+  const isDemoUser = !!user.is_demo;
+  const isOwner = user.role === 'owner' && !isDemoUser;
 
   const handleBranchChange = async (branchId) => {
     setLoading(true);
@@ -45,6 +46,16 @@ const BranchSelector = () => {
   };
 
   const currentBranchName = currentBranch ? currentBranch.name : 'Select Branch';
+
+  if (isDemoUser) {
+    return (
+      <div className="branch-selector">
+        <button className="branch-selector-button" disabled>
+          <span className="branch-name">{currentBranchName}</span>
+        </button>
+      </div>
+    );
+  }
 
   const handleToggle = () => {
     if (!isOpen && buttonRef.current) {

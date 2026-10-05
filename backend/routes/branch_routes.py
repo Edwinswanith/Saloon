@@ -4,8 +4,13 @@ Branch management routes
 from flask import Blueprint, request, jsonify
 from datetime import datetime
 from models import Branch
-from utils.auth import require_auth, require_role
-from utils.branch_filter import get_selected_branch, get_user_branch
+from utils.auth import get_current_user, require_auth, require_role
+from utils.branch_filter import (
+    demo_forbidden_response,
+    get_demo_branch,
+    get_demo_branch_for_user,
+    get_selected_branch,
+)
 from mongoengine.errors import ValidationError, DoesNotExist
 from bson import ObjectId
 
@@ -27,7 +32,15 @@ def handle_preflight():
 def list_branches():
     """Get all branches"""
     try:
-        branches = Branch.objects(is_active=True).order_by('name')
+        current_user = get_current_user()
+        demo_branch = get_demo_branch_for_user(current_user)
+        if demo_branch:
+            branches = Branch.objects(id=demo_branch.id, is_active=True)
+        elif request.args.get('demo') in ('1', 'true', 'yes'):
+            demo_branch = get_demo_branch()
+            branches = Branch.objects(id=demo_branch.id, is_active=True) if demo_branch else []
+        else:
+            branches = Branch.objects(is_active=True).order_by('name')
         
         result = []
         for branch in branches:
@@ -66,6 +79,12 @@ def get_branch(branch_id, current_user=None):
             response = jsonify({'error': 'Branch not found'})
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 404
+
+        demo_branch = get_demo_branch_for_user(current_user)
+        if demo_branch and str(demo_branch.id) != str(branch.id):
+            response = jsonify({'error': 'Demo account cannot access this branch'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 403
         
         result = {
             'id': str(branch.id),
@@ -93,7 +112,11 @@ def get_branch(branch_id, current_user=None):
 def create_branch(current_user=None):
     """Create new branch (Owner only)"""
     try:
-        
+        if get_demo_branch_for_user(current_user):
+            response = jsonify(demo_forbidden_response('create branches'))
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 403
+
         data = request.get_json()
         if not data:
             response = jsonify({'error': 'No data provided'})
@@ -145,7 +168,11 @@ def create_branch(current_user=None):
 def update_branch(branch_id, current_user=None):
     """Update branch (Owner only)"""
     try:
-        
+        if get_demo_branch_for_user(current_user):
+            response = jsonify(demo_forbidden_response('update branch settings'))
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 403
+
         if not ObjectId.is_valid(branch_id):
             response = jsonify({'error': 'Invalid branch ID'})
             response.headers.add('Access-Control-Allow-Origin', '*')

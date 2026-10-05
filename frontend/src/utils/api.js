@@ -27,6 +27,18 @@ const getBranchId = () => {
       // through to the user.branch_id fallback below, otherwise we'd send the
       // owner's home branch and scope every endpoint to it.
       if (branch && branch.isAll) {
+        const storedUser = sessionStorage.getItem('auth_user');
+        if (storedUser) {
+          try {
+            const user = JSON.parse(storedUser);
+            if (user?.is_demo && user.branch_id) {
+              console.log('[API] Demo user locked to branch:', user.branch_id);
+              return user.branch_id;
+            }
+          } catch (e) {
+            console.error('Error parsing stored user:', e);
+          }
+        }
         console.log('[API] All Branches selected — omitting X-Branch-Id');
         return null;
       }

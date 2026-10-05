@@ -42,30 +42,35 @@ export const AuthProvider = ({ children }) => {
           setIsAuthenticated(true);
 
           // Validate token by fetching current user info
-          await validateToken(storedToken);
+          const activeUser = await validateToken(storedToken);
 
           // Load branches for every authenticated user — staff/manager/owner can all
           // pick any branch and work there.
-          if (userData) {
+          if (activeUser) {
             await fetchBranches();
           }
           
           // Set current branch from storage or user's branch
           if (storedBranch) {
             const branchData = JSON.parse(storedBranch);
-            setCurrentBranch(branchData);
-          } else if (userData && userData.role === 'owner') {
+            if (activeUser?.is_demo && branchData?.isAll && activeUser.branch) {
+              setCurrentBranch(activeUser.branch);
+              sessionStorage.setItem('current_branch', JSON.stringify(activeUser.branch));
+            } else {
+              setCurrentBranch(branchData);
+            }
+          } else if (activeUser && activeUser.role === 'owner' && !activeUser.is_demo) {
             // Owner with no prior selection — default to All Branches.
             const allBranches = { id: null, name: 'All Branches', isAll: true };
             setCurrentBranch(allBranches);
             sessionStorage.setItem('current_branch', JSON.stringify(allBranches));
-          } else if (userData && userData.branch) {
-            setCurrentBranch(userData.branch);
-            sessionStorage.setItem('current_branch', JSON.stringify(userData.branch));
-          } else if (userData && userData.branch_id) {
+          } else if (activeUser && activeUser.branch) {
+            setCurrentBranch(activeUser.branch);
+            sessionStorage.setItem('current_branch', JSON.stringify(activeUser.branch));
+          } else if (activeUser && activeUser.branch_id) {
             // If only branch_id is available, fetch branch details
-            await fetchBranches();
-            const branch = branches.find(b => b.id === userData.branch_id);
+            const branchList = await fetchBranches();
+            const branch = branchList.find(b => b.id === activeUser.branch_id);
             if (branch) {
               setCurrentBranch(branch);
               sessionStorage.setItem('current_branch', JSON.stringify(branch));
@@ -142,7 +147,7 @@ export const AuthProvider = ({ children }) => {
       // Owners default to "All Branches" combined view — they can drill into a
       // specific branch from the BranchSelector. Staff/manager fall through to
       // the per-branch logic below since they're branch-locked.
-      if (data.user.role === 'owner') {
+      if (data.user.role === 'owner' && !data.user.is_demo) {
         const allBranches = { id: null, name: 'All Branches', isAll: true };
         setCurrentBranch(allBranches);
         sessionStorage.setItem('current_branch', JSON.stringify(allBranches));
@@ -376,6 +381,9 @@ export const AuthProvider = ({ children }) => {
     try {
       if (!token || !user) {
         throw new Error('Not authenticated');
+      }
+      if (user.is_demo && branchId !== currentBranch?.id) {
+        throw new Error('Demo account is locked to the demo branch');
       }
       if (branchId === null && user.role !== 'owner') {
         throw new Error('Only Owner can use the All Branches view');
