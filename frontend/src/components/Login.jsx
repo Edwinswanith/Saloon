@@ -181,10 +181,10 @@ const Login = ({ onLoginSuccess }) => {
     fetchManagerList();
   }, [userType, selectedBranch]);
 
-  // Fetch owner list for dropdown when userType changes
+  // Fetch owner list for dropdown when userType/branch changes
   useEffect(() => {
     const fetchOwnerList = async () => {
-      if (userType !== 'owner') {
+      if (userType !== 'owner' || !selectedBranch) {
         setOwnerList([]);
         return;
       }
@@ -193,7 +193,7 @@ const Login = ({ onLoginSuccess }) => {
       setError('');
 
       try {
-        const url = `${API_BASE_URL}/api/auth/manager-list?role=owner`;
+        const url = `${API_BASE_URL}/api/auth/manager-list?role=owner&branch_id=${selectedBranch}`;
         console.log('Fetching owner list from:', url);
         const response = await fetch(url, {
           method: 'GET',
@@ -222,7 +222,7 @@ const Login = ({ onLoginSuccess }) => {
     };
 
     fetchOwnerList();
-  }, [userType]);
+  }, [userType, selectedBranch]);
 
   // Handle form submission
   const handleSubmit = async (e) => {
