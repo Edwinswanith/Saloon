@@ -101,6 +101,69 @@
   padding: 24px;
 }
 
+.incentive-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.incentive-summary-card {
+  padding: 14px;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  background: var(--gray-50);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.incentive-summary-card span {
+  color: var(--gray-500);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.incentive-summary-card strong {
+  color: var(--primary-700);
+  font-size: 20px;
+}
+
+.incentive-summary-card small {
+  color: var(--gray-500);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.incentive-rule-note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(13, 148, 136, 0.2);
+  border-radius: 8px;
+  background: #f0fdfa;
+}
+
+.incentive-rule-note strong {
+  color: var(--gray-900);
+  font-size: 14px;
+}
+
+.incentive-rule-note span {
+  color: var(--gray-600);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.legacy-incentive-table {
+  display: none;
+}
+
 /* Control Panel */
 .control-panel {
   display: flex;
@@ -211,6 +274,10 @@
   font-size: 14px;
 }
 
+.incentive-performance-table {
+  min-width: 900px;
+}
+
 .performance-table thead {
   background: var(--gray-50);
   border-bottom: 2px solid var(--gray-200);
@@ -249,6 +316,69 @@
 .avg-bill-cell {
   font-weight: 500;
   color: var(--gray-700);
+}
+
+.target-progress-cell {
+  min-width: 130px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.target-progress-track {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--gray-200);
+}
+
+.target-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary-700);
+}
+
+.target-progress-cell small {
+  color: var(--gray-500);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.muted-cell {
+  color: var(--gray-500);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.incentive-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 92px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: var(--gray-100);
+  color: var(--gray-700);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.incentive-status-pill.earned {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.incentive-status-pill.target_not_met {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.incentive-status-pill.not_configured {
+  background: var(--gray-100);
+  color: var(--gray-500);
 }
 
 .view-btn {

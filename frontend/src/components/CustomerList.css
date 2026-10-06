@@ -359,6 +359,136 @@
   border-color: var(--error-500);
 }
 
+.customer-history-modal {
+  max-width: 1100px;
+  width: min(1100px, calc(100vw - 32px));
+}
+
+.customer-history-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.customer-history-summary > div {
+  padding: 14px;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  background: var(--gray-50);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.customer-history-summary span {
+  color: var(--gray-500);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.customer-history-summary strong {
+  color: var(--gray-900);
+  font-size: 18px;
+}
+
+.customer-history-section {
+  margin-top: 18px;
+}
+
+.customer-history-section h3 {
+  font-size: 16px;
+  margin: 0 0 10px;
+}
+
+.service-history-list {
+  display: grid;
+  gap: 8px;
+}
+
+.service-history-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  background: white;
+}
+
+.customer-preference-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.customer-preference-cards > div {
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  background: var(--gray-50);
+  padding: 12px;
+}
+
+.customer-preference-cards span,
+.customer-recommendation-row span {
+  color: var(--gray-500);
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.customer-preference-cards strong {
+  color: var(--gray-900);
+  display: block;
+  font-size: 15px;
+  margin-top: 5px;
+}
+
+.customer-recommendation-list {
+  display: grid;
+  gap: 8px;
+}
+
+.customer-recommendation-row {
+  align-items: flex-start;
+  background: #f8fbff;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 12px;
+}
+
+.customer-recommendation-row.priority-high {
+  background: #f0fdfa;
+  border-color: #99f6e4;
+}
+
+.customer-recommendation-row strong {
+  color: var(--gray-900);
+  display: block;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.customer-recommendation-row p {
+  color: var(--gray-600);
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 5px 0 0;
+}
+
+.customer-recommendation-row em {
+  color: var(--primary-700);
+  flex-shrink: 0;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
 /* Pagination */
 .pagination {
   display: flex;

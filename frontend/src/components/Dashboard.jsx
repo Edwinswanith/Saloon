@@ -18,6 +18,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  ReferenceLine,
 } from 'recharts'
 import { PageTransition, StaggerContainer, StaggerItem, HoverScale } from './shared/PageTransition'
 import { StatSkeleton, ChartSkeleton, TableSkeleton } from './shared/SkeletonLoaders'
@@ -67,7 +68,7 @@ import {
 } from 'react-icons/fa'
 
 const ManagerOwnerDashboard = () => {
-  const { currentBranch } = useAuth()
+  const { currentBranch, user } = useAuth()
   const [activeTab, setActiveTab] = useState('staff')
   const [filter, setFilter] = useState('month')
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
@@ -79,9 +80,14 @@ const ManagerOwnerDashboard = () => {
     avgBillValue: 0,
     transactions: 0,
     expenses: 0,
+    cardFeeCollected: 0,
+    totalCustomers: 0,
+    newCustomers: 0,
     deletedBills: 0,
     deletedBillsAmount: 0,
   })
+  const [financialOverview, setFinancialOverview] = useState(null)
+  const [ownerFinancialDashboard, setOwnerFinancialDashboard] = useState(null)
   const [staffPerformance, setStaffPerformance] = useState([])
   const [topPerformer, setTopPerformer] = useState(null)
   const [staffLeaderboard, setStaffLeaderboard] = useState([])
@@ -244,6 +250,33 @@ const ManagerOwnerDashboard = () => {
       }
 
       const statsData = await statsRes.json()
+      let financialData = null
+      try {
+        const financialRes = await apiGet(`/api/reports/financial-overview?${params}`)
+        if (financialRes.ok) {
+          financialData = await financialRes.json()
+          setFinancialOverview(financialData)
+        } else {
+          setFinancialOverview(null)
+        }
+      } catch (financialError) {
+        console.warn('Financial overview failed:', financialError)
+        setFinancialOverview(null)
+      }
+
+      let ownerFinancialData = null
+      try {
+        const ownerFinancialRes = await apiGet(`/api/reports/owner-financial-dashboard?${params}`)
+        if (ownerFinancialRes.ok) {
+          ownerFinancialData = await ownerFinancialRes.json()
+          setOwnerFinancialDashboard(ownerFinancialData)
+        } else {
+          setOwnerFinancialDashboard(null)
+        }
+      } catch (ownerFinancialError) {
+        console.warn('Owner financial dashboard failed:', ownerFinancialError)
+        setOwnerFinancialDashboard(null)
+      }
 
       const statsResult = {
         totalTax: statsData.tax?.total || 0,
@@ -251,15 +284,20 @@ const ManagerOwnerDashboard = () => {
         avgBillValue: statsData.revenue?.average_per_transaction || 0,
         transactions: statsData.transactions?.total || 0,
         expenses: statsData.expenses?.total || 0,
+        cardFeeCollected: statsData.card_fee?.total || 0,
+        totalCustomers: statsData.customers?.total || 0,
+        newCustomers: statsData.customers?.new || 0,
         deletedBills: statsData.deleted_bills?.count || 0,
         deletedBillsAmount: statsData.deleted_bills?.amount || 0,
       }
 
       setStats(statsResult)
 
+      let branchComparisonData = []
       if (wantComparison && comparisonRes && comparisonRes.ok) {
         const comparisonData = await comparisonRes.json()
-        setBranchComparison(comparisonData.branches || [])
+        branchComparisonData = comparisonData.branches || []
+        setBranchComparison(branchComparisonData)
       } else {
         // Single-branch view — clear the strip so it doesn't linger from a
         // previous All-Branches selection.
@@ -270,7 +308,12 @@ const ManagerOwnerDashboard = () => {
       setDataCache(prev => ({
         ...prev,
         stats: {
-          data: statsResult,
+          data: {
+            stats: statsResult,
+            financialOverview: financialData,
+            ownerFinancialDashboard: ownerFinancialData,
+            branchComparison: branchComparisonData,
+          },
           timestamp: Date.now(),
           params: getCacheParams(),
         }
@@ -436,7 +479,17 @@ const ManagerOwnerDashboard = () => {
     }
 
     if (cacheKey === 'stats') {
-      setStats(cacheEntry.data)
+      const statsData = cacheEntry.data.stats || cacheEntry.data
+      setStats(statsData)
+      if (cacheEntry.data.financialOverview !== undefined) {
+        setFinancialOverview(cacheEntry.data.financialOverview)
+      }
+      if (cacheEntry.data.ownerFinancialDashboard !== undefined) {
+        setOwnerFinancialDashboard(cacheEntry.data.ownerFinancialDashboard)
+      }
+      if (cacheEntry.data.branchComparison !== undefined) {
+        setBranchComparison(cacheEntry.data.branchComparison)
+      }
       return true
     } else if (cacheKey === 'sales') {
       const salesData = cacheEntry.data
@@ -507,6 +560,39 @@ const ManagerOwnerDashboard = () => {
     }
 
     loadSalesData()
+  }, [filter, selectedYear, selectedMonth, activeTab, currentBranch])
+
+  // Effect for the owner Profit & Loss tab. Keep finance separate from sales so
+  // owners can open a focused board without loading sales charts.
+  useEffect(() => {
+    if (activeTab !== 'finance') return
+
+    const loadFinanceData = async () => {
+      setLoading(true)
+      const dateRange = getDateRange()
+      const params = new URLSearchParams(dateRange)
+      params.append('_t', Date.now())
+      const cacheParams = getCacheParams()
+
+      try {
+        const statsCacheEntry = dataCache.stats
+        if (isCacheValid(statsCacheEntry, cacheParams)) {
+          loadFromCache('stats', statsCacheEntry)
+          setLoading(false)
+          return
+        }
+
+        await fetchStatsData(params, dateRange)
+      } catch (error) {
+        console.error('Error loading finance data:', error)
+        setFinancialOverview(null)
+        setOwnerFinancialDashboard(null)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadFinanceData()
   }, [filter, selectedYear, selectedMonth, activeTab, currentBranch])
 
   // Effect for staff tab data
@@ -612,6 +698,15 @@ const ManagerOwnerDashboard = () => {
 
   const formatCurrency = (amount) => {
     return `₹ ${amount.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+  }
+
+  const formatCompactCurrency = (amount) => {
+    const value = Number(amount || 0)
+    const absValue = Math.abs(value)
+    if (absValue >= 10000000) return `\u20b9 ${(value / 10000000).toFixed(1)}Cr`
+    if (absValue >= 100000) return `\u20b9 ${(value / 100000).toFixed(1)}L`
+    if (absValue >= 1000) return `\u20b9 ${(value / 1000).toFixed(0)}K`
+    return `\u20b9 ${value}`
   }
 
   // Professional color scheme
@@ -722,6 +817,394 @@ const ManagerOwnerDashboard = () => {
     return null
   }
 
+  const renderFinanceBoard = () => {
+    const financeStatus = ownerFinancialDashboard?.summary?.status || 'break_even'
+    const financeStatusLabel = financeStatus.replace('_', ' ')
+    const statusExplanationTitle = financeStatus === 'loss'
+      ? 'Why it shows Loss'
+      : financeStatus === 'profit'
+        ? 'Why it shows Profit'
+        : 'Why it shows Break Even'
+    const summary = ownerFinancialDashboard?.summary || {}
+    const branchRows = ownerFinancialDashboard?.branch_summaries || []
+    const costTotals = branchRows.reduce((totals, branch) => ({
+      expenses: totals.expenses + Number(branch.expenses || 0),
+      productCost: totals.productCost + Number(branch.product_cost || 0),
+      staffCost: totals.staffCost + Number(branch.staff_salary_cost || 0),
+      tax: totals.tax + Number(branch.tax || 0),
+    }), { expenses: 0, productCost: 0, staffCost: 0, tax: 0 })
+    const financeSummaryChartData = [
+      { name: 'Revenue', amount: Number(summary.total_revenue || 0), color: COLORS.primary },
+      { name: 'Total Cost', amount: Number(summary.total_cost || 0), color: COLORS.warning },
+      {
+        name: 'Net Profit / Loss',
+        amount: Number(summary.net_profit || 0),
+        color: Number(summary.net_profit || 0) >= 0 ? COLORS.success : COLORS.danger,
+      },
+    ]
+    const costBreakdownChartData = [
+      { name: 'Expenses', amount: costTotals.expenses, color: COLORS.warning },
+      { name: 'Product Cost', amount: costTotals.productCost, color: COLORS.info },
+      { name: 'Staff Salary', amount: costTotals.staffCost, color: COLORS.purple },
+      { name: 'Tax', amount: costTotals.tax, color: COLORS.danger },
+    ].filter(item => item.amount > 0)
+    const incomeMixChartData = (ownerFinancialDashboard?.income_analysis?.by_type || [])
+      .filter(item => Number(item.amount || 0) > 0)
+      .map((item, index) => ({
+        name: item.label,
+        amount: Number(item.amount || 0),
+        percentage: item.percentage || 0,
+        color: [COLORS.primary, COLORS.success, COLORS.warning, COLORS.info, COLORS.purple][index % 5],
+      }))
+    const branchProfitChartData = branchRows
+      .map((branch) => ({
+        name: branch.branch_name,
+        revenue: Number(branch.revenue || 0),
+        cost: Number(branch.total_cost || 0),
+        netProfit: Number(branch.net_profit || 0),
+      }))
+      .slice(0, 8)
+
+    return (
+    <div className="finance-dashboard-board">
+      <div className="finance-board-title">
+        <div>
+          <h2>Profit & Loss Board</h2>
+          <p className="finance-board-subtitle">
+            Owner summary for the selected branch and date range.
+          </p>
+          <span>
+            {ownerFinancialDashboard?.period?.start_date || financialOverview?.period?.start_date || '-'} to{' '}
+            {ownerFinancialDashboard?.period?.end_date || financialOverview?.period?.end_date || '-'}
+          </span>
+        </div>
+        <strong className={`owner-finance-status finance-overall-status ${financeStatus}`}>
+          <small>Overall Status</small>
+          {financeStatusLabel}
+        </strong>
+      </div>
+
+      {loading && !ownerFinancialDashboard ? (
+        <ChartSkeleton height={260} />
+      ) : !ownerFinancialDashboard ? (
+        <div className="owner-finance-empty finance-board-empty">
+          No profit and loss data available for this period.
+        </div>
+      ) : (
+        <>
+          <div className="owner-finance-summary-grid finance-board-kpis">
+            <div>
+              <span>Total Revenue</span>
+              <strong>{formatCurrency(ownerFinancialDashboard.summary?.total_revenue || 0)}</strong>
+              <small>Money collected from completed bills.</small>
+            </div>
+            <div>
+              <span>Total Cost</span>
+              <strong>{formatCurrency(ownerFinancialDashboard.summary?.total_cost || 0)}</strong>
+              <small>Expenses + product cost + staff salary + tax.</small>
+            </div>
+            <div>
+              <span>Net Profit / Loss</span>
+              <strong>{formatCurrency(ownerFinancialDashboard.summary?.net_profit || 0)}</strong>
+              <small>Revenue left after all costs.</small>
+            </div>
+            <div>
+              <span>Profit Margin</span>
+              <strong>{ownerFinancialDashboard.summary?.profit_margin || 0}%</strong>
+              <small>Profit percentage from revenue.</small>
+            </div>
+            <div>
+              <span>Discounts Given</span>
+              <strong>{formatCurrency(ownerFinancialDashboard.summary?.total_discounts || 0)}</strong>
+              <small>Total discount value given to customers.</small>
+            </div>
+            <div>
+              <span>Average Bill</span>
+              <strong>{formatCurrency(ownerFinancialDashboard.summary?.average_bill || 0)}</strong>
+              <small>Average customer bill value.</small>
+            </div>
+          </div>
+
+          <div className={`finance-board-explainer ${financeStatus}`}>
+            <strong>{statusExplanationTitle}</strong>
+            <span>
+              Net Profit / Loss = Revenue - expenses - product cost - staff salary cost - tax.
+              If this number is negative, the selected period is shown as Loss.
+            </span>
+          </div>
+
+          <div className="finance-visual-grid">
+            <div className="finance-chart-panel">
+              <div className="finance-chart-heading">
+                <h4>P&L Snapshot</h4>
+                <span>Revenue, total cost, and final net result.</span>
+              </div>
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={financeSummaryChartData} margin={{ top: 10, right: 12, left: 8, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis tickFormatter={formatCompactCurrency} tick={{ fontSize: 11 }} width={58} />
+                  <Tooltip formatter={(value) => [formatCurrency(Number(value || 0)), 'Amount']} />
+                  <ReferenceLine y={0} stroke="#64748b" strokeWidth={1} />
+                  <Bar dataKey="amount" radius={[6, 6, 0, 0]}>
+                    {financeSummaryChartData.map((entry) => (
+                      <Cell key={entry.name} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="finance-chart-panel">
+              <div className="finance-chart-heading">
+                <h4>Cost Breakdown</h4>
+                <span>Where the total cost is coming from.</span>
+              </div>
+              {costBreakdownChartData.length === 0 ? (
+                <div className="finance-chart-empty">No cost recorded for this period.</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={240}>
+                  <PieChart>
+                    <Pie
+                      data={costBreakdownChartData}
+                      dataKey="amount"
+                      nameKey="name"
+                      innerRadius={52}
+                      outerRadius={84}
+                      paddingAngle={2}
+                    >
+                      {costBreakdownChartData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => [formatCurrency(Number(value || 0)), 'Cost']} />
+                    <Legend verticalAlign="bottom" height={28} />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+
+            <div className="finance-chart-panel">
+              <div className="finance-chart-heading">
+                <h4>Income Mix</h4>
+                <span>Income split by service, product, package, membership, and card fees.</span>
+              </div>
+              {incomeMixChartData.length === 0 ? (
+                <div className="finance-chart-empty">No income recorded for this period.</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={240}>
+                  <PieChart>
+                    <Pie
+                      data={incomeMixChartData}
+                      dataKey="amount"
+                      nameKey="name"
+                      outerRadius={84}
+                    >
+                      {incomeMixChartData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => [formatCurrency(Number(value || 0)), 'Income']} />
+                    <Legend verticalAlign="bottom" height={28} />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+
+            <div className="finance-chart-panel">
+              <div className="finance-chart-heading">
+                <h4>Branch Profit Comparison</h4>
+                <span>Net profit/loss by branch for the same period.</span>
+              </div>
+              {branchProfitChartData.length === 0 ? (
+                <div className="finance-chart-empty">No branch data available.</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={branchProfitChartData} margin={{ top: 10, right: 12, left: 8, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-15} textAnchor="end" height={52} />
+                    <YAxis tickFormatter={formatCompactCurrency} tick={{ fontSize: 11 }} width={58} />
+                    <Tooltip formatter={(value, name) => [formatCurrency(Number(value || 0)), name === 'netProfit' ? 'Net Profit / Loss' : name]} />
+                    <ReferenceLine y={0} stroke="#64748b" strokeWidth={1} />
+                    <Bar dataKey="netProfit" radius={[6, 6, 0, 0]}>
+                      {branchProfitChartData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.netProfit >= 0 ? COLORS.success : COLORS.danger} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+
+          {financialOverview && (
+            <div className="financial-overview-panel finance-board-calculation">
+              <div className="financial-overview-header">
+                <h3>Profit Calculation</h3>
+                <span>Simple formula used for the selected branch/date range</span>
+              </div>
+              <div className="financial-overview-grid">
+                <div>
+                  <span>Total Revenue</span>
+                  <strong>{formatCurrency(financialOverview.income?.total_revenue || 0)}</strong>
+                  <small>Bill income during this period.</small>
+                </div>
+                <div>
+                  <span>Expenses</span>
+                  <strong>{formatCurrency(financialOverview.outcome?.expense_total || 0)}</strong>
+                  <small>Recorded branch expenses.</small>
+                </div>
+                <div>
+                  <span>Product Cost</span>
+                  <strong>{formatCurrency(financialOverview.outcome?.product_cost || 0)}</strong>
+                  <small>Cost of products used or sold.</small>
+                </div>
+                <div>
+                  <span>Staff Salary Cost</span>
+                  <strong>{formatCurrency(financialOverview.outcome?.staff_salary_cost || 0)}</strong>
+                  <small>Salary cost counted for selected days.</small>
+                </div>
+                <div>
+                  <span>Net Profit / Loss</span>
+                  <strong>{formatCurrency(financialOverview.profit_loss?.net_profit || 0)}</strong>
+                  <small>Final profit after subtracting costs.</small>
+                </div>
+                <div>
+                  <span>Discount Rate</span>
+                  <strong>{financialOverview.profit_loss?.discount_rate_percent || 0}%</strong>
+                  <small>Discount percentage from sales value.</small>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {(ownerFinancialDashboard.branch_summaries || []).length > 0 && (
+            <div className="owner-finance-section">
+              <h4>Branch-wise Profit & Loss</h4>
+              <div className="owner-finance-table-wrap">
+                <table className="owner-finance-table">
+                  <thead>
+                    <tr>
+                      <th>Branch</th>
+                      <th>Revenue</th>
+                      <th>Expenses</th>
+                      <th>Product Cost</th>
+                      <th>Staff Cost</th>
+                      <th>Net Profit</th>
+                      <th>Margin</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ownerFinancialDashboard.branch_summaries.map((branch) => (
+                      <tr key={branch.branch_id}>
+                        <td>{branch.branch_name}</td>
+                        <td>{formatCurrency(branch.revenue || 0)}</td>
+                        <td>{formatCurrency(branch.expenses || 0)}</td>
+                        <td>{formatCurrency(branch.product_cost || 0)}</td>
+                        <td>{formatCurrency(branch.staff_salary_cost || 0)}</td>
+                        <td className={(branch.net_profit || 0) >= 0 ? 'finance-positive' : 'finance-negative'}>
+                          {formatCurrency(branch.net_profit || 0)}
+                        </td>
+                        <td>{branch.profit_margin || 0}%</td>
+                        <td>
+                          <span className={`finance-status-pill ${branch.status || 'break_even'}`}>
+                            {(branch.status || 'break_even').replace('_', ' ')}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <div className="owner-finance-insight-grid">
+            <div className="owner-finance-section">
+              <h4>Service Performance</h4>
+              {(ownerFinancialDashboard.service_performance || []).length === 0 ? (
+                <p className="owner-finance-empty">No service sales in this period.</p>
+              ) : (
+                <div className="owner-finance-mini-list">
+                  {ownerFinancialDashboard.service_performance.slice(0, 5).map((service) => (
+                    <div key={service.service_name} className="owner-finance-mini-row">
+                      <div>
+                        <strong>{service.service_name}</strong>
+                        <span>{service.quantity} sold - {service.decision}</span>
+                      </div>
+                      <b>{formatCurrency(service.revenue || 0)}</b>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="owner-finance-section">
+              <h4>Offer Performance</h4>
+              {(ownerFinancialDashboard.offer_performance || []).length === 0 ? (
+                <p className="owner-finance-empty">No offer usage in this period.</p>
+              ) : (
+                <div className="owner-finance-mini-list">
+                  {ownerFinancialDashboard.offer_performance.slice(0, 5).map((offer) => (
+                    <div key={offer.offer_id || offer.offer_name} className="owner-finance-mini-row">
+                      <div>
+                        <strong>{offer.offer_name}</strong>
+                        <span>{offer.bills} bills - {offer.discount_rate}% discount - {offer.decision}</span>
+                      </div>
+                      <b>{formatCurrency(offer.revenue || 0)}</b>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="owner-finance-section">
+              <h4>Income Analysis</h4>
+              <div className="owner-finance-mini-list">
+                {(ownerFinancialDashboard.income_analysis?.by_type || []).map((item) => (
+                  <div key={item.label} className="owner-finance-mini-row">
+                    <div>
+                      <strong>{item.label}</strong>
+                      <span>{item.percentage}% of income</span>
+                    </div>
+                    <b>{formatCurrency(item.amount || 0)}</b>
+                  </div>
+                ))}
+                {(ownerFinancialDashboard.income_analysis?.payment_methods || []).slice(0, 3).map((item) => (
+                  <div key={item.payment_mode} className="owner-finance-mini-row muted">
+                    <div>
+                      <strong>{item.payment_mode}</strong>
+                      <span>{item.count} bills - {item.percentage}%</span>
+                    </div>
+                    <b>{formatCurrency(item.amount || 0)}</b>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="owner-finance-section">
+              <h4>Business Decisions</h4>
+              {(ownerFinancialDashboard.recommendations || []).length === 0 ? (
+                <p className="owner-finance-empty">No action needed for this period.</p>
+              ) : (
+                <div className="owner-finance-decision-list">
+                  {ownerFinancialDashboard.recommendations.map((item, index) => (
+                    <div key={`${item.title}-${index}`} className={`owner-finance-decision ${item.priority || 'medium'}`}>
+                      <strong>{item.title}</strong>
+                      <span>{item.message}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+  }
+
   return (
     <PageTransition>
       <div className="dashboard">
@@ -737,6 +1220,14 @@ const ManagerOwnerDashboard = () => {
             >
               Sales
             </button>
+            {user?.role === 'owner' && (
+              <button
+                className={`tab ${activeTab === 'finance' ? 'active' : ''}`}
+                onClick={() => setActiveTab('finance')}
+              >
+                Profit & Loss
+              </button>
+            )}
             <button
               className={`tab ${activeTab === 'staff' ? 'active' : ''}`}
               onClick={() => setActiveTab('staff')}
@@ -1189,6 +1680,10 @@ const ManagerOwnerDashboard = () => {
               </div>
             </div>
           </div>
+        ) : activeTab === 'finance' ? (
+          <div className="dashboard-main finance-dashboard">
+            {renderFinanceBoard()}
+          </div>
         ) : (
           <>
             <div className="dashboard-main">
@@ -1231,6 +1726,212 @@ const ManagerOwnerDashboard = () => {
               loading={loading}
               formatCurrency={formatCurrency}
             />
+
+            {false && financialOverview && (
+              <div className="financial-overview-panel">
+                <div className="financial-overview-header">
+                  <h3>Financial Overview</h3>
+                  <span>{financialOverview.period?.start_date} to {financialOverview.period?.end_date}</span>
+                </div>
+                <div className="financial-overview-grid">
+                  <div>
+                    <span>Total Revenue</span>
+                    <strong>{formatCurrency(financialOverview.income?.total_revenue || 0)}</strong>
+                  </div>
+                  <div>
+                    <span>Total Discount</span>
+                    <strong>{formatCurrency(financialOverview.outcome?.discount_total || 0)}</strong>
+                  </div>
+                  <div>
+                    <span>Expenses</span>
+                    <strong>{formatCurrency(financialOverview.outcome?.expense_total || 0)}</strong>
+                  </div>
+                  <div>
+                    <span>Product Cost</span>
+                    <strong>{formatCurrency(financialOverview.outcome?.product_cost || 0)}</strong>
+                  </div>
+                  <div>
+                    <span>Staff Salary Cost</span>
+                    <strong>{formatCurrency(financialOverview.outcome?.staff_salary_cost || 0)}</strong>
+                  </div>
+                  <div>
+                    <span>Net Profit</span>
+                    <strong>{formatCurrency(financialOverview.profit_loss?.net_profit || 0)}</strong>
+                  </div>
+                  <div>
+                    <span>Profit Margin</span>
+                    <strong>{financialOverview.profit_loss?.profit_margin_percent || 0}%</strong>
+                  </div>
+                  <div>
+                    <span>Discount Rate</span>
+                    <strong>{financialOverview.profit_loss?.discount_rate_percent || 0}%</strong>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {false && ownerFinancialDashboard && (
+              <div className="owner-finance-panel">
+                <div className="owner-finance-header">
+                  <div>
+                    <h3>Owner Financial Overview / Profit & Loss</h3>
+                    <span>{ownerFinancialDashboard.period?.start_date} to {ownerFinancialDashboard.period?.end_date}</span>
+                  </div>
+                  <strong className={`owner-finance-status ${ownerFinancialDashboard.summary?.status || 'break_even'}`}>
+                    {(ownerFinancialDashboard.summary?.status || 'break_even').replace('_', ' ')}
+                  </strong>
+                </div>
+
+                <div className="owner-finance-summary-grid">
+                  <div>
+                    <span>Total Revenue</span>
+                    <strong>{formatCurrency(ownerFinancialDashboard.summary?.total_revenue || 0)}</strong>
+                  </div>
+                  <div>
+                    <span>Total Cost</span>
+                    <strong>{formatCurrency(ownerFinancialDashboard.summary?.total_cost || 0)}</strong>
+                  </div>
+                  <div>
+                    <span>Net Profit / Loss</span>
+                    <strong>{formatCurrency(ownerFinancialDashboard.summary?.net_profit || 0)}</strong>
+                  </div>
+                  <div>
+                    <span>Profit Margin</span>
+                    <strong>{ownerFinancialDashboard.summary?.profit_margin || 0}%</strong>
+                  </div>
+                  <div>
+                    <span>Discounts Given</span>
+                    <strong>{formatCurrency(ownerFinancialDashboard.summary?.total_discounts || 0)}</strong>
+                  </div>
+                  <div>
+                    <span>Average Bill</span>
+                    <strong>{formatCurrency(ownerFinancialDashboard.summary?.average_bill || 0)}</strong>
+                  </div>
+                </div>
+
+                {(ownerFinancialDashboard.branch_summaries || []).length > 0 && (
+                  <div className="owner-finance-section">
+                    <h4>Branch-wise Profit & Loss</h4>
+                    <div className="owner-finance-table-wrap">
+                      <table className="owner-finance-table">
+                        <thead>
+                          <tr>
+                            <th>Branch</th>
+                            <th>Revenue</th>
+                            <th>Expenses</th>
+                            <th>Product Cost</th>
+                            <th>Staff Cost</th>
+                            <th>Net Profit</th>
+                            <th>Margin</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {ownerFinancialDashboard.branch_summaries.map((branch) => (
+                            <tr key={branch.branch_id}>
+                              <td>{branch.branch_name}</td>
+                              <td>{formatCurrency(branch.revenue || 0)}</td>
+                              <td>{formatCurrency(branch.expenses || 0)}</td>
+                              <td>{formatCurrency(branch.product_cost || 0)}</td>
+                              <td>{formatCurrency(branch.staff_salary_cost || 0)}</td>
+                              <td className={(branch.net_profit || 0) >= 0 ? 'finance-positive' : 'finance-negative'}>
+                                {formatCurrency(branch.net_profit || 0)}
+                              </td>
+                              <td>{branch.profit_margin || 0}%</td>
+                              <td>
+                                <span className={`finance-status-pill ${branch.status || 'break_even'}`}>
+                                  {(branch.status || 'break_even').replace('_', ' ')}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                <div className="owner-finance-insight-grid">
+                  <div className="owner-finance-section">
+                    <h4>Service Performance</h4>
+                    {(ownerFinancialDashboard.service_performance || []).length === 0 ? (
+                      <p className="owner-finance-empty">No service sales in this period.</p>
+                    ) : (
+                      <div className="owner-finance-mini-list">
+                        {ownerFinancialDashboard.service_performance.slice(0, 5).map((service) => (
+                          <div key={service.service_name} className="owner-finance-mini-row">
+                            <div>
+                              <strong>{service.service_name}</strong>
+                              <span>{service.quantity} sold · {service.decision}</span>
+                            </div>
+                            <b>{formatCurrency(service.revenue || 0)}</b>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="owner-finance-section">
+                    <h4>Offer Performance</h4>
+                    {(ownerFinancialDashboard.offer_performance || []).length === 0 ? (
+                      <p className="owner-finance-empty">No offer usage in this period.</p>
+                    ) : (
+                      <div className="owner-finance-mini-list">
+                        {ownerFinancialDashboard.offer_performance.slice(0, 5).map((offer) => (
+                          <div key={offer.offer_id || offer.offer_name} className="owner-finance-mini-row">
+                            <div>
+                              <strong>{offer.offer_name}</strong>
+                              <span>{offer.bills} bills · {offer.discount_rate}% discount · {offer.decision}</span>
+                            </div>
+                            <b>{formatCurrency(offer.revenue || 0)}</b>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="owner-finance-section">
+                    <h4>Income Analysis</h4>
+                    <div className="owner-finance-mini-list">
+                      {(ownerFinancialDashboard.income_analysis?.by_type || []).map((item) => (
+                        <div key={item.label} className="owner-finance-mini-row">
+                          <div>
+                            <strong>{item.label}</strong>
+                            <span>{item.percentage}% of income</span>
+                          </div>
+                          <b>{formatCurrency(item.amount || 0)}</b>
+                        </div>
+                      ))}
+                      {(ownerFinancialDashboard.income_analysis?.payment_methods || []).slice(0, 3).map((item) => (
+                        <div key={item.payment_mode} className="owner-finance-mini-row muted">
+                          <div>
+                            <strong>{item.payment_mode}</strong>
+                            <span>{item.count} bills · {item.percentage}%</span>
+                          </div>
+                          <b>{formatCurrency(item.amount || 0)}</b>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="owner-finance-section">
+                    <h4>Business Decisions</h4>
+                    {(ownerFinancialDashboard.recommendations || []).length === 0 ? (
+                      <p className="owner-finance-empty">No action needed for this period.</p>
+                    ) : (
+                      <div className="owner-finance-decision-list">
+                        {ownerFinancialDashboard.recommendations.map((item, index) => (
+                          <div key={`${item.title}-${index}`} className={`owner-finance-decision ${item.priority || 'medium'}`}>
+                            <strong>{item.title}</strong>
+                            <span>{item.message}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Sales Insights - Tab-based lazy loading */}
             <SalesInsights
@@ -2186,38 +2887,76 @@ const ManagerOwnerDashboard = () => {
 // Mon-Sun query every load, not a stored counter.
 const StaffWeekSalesView = () => {
   const [myWeekSales, setMyWeekSales] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const [myIncentive, setMyIncentive] = useState(null)
+  const [loadingSales, setLoadingSales] = useState(true)
+  const [loadingIncentive, setLoadingIncentive] = useState(true)
+  const [salesError, setSalesError] = useState(false)
+  const [incentiveError, setIncentiveError] = useState(false)
 
   useEffect(() => {
     let cancelled = false
-    const fetchMyWeekSales = async () => {
-      setLoading(true)
-      setError(false)
+    const fetchSelfDashboard = async () => {
+      setLoadingSales(true)
+      setLoadingIncentive(true)
+      setSalesError(false)
+      setIncentiveError(false)
       try {
-        const response = await apiGet('/api/dashboard/my-week-sales')
-        if (!response.ok) throw new Error('Failed to fetch weekly sales')
-        const data = await response.json()
-        if (!cancelled) setMyWeekSales(data)
+        const [salesResponse, incentiveResponse] = await Promise.all([
+          apiGet('/api/dashboard/my-week-sales'),
+          apiGet('/api/reports/my-incentive'),
+        ])
+
+        if (!salesResponse.ok) throw new Error('Failed to fetch weekly sales')
+        const salesData = await salesResponse.json()
+        if (!cancelled) setMyWeekSales(salesData)
+
+        if (!incentiveResponse.ok) throw new Error('Failed to fetch incentive progress')
+        const incentiveData = await incentiveResponse.json()
+        if (!cancelled) setMyIncentive(incentiveData)
       } catch (err) {
-        console.error('Error fetching my week sales:', err)
-        if (!cancelled) setError(true)
+        console.error('Error fetching staff self dashboard:', err)
+        if (!cancelled) {
+          setSalesError(true)
+          setIncentiveError(true)
+        }
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) {
+          setLoadingSales(false)
+          setLoadingIncentive(false)
+        }
       }
     }
-    fetchMyWeekSales()
+    fetchSelfDashboard()
     return () => { cancelled = true }
   }, [])
+
+  const formatMoney = (amount) => (
+    `\u20B9${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  )
+
+  const formatPeriod = (period) => {
+    if (!period?.start_date || !period?.end_date) return 'This month'
+    return `${period.start_date} to ${period.end_date}`
+  }
+
+  const performance = myIncentive?.performance || {}
+  const earnings = myIncentive?.earnings || {}
+  const progress = Math.min(Number(earnings.target_progress_percent || 0), 100)
+  const incentiveStatusLabel = earnings.incentive_status === 'earned'
+    ? 'Target Achieved'
+    : earnings.incentive_status === 'target_not_met'
+      ? 'In Progress'
+      : 'Not Configured'
 
   return (
     <PageTransition>
       <div className="dashboard">
         <Header title="Dashboard" />
-        <div className="my-week-sales-card">
-          {loading ? (
+        <div className="staff-self-dashboard">
+          <div className="my-week-sales-card">
+          {loadingSales ? (
             <StatSkeleton count={1} />
-          ) : error ? (
+          ) : salesError ? (
             <div className="my-week-sales-error">Unable to load this week's sales</div>
           ) : (
             <>
@@ -2228,6 +2967,82 @@ const StaffWeekSalesView = () => {
             </>
           )}
         </div>
+          <div className="my-incentive-card">
+            {loadingIncentive ? (
+              <StatSkeleton count={3} />
+            ) : incentiveError ? (
+              <div className="my-week-sales-error">Unable to load your incentive progress</div>
+            ) : (
+              <>
+                <div className="my-incentive-header">
+                  <div>
+                    <div className="my-week-sales-label">My Incentive Progress</div>
+                    <div className="my-incentive-period">{formatPeriod(myIncentive?.period)}</div>
+                  </div>
+                  <span className={`my-incentive-status ${earnings.incentive_status || 'not_configured'}`}>
+                    {incentiveStatusLabel}
+                  </span>
+                </div>
+
+                <div className="my-incentive-primary">
+                  <div>
+                    <span>Performance Revenue</span>
+                    <strong>{formatMoney(performance.total_revenue)}</strong>
+                  </div>
+                  <div>
+                    <span>Target</span>
+                    <strong>
+                      {earnings.incentive_status === 'not_configured' ? 'Plan not set' : formatMoney(earnings.incentive_threshold)}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Need To Start Incentive</span>
+                    <strong>
+                      {earnings.incentive_status === 'not_configured' ? 'Plan not set' : formatMoney(earnings.revenue_to_target)}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="my-incentive-progress-row">
+                  <div className="my-incentive-progress-top">
+                    <span>Target Progress</span>
+                    <strong>{Number(earnings.target_progress_percent || 0).toFixed(2)}%</strong>
+                  </div>
+                  <div className="my-incentive-progress-track">
+                    <span style={{ width: `${progress}%` }}></span>
+                  </div>
+                </div>
+
+                <div className="my-incentive-metrics">
+                  <div>
+                    <span>Commission</span>
+                    <strong>{formatMoney(earnings.commission_earned)}</strong>
+                    <small>{Number(earnings.commission_rate || 0).toFixed(2)}% of revenue</small>
+                  </div>
+                  <div>
+                    <span>Incentive Bonus</span>
+                    <strong>{formatMoney(earnings.incentive_amount)}</strong>
+                    <small>{Number(earnings.incentive_rate || 0).toFixed(2)}% above target</small>
+                  </div>
+                  <div>
+                    <span>Estimated Extra Earning</span>
+                    <strong>{formatMoney(earnings.variable_pay)}</strong>
+                    <small>Commission + incentive</small>
+                  </div>
+                  <div>
+                    <span>Bills Served</span>
+                    <strong>{performance.bill_count || 0}</strong>
+                    <small>{performance.item_count || 0} items</small>
+                  </div>
+                </div>
+
+                <div className="my-incentive-guidance">
+                  {earnings.guidance || myIncentive?.calculation_note}
+                </div>
+              </>
+            )}
+          </div>
+      </div>
       </div>
     </PageTransition>
   )

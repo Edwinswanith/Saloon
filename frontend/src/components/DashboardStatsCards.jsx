@@ -2,10 +2,10 @@
  * Dashboard Statistics Cards Component
  * 
  * A reusable React component for displaying KPI (Key Performance Indicator) cards.
- * This component displays 6 statistics cards in a responsive grid layout.
+ * This component displays KPI cards in a responsive grid layout.
  * 
  * Features:
- * - 6 KPI Cards: Total Tax, Gross Revenue, Avg Bill Value, Transactions, Expenses, Deleted Bills
+ * - KPI Cards: Revenue, Customers, Tax, Transactions, Expenses, Deleted Bills
  * - Responsive grid layout (6 columns on desktop, 3 on tablet, 2 on mobile, 1 on small screens)
  * - Color-coded cards with light backgrounds
  * - Loading state support
@@ -33,6 +33,9 @@ const DashboardStatsCards = ({
     avgBillValue: 0,
     transactions: 0,
     expenses: 0,
+    cardFeeCollected: 0,
+    totalCustomers: 0,
+    newCustomers: 0,
     deletedBills: 0,
     deletedBillsAmount: 0,
   },
@@ -45,6 +48,8 @@ const DashboardStatsCards = ({
     { label: 'Gross Revenue', value: formatCurrency(stats.grossRevenue), color: 'green' },
     { label: 'Avg. Bill Value', value: formatCurrency(stats.avgBillValue), color: 'yellow' },
     { label: 'Transactions', value: stats.transactions.toString(), color: 'gray' },
+    { label: 'Customers', value: `${stats.totalCustomers || 0} (+${stats.newCustomers || 0})`, color: 'blue' },
+    { label: 'Card Fees', value: formatCurrency(stats.cardFeeCollected || 0), color: 'gray' },
     { label: 'Expenses', value: formatCurrency(stats.expenses), color: 'red' },
     { label: 'Deleted Bills', value: `${stats.deletedBills} (${formatCurrency(stats.deletedBillsAmount)})`, color: 'dark-red' },
   ]
@@ -53,7 +58,7 @@ const DashboardStatsCards = ({
     <div className="stats-cards-container">
       {loading ? (
         <div className="stats-grid">
-          {[1, 2, 3, 4, 5, 6].map(i => (
+          {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
             <div key={i} className="stat-card stat-loading">
               <div className="stat-value">Loading...</div>
               <div className="stat-label">Loading...</div>
@@ -75,4 +80,3 @@ const DashboardStatsCards = ({
 }
 
 export default DashboardStatsCards
-

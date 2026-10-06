@@ -7,6 +7,7 @@ import {
   FaArrowsAltV,
   FaChevronDown,
   FaCloudUploadAlt,
+  FaList,
   FaSearch,
   FaTimes,
 } from 'react-icons/fa'
@@ -29,6 +30,8 @@ const Product = () => {
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [editingCategory, setEditingCategory] = useState(null)
   const [showImportModal, setShowImportModal] = useState(false)
+  const [showPriceHistoryModal, setShowPriceHistoryModal] = useState(false)
+  const [priceHistory, setPriceHistory] = useState(null)
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false)
   const [categoryFormData, setCategoryFormData] = useState({ name: '' })
   const [productFormData, setProductFormData] = useState({
@@ -37,9 +40,12 @@ const Product = () => {
     cost: '',
     stock_quantity: '',
     min_stock_level: '',
+    stock_unit: 'units',
     sku: '',
     description: '',
-    category_id: ''
+    category_id: '',
+    price_effective_date: new Date().toISOString().split('T')[0],
+    price_change_reason: ''
   })
 
   useEffect(() => {
@@ -230,11 +236,29 @@ const Product = () => {
       cost: product.cost || '',
       stock_quantity: product.stock_quantity || '',
       min_stock_level: product.min_stock_level || '',
+      stock_unit: product.stock_unit || 'units',
       sku: product.sku || '',
       description: product.description || '',
-      category_id: product.category_id || product.categoryId || ''
+      category_id: product.category_id || product.categoryId || '',
+      price_effective_date: new Date().toISOString().split('T')[0],
+      price_change_reason: ''
     })
     setShowProductModal(true)
+  }
+
+  const handleViewPriceHistory = async (product) => {
+    try {
+      const response = await apiGet(`/api/products/${product.id}/price-history`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      setPriceHistory(data)
+      setShowPriceHistoryModal(true)
+    } catch (error) {
+      console.error('Error fetching product price history:', error)
+      showError(`Error fetching price history: ${error.message}`)
+    }
   }
 
   const handleSaveProduct = async () => {
@@ -256,11 +280,14 @@ const Product = () => {
         name: productFormData.name.trim(),
         price: parseFloat(productFormData.price) || 0,
         cost: parseFloat(productFormData.cost) || 0,
-        stock_quantity: parseInt(productFormData.stock_quantity) || 0,  // Quantity is a number, keep parseInt
-        min_stock_level: parseInt(productFormData.min_stock_level) || 0,  // Quantity is a number, keep parseInt
+        stock_quantity: parseFloat(productFormData.stock_quantity) || 0,
+        min_stock_level: parseFloat(productFormData.min_stock_level) || 0,
+        stock_unit: productFormData.stock_unit || 'units',
         sku: productFormData.sku || '',
         description: productFormData.description || '',
         category_id: productFormData.category_id,  // MongoDB ObjectId as string
+        price_effective_date: productFormData.price_effective_date || new Date().toISOString().split('T')[0],
+        price_change_reason: productFormData.price_change_reason || '',
         status: 'active'
       }
 
@@ -283,9 +310,12 @@ const Product = () => {
           cost: '',
           stock_quantity: '',
           min_stock_level: '',
+          stock_unit: 'units',
           sku: '',
           description: '',
-          category_id: ''
+          category_id: '',
+          price_effective_date: new Date().toISOString().split('T')[0],
+          price_change_reason: ''
         })
         showSuccess(data.message || (editingProduct ? 'Product updated successfully!' : 'Product added successfully!'))
       } else {
@@ -372,6 +402,7 @@ const Product = () => {
       const costIdx = headers.findIndex(h => h.includes('cost'))
       const stockIdx = headers.findIndex(h => h.includes('stock'))
       const minStockIdx = headers.findIndex(h => h.includes('min') && h.includes('stock'))
+      const stockUnitIdx = headers.findIndex(h => h.includes('unit'))
       const skuIdx = headers.findIndex(h => h.includes('sku'))
       const descriptionIdx = headers.findIndex(h => h.includes('description'))
 
@@ -392,8 +423,9 @@ const Product = () => {
           name: String(values[nameIdx] || '').trim(),
           price: parseFloat(values[priceIdx] || '0'),
           cost: costIdx >= 0 ? parseFloat(values[costIdx] || '0') : 0,
-          stock_quantity: stockIdx >= 0 ? parseInt(values[stockIdx] || '0') : 0,
-          min_stock_level: minStockIdx >= 0 ? parseInt(values[minStockIdx] || '0') : 0,
+          stock_quantity: stockIdx >= 0 ? parseFloat(values[stockIdx] || '0') : 0,
+          min_stock_level: minStockIdx >= 0 ? parseFloat(values[minStockIdx] || '0') : 0,
+          stock_unit: stockUnitIdx >= 0 ? String(values[stockUnitIdx] || 'units').trim() : 'units',
           sku: skuIdx >= 0 ? String(values[skuIdx] || '').trim() : '',
           description: descriptionIdx >= 0 ? String(values[descriptionIdx] || '').trim() : '',
           category_id: null
@@ -538,9 +570,12 @@ const Product = () => {
                             cost: '',
                             stock_quantity: '',
                             min_stock_level: '',
+                            stock_unit: 'units',
                             sku: '',
                             description: '',
-                            category_id: category.id
+                            category_id: category.id,
+                            price_effective_date: new Date().toISOString().split('T')[0],
+                            price_change_reason: ''
                           })
                           setShowProductModal(true)
                         }}
@@ -574,7 +609,7 @@ const Product = () => {
                                 <span className="product-item-price">₹{parseFloat(product.price).toLocaleString('en-IN')}</span>
                                 {product.stock_quantity !== undefined && (
                                   <span className={`product-item-stock ${product.stock_quantity <= (product.min_stock_level || 0) ? 'low-stock' : ''}`}>
-                                    Stock: {product.stock_quantity}
+                                    Stock: {product.stock_quantity} {product.stock_unit || 'units'}
                                   </span>
                                 )}
                               </div>
@@ -585,6 +620,13 @@ const Product = () => {
                                   onClick={() => handleEditProduct({ ...product, category_id: category.id })}
                                 >
                                   <FaEdit />
+                                </button>
+                                <button
+                                  className="icon-btn view-btn"
+                                  title="Price History"
+                                  onClick={() => handleViewPriceHistory(product)}
+                                >
+                                  <FaList />
                                 </button>
                                 <button
                                   className="icon-btn delete-btn"
@@ -727,6 +769,23 @@ const Product = () => {
               />
             </div>
             <div className="form-group">
+              <label>Price Effective Date</label>
+              <input
+                type="date"
+                value={productFormData.price_effective_date}
+                onChange={(e) => setProductFormData({ ...productFormData, price_effective_date: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>Price Change Reason</label>
+              <textarea
+                value={productFormData.price_change_reason}
+                onChange={(e) => setProductFormData({ ...productFormData, price_change_reason: e.target.value })}
+                placeholder="Reason for price change"
+                rows="2"
+              />
+            </div>
+            <div className="form-group">
               <label>Cost</label>
               <input
                 type="number"
@@ -740,6 +799,7 @@ const Product = () => {
               <label>Stock Quantity</label>
               <input
                 type="number"
+                step="0.001"
                 value={productFormData.stock_quantity}
                 onChange={(e) => setProductFormData({ ...productFormData, stock_quantity: e.target.value })}
                 placeholder="0"
@@ -749,9 +809,19 @@ const Product = () => {
               <label>Min Stock Level</label>
               <input
                 type="number"
+                step="0.001"
                 value={productFormData.min_stock_level}
                 onChange={(e) => setProductFormData({ ...productFormData, min_stock_level: e.target.value })}
                 placeholder="0"
+              />
+            </div>
+            <div className="form-group">
+              <label>Stock Unit</label>
+              <input
+                type="text"
+                value={productFormData.stock_unit}
+                onChange={(e) => setProductFormData({ ...productFormData, stock_unit: e.target.value })}
+                placeholder="units, ml, g"
               />
             </div>
             <div className="form-group">
@@ -778,6 +848,63 @@ const Product = () => {
                 setShowCategoryDropdown(false)
               }}>Cancel</button>
               <button className="btn-save" onClick={handleSaveProduct}>Save</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Price History Modal */}
+      {showPriceHistoryModal && createPortal(
+        <div className="modal-overlay" onClick={() => setShowPriceHistoryModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="std-modal-header">
+              <h2>Price History</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowPriceHistoryModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
+            <div className="price-history-summary">
+              <strong>{priceHistory?.product?.name || 'Product'}</strong>
+              <span>Current Price: ₹{parseFloat(priceHistory?.product?.current_price || 0).toLocaleString('en-IN')}</span>
+            </div>
+            <div className="table-wrapper">
+              <table className="price-history-table">
+                <thead>
+                  <tr>
+                    <th>Effective Date</th>
+                    <th>Old Price</th>
+                    <th>New Price</th>
+                    <th>Reason</th>
+                    <th>Changed By</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(priceHistory?.history || []).length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="empty-message">No price changes recorded yet.</td>
+                    </tr>
+                  ) : (
+                    priceHistory.history.map((row) => (
+                      <tr key={row.id}>
+                        <td>{row.effective_date || '-'}</td>
+                        <td>₹{parseFloat(row.old_price || 0).toLocaleString('en-IN')}</td>
+                        <td>₹{parseFloat(row.new_price || 0).toLocaleString('en-IN')}</td>
+                        <td>{row.reason || '-'}</td>
+                        <td>{row.changed_by_name || '-'}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setShowPriceHistoryModal(false)}>Close</button>
             </div>
           </div>
         </div>,

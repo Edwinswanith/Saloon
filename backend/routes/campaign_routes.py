@@ -3,7 +3,7 @@ from models import Customer, Bill, OfferCampaign, WhatsAppMessage, Branch
 from datetime import datetime, timedelta
 from bson import ObjectId
 from utils.auth import require_auth, require_role
-from utils.branch_filter import apply_branch_scope, get_selected_branch
+from utils.branch_filter import apply_branch_scope, apply_branch_scope_to_match, get_selected_branch
 from utils.whatsapp_service import send_whatsapp_message
 from models import to_dict
 
@@ -19,54 +19,80 @@ def handle_preflight():
         response.headers.add('Access-Control-Allow-Methods', "*")
         return response
 
-def get_filtered_customers(filter_type, branch):
+
+def _customer_name(customer):
+    return f"{customer.first_name or ''} {customer.last_name or ''}".strip() or 'N/A'
+
+
+def _bill_stats_by_customer(customer_ids, branch, current_user=None):
+    if not customer_ids:
+        return {}
+
+    match_stage = {
+        "customer": {"$in": [ObjectId(str(cid)) for cid in customer_ids]},
+        "is_deleted": False
+    }
+    apply_branch_scope_to_match(match_stage, branch, current_user)
+
+    pipeline = [
+        {"$match": match_stage},
+        {"$group": {
+            "_id": "$customer",
+            "total_revenue": {"$sum": {"$ifNull": ["$final_amount", 0]}},
+            "total_visits": {"$sum": 1},
+            "last_visit": {"$max": "$bill_date"}
+        }}
+    ]
+
+    return {
+        str(row["_id"]): {
+            "total_revenue": row.get("total_revenue", 0.0) or 0.0,
+            "total_visits": row.get("total_visits", 0) or 0,
+            "last_visit": row.get("last_visit")
+        }
+        for row in Bill.objects.aggregate(pipeline)
+        if row.get("_id")
+    }
+
+
+def _campaign_customer_payload(customer, stats=None):
+    stats = stats or {}
+    return {
+        'id': str(customer.id),
+        'name': _customer_name(customer),
+        'mobile': customer.mobile,
+        'total_revenue': stats.get('total_revenue', 0.0),
+        'total_visits': stats.get('total_visits', 0),
+        'whatsapp_consent': customer.whatsapp_consent or False
+    }
+
+
+def _doc_or_id_to_string(value):
+    try:
+        if hasattr(value, 'id'):
+            return str(value.id)
+        return str(value)
+    except Exception:
+        return ''
+
+
+def get_filtered_customers(filter_type, branch, current_user=None):
     """Get customers based on filter type"""
     base_query = Customer.objects(merged_into=None)
-    
-    if branch:
-        base_query = base_query.filter(branch=branch)
+    base_query = apply_branch_scope(base_query, branch, current_user)
     
     if filter_type == 'all':
         customers = list(base_query)
-        # Calculate stats for each customer
-        result = []
-        for customer in customers:
-            match_stage = {
-                "customer": ObjectId(str(customer.id)),
-                "is_deleted": False
-            }
-            if branch:
-                match_stage["branch"] = ObjectId(str(branch.id))
-            
-            bills_pipeline = [
-                {"$match": match_stage},
-                {"$group": {
-                    "_id": None,
-                    "total_revenue": {"$sum": {"$ifNull": ["$final_amount", 0]}},
-                    "total_visits": {"$sum": 1},
-                    "last_visit": {"$max": "$bill_date"}
-                }}
-            ]
-            
-            bills_result = list(Bill.objects.aggregate(bills_pipeline))
-            total_revenue = bills_result[0].get('total_revenue', 0.0) if bills_result else 0.0
-            total_visits = bills_result[0].get('total_visits', 0) if bills_result else 0
-            
-            result.append({
-                'id': str(customer.id),
-                'name': f"{customer.first_name or ''} {customer.last_name or ''}".strip() or 'N/A',
-                'mobile': customer.mobile,
-                'total_revenue': total_revenue,
-                'total_visits': total_visits,
-                'whatsapp_consent': customer.whatsapp_consent or False
-            })
-        return result
+        stats_map = _bill_stats_by_customer([c.id for c in customers], branch, current_user)
+        return [
+            _campaign_customer_payload(customer, stats_map.get(str(customer.id)))
+            for customer in customers
+        ]
     
     elif filter_type == 'top10_revenue':
         # Get top 10 by revenue
         match_stage = {"is_deleted": False}
-        if branch:
-            match_stage["branch"] = ObjectId(str(branch.id))
+        apply_branch_scope_to_match(match_stage, branch, current_user)
         
         pipeline = [
             {"$match": match_stage},
@@ -82,17 +108,13 @@ def get_filtered_customers(filter_type, branch):
         customer_ids = [item['_id'] for item in top_customers if item['_id']]
         
         customers = list(base_query.filter(id__in=customer_ids))
+        stats_map = _bill_stats_by_customer([c.id for c in customers], branch, current_user)
         result = []
         for customer in customers:
             revenue_dict = {str(item['_id']): item['total_revenue'] for item in top_customers}
-            result.append({
-                'id': str(customer.id),
-                'name': f"{customer.first_name or ''} {customer.last_name or ''}".strip() or 'N/A',
-                'mobile': customer.mobile,
-                'total_revenue': revenue_dict.get(str(customer.id), 0.0),
-                'total_visits': 0,  # Would need separate aggregation
-                'whatsapp_consent': customer.whatsapp_consent or False
-            })
+            stats = stats_map.get(str(customer.id), {})
+            stats['total_revenue'] = revenue_dict.get(str(customer.id), 0.0)
+            result.append(_campaign_customer_payload(customer, stats))
         # Sort by revenue descending
         result.sort(key=lambda x: x['total_revenue'], reverse=True)
         return result
@@ -100,8 +122,7 @@ def get_filtered_customers(filter_type, branch):
     elif filter_type == 'top10_visits':
         # Get top 10 by visits
         match_stage = {"is_deleted": False}
-        if branch:
-            match_stage["branch"] = ObjectId(str(branch.id))
+        apply_branch_scope_to_match(match_stage, branch, current_user)
         
         pipeline = [
             {"$match": match_stage},
@@ -117,17 +138,13 @@ def get_filtered_customers(filter_type, branch):
         customer_ids = [item['_id'] for item in top_customers if item['_id']]
         
         customers = list(base_query.filter(id__in=customer_ids))
+        stats_map = _bill_stats_by_customer([c.id for c in customers], branch, current_user)
         result = []
         for customer in customers:
             visits_dict = {str(item['_id']): item['total_visits'] for item in top_customers}
-            result.append({
-                'id': str(customer.id),
-                'name': f"{customer.first_name or ''} {customer.last_name or ''}".strip() or 'N/A',
-                'mobile': customer.mobile,
-                'total_revenue': 0.0,  # Would need separate aggregation
-                'total_visits': visits_dict.get(str(customer.id), 0),
-                'whatsapp_consent': customer.whatsapp_consent or False
-            })
+            stats = stats_map.get(str(customer.id), {})
+            stats['total_visits'] = visits_dict.get(str(customer.id), 0)
+            result.append(_campaign_customer_payload(customer, stats))
         # Sort by visits descending
         result.sort(key=lambda x: x['total_visits'], reverse=True)
         return result
@@ -139,57 +156,31 @@ def get_filtered_customers(filter_type, branch):
     elif filter_type == 'inactive':
         # Customers with no visit in last 60 days
         cutoff_date = datetime.utcnow() - timedelta(days=60)
-        match_stage = {
-            "is_deleted": False,
-            "bill_date": {"$lt": cutoff_date}
-        }
-        if branch:
-            match_stage["branch"] = ObjectId(str(branch.id))
-        
-        # Get customers who have bills but none in last 60 days
-        recent_bills = Bill.objects(**match_stage).distinct('customer')
-        all_customers_with_bills = Bill.objects(is_deleted=False).distinct('customer')
-        if branch:
-            all_customers_with_bills = Bill.objects(is_deleted=False, branch=branch).distinct('customer')
-        
-        inactive_customer_ids = [c for c in all_customers_with_bills if c not in recent_bills]
+        recent_bills_query = apply_branch_scope(
+            Bill.objects(is_deleted=False, bill_date__gte=cutoff_date),
+            branch,
+            current_user
+        )
+        recent_bills = recent_bills_query.distinct('customer')
+        all_bills_query = apply_branch_scope(Bill.objects(is_deleted=False), branch, current_user)
+        all_customers_with_bills = all_bills_query.distinct('customer')
+
+        recent_customer_ids = {_doc_or_id_to_string(c) for c in recent_bills}
+        inactive_customer_ids = [
+            ObjectId(customer_id)
+            for customer_id in (_doc_or_id_to_string(c) for c in all_customers_with_bills)
+            if ObjectId.is_valid(customer_id) and customer_id not in recent_customer_ids
+        ]
         customers = list(base_query.filter(id__in=inactive_customer_ids))
     else:
         customers = list(base_query)
     
-    # For non-top10 filters, calculate stats
-    result = []
-    for customer in customers:
-        match_stage = {
-            "customer": ObjectId(str(customer.id)),
-            "is_deleted": False
-        }
-        if branch:
-            match_stage["branch"] = ObjectId(str(branch.id))
-        
-        bills_pipeline = [
-            {"$match": match_stage},
-            {"$group": {
-                "_id": None,
-                "total_revenue": {"$sum": {"$ifNull": ["$final_amount", 0]}},
-                "total_visits": {"$sum": 1}
-            }}
-        ]
-        
-        bills_result = list(Bill.objects.aggregate(bills_pipeline))
-        total_revenue = bills_result[0].get('total_revenue', 0.0) if bills_result else 0.0
-        total_visits = bills_result[0].get('total_visits', 0) if bills_result else 0
-        
-        result.append({
-            'id': str(customer.id),
-            'name': f"{customer.first_name or ''} {customer.last_name or ''}".strip() or 'N/A',
-            'mobile': customer.mobile,
-            'total_revenue': total_revenue,
-            'total_visits': total_visits,
-            'whatsapp_consent': customer.whatsapp_consent or False
-        })
-    
-    return result
+    # For non-top10 filters, calculate stats in one grouped query.
+    stats_map = _bill_stats_by_customer([c.id for c in customers], branch, current_user)
+    return [
+        _campaign_customer_payload(customer, stats_map.get(str(customer.id)))
+        for customer in customers
+    ]
 
 @campaign_bp.route('/customers', methods=['GET'])
 @require_role('manager', 'owner')
@@ -198,13 +189,7 @@ def get_campaign_customers(current_user=None):
     try:
         filter_type = request.args.get('filter', 'all')
         branch = get_selected_branch(request, current_user)
-        
-        if not branch:
-            response = jsonify({'error': 'Branch selection required'})
-            response.headers.add('Access-Control-Allow-Origin', '*')
-            return response, 400
-        
-        customers = get_filtered_customers(filter_type, branch)
+        customers = get_filtered_customers(filter_type, branch, current_user)
         
         response = jsonify({
             'customers': customers,
@@ -231,18 +216,13 @@ def get_birthday_customers(current_user=None):
             return response, 400
         
         branch = get_selected_branch(request, current_user)
-        if not branch:
-            response = jsonify({'error': 'Branch selection required'})
-            response.headers.add('Access-Control-Allow-Origin', '*')
-            return response, 400
         
         # Use aggregation pipeline since MongoEngine doesn't support __month on date fields
         match_stage = {
             "merged_into": None,
             "dob": {"$exists": True, "$ne": None}
         }
-        if branch:
-            match_stage["branch"] = ObjectId(str(branch.id))
+        apply_branch_scope_to_match(match_stage, branch, current_user)
 
         pipeline = [
             {"$match": match_stage},
@@ -294,11 +274,6 @@ def send_campaign(current_user=None):
             return response, 400
         
         branch = get_selected_branch(request, current_user)
-        if not branch:
-            response = jsonify({'error': 'Branch selection required'})
-            response.headers.add('Access-Control-Allow-Origin', '*')
-            return response, 400
-        
         filter_type = data.get('filter_type', 'all')
         customer_ids = data.get('customer_ids', [])  # Optional: specific customer IDs
         delivery_method = data.get('delivery_method', 'api')  # 'api' (Meta Cloud API) or 'direct_whatsapp' (wa.me opened by browser)
@@ -308,12 +283,14 @@ def send_campaign(current_user=None):
         # Get customers to send to
         if customer_ids:
             # Send to specific customers
-            customers = list(Customer.objects(id__in=customer_ids, branch=branch, merged_into=None))
+            customers_query = Customer.objects(id__in=customer_ids, merged_into=None)
+            customers = list(apply_branch_scope(customers_query, branch, current_user))
         else:
             # Use filter
-            customers_data = get_filtered_customers(filter_type, branch)
+            customers_data = get_filtered_customers(filter_type, branch, current_user)
             customer_ids = [c['id'] for c in customers_data]
-            customers = list(Customer.objects(id__in=customer_ids, branch=branch, merged_into=None))
+            customers_query = Customer.objects(id__in=customer_ids, merged_into=None)
+            customers = list(apply_branch_scope(customers_query, branch, current_user))
 
         if not customers:
             response = jsonify({'error': 'No customers found to send campaign to'})
@@ -357,7 +334,7 @@ def send_campaign(current_user=None):
                 try:
                     WhatsAppMessage(
                         customer=customer,
-                        branch=branch,
+                        branch=branch or customer.branch,
                         message_text=data['message_text'],
                         delivery_status='sent',
                         sent_at=now
@@ -384,7 +361,7 @@ def send_campaign(current_user=None):
                     # Save WhatsApp message record
                     whatsapp_msg = WhatsAppMessage(
                         customer=customer,
-                        branch=branch,
+                        branch=branch or customer.branch,
                         message_text=data['message_text'],
                         delivery_status=result.get('delivery_status', 'pending'),
                         sent_at=datetime.utcnow()

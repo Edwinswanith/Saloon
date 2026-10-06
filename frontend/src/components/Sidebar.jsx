@@ -173,8 +173,7 @@ const Sidebar = ({
         {
           id: 'staff-attendance', 
           label: 'Staff Attendance', 
-          icon: <FaCheckCircle />,
-          requiresRole: ['manager', 'owner']
+          icon: <FaCheckCircle />
         },
         {
           id: 'asset-management',

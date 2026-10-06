@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, make_response
-from models import Bill, Customer, Product, BillItemEmbedded, DiscountApprovalRequest, ApprovalCode, Staff, Membership, Branch, CashTransaction, Service, Package, MembershipPlan, ReferralProgramSettings, Referral, Invoice, Notification, Offer, InvoiceLifecycleEvent
+from models import Bill, Customer, Product, BillItemEmbedded, DiscountApprovalRequest, ApprovalCode, Staff, Membership, Branch, CashTransaction, Service, Package, MembershipPlan, ReferralProgramSettings, Referral, Invoice, Notification, Offer, InvoiceLifecycleEvent, ProductConsumptionLog
 from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 from mongoengine import Q
@@ -49,6 +49,8 @@ def _material_snapshot(invoice_data):
         'referral_discount': summary.get('referral_discount'),
         'tax': summary.get('tax'),
         'tax_rate': summary.get('tax_rate'),
+        'card_fee_percent': summary.get('card_fee_percent'),
+        'card_fee_amount': summary.get('card_fee_amount'),
         'total': summary.get('total'),
         'payment_mode': payment.get('mode'),
         'customer_id': customer.get('id'),
@@ -665,6 +667,8 @@ def _build_invoice_data_live(bill):
             'net': round(gross_subtotal - total_discount - referral, 2),
             'tax': float(bill.tax_amount) if bill.tax_amount else 0.0,
             'tax_rate': float(bill.tax_rate) if bill.tax_rate else 0.0,
+            'card_fee_percent': float(getattr(bill, 'card_fee_percent', 0) or 0),
+            'card_fee_amount': float(getattr(bill, 'card_fee_amount', 0) or 0),
             'total': float(bill.final_amount) if bill.final_amount else 0.0
         },
         'payment': {
@@ -864,6 +868,8 @@ def get_bills(current_user=None):
                     'discount_type': b.discount_type,
                     'tax_amount': b.tax_amount,
                     'tax_rate': b.tax_rate,
+                    'card_fee_percent': getattr(b, 'card_fee_percent', 0) or 0,
+                    'card_fee_amount': getattr(b, 'card_fee_amount', 0) or 0,
                     'final_amount': b.final_amount,
                     'payment_mode': b.payment_mode,
                     'booking_status': b.booking_status,
@@ -1063,6 +1069,8 @@ def get_bill(id, current_user=None):
             'discount_type': bill.discount_type,
             'tax_amount': bill.tax_amount,
             'tax_rate': bill.tax_rate,
+            'card_fee_percent': getattr(bill, 'card_fee_percent', 0) or 0,
+            'card_fee_amount': getattr(bill, 'card_fee_amount', 0) or 0,
             'final_amount': bill.final_amount,
             'payment_mode': bill.payment_mode,
             'booking_status': bill.booking_status,
@@ -1388,6 +1396,7 @@ def add_bill_item(id):
             staff=staff,
             start_time=start_time,
             price=data['price'],
+            cost_price=float(product.cost or 0) if product else None,
             discount=data.get('discount', 0),
             quantity=data.get('quantity', 1),
             total=data['total']
@@ -1528,6 +1537,7 @@ def _build_embedded_items_from_payload(items_payload, bill_branch):
             staff=staff,
             start_time=data_item.get('start_time') or None,
             price=data_item['price'],
+            cost_price=float(product.cost or 0) if product else None,
             discount=data_item.get('discount', 0),
             quantity=data_item.get('quantity', 1),
             total=data_item['total']
@@ -2033,6 +2043,16 @@ def checkout_bill(id, current_user=None):
         else:
             final_amount = amount_after_all_discounts + tax_amount
 
+        card_fee_percent = 0.0
+        card_fee_amount = 0.0
+        if data.get('payment_mode') == 'card':
+            card_fee_percent = float(data.get('card_fee_percent', 0) or 0)
+            if card_fee_percent < 0 or card_fee_percent > 25:
+                return jsonify({'error': 'Card fee percentage must be between 0 and 25'}), 400
+            if card_fee_percent > 0:
+                card_fee_amount = round(float(final_amount) * (card_fee_percent / 100.0), 2)
+                final_amount = round(float(final_amount) + card_fee_amount, 2)
+
         # Update bill_date if provided in checkout data (for selected date from frontend)
         if data.get('bill_date'):
             try:
@@ -2079,6 +2099,8 @@ def checkout_bill(id, current_user=None):
         bill.referral_discount = referral_discount
         bill.tax_amount = tax_amount
         bill.tax_rate = tax_rate
+        bill.card_fee_percent = card_fee_percent
+        bill.card_fee_amount = card_fee_amount
         bill.final_amount = final_amount
         bill.payment_mode = data['payment_mode']
         bill.card_bank = card_bank
@@ -2119,7 +2141,7 @@ def checkout_bill(id, current_user=None):
                 current_products = {
                     str(p.id): p
                     for p in Product.objects(id__in=list(product_qty_needed.keys())).only(
-                        'id', 'name', 'stock_quantity', 'branch'
+                        'id', 'name', 'stock_quantity', 'branch', 'stock_unit'
                     )
                 }
 
@@ -2157,6 +2179,30 @@ def checkout_bill(id, current_user=None):
                 except Exception as stock_err:
                     print(f"[CHECKOUT] Stock decrement failed: {stock_err}")
                     return jsonify({'error': 'Failed to update product stock'}), 500
+
+                # Keep an audit trail of product stock movement caused by billing.
+                try:
+                    from datetime import date as date_type
+                    for pid, qty in product_qty_needed.items():
+                        item = product_item_refs.get(pid)
+                        product = current_products.get(pid)
+                        if not product:
+                            continue
+                        ProductConsumptionLog(
+                            product=product,
+                            branch=bill.branch,
+                            quantity=qty,
+                            unit=getattr(product, 'stock_unit', None) or 'units',
+                            consumption_date=date_type.today(),
+                            service_name='Product sale',
+                            period_label='Bill checkout',
+                            reason=f'Bill #{bill.bill_number}',
+                            consumption_type='sale',
+                            bill=bill,
+                            created_by_name=current_user.get('name') if isinstance(current_user, dict) else None
+                        ).save()
+                except Exception as log_err:
+                    print(f"[CHECKOUT] Product consumption log failed for bill {bill.id}: {log_err}")
 
         bill.save()
 

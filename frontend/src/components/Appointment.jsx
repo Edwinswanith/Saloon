@@ -125,8 +125,8 @@ const Appointment = ({ setActivePage }) => {
       const params = new URLSearchParams({
         start_date: fromDate,
         end_date: toDate,
-        // Request more items for month view to ensure all appointments are fetched
-        per_page: activeView === 'month' ? '200' : '100',
+        // Request enough rows for day/week/month; backend caps to its safe max.
+        per_page: '500',
       })
       if (selectedStaff !== 'all') {
         params.append('staff_id', selectedStaff)
@@ -169,6 +169,15 @@ const Appointment = ({ setActivePage }) => {
     }
   }
 
+  const getAppointmentDateKey = (appointment) => {
+    const rawDate = appointment?.appointment_date
+    if (!rawDate) return null
+    if (typeof rawDate === 'string') {
+      return rawDate.slice(0, 10)
+    }
+    return null
+  }
+
   const handleCancelAppointment = async () => {
     if (!selectedAppointment) return
     try {
@@ -192,7 +201,7 @@ const Appointment = ({ setActivePage }) => {
       try {
         // Filter by date if provided (for week/month views)
         if (date) {
-          const aptDate = apt.appointment_date ? new Date(apt.appointment_date).toISOString().split('T')[0] : null
+          const aptDate = getAppointmentDateKey(apt)
           if (aptDate !== date) return false
         }
         
@@ -220,7 +229,7 @@ const Appointment = ({ setActivePage }) => {
   const getAppointmentsForDate = (date, staffId = null) => {
     return appointments.filter((apt) => {
       try {
-        const aptDate = apt.appointment_date ? new Date(apt.appointment_date).toISOString().split('T')[0] : null
+        const aptDate = getAppointmentDateKey(apt)
         if (aptDate !== date) return false
         
         if (staffId) {
@@ -437,6 +446,8 @@ const Appointment = ({ setActivePage }) => {
           appointmentData.booking_status = bill.booking_status // Use booking_status from bill
           appointmentData.discount_amount = bill.discount_amount
           appointmentData.discount_type = bill.discount_type
+          appointmentData.card_fee_percent = bill.card_fee_percent
+          appointmentData.card_fee_amount = bill.card_fee_amount
 
           // Add bill items
           if (bill.items && bill.items.length > 0) {

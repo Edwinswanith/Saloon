@@ -25,3 +25,7 @@ export const API_BASE_URL = resolveApiBaseUrl();
 
 // Public-facing URL for shareable links (WhatsApp, invoices, short links)
 export const PUBLIC_BASE_URL = resolvePublicBaseUrl();
+
+// Google Business Profile review link — shown to customers/staff after a 4-5 star rating.
+// Set VITE_GOOGLE_REVIEW_URL in .env; empty string disables the "Post to Google" prompt.
+export const GOOGLE_REVIEW_URL = import.meta.env.VITE_GOOGLE_REVIEW_URL || '';

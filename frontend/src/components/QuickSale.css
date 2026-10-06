@@ -225,6 +225,139 @@
   color: var(--gray-500);
 }
 
+.customer-smart-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--gray-300);
+}
+
+.customer-smart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.customer-smart-header span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--primary-700);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.customer-smart-header button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--primary-200);
+  border-radius: 6px;
+  background: #eefdf9;
+  color: var(--primary-800);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 7px 10px;
+}
+
+.customer-preference-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.customer-preference-chip {
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  background: var(--gray-50);
+  padding: 9px 10px;
+  min-width: 0;
+}
+
+.customer-preference-chip span,
+.recommendation-type {
+  display: block;
+  color: var(--gray-500);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.customer-preference-chip strong {
+  display: block;
+  color: var(--gray-900);
+  font-size: 13px;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+.customer-recommendation-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.customer-recommendation-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #f8fbff;
+  padding: 10px;
+  min-height: 118px;
+}
+
+.customer-recommendation-card.priority-high {
+  border-color: #99f6e4;
+  background: #f0fdfa;
+}
+
+.customer-recommendation-card strong {
+  display: block;
+  color: var(--gray-900);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.customer-recommendation-card p {
+  color: var(--gray-600);
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 5px 0 0;
+}
+
+.customer-recommendation-card button {
+  align-self: flex-start;
+  border: 0;
+  border-radius: 6px;
+  background: var(--primary-700);
+  color: white;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+}
+
+.customer-recent-visits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.customer-recent-visits span {
+  border: 1px solid var(--gray-200);
+  border-radius: 999px;
+  background: white;
+  color: var(--gray-600);
+  font-size: 12px;
+  padding: 6px 9px;
+}
+
 .customer-info-sidebar {
   display: flex;
   flex-direction: column;
@@ -3222,6 +3355,35 @@ select.table-select:focus {
 .payment-pill.wallet-available:not(.active):hover {
   background: linear-gradient(135deg, var(--success-300) 0%, var(--success-200) 100%);
   transform: translateY(-2px);
+}
+
+@media (max-width: 900px) {
+  .customer-preference-strip,
+  .customer-recommendation-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-smart-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+.card-payment-details {
+  display: grid;
+  gap: 10px;
+  min-width: 220px;
+}
+
+.card-fee-field {
+  display: grid;
+  gap: 4px;
+}
+
+.card-fee-preview {
+  color: var(--primary-700);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .wallet-deduction-row {

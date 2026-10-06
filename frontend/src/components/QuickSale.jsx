@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { FaBars, FaBell, FaUser, FaCalendar, FaBoxes, FaTrash, FaChevronDown, FaClock, FaTimes, FaExclamationTriangle, FaClipboardList, FaTimesCircle, FaGift } from 'react-icons/fa'
+import { FaBars, FaBell, FaUser, FaCalendar, FaBoxes, FaTrash, FaChevronDown, FaClock, FaTimes, FaExclamationTriangle, FaClipboardList, FaTimesCircle, FaGift, FaLightbulb, FaHistory } from 'react-icons/fa'
 import './QuickSale.css'
 import { API_BASE_URL } from '../config'
 import { useAuth } from '../contexts/AuthContext'
@@ -208,6 +208,7 @@ const QuickSale = () => {
   const [discountType, setDiscountType] = useState('fix')
   const [paymentMode, setPaymentMode] = useState('cash')
   const [cardBank, setCardBank] = useState('')
+  const [cardFeePercent, setCardFeePercent] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [selectedCustomer, setSelectedCustomer] = useState(null)
@@ -225,6 +226,7 @@ const QuickSale = () => {
   // Prevents duplicate bills from rapid Checkout clicks
   const [isCheckingOut, setIsCheckingOut] = useState(false)
   const appointmentCreatedRef = useRef(false)
+  const canUseCardFee = paymentMode === 'card'
 
   // Helper function to get current time in HH:MM format
   const getCurrentTime = () => {
@@ -399,12 +401,15 @@ const QuickSale = () => {
     }
   }, [selectedCustomer])
 
-  // Reset card bank when payment mode changes away from card
+  // Reset card-only fields when payment mode/branch no longer supports them.
   useEffect(() => {
     if (paymentMode !== 'card') {
       setCardBank('')
     }
-  }, [paymentMode])
+    if (!canUseCardFee) {
+      setCardFeePercent('')
+    }
+  }, [paymentMode, canUseCardFee])
 
   // Pre-fill form with appointment data - immediate population with parallel API calls
   const prefillAppointmentData = async (appointmentData) => {
@@ -433,6 +438,9 @@ const QuickSale = () => {
       if (appointmentData.payment_mode) {
         setPaymentMode(appointmentData.payment_mode)
         console.log('[APPOINTMENT EDIT] Payment mode set:', appointmentData.payment_mode)
+      }
+      if (appointmentData.card_fee_percent !== undefined) {
+        setCardFeePercent(appointmentData.card_fee_percent ? String(appointmentData.card_fee_percent) : '')
       }
 
       // Set discount from bill data
@@ -1005,6 +1013,34 @@ const QuickSale = () => {
         total: 0,
       },
     ])
+  }
+
+  const addRecommendedService = (recommendation) => {
+    const matchedService = availableServices.find(service =>
+      service.id === recommendation.service_id ||
+      (recommendation.service_name && service.name === recommendation.service_name)
+    )
+
+    if (!matchedService) {
+      showInfo('This recommended service is not available in the current branch service list.')
+      return
+    }
+
+    const currentTime = getCurrentTime()
+    const loggedInStaffId = (user && staffMembers.find(s => s.id === user.id)) ? user.id : ''
+    setServices([
+      ...services,
+      {
+        id: Date.now(),
+        service_id: matchedService.id,
+        staff_id: loggedInStaffId,
+        startTime: currentTime,
+        price: parseFloat(matchedService.price || 0),
+        discount: 0,
+        total: parseFloat(matchedService.price || 0),
+      },
+    ])
+    showSuccess(`${matchedService.name} added to bill`)
   }
 
   const addPackage = async () => {
@@ -1632,8 +1668,12 @@ const QuickSale = () => {
   const fetchCustomerDetails = async (customerId) => {
     setLoadingCustomerDetails(true)
     try {
-      const response = await apiGet(`/api/customers/${customerId}`)
-      const data = await response.json()
+      const [detailsResponse, historyResponse] = await Promise.all([
+        apiGet(`/api/customers/${customerId}`),
+        apiGet(`/api/customers/${customerId}/history`),
+      ])
+      const data = await detailsResponse.json()
+      const historyData = historyResponse.ok ? await historyResponse.json() : {}
       console.log('Customer details fetched:', data)
       console.log('Total visits:', data.total_visits)
       // Format membership data for display
@@ -1655,7 +1695,11 @@ const QuickSale = () => {
         dob: data.dob || null,
         notes: data.notes || 'N/A',
         referredBy: data.referredBy || null,
-        referralRewardUsed: data.referralRewardUsed || false
+        referralRewardUsed: data.referralRewardUsed || false,
+        servicePreferences: historyData.services || [],
+        preferenceSummary: historyData.preferences || {},
+        recommendations: historyData.recommendations || [],
+        recentVisits: (historyData.visits || []).slice(0, 3)
       })
       setCustomerDob(data.dob ? new Date(data.dob) : null)
     } catch (error) {
@@ -2028,6 +2072,23 @@ const QuickSale = () => {
     return calculateNet() + calculateTaxBreakdown().additionalTax
   }
 
+  const getCardFeePercentValue = () => {
+    if (!canUseCardFee) return 0
+    const value = parseFloat(cardFeePercent)
+    if (!Number.isFinite(value) || value <= 0) return 0
+    return Math.min(value, 25)
+  }
+
+  const calculateCardFee = () => {
+    const percent = getCardFeePercentValue()
+    if (percent <= 0) return 0
+    return calculateFinalAmount() * (percent / 100)
+  }
+
+  const calculatePayableAmount = () => {
+    return calculateFinalAmount() + calculateCardFee()
+  }
+
   // Combined effective tax rate for display
   const getDisplayTaxRate = () => {
     const sRate = serviceTaxRate
@@ -2102,6 +2163,9 @@ const QuickSale = () => {
     setSearchQuery('')
     setDiscountAmount(0)
     setDiscountType('fix')
+    setPaymentMode('cash')
+    setCardBank('')
+    setCardFeePercent('')
     setMembershipInfo(null)
     setCustomerDetails(null)
     setCustomerDob(null)
@@ -2183,6 +2247,7 @@ const QuickSale = () => {
           final_amount: calculateFinalAmount(),
           payment_mode: paymentMode,
           card_bank: paymentMode === 'card' ? cardBank : undefined,
+          card_fee_percent: getCardFeePercentValue(),
           booking_status: bookingStatus,
         })
 
@@ -2379,6 +2444,7 @@ const QuickSale = () => {
         final_amount: calculateFinalAmount(),
         payment_mode: paymentMode,
         card_bank: paymentMode === 'card' ? cardBank : undefined,
+        card_fee_percent: getCardFeePercentValue(),
         booking_status: bookingStatus,
       })
 
@@ -2824,6 +2890,60 @@ const QuickSale = () => {
                   <span className="customer-note-label">Customer Note:</span>
                   <span className="customer-note-value">{customerDetails.notes}</span>
                 </div>
+                <div className="customer-smart-panel">
+                  <div className="customer-smart-header">
+                    <span><FaLightbulb /> Smart Recommendations</span>
+                    <button type="button" onClick={handleShowBillActivity}>
+                      <FaHistory /> Full History
+                    </button>
+                  </div>
+
+                  <div className="customer-preference-strip">
+                    <div className="customer-preference-chip">
+                      <span>Preferred Service</span>
+                      <strong>{customerDetails.preferenceSummary?.preferred_service?.name || customerDetails.lastService || 'N/A'}</strong>
+                    </div>
+                    <div className="customer-preference-chip">
+                      <span>Preferred Category</span>
+                      <strong>{customerDetails.preferenceSummary?.preferred_category?.name || 'N/A'}</strong>
+                    </div>
+                    <div className="customer-preference-chip">
+                      <span>Visit Pattern</span>
+                      <strong>
+                        {customerDetails.preferenceSummary?.average_visit_gap_days
+                          ? `${customerDetails.preferenceSummary.average_visit_gap_days} days avg`
+                          : `${customerDetails.totalVisits || 0} visits`}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div className="customer-recommendation-grid">
+                    {(customerDetails.recommendations || []).slice(0, 3).map((recommendation, index) => (
+                      <div className={`customer-recommendation-card priority-${recommendation.priority || 'medium'}`} key={`${recommendation.title}-${index}`}>
+                        <div>
+                          <span className="recommendation-type">{recommendation.category || recommendation.type || 'Preference'}</span>
+                          <strong>{recommendation.title}</strong>
+                          <p>{recommendation.reason}</p>
+                        </div>
+                        {recommendation.service_id && (
+                          <button type="button" onClick={() => addRecommendedService(recommendation)}>
+                            Add
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {(customerDetails.recentVisits || []).length > 0 && (
+                    <div className="customer-recent-visits">
+                      {(customerDetails.recentVisits || []).map(visit => (
+                        <span key={visit.bill_id}>
+                          {visit.bill_date ? formatDate(visit.bill_date) : '-'}: {(visit.items || []).map(item => item.name).slice(0, 3).join(', ') || '-'}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="customer-info-sidebar">
                 <button className="bill-activity-btn" onClick={handleShowBillActivity}>
@@ -3097,7 +3217,7 @@ const QuickSale = () => {
                   </button>
                 </div>
                 {paymentMode === 'card' && (
-                  <div className="bank-dropdown-container" style={{ marginTop: '12px' }}>
+                  <div className="bank-dropdown-container card-payment-details" style={{ marginTop: '12px' }}>
                     <label className="form-label" style={{ marginBottom: '8px', display: 'block' }}>Card Bank</label>
                     <select
                       className="form-select"
@@ -3118,6 +3238,26 @@ const QuickSale = () => {
                       <option value="Canara">Canara</option>
                       <option value="Other">Other</option>
                     </select>
+                    {canUseCardFee && (
+                      <div className="card-fee-field">
+                        <label className="form-label" style={{ marginBottom: '8px', display: 'block' }}>Card Fee %</label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          min="0"
+                          max="25"
+                          step="0.01"
+                          value={cardFeePercent}
+                          onChange={(e) => setCardFeePercent(e.target.value)}
+                          placeholder="e.g. 2"
+                        />
+                        {getCardFeePercentValue() > 0 && (
+                          <div className="card-fee-preview">
+                            Fee: ₹ {calculateCardFee().toFixed(2)}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -3413,12 +3553,25 @@ const QuickSale = () => {
                     </div>
                   </div>
 
+                  {/* Card Fee Group */}
+                  {canUseCardFee && getCardFeePercentValue() > 0 && (
+                    <>
+                      <div className="summary-divider"></div>
+                      <div className="summary-group">
+                        <div className="summary-row">
+                          <span className="summary-label">Card Payment Fee ({getCardFeePercentValue()}%)</span>
+                          <span className="summary-value">₹ {calculateCardFee().toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
                   {/* Final Amount */}
                   <div className="summary-divider summary-divider-final"></div>
                   <div className="summary-group summary-group-final">
                     <div className="summary-row final">
                       <span className="summary-label">Total</span>
-                      <span className="summary-value final-value">₹ {calculateFinalAmount().toFixed(2)}</span>
+                      <span className="summary-value final-value">₹ {calculatePayableAmount().toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
@@ -3856,6 +4009,12 @@ const QuickSale = () => {
                           <span className="detail-label">Tax:</span>
                           <span className="detail-value">+ ₹{(bill.tax_amount || 0).toFixed(2)}</span>
                         </div>
+                        {Number(bill.card_fee_amount || 0) > 0 && (
+                          <div className="bill-detail-row">
+                            <span className="detail-label">Card Fee:</span>
+                            <span className="detail-value">+ ₹{(bill.card_fee_amount || 0).toFixed(2)}</span>
+                          </div>
+                        )}
                         <div className="bill-detail-row">
                           <span className="detail-label">Payment Mode:</span>
                           <span className="detail-value payment-badge">

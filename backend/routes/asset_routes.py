@@ -96,8 +96,9 @@ def get_asset(id, current_user=None):
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid asset ID format'}), 400
-        
-        asset = Asset.objects.get(id=id)
+
+        branch = get_selected_branch(request, current_user)
+        asset = apply_branch_scope(Asset.objects(id=id), branch, current_user).get()
         response = jsonify({
             'id': str(asset.id),
             'name': asset.name,
@@ -128,6 +129,12 @@ def create_asset(current_user=None):
     try:
         data = request.get_json()
 
+        branch = get_selected_branch(request, current_user)
+        if not branch:
+            response = jsonify({'error': 'Please select a branch before creating an asset'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
+
         # Parse purchase date if provided
         purchase_date = None
         if 'purchase_date' in data and data['purchase_date']:
@@ -136,6 +143,7 @@ def create_asset(current_user=None):
         asset = Asset(
             name=data['name'],
             category=data.get('category'),
+            branch=branch,
             purchase_date=purchase_date,
             purchase_price=data.get('purchase_price'),
             current_value=data.get('current_value'),
@@ -172,8 +180,9 @@ def update_asset(id, current_user=None):
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid asset ID format'}), 400
-        
-        asset = Asset.objects.get(id=id)
+
+        branch = get_selected_branch(request, current_user)
+        asset = apply_branch_scope(Asset.objects(id=id), branch, current_user).get()
         data = request.get_json()
 
         asset.name = data.get('name', asset.name)
@@ -215,8 +224,9 @@ def delete_asset(id, current_user=None):
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid asset ID format'}), 400
-        
-        asset = Asset.objects.get(id=id)
+
+        branch = get_selected_branch(request, current_user)
+        asset = apply_branch_scope(Asset.objects(id=id), branch, current_user).get()
         asset.delete()
 
         response = jsonify({'message': 'Asset deleted successfully'})
@@ -230,10 +240,12 @@ def delete_asset(id, current_user=None):
         return response, 500
 
 @asset_bp.route('/summary', methods=['GET'])
-def get_assets_summary():
+@require_role('manager', 'owner')
+def get_assets_summary(current_user=None):
     """Get summary of assets by category and status"""
     try:
-        assets = list(Asset.objects)
+        branch = get_selected_branch(request, current_user)
+        assets = list(apply_branch_scope(Asset.objects, branch, current_user))
 
         # Group by category
         categories = {}
@@ -278,10 +290,12 @@ def get_assets_summary():
         return jsonify({'error': str(e)}), 500
 
 @asset_bp.route('/categories', methods=['GET'])
-def get_asset_categories():
+@require_role('manager', 'owner')
+def get_asset_categories(current_user=None):
     """Get list of unique asset categories"""
     try:
-        assets = Asset.objects.filter(category__ne=None)
+        branch = get_selected_branch(request, current_user)
+        assets = apply_branch_scope(Asset.objects.filter(category__ne=None), branch, current_user)
         categories = list(set([a.category for a in assets if a.category]))
 
         return jsonify(categories)

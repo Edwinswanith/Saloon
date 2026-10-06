@@ -29,6 +29,8 @@ const Staffs = () => {
     email: '',
     salary: '',
     commissionRate: '',
+    incentiveThreshold: '50000',
+    incentiveRate: '',
     password: '',
     branch: ''
   })
@@ -78,6 +80,8 @@ const Staffs = () => {
       email: '',
       salary: '',
       commissionRate: '',
+      incentiveThreshold: '50000',
+      incentiveRate: '',
       password: '',
       branch: ''
     })
@@ -93,6 +97,8 @@ const Staffs = () => {
       email: staff.email || '',
       salary: staff.salary || '',
       commissionRate: staff.commissionRate || '',
+      incentiveThreshold: staff.incentiveThreshold || '50000',
+      incentiveRate: staff.incentiveRate || '',
       password: '',
       branch: staff.branchId || ''
     })
@@ -146,6 +152,8 @@ const Staffs = () => {
         email: staffFormData.email.trim(),
         salary: parseFloat(staffFormData.salary) || 0,
         commissionRate: parseFloat(staffFormData.commissionRate) || 0,
+        incentiveThreshold: parseFloat(staffFormData.incentiveThreshold) || 50000,
+        incentiveRate: parseFloat(staffFormData.incentiveRate) || 0,
         status: 'active'
       }
 
@@ -178,6 +186,8 @@ const Staffs = () => {
           email: '',
           salary: '',
           commissionRate: '',
+          incentiveThreshold: '50000',
+          incentiveRate: '',
           password: '',
           branch: ''
         })
@@ -233,17 +243,18 @@ const Staffs = () => {
                   <th>Last Name</th>
                   <th>Email</th>
                   <th>Salary</th>
+                  <th>Incentive</th>
                   <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="7" className="empty-row">Loading...</td>
+                    <td colSpan="8" className="empty-row">Loading...</td>
                   </tr>
                 ) : staffs.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="empty-row">No staff members found</td>
+                    <td colSpan="8" className="empty-row">No staff members found</td>
                   </tr>
                 ) : (
                   staffs.map((staff, index) => (
@@ -254,6 +265,7 @@ const Staffs = () => {
                       <td>{staff.lastName || '-'}</td>
                       <td>{staff.email || '-'}</td>
                       <td>₹{staff.salary ? staff.salary.toLocaleString() : 'N/A'}</td>
+                      <td>{staff.incentiveRate ? `${staff.incentiveRate}% over ₹${(staff.incentiveThreshold || 50000).toLocaleString()}` : '-'}</td>
                       <td>
                         <div className="action-icons">
                           <button
@@ -361,6 +373,26 @@ const Staffs = () => {
                 placeholder="Enter commission rate"
               />
             </div>
+            <div className="form-group">
+              <label>Incentive Threshold</label>
+              <input
+                type="number"
+                step="0.01"
+                value={staffFormData.incentiveThreshold}
+                onChange={(e) => setStaffFormData({ ...staffFormData, incentiveThreshold: e.target.value })}
+                placeholder="50000"
+              />
+            </div>
+            <div className="form-group">
+              <label>Incentive Rate (%)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={staffFormData.incentiveRate}
+                onChange={(e) => setStaffFormData({ ...staffFormData, incentiveRate: e.target.value })}
+                placeholder="Percentage incentive"
+              />
+            </div>
             {user && (user.role === 'owner' || user.role === 'manager') && (
               <div className="form-group">
                 <label>Branch *</label>
@@ -433,6 +465,10 @@ const Staffs = () => {
               <div className="detail-row">
                 <label>Commission Rate:</label>
                 <span>{viewingStaff.commissionRate ? `${viewingStaff.commissionRate}%` : 'N/A'}</span>
+              </div>
+              <div className="detail-row">
+                <label>Incentive:</label>
+                <span>{viewingStaff.incentiveRate ? `${viewingStaff.incentiveRate}% over ₹${(viewingStaff.incentiveThreshold || 50000).toLocaleString()}` : 'N/A'}</span>
               </div>
               <div className="detail-row">
                 <label>Status:</label>

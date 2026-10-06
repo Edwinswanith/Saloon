@@ -9,8 +9,8 @@ import {
 } from 'react-icons/fa'
 import * as XLSX from 'xlsx'
 import './AssetManagement.css'
-import { API_BASE_URL } from '../config'
 import { useAuth } from '../contexts/AuthContext'
+import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 import ClassicDatePicker from './shared/ClassicDatePicker'
 
 const AssetManagement = () => {
@@ -51,13 +51,12 @@ const AssetManagement = () => {
   const fetchAssets = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE_URL}/api/assets`)
+      const response = await apiGet('/api/assets')
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       const data = await response.json()
-      // Backend returns array directly
-      setAssets(Array.isArray(data) ? data : (data.assets || []))
+      setAssets(Array.isArray(data) ? data : (data.data || data.assets || []))
     } catch (error) {
       console.error('Error fetching assets:', error)
       setAssets([])
@@ -106,27 +105,23 @@ const AssetManagement = () => {
 
     try {
       const url = editingAsset 
-        ? `${API_BASE_URL}/api/assets/${editingAsset.id}`
-        : `${API_BASE_URL}/api/assets`
-      const method = editingAsset ? 'PUT' : 'POST'
+        ? `/api/assets/${editingAsset.id}`
+        : '/api/assets'
+      const payload = {
+        name: assetFormData.name.trim(),
+        category: assetFormData.category.trim(),
+        location: assetFormData.location.trim(),
+        purchase_price: parseFloat(assetFormData.purchase_price) || 0,
+        purchase_date: assetFormData.purchase_date || null,
+        current_value: parseFloat(assetFormData.current_value) || null,
+        depreciation_rate: parseFloat(assetFormData.depreciation_rate) || null,
+        status: assetFormData.status,
+        description: assetFormData.description.trim()
+      }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: assetFormData.name.trim(),
-          category: assetFormData.category.trim(),
-          location: assetFormData.location.trim(),
-          purchase_price: parseFloat(assetFormData.purchase_price) || 0,
-          purchase_date: assetFormData.purchase_date || null,
-          current_value: parseFloat(assetFormData.current_value) || null,
-          depreciation_rate: parseFloat(assetFormData.depreciation_rate) || null,
-          status: assetFormData.status,
-          description: assetFormData.description.trim()
-        }),
-      })
+      const response = editingAsset
+        ? await apiPut(url, payload)
+        : await apiPost(url, payload)
 
       if (response.ok) {
         const data = await response.json()
@@ -160,9 +155,7 @@ const AssetManagement = () => {
       return
     }
     try {
-      const response = await fetch(`${API_BASE_URL}/api/assets/${assetId}`, {
-        method: 'DELETE',
-      })
+      const response = await apiDelete(`/api/assets/${assetId}`)
       if (response.ok) {
         fetchAssets()
         alert('Asset deleted successfully')
@@ -270,11 +263,7 @@ const AssetManagement = () => {
 
         if (assetData.name) {
           try {
-            const response = await fetch(`${API_BASE_URL}/api/assets`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(assetData),
-            })
+            const response = await apiPost('/api/assets', assetData)
             if (response.ok) {
               successCount++
             } else {

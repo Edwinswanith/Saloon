@@ -104,6 +104,8 @@ class Staff(Document):
     email = StringField(max_length=100)
     salary = FloatField()
     commission_rate = FloatField(default=0.0)  # Percentage
+    incentive_threshold = FloatField(default=50000.0)
+    incentive_rate = FloatField(default=0.0)  # Percentage applied after threshold eligibility
     status = StringField(max_length=20, default='active')  # active, inactive
     role = StringField(max_length=20, default='staff')  # staff, manager, owner
     password_hash = StringField(max_length=255)  # Optional for manager/owner roles
@@ -160,12 +162,57 @@ class Product(Document):
     category = ReferenceField('ProductCategory', required=True)
     price = FloatField(required=True)
     cost = FloatField()  # Cost price
-    stock_quantity = IntField(default=0)
-    min_stock_level = IntField(default=0)
+    stock_quantity = FloatField(default=0)
+    min_stock_level = FloatField(default=0)
+    stock_unit = StringField(max_length=20, default='units')
     sku = StringField(max_length=50)
     description = StringField()
     branch = ReferenceField('Branch')  # Multi-branch: Product's branch
     status = StringField(max_length=20, default='active')
+    created_at = DateTimeField(default=datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.utcnow)
+
+
+class ProductPriceHistory(Document):
+    meta = {
+        'collection': 'product_price_history',
+        'indexes': [
+            {'fields': ['product', '-effective_date']},
+            {'fields': ['branch', '-changed_at']},
+        ]
+    }
+
+    product = ReferenceField('Product', required=True)
+    branch = ReferenceField('Branch')
+    old_price = FloatField(required=True)
+    new_price = FloatField(required=True)
+    effective_date = DateField()
+    reason = StringField(max_length=500)
+    changed_by_name = StringField(max_length=100)
+    changed_at = DateTimeField(default=datetime.utcnow)
+
+
+class ProductConsumptionLog(Document):
+    meta = {
+        'collection': 'product_consumption_logs',
+        'indexes': [
+            {'fields': ['branch', '-consumption_date']},
+            {'fields': ['product', '-consumption_date']},
+            {'fields': ['service_name']},
+        ]
+    }
+
+    product = ReferenceField('Product', required=True)
+    branch = ReferenceField('Branch')
+    quantity = FloatField(required=True)
+    unit = StringField(max_length=20, default='units')
+    consumption_date = DateField(required=True)
+    service_name = StringField(max_length=150)
+    period_label = StringField(max_length=50)
+    reason = StringField(max_length=500)
+    consumption_type = StringField(max_length=20, default='manual')  # manual, sale, service
+    bill = ReferenceField('Bill')
+    created_by_name = StringField(max_length=100)
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
 
@@ -265,6 +312,7 @@ class BillItemEmbedded(EmbeddedDocument):
     staff = ReferenceField('Staff')
     start_time = StringField()  # Store as string in HH:MM:SS format
     price = FloatField(required=True)
+    cost_price = FloatField()  # Product cost snapshot at billing time for accurate historical P&L
     discount = FloatField(default=0.0)
     quantity = IntField(default=1)
     total = FloatField(required=True)
@@ -297,6 +345,8 @@ class Bill(Document):
     referral_discount = FloatField(default=0.0)  # Referral program discount applied to referee's first bill
     tax_amount = FloatField(default=0.0)
     tax_rate = FloatField(default=0.0)
+    card_fee_percent = FloatField(default=0.0)
+    card_fee_amount = FloatField(default=0.0)
     final_amount = FloatField(required=True)
     payment_mode = StringField(max_length=20)  # cash, upi, card
     card_bank = StringField(max_length=50)  # Bank name for card payments

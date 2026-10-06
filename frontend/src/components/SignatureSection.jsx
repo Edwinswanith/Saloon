@@ -255,7 +255,7 @@ export default function SignatureSection({ billId, invoiceData, onFinalized }) {
       message += `We'd love to hear from you! Share your *feedback* here:\n\n${feedbackLink}\n\nThanks\n${businessName}`
       if (signoffPhone) message += `\n${signoffPhone}`
 
-      window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank')
+      window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')
     } finally {
       setSendingWhatsApp(false)
     }

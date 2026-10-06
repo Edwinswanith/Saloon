@@ -339,7 +339,7 @@ function AppContent() {
               </RequireRole>
             )}
             {activePage === 'staff-attendance' && (
-              <RequireRole roles={['manager', 'owner']}>
+              <RequireRole roles={['staff', 'manager', 'owner']}>
                 <StaffAttendance key="staff-attendance" />
               </RequireRole>
             )}

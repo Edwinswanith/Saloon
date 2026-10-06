@@ -81,11 +81,11 @@ try:
             maxIdleTimeMS=60000,
             waitQueueTimeoutMS=10000)  # Increased wait queue timeout
     print(f"✓ Connected to MongoDB: {MONGODB_DB}")
-    print(f"✓ Connection URI: {base_uri.split('@')[0]}@***")
+    print(f"✓ Connection host: ***@{base_uri.split('@', 1)[1] if '@' in base_uri else base_uri}")
 except Exception as e:
     print(f"✗ CRITICAL: MongoDB connection failed: {e}")
     print(f"✗ Database: {MONGODB_DB}")
-    print(f"✗ URI: {MONGODB_URI.split('@')[0] if '@' in MONGODB_URI else '***'}@***")
+    print(f"✗ Host: ***@{MONGODB_URI.split('@', 1)[1] if '@' in MONGODB_URI else '***'}")
     print("✗ App will continue but ALL database operations will fail!")
     print("✗ Check: 1) MONGODB_URI env var, 2) MongoDB Atlas IP whitelist, 3) Network connectivity")
 

@@ -121,7 +121,7 @@ const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
           if (invoiceData?.customer?.mobile) {
             const phoneNumber = invoiceData.customer.mobile.replace(/[^0-9]/g, '')
             const whatsappUrl = `https://wa.me/${phoneNumber.startsWith('91') ? phoneNumber : '91' + phoneNumber}`
-            window.open(whatsappUrl, '_blank')
+            window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
           }
         }
       }
@@ -294,7 +294,7 @@ const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
     message += `${signoffPhone}`
 
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
-    window.open(whatsappUrl, '_blank')
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
   }
 
   return (
@@ -449,6 +449,14 @@ const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
           <span className="summary-label">Tax</span>
           <span className="summary-value">{formatCurrency(summary?.tax || 0)}</span>
         </div>
+        {Number(summary?.card_fee_amount || 0) > 0 && (
+          <div className="summary-row">
+            <span className="summary-label">
+              Card Payment Fee{Number(summary?.card_fee_percent || 0) > 0 ? ` (${summary.card_fee_percent}%)` : ''}
+            </span>
+            <span className="summary-value">{formatCurrency(summary.card_fee_amount)}</span>
+          </div>
+        )}
         <div className="summary-row summary-total">
           <span className="summary-label">Total</span>
           <span className="summary-value">{formatCurrencyNoDecimals(summary?.total || 0)}</span>

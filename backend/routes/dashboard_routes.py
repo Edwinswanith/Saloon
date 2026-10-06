@@ -100,6 +100,7 @@ def get_dashboard_stats(current_user=None):
                     "total_revenue": {"$sum": "$final_amount"},
                     "total_transactions": {"$sum": 1},
                     "total_tax": {"$sum": {"$ifNull": ["$tax_amount", 0]}},
+                    "total_card_fee": {"$sum": {"$ifNull": ["$card_fee_amount", 0]}},
                 }}
             ]
 
@@ -119,10 +120,12 @@ def get_dashboard_stats(current_user=None):
                 total_revenue = bills_result[0].get('total_revenue', 0) or 0
                 total_transactions = bills_result[0].get('total_transactions', 0)
                 total_tax = bills_result[0].get('total_tax', 0) or 0
+                total_card_fee = bills_result[0].get('total_card_fee', 0) or 0
             else:
                 total_revenue = 0
                 total_transactions = 0
                 total_tax = 0
+                total_card_fee = 0
 
             deleted_result = list(Bill.objects.aggregate(deleted_pipeline))
             if deleted_result:
@@ -138,6 +141,7 @@ def get_dashboard_stats(current_user=None):
             total_revenue = 0
             total_transactions = 0
             total_tax = 0
+            total_card_fee = 0
             deleted_bills_count = 0
             deleted_bills_amount = 0
 
@@ -222,6 +226,9 @@ def get_dashboard_stats(current_user=None):
             },
             'tax': {
                 'total': round(total_tax, 2)
+            },
+            'card_fee': {
+                'total': round(total_card_fee, 2)
             },
             'deleted_bills': {
                 'count': deleted_bills_count,
@@ -1360,7 +1367,10 @@ def get_client_funnel(current_user=None):
         new_customers_query = apply_branch_scope(new_customers_query, branch, current_user)
         new_customers = new_customers_query.count()
 
-        # OPTIMIZED: Use aggregation to count returning customers instead of loading all bills
+        # Returning customers: customers who had a bill in this period but were
+        # already in the CRM before the period began. The previous implementation
+        # counted only customers with 2+ bills inside the period, which undercounts
+        # real returning clients who visit once this week/month.
         returning_match = {
             "is_deleted": False,
             "bill_date": {"$gte": start, "$lte": end},
@@ -1370,11 +1380,22 @@ def get_client_funnel(current_user=None):
 
         returning_pipeline = [
             {"$match": returning_match},
-            {"$group": {
-                "_id": "$customer",
-                "bill_count": {"$sum": 1}
-            }},
-            {"$match": {"bill_count": {"$gte": 2}}},
+            {"$group": {"_id": "$customer"}},
+            {
+                "$lookup": {
+                    "from": "customers",
+                    "localField": "_id",
+                    "foreignField": "_id",
+                    "as": "customer_doc",
+                }
+            },
+            {"$unwind": "$customer_doc"},
+            {
+                "$match": {
+                    "customer_doc.merged_into": None,
+                    "customer_doc.created_at": {"$lt": start},
+                }
+            },
             {"$count": "returning_customers"}
         ]
         returning_result = list(Bill.objects.aggregate(returning_pipeline))

@@ -134,6 +134,12 @@
         <span class="summary-label">Tax</span>
         <span class="summary-value">{{ summary.tax | format_currency }}</span>
       </div>
+      {% if summary.card_fee_amount and summary.card_fee_amount > 0 %}
+      <div class="summary-row">
+        <span class="summary-label">Card Payment Fee{% if summary.card_fee_percent %} ({{ summary.card_fee_percent }}%){% endif %}</span>
+        <span class="summary-value">{{ summary.card_fee_amount | format_currency }}</span>
+      </div>
+      {% endif %}
       <div class="summary-row summary-total">
         <span class="summary-label">Total</span>
         <span class="summary-value">{{ summary.total | format_currency_no_decimals }}</span>

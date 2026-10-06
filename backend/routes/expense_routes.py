@@ -22,7 +22,7 @@ def handle_preflight():
 # Expense Category Routes
 
 @expense_bp.route('/categories', methods=['GET'])
-@require_auth
+@require_role('manager', 'owner')
 def get_expense_categories(current_user=None):
     """Get all expense categories"""
     try:
@@ -186,14 +186,15 @@ def get_expenses(current_user=None):
         return response, 500
 
 @expense_bp.route('/<id>', methods=['GET'])
-@require_auth
+@require_role('manager', 'owner')
 def get_expense(id, current_user=None):
-    """Get a single expense by ID"""
+    """Get a single expense by ID, scoped to the selected branch."""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid expense ID format'}), 400
-        
-        expense = Expense.objects.get(id=id)
+
+        branch = get_selected_branch(request, current_user)
+        expense = apply_branch_scope(Expense.objects(id=id), branch, current_user).get()
         response = jsonify({
             'id': str(expense.id),
             'name': expense.name,
@@ -280,8 +281,9 @@ def update_expense(id, current_user=None):
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid expense ID format'}), 400
-        
-        expense = Expense.objects.get(id=id)
+
+        branch = get_selected_branch(request, current_user)
+        expense = apply_branch_scope(Expense.objects(id=id), branch, current_user).get()
         data = request.get_json()
 
         expense.name = data.get('name', expense.name)
@@ -325,8 +327,9 @@ def delete_expense(id, current_user=None):
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid expense ID format'}), 400
-        
-        expense = Expense.objects.get(id=id)
+
+        branch = get_selected_branch(request, current_user)
+        expense = apply_branch_scope(Expense.objects(id=id), branch, current_user).get()
         expense.delete()
 
         response = jsonify({'message': 'Expense deleted successfully'})
@@ -340,7 +343,7 @@ def delete_expense(id, current_user=None):
         return response, 500
 
 @expense_bp.route('/summary', methods=['GET'])
-@require_auth
+@require_role('manager', 'owner')
 def get_expense_summary(current_user=None):
     """Get expense summary by category for a date range"""
     try:
@@ -393,7 +396,7 @@ def get_expense_summary(current_user=None):
         return response, 500
 
 @expense_bp.route('/total', methods=['GET'])
-@require_auth
+@require_role('manager', 'owner')
 def get_total_expenses(current_user=None):
     """Get total expenses for a date range, scoped to current branch"""
     try:

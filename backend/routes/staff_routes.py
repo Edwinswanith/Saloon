@@ -57,17 +57,31 @@ def get_staffs(current_user=None):
 
         all_staffs = list(query.order_by(order_field))
 
-        staff_list = [{
-            'id': str(s.id),
-            'mobile': s.mobile,
-            'firstName': s.first_name,
-            'lastName': s.last_name,
-            'email': s.email,
-            'salary': s.salary,
-            'commissionRate': s.commission_rate,
-            'branch': s.branch.name if s.branch else None,
-            'branchId': str(s.branch.id) if s.branch else None,
-        } for s in all_staffs]
+        is_staff_request = current_user and current_user.get('user_type') == 'staff'
+
+        def serialize_staff(s):
+            payload = {
+                'id': str(s.id),
+                'mobile': s.mobile,
+                'firstName': s.first_name,
+                'lastName': s.last_name,
+                'email': s.email,
+                'branch': s.branch.name if s.branch else None,
+                'branchId': str(s.branch.id) if s.branch else None,
+            }
+            # Staff logins need roster basics for appointment/quick-sale staff
+            # selection, but payroll/incentive rules are private to managers
+            # and owners.
+            if not is_staff_request:
+                payload.update({
+                    'salary': s.salary,
+                    'commissionRate': s.commission_rate,
+                    'incentiveThreshold': getattr(s, 'incentive_threshold', 50000.0),
+                    'incentiveRate': getattr(s, 'incentive_rate', 0.0),
+                })
+            return payload
+
+        staff_list = [serialize_staff(s) for s in all_staffs]
 
         total = len(staff_list)
         start_idx = (page - 1) * per_page
@@ -106,6 +120,8 @@ def get_staff(staff_id, current_user=None):
             'email': staff.email,
             'salary': staff.salary,
             'commissionRate': staff.commission_rate,
+            'incentiveThreshold': getattr(staff, 'incentive_threshold', 50000.0),
+            'incentiveRate': getattr(staff, 'incentive_rate', 0.0),
             'status': staff.status
         })
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -175,6 +191,8 @@ def create_staff(current_user=None):
             email=data.get('email', ''),
             salary=data.get('salary'),
             commission_rate=data.get('commissionRate', 0.0),
+            incentive_threshold=data.get('incentiveThreshold', 50000.0),
+            incentive_rate=data.get('incentiveRate', 0.0),
             status=data.get('status', 'active'),
             branch=branch,
             password_hash=hash_password(password)
@@ -226,6 +244,8 @@ def update_staff(staff_id, current_user=None):
         staff.email = data.get('email', staff.email)
         staff.salary = data.get('salary', staff.salary)
         staff.commission_rate = data.get('commissionRate', staff.commission_rate)
+        staff.incentive_threshold = data.get('incentiveThreshold', getattr(staff, 'incentive_threshold', 50000.0))
+        staff.incentive_rate = data.get('incentiveRate', getattr(staff, 'incentive_rate', 0.0))
         staff.status = data.get('status', staff.status)
 
         # Optional password reset by manager/owner

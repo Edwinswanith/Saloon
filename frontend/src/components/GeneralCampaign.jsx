@@ -186,7 +186,7 @@ const GeneralCampaign = ({ onCampaignSent }) => {
     }
     const personalized = buildPersonalizedMessage(current.name);
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(personalized)}`;
-    const popup = window.open(url, '_blank');
+    const popup = window.open(url, '_blank', 'noopener,noreferrer');
     if (!popup) {
       showError('Popup blocked. Please allow popups for this site and try again.');
       return;

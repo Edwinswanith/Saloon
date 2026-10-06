@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from models import Bill, Service, ServiceGroup, Staff, Customer, Expense, Product, Membership
+from models import Bill, Branch, Service, ServiceGroup, Staff, Customer, Expense, Product, Membership, Appointment
 from datetime import datetime, timedelta
 from mongoengine.errors import DoesNotExist
 from bson import ObjectId
@@ -7,9 +7,10 @@ from utils.auth import require_auth, require_role
 from utils.branch_filter import (
     apply_branch_scope,
     apply_branch_scope_to_match,
+    get_demo_branch_exclusion,
     get_selected_branch,
 )
-from utils.date_utils import get_ist_date_range
+from utils.date_utils import get_ist_date_range, get_ist_today
 from utils.staff_revenue import attributed_revenue_pipeline
 
 report_bp = Blueprint('report', __name__)
@@ -387,69 +388,129 @@ def staff_incentive_report(current_user=None):
 
         # Get branch for filtering
         branch = get_selected_branch(request, current_user)
+        start, end = get_ist_date_range(start_date, end_date)
+        period_days = 30
+        if start_date and end_date:
+            start_day = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_day = datetime.strptime(end_date, '%Y-%m-%d').date()
+            period_days = max((end_day - start_day).days + 1, 1)
+
         staff_query = Staff.objects(status='active')
         staff_query = apply_branch_scope(staff_query, branch, current_user)
-        # Force evaluation by converting to list
-        staff_list = list(staff_query)
+        staff_map = {str(staff.id): staff for staff in staff_query}
+
+        bills_query = Bill.objects(is_deleted=False)
+        bills_query = apply_branch_scope(bills_query, branch, current_user)
+        if start:
+            bills_query = bills_query.filter(bill_date__gte=start)
+        if end:
+            bills_query = bills_query.filter(bill_date__lte=end)
+
+        performance = {}
+
+        def ensure_staff_row(staff):
+            staff_id = str(staff.id)
+            if staff_id not in performance:
+                performance[staff_id] = {
+                    'staff': staff,
+                    'service_revenue': 0.0,
+                    'package_revenue': 0.0,
+                    'product_revenue': 0.0,
+                    'membership_revenue': 0.0,
+                    'total_revenue': 0.0,
+                    'item_count': 0,
+                    'bill_ids': set(),
+                }
+            return performance[staff_id]
+
+        for staff in staff_map.values():
+            ensure_staff_row(staff)
+
+        for bill in bills_query:
+            bill_id = str(bill.id)
+            for item in bill.items or []:
+                if not item.staff:
+                    continue
+                staff_id = str(item.staff.id)
+                if staff_id not in staff_map:
+                    staff_map[staff_id] = item.staff
+                row = ensure_staff_row(staff_map[staff_id])
+                item_total = float(item.total or 0)
+                quantity = int(item.quantity or 1)
+
+                row['total_revenue'] += item_total
+                row['item_count'] += quantity
+                row['bill_ids'].add(bill_id)
+
+                if item.item_type == 'service':
+                    row['service_revenue'] += item_total
+                elif item.item_type == 'package':
+                    row['package_revenue'] += item_total
+                elif item.item_type == 'product':
+                    row['product_revenue'] += item_total
+                elif item.item_type == 'membership':
+                    row['membership_revenue'] += item_total
 
         report = []
-        for staff in staff_list:
-            bills_query = Bill.objects(is_deleted=False)
-            bills_query = apply_branch_scope(bills_query, branch, current_user)
+        for row in performance.values():
+            staff = row['staff']
+            total_revenue = row['total_revenue']
+            bill_count = len(row['bill_ids'])
+            avg_bill = total_revenue / bill_count if bill_count > 0 else 0
+            commission_rate = float(staff.commission_rate or 0)
+            commission = total_revenue * (commission_rate / 100)
 
-            if start_date:
-                start = datetime.strptime(start_date, '%Y-%m-%d')
-                bills_query = bills_query.filter(bill_date__gte=start)
-            if end_date:
-                end = datetime.strptime(end_date, '%Y-%m-%d')
-                # Set end to end of day to include all data from the end date
-                end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
-                bills_query = bills_query.filter(bill_date__lte=end)
+            incentive_threshold = float(getattr(staff, 'incentive_threshold', 50000.0) or 50000.0)
+            incentive_rate = float(getattr(staff, 'incentive_rate', 0.0) or 0.0)
+            incentive_base = max(total_revenue - incentive_threshold, 0.0) if incentive_rate > 0 else 0.0
+            incentive_eligible = incentive_base > 0
+            incentive_amount = incentive_base * (incentive_rate / 100)
+            revenue_to_target = max(incentive_threshold - total_revenue, 0.0) if incentive_rate > 0 else 0.0
+            target_progress = (total_revenue / incentive_threshold * 100) if incentive_threshold > 0 else 0
+            monthly_salary = float(staff.salary or 0)
+            period_salary = monthly_salary * (period_days / 30.0)
+            variable_pay = commission + incentive_amount
+            total_earnings = period_salary + variable_pay
 
-            # Force evaluation by converting to list
-            bills = list(bills_query)
-
-            # Breakdown by item type
-            service_revenue = 0.0
-            package_revenue = 0.0
-            product_revenue = 0.0
-            membership_revenue = 0.0
-            total_revenue = 0.0
-            item_count = 0
-
-            for bill in bills:
-                for item in bill.items:
-                    if item.staff and str(item.staff.id) == str(staff.id):
-                        item_total = float(item.total) if item.total else 0.0
-                        total_revenue += item_total
-                        item_count += 1
-                        
-                        if item.item_type == 'service':
-                            service_revenue += item_total
-                        elif item.item_type == 'package':
-                            package_revenue += item_total
-                        elif item.item_type == 'product':
-                            product_revenue += item_total
-                        elif item.item_type == 'membership':
-                            membership_revenue += item_total
-            
-            avg_bill = total_revenue / item_count if item_count > 0 else 0
-            commission = total_revenue * (staff.commission_rate / 100) if staff.commission_rate else 0
+            if incentive_rate <= 0:
+                incentive_status = 'not_configured'
+            elif incentive_eligible:
+                incentive_status = 'earned'
+            else:
+                incentive_status = 'target_not_met'
 
             report.append({
-                'staff_name': f"{staff.first_name} {staff.last_name}",
-                'item_count': item_count,
-                'service': round(service_revenue, 2),
-                'package': round(package_revenue, 2),
-                'product': round(product_revenue, 2),
-                'membership': round(membership_revenue, 2),
+                'staff_id': str(staff.id),
+                'staff_name': f"{staff.first_name or ''} {staff.last_name or ''}".strip() or 'Staff',
+                'staff_status': staff.status,
+                'bill_count': bill_count,
+                'item_count': row['item_count'],
+                'service': round(row['service_revenue'], 2),
+                'package': round(row['package_revenue'], 2),
+                'product': round(row['product_revenue'], 2),
+                'membership': round(row['membership_revenue'], 2),
                 'total': round(total_revenue, 2),
                 'avg_bill': round(avg_bill, 2),
                 'total_revenue': round(total_revenue, 2),
-                'commission_rate': staff.commission_rate,
+                'commission_rate': round(commission_rate, 2),
                 'commission_earned': round(commission, 2),
-                'salary': staff.salary,
-                'total_earnings': round((staff.salary or 0) + commission, 2)
+                'salary': round(monthly_salary, 2),
+                'period_salary': round(period_salary, 2),
+                'period_days': period_days,
+                'incentive_threshold': round(incentive_threshold, 2),
+                'incentive_rate': round(incentive_rate, 2),
+                'incentive_base': round(incentive_base, 2),
+                'incentive_eligible': incentive_eligible,
+                'incentive_status': incentive_status,
+                'incentive_amount': round(incentive_amount, 2),
+                'revenue_to_target': round(revenue_to_target, 2),
+                'target_progress_percent': round(target_progress, 2),
+                'variable_pay': round(variable_pay, 2),
+                'total_earnings': round(total_earnings, 2),
+                'calculation_note': (
+                    f"Commission: revenue x {round(commission_rate, 2)}%. "
+                    f"Incentive: max(revenue - target, 0) x {round(incentive_rate, 2)}%."
+                )
             })
 
         # Sort by total revenue
@@ -458,6 +519,136 @@ def staff_incentive_report(current_user=None):
         response = jsonify(report)
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
+    except Exception as e:
+        response = jsonify({'error': str(e)})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
+
+
+@report_bp.route('/my-incentive', methods=['GET'])
+@require_auth
+def my_incentive_report(current_user=None):
+    """Self-only incentive progress for the logged-in staff user."""
+    try:
+        if not current_user or current_user.get('user_type') != 'staff':
+            return jsonify({'error': 'This endpoint is available for staff login only'}), 403
+
+        user_id = current_user.get('user_id') or current_user.get('id')
+        if not user_id or not ObjectId.is_valid(user_id):
+            return jsonify({'error': 'Invalid staff user'}), 400
+
+        staff = Staff.objects(id=user_id).first()
+        if not staff:
+            return jsonify({'error': 'Staff member not found'}), 404
+
+        today = datetime.strptime(get_ist_today(), '%Y-%m-%d').date()
+        start_date = request.args.get('start_date') or today.replace(day=1).strftime('%Y-%m-%d')
+        end_date = request.args.get('end_date') or today.strftime('%Y-%m-%d')
+        start, end = get_ist_date_range(start_date, end_date)
+
+        start_day = datetime.strptime(start_date, '%Y-%m-%d').date()
+        end_day = datetime.strptime(end_date, '%Y-%m-%d').date()
+        period_days = max((end_day - start_day).days + 1, 1)
+
+        branch = get_selected_branch(request, current_user)
+        bills_query = Bill.objects(is_deleted=False, bill_date__gte=start, bill_date__lte=end)
+        bills_query = apply_branch_scope(bills_query, branch, current_user)
+
+        staff_id = str(staff.id)
+        service_revenue = 0.0
+        package_revenue = 0.0
+        product_revenue = 0.0
+        membership_revenue = 0.0
+        total_revenue = 0.0
+        item_count = 0
+        bill_ids = set()
+
+        for bill in bills_query:
+            bill_has_staff_item = False
+            for item in bill.items or []:
+                if not item.staff or str(item.staff.id) != staff_id:
+                    continue
+
+                bill_has_staff_item = True
+                item_total = float(item.total or 0)
+                quantity = int(item.quantity or 1)
+                total_revenue += item_total
+                item_count += quantity
+
+                if item.item_type == 'service':
+                    service_revenue += item_total
+                elif item.item_type == 'package':
+                    package_revenue += item_total
+                elif item.item_type == 'product':
+                    product_revenue += item_total
+                elif item.item_type == 'membership':
+                    membership_revenue += item_total
+
+            if bill_has_staff_item:
+                bill_ids.add(str(bill.id))
+
+        bill_count = len(bill_ids)
+        avg_bill = total_revenue / bill_count if bill_count else 0.0
+        commission_rate = float(staff.commission_rate or 0)
+        commission = total_revenue * (commission_rate / 100)
+        incentive_threshold = float(getattr(staff, 'incentive_threshold', 50000.0) or 50000.0)
+        incentive_rate = float(getattr(staff, 'incentive_rate', 0.0) or 0.0)
+        incentive_base = max(total_revenue - incentive_threshold, 0.0) if incentive_rate > 0 else 0.0
+        incentive_amount = incentive_base * (incentive_rate / 100)
+        revenue_to_target = max(incentive_threshold - total_revenue, 0.0) if incentive_rate > 0 else 0.0
+        target_progress = (total_revenue / incentive_threshold * 100) if incentive_threshold > 0 else 0.0
+        variable_pay = commission + incentive_amount
+
+        if incentive_rate <= 0:
+            incentive_status = 'not_configured'
+            guidance = 'Your incentive plan is not configured yet. Please check with your manager or owner.'
+        elif incentive_amount > 0:
+            incentive_status = 'earned'
+            guidance = f'Target achieved. Every extra sale now adds {round(incentive_rate, 2)}% incentive.'
+        else:
+            incentive_status = 'target_not_met'
+            guidance = f'Add {round(revenue_to_target, 2)} more performance revenue this period to start earning incentive.'
+
+        return jsonify({
+            'period': {
+                'start_date': start_date,
+                'end_date': end_date,
+                'days': period_days,
+            },
+            'staff': {
+                'id': staff_id,
+                'name': f"{staff.first_name or ''} {staff.last_name or ''}".strip() or 'Staff',
+            },
+            'performance': {
+                'bill_count': bill_count,
+                'item_count': item_count,
+                'service_revenue': round(service_revenue, 2),
+                'package_revenue': round(package_revenue, 2),
+                'product_revenue': round(product_revenue, 2),
+                'membership_revenue': round(membership_revenue, 2),
+                'total_revenue': round(total_revenue, 2),
+                'average_bill': round(avg_bill, 2),
+            },
+            'earnings': {
+                'commission_rate': round(commission_rate, 2),
+                'commission_earned': round(commission, 2),
+                'incentive_threshold': round(incentive_threshold, 2),
+                'incentive_rate': round(incentive_rate, 2),
+                'incentive_base': round(incentive_base, 2),
+                'incentive_amount': round(incentive_amount, 2),
+                'revenue_to_target': round(revenue_to_target, 2),
+                'target_progress_percent': round(target_progress, 2),
+                'variable_pay': round(variable_pay, 2),
+                'incentive_status': incentive_status,
+                'guidance': guidance,
+            },
+            'calculation_note': (
+                f"Commission: performance revenue x {round(commission_rate, 2)}%. "
+                f"Incentive: max(performance revenue - target, 0) x {round(incentive_rate, 2)}%."
+            )
+        })
+    except ValueError:
+        return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
     except Exception as e:
         response = jsonify({'error': str(e)})
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -517,6 +708,544 @@ def expense_report(current_user=None):
         response = jsonify({'error': str(e)})
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 500
+
+
+@report_bp.route('/financial-overview', methods=['GET'])
+@require_role('manager', 'owner')
+def financial_overview(current_user=None):
+    """Owner/manager profit-loss overview for the selected branch/date range."""
+    try:
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        if not start_date:
+            start_date = datetime.utcnow().replace(day=1).strftime('%Y-%m-%d')
+        if not end_date:
+            end_date = datetime.utcnow().strftime('%Y-%m-%d')
+
+        start, end = get_ist_date_range(start_date, end_date)
+        start_day = datetime.strptime(start_date, '%Y-%m-%d').date()
+        end_day = datetime.strptime(end_date, '%Y-%m-%d').date()
+        period_days = max((end_day - start_day).days + 1, 1)
+
+        branch = get_selected_branch(request, current_user)
+
+        bills_query = Bill.objects(is_deleted=False, bill_date__gte=start, bill_date__lte=end)
+        bills_query = apply_branch_scope(bills_query, branch, current_user)
+        bills = list(bills_query)
+
+        total_revenue = sum(float(b.final_amount or 0) for b in bills)
+        subtotal = sum(float(b.subtotal or 0) for b in bills)
+        discount_total = sum(float(b.discount_amount or 0) + float(getattr(b, 'referral_discount', 0) or 0) for b in bills)
+        tax_total = sum(float(b.tax_amount or 0) for b in bills)
+        card_fee_total = sum(float(getattr(b, 'card_fee_amount', 0) or 0) for b in bills)
+        bill_count = len(bills)
+
+        product_cost = 0.0
+        product_revenue = 0.0
+        service_revenue = 0.0
+        membership_revenue = 0.0
+        package_revenue = 0.0
+        for bill in bills:
+            for item in bill.items or []:
+                item_total = float(item.total or 0)
+                qty = int(item.quantity or 1)
+                if item.item_type == 'product':
+                    product_revenue += item_total
+                    product_cost += _safe_product_cost(item) * qty
+                elif item.item_type == 'service':
+                    service_revenue += item_total
+                elif item.item_type == 'package':
+                    package_revenue += item_total
+                elif item.item_type == 'membership':
+                    membership_revenue += item_total
+
+        expenses_query = Expense.objects(expense_date__gte=start_day, expense_date__lte=end_day)
+        expenses_query = apply_branch_scope(expenses_query, branch, current_user)
+        expenses = list(expenses_query)
+        expense_total = sum(float(e.amount or 0) for e in expenses)
+
+        staff_query = Staff.objects(status='active')
+        staff_query = apply_branch_scope(staff_query, branch, current_user)
+        monthly_salary_total = sum(float(s.salary or 0) for s in staff_query)
+        salary_cost = monthly_salary_total * (period_days / 30.0)
+
+        income_total = total_revenue
+        outcome_total = expense_total + product_cost + salary_cost + tax_total
+        net_profit = income_total - outcome_total
+
+        return jsonify({
+            'period': {
+                'start_date': start_date,
+                'end_date': end_date,
+                'days': period_days
+            },
+            'income': {
+                'total_revenue': round(total_revenue, 2),
+                'subtotal': round(subtotal, 2),
+                'service_revenue': round(service_revenue, 2),
+                'package_revenue': round(package_revenue, 2),
+                'product_revenue': round(product_revenue, 2),
+                'membership_revenue': round(membership_revenue, 2),
+                'card_fee_collected': round(card_fee_total, 2),
+            },
+            'outcome': {
+                'discount_total': round(discount_total, 2),
+                'tax_total': round(tax_total, 2),
+                'expense_total': round(expense_total, 2),
+                'product_cost': round(product_cost, 2),
+                'staff_salary_cost': round(salary_cost, 2),
+                'total_outcome': round(outcome_total, 2),
+            },
+            'profit_loss': {
+                'gross_profit_before_expenses': round(total_revenue - product_cost - tax_total, 2),
+                'net_profit': round(net_profit, 2),
+                'profit_margin_percent': round((net_profit / total_revenue * 100) if total_revenue > 0 else 0, 2),
+                'expense_ratio_percent': round((expense_total / total_revenue * 100) if total_revenue > 0 else 0, 2),
+                'discount_rate_percent': round((discount_total / subtotal * 100) if subtotal > 0 else 0, 2),
+            },
+            'activity': {
+                'bills': bill_count,
+                'average_bill_value': round(total_revenue / bill_count, 2) if bill_count else 0,
+            }
+        })
+    except Exception as e:
+        response = jsonify({'error': str(e)})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
+
+
+def _round_money(value):
+    return round(float(value or 0), 2)
+
+
+def _profit_status(net_profit):
+    if net_profit > 0:
+        return 'profit'
+    if net_profit < 0:
+        return 'loss'
+    return 'break_even'
+
+
+def _branch_info(branch):
+    if not branch:
+        return {
+            'id': 'unassigned',
+            'name': 'Unassigned',
+            'city': None,
+        }
+    return {
+        'id': str(branch.id),
+        'name': branch.name or 'Unknown Branch',
+        'city': branch.city,
+    }
+
+
+def _safe_branch_from_doc(doc):
+    try:
+        return doc.branch if getattr(doc, 'branch', None) else None
+    except Exception:
+        return None
+
+
+def _safe_product_cost(item):
+    try:
+        snapshot_cost = getattr(item, 'cost_price', None)
+        if snapshot_cost is not None:
+            return float(snapshot_cost or 0)
+        return float(item.product.cost or 0) if item.product else 0.0
+    except Exception:
+        return 0.0
+
+
+def _append_decision(recommendations, category, title, message, priority='medium'):
+    recommendations.append({
+        'category': category,
+        'title': title,
+        'message': message,
+        'priority': priority,
+    })
+
+
+@report_bp.route('/owner-financial-dashboard', methods=['GET'])
+@require_role('owner')
+def owner_financial_dashboard(current_user=None):
+    """Owner branch-wise P&L, service/offer performance, income mix, and decision guidance."""
+    try:
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        if not start_date:
+            start_date = datetime.utcnow().replace(day=1).strftime('%Y-%m-%d')
+        if not end_date:
+            end_date = datetime.utcnow().strftime('%Y-%m-%d')
+
+        start, end = get_ist_date_range(start_date, end_date)
+        start_day = datetime.strptime(start_date, '%Y-%m-%d').date()
+        end_day = datetime.strptime(end_date, '%Y-%m-%d').date()
+        period_days = max((end_day - start_day).days + 1, 1)
+
+        selected_branch = get_selected_branch(request, current_user)
+
+        if selected_branch:
+            branch_docs = [selected_branch]
+        else:
+            branch_query = Branch.objects(is_active=True)
+            demo_branch = get_demo_branch_exclusion(user=current_user, branch=None)
+            if demo_branch:
+                branch_query = branch_query.filter(id__ne=demo_branch.id)
+            branch_docs = list(branch_query.order_by('name'))
+
+        branch_summaries = {}
+        for branch in branch_docs:
+            info = _branch_info(branch)
+            branch_summaries[info['id']] = {
+                'branch_id': info['id'],
+                'branch_name': info['name'],
+                'branch_city': info['city'],
+                'revenue': 0.0,
+                'subtotal': 0.0,
+                'discounts': 0.0,
+                'tax': 0.0,
+                'card_fee': 0.0,
+                'expenses': 0.0,
+                'product_cost': 0.0,
+                'staff_salary_cost': 0.0,
+                'total_cost': 0.0,
+                'net_profit': 0.0,
+                'profit_margin': 0.0,
+                'bills': 0,
+                'average_bill': 0.0,
+                'status': 'break_even',
+            }
+
+        def ensure_branch(branch):
+            info = _branch_info(branch)
+            if info['id'] not in branch_summaries:
+                branch_summaries[info['id']] = {
+                    'branch_id': info['id'],
+                    'branch_name': info['name'],
+                    'branch_city': info['city'],
+                    'revenue': 0.0,
+                    'subtotal': 0.0,
+                    'discounts': 0.0,
+                    'tax': 0.0,
+                    'card_fee': 0.0,
+                    'expenses': 0.0,
+                    'product_cost': 0.0,
+                    'staff_salary_cost': 0.0,
+                    'total_cost': 0.0,
+                    'net_profit': 0.0,
+                    'profit_margin': 0.0,
+                    'bills': 0,
+                    'average_bill': 0.0,
+                    'status': 'break_even',
+                }
+            return branch_summaries[info['id']]
+
+        bills_query = Bill.objects(is_deleted=False, bill_date__gte=start, bill_date__lte=end)
+        bills_query = apply_branch_scope(bills_query, selected_branch, current_user)
+        bills = list(bills_query)
+
+        income_types = {
+            'service': {'label': 'Services', 'amount': 0.0, 'count': 0},
+            'product': {'label': 'Products', 'amount': 0.0, 'count': 0},
+            'package': {'label': 'Packages', 'amount': 0.0, 'count': 0},
+            'membership': {'label': 'Memberships', 'amount': 0.0, 'count': 0},
+            'card_fee': {'label': 'Card Fees', 'amount': 0.0, 'count': 0},
+        }
+        payment_methods = {}
+        service_stats = {}
+        offer_stats = {}
+
+        for bill in bills:
+            branch_summary = ensure_branch(_safe_branch_from_doc(bill))
+            bill_revenue = float(bill.final_amount or 0)
+            bill_subtotal = float(bill.subtotal or 0)
+            bill_discount = float(bill.discount_amount or 0) + float(getattr(bill, 'referral_discount', 0) or 0)
+            bill_tax = float(bill.tax_amount or 0)
+            bill_card_fee = float(getattr(bill, 'card_fee_amount', 0) or 0)
+
+            branch_summary['revenue'] += bill_revenue
+            branch_summary['subtotal'] += bill_subtotal
+            branch_summary['discounts'] += bill_discount
+            branch_summary['tax'] += bill_tax
+            branch_summary['card_fee'] += bill_card_fee
+            branch_summary['bills'] += 1
+
+            if bill_card_fee:
+                income_types['card_fee']['amount'] += bill_card_fee
+                income_types['card_fee']['count'] += 1
+
+            payment_mode = (bill.payment_mode or 'unknown').lower()
+            payment_methods.setdefault(payment_mode, {
+                'payment_mode': payment_mode.upper(),
+                'amount': 0.0,
+                'count': 0,
+                'percentage': 0.0,
+            })
+            payment_methods[payment_mode]['amount'] += bill_revenue
+            payment_methods[payment_mode]['count'] += 1
+
+            offer = getattr(bill, 'applied_offer', None) or {}
+            if offer and offer.get('name'):
+                offer_key = str(offer.get('id') or offer.get('name'))
+                offer_stats.setdefault(offer_key, {
+                    'offer_id': str(offer.get('id') or ''),
+                    'offer_name': offer.get('name') or 'Offer',
+                    'offer_type': offer.get('type') or 'general',
+                    'discount_percent': float(offer.get('percentage') or 0),
+                    'bills': 0,
+                    'revenue': 0.0,
+                    'discount_given': 0.0,
+                    'average_bill': 0.0,
+                    'discount_rate': 0.0,
+                    'decision': 'Monitor',
+                })
+                offer_stats[offer_key]['bills'] += 1
+                offer_stats[offer_key]['revenue'] += bill_revenue
+                offer_stats[offer_key]['discount_given'] += float(offer.get('amount') or bill_discount or 0)
+
+            for item in bill.items or []:
+                item_total = float(item.total or 0)
+                item_qty = int(item.quantity or 1)
+                item_type = item.item_type or 'other'
+
+                if item_type in income_types:
+                    income_types[item_type]['amount'] += item_total
+                    income_types[item_type]['count'] += item_qty
+
+                if item_type == 'product':
+                    branch_summary['product_cost'] += _safe_product_cost(item) * item_qty
+
+                if item_type == 'service':
+                    service_name = item.name or 'Unknown Service'
+                    try:
+                        if item.service and item.service.name:
+                            service_name = item.service.name
+                    except Exception:
+                        pass
+                    service_stats.setdefault(service_name, {
+                        'service_name': service_name,
+                        'branch_name': branch_summary['branch_name'],
+                        'quantity': 0,
+                        'revenue': 0.0,
+                        'estimated_profit': 0.0,
+                        'average_price': 0.0,
+                        'performance': 'monitor',
+                        'decision': 'Monitor',
+                    })
+                    service_stats[service_name]['quantity'] += item_qty
+                    service_stats[service_name]['revenue'] += item_total
+                    service_stats[service_name]['estimated_profit'] += item_total
+
+        expenses_query = Expense.objects(expense_date__gte=start_day, expense_date__lte=end_day)
+        expenses_query = apply_branch_scope(expenses_query, selected_branch, current_user)
+        for expense in expenses_query:
+            branch_summary = ensure_branch(_safe_branch_from_doc(expense))
+            branch_summary['expenses'] += float(expense.amount or 0)
+
+        staff_query = Staff.objects(status='active')
+        staff_query = apply_branch_scope(staff_query, selected_branch, current_user)
+        for staff in staff_query:
+            branch_summary = ensure_branch(_safe_branch_from_doc(staff))
+            branch_summary['staff_salary_cost'] += float(staff.salary or 0) * (period_days / 30.0)
+
+        for summary in branch_summaries.values():
+            summary['total_cost'] = summary['expenses'] + summary['product_cost'] + summary['staff_salary_cost'] + summary['tax']
+            summary['net_profit'] = summary['revenue'] - summary['total_cost']
+            summary['average_bill'] = summary['revenue'] / summary['bills'] if summary['bills'] else 0
+            summary['profit_margin'] = (summary['net_profit'] / summary['revenue'] * 100) if summary['revenue'] else 0
+            summary['status'] = _profit_status(summary['net_profit'])
+
+        branch_rows = sorted(branch_summaries.values(), key=lambda row: row['net_profit'], reverse=True)
+
+        total_revenue = sum(row['revenue'] for row in branch_rows)
+        total_cost = sum(row['total_cost'] for row in branch_rows)
+        total_profit = total_revenue - total_cost
+        total_discounts = sum(row['discounts'] for row in branch_rows)
+        total_bills = sum(row['bills'] for row in branch_rows)
+        total_income_mix = sum(item['amount'] for item in income_types.values()) or 1
+        for item in income_types.values():
+            item['percentage'] = (item['amount'] / total_income_mix * 100) if total_income_mix else 0
+
+        for item in payment_methods.values():
+            item['percentage'] = (item['amount'] / total_revenue * 100) if total_revenue else 0
+
+        service_values = list(service_stats.values())
+        average_service_revenue = (
+            sum(row['revenue'] for row in service_values) / len(service_values)
+            if service_values else 0
+        )
+        for row in service_values:
+            row['average_price'] = row['revenue'] / row['quantity'] if row['quantity'] else 0
+            if row['revenue'] >= average_service_revenue and row['quantity'] > 0:
+                row['performance'] = 'strong'
+                row['decision'] = 'Continue and promote'
+            elif row['quantity'] <= 1 or row['revenue'] < average_service_revenue * 0.5:
+                row['performance'] = 'underperforming'
+                row['decision'] = 'Improve, reprice, or reduce focus'
+            else:
+                row['performance'] = 'monitor'
+                row['decision'] = 'Monitor'
+
+        offer_values = list(offer_stats.values())
+        for row in offer_values:
+            row['average_bill'] = row['revenue'] / row['bills'] if row['bills'] else 0
+            gross_before_discount = row['revenue'] + row['discount_given']
+            row['discount_rate'] = (row['discount_given'] / gross_before_discount * 100) if gross_before_discount else 0
+            if row['revenue'] > 0 and row['discount_rate'] <= 15:
+                row['decision'] = 'Continue'
+            elif row['discount_rate'] > 30:
+                row['decision'] = 'Review or reduce discount'
+            else:
+                row['decision'] = 'Monitor'
+
+        recommendations = []
+        if branch_rows:
+            best = branch_rows[0]
+            worst = branch_rows[-1]
+            if best['revenue'] > 0:
+                _append_decision(
+                    recommendations,
+                    'branch',
+                    f"{best['branch_name']} is leading profit",
+                    f"Net profit is {_round_money(best['net_profit'])} with {round(best['profit_margin'], 1)}% margin.",
+                    'high'
+                )
+            if worst['net_profit'] < 0:
+                _append_decision(
+                    recommendations,
+                    'branch',
+                    f"{worst['branch_name']} is in loss",
+                    "Review expenses, staff cost, discounts, and low-performing services for this branch.",
+                    'high'
+                )
+
+        weak_services = [row for row in service_values if row['performance'] == 'underperforming']
+        if weak_services:
+            names = ', '.join(row['service_name'] for row in weak_services[:3])
+            _append_decision(
+                recommendations,
+                'service',
+                'Improve underperforming services',
+                f"Review pricing, staff assignment, or promotion for: {names}.",
+                'medium'
+            )
+
+        expensive_offers = [row for row in offer_values if row['discount_rate'] > 30]
+        if expensive_offers:
+            names = ', '.join(row['offer_name'] for row in expensive_offers[:3])
+            _append_decision(
+                recommendations,
+                'offer',
+                'Reduce high-discount offers',
+                f"These offers give away more than 30% of their gross value: {names}.",
+                'medium'
+            )
+
+        if total_revenue == 0:
+            _append_decision(
+                recommendations,
+                'business',
+                'No revenue in selected period',
+                'Use a wider date range or verify bill checkout activity for this branch selection.',
+                'medium'
+            )
+
+        return jsonify({
+            'period': {
+                'start_date': start_date,
+                'end_date': end_date,
+                'days': period_days,
+            },
+            'summary': {
+                'total_revenue': _round_money(total_revenue),
+                'total_cost': _round_money(total_cost),
+                'net_profit': _round_money(total_profit),
+                'profit_margin': round((total_profit / total_revenue * 100) if total_revenue else 0, 2),
+                'total_discounts': _round_money(total_discounts),
+                'bills': total_bills,
+                'average_bill': _round_money(total_revenue / total_bills) if total_bills else 0,
+                'status': _profit_status(total_profit),
+            },
+            'branch_summaries': [
+                {
+                    **row,
+                    'revenue': _round_money(row['revenue']),
+                    'subtotal': _round_money(row['subtotal']),
+                    'discounts': _round_money(row['discounts']),
+                    'tax': _round_money(row['tax']),
+                    'card_fee': _round_money(row['card_fee']),
+                    'expenses': _round_money(row['expenses']),
+                    'product_cost': _round_money(row['product_cost']),
+                    'staff_salary_cost': _round_money(row['staff_salary_cost']),
+                    'total_cost': _round_money(row['total_cost']),
+                    'net_profit': _round_money(row['net_profit']),
+                    'average_bill': _round_money(row['average_bill']),
+                    'profit_margin': round(row['profit_margin'], 2),
+                }
+                for row in branch_rows
+            ],
+            'service_performance': sorted(
+                [
+                    {
+                        **row,
+                        'revenue': _round_money(row['revenue']),
+                        'estimated_profit': _round_money(row['estimated_profit']),
+                        'average_price': _round_money(row['average_price']),
+                    }
+                    for row in service_values
+                ],
+                key=lambda row: row['revenue'],
+                reverse=True
+            )[:10],
+            'offer_performance': sorted(
+                [
+                    {
+                        **row,
+                        'revenue': _round_money(row['revenue']),
+                        'discount_given': _round_money(row['discount_given']),
+                        'average_bill': _round_money(row['average_bill']),
+                        'discount_rate': round(row['discount_rate'], 2),
+                    }
+                    for row in offer_values
+                ],
+                key=lambda row: row['revenue'],
+                reverse=True
+            )[:10],
+            'income_analysis': {
+                'by_type': [
+                    {
+                        **item,
+                        'amount': _round_money(item['amount']),
+                        'percentage': round(item['percentage'], 2),
+                    }
+                    for item in income_types.values()
+                    if item['amount'] > 0
+                ],
+                'payment_methods': sorted(
+                    [
+                        {
+                            **item,
+                            'amount': _round_money(item['amount']),
+                            'percentage': round(item['percentage'], 2),
+                        }
+                        for item in payment_methods.values()
+                    ],
+                    key=lambda row: row['amount'],
+                    reverse=True
+                ),
+            },
+            'branch_comparison': {
+                'best_branch': branch_rows[0] if branch_rows else None,
+                'worst_branch': branch_rows[-1] if branch_rows else None,
+            },
+            'recommendations': recommendations,
+        })
+    except Exception as e:
+        response = jsonify({'error': str(e)})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
+
 
 @report_bp.route('/inventory-report', methods=['GET'])
 def inventory_report():

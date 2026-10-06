@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { FaEdit, FaTrash, FaTimes } from 'react-icons/fa'
 import './Inventory.css'
-import { apiGet, apiPost, apiDelete } from '../utils/api'
+import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 import { useAuth } from '../contexts/AuthContext'
 import CompactSelect from './shared/CompactSelect'
+import { showSuccess, showError } from '../utils/toast.jsx'
 
 const STATUS_OPTIONS = [
   { value: 'active', label: 'Active' },
@@ -16,6 +17,10 @@ const Inventory = () => {
   const [activeTab, setActiveTab] = useState('supplier')
   const [searchQuery, setSearchQuery] = useState('')
   const [suppliers, setSuppliers] = useState([])
+  const [inventoryProducts, setInventoryProducts] = useState([])
+  const [inventorySummary, setInventorySummary] = useState(null)
+  const [consumptionLogs, setConsumptionLogs] = useState([])
+  const [consumptionSummary, setConsumptionSummary] = useState([])
   const [loading, setLoading] = useState(true)
   const [showSupplierModal, setShowSupplierModal] = useState(false)
   const [editingSupplier, setEditingSupplier] = useState(null)
@@ -26,10 +31,41 @@ const Inventory = () => {
     address: '',
     status: 'active',
   })
+  const [consumptionFormData, setConsumptionFormData] = useState({
+    product_id: '',
+    quantity: '',
+    service_name: '',
+    period_label: '',
+    reason: '',
+    consumption_date: new Date().toISOString().split('T')[0],
+  })
+  const [editingConsumption, setEditingConsumption] = useState(null)
+
+  const getEmptyConsumptionForm = () => ({
+    product_id: '',
+    quantity: '',
+    service_name: '',
+    period_label: '',
+    reason: '',
+    consumption_date: new Date().toISOString().split('T')[0],
+  })
+
+  const formatQuantity = (value, unit = 'units') => {
+    const number = Number(value || 0)
+    const formatted = Number.isInteger(number)
+      ? number.toLocaleString('en-IN')
+      : number.toLocaleString('en-IN', { maximumFractionDigits: 3 })
+    return `${formatted} ${unit || 'units'}`
+  }
 
   useEffect(() => {
     if (activeTab === 'supplier') {
       fetchSuppliers()
+    } else if (activeTab === 'dashboard') {
+      fetchInventoryDashboard()
+    } else if (activeTab === 'consumption') {
+      fetchInventoryDashboard()
+      fetchConsumption()
     }
   }, [activeTab, searchQuery, currentBranch])
 
@@ -39,6 +75,11 @@ const Inventory = () => {
       console.log('[Inventory] Branch changed, refreshing data...')
       if (activeTab === 'supplier') {
         fetchSuppliers()
+      } else if (activeTab === 'dashboard') {
+        fetchInventoryDashboard()
+      } else if (activeTab === 'consumption') {
+        fetchInventoryDashboard()
+        fetchConsumption()
       }
     }
     
@@ -62,6 +103,98 @@ const Inventory = () => {
     } finally {
       setLoading(false)
     }
+  }
+
+  const fetchInventoryDashboard = async () => {
+    try {
+      setLoading(true)
+      const [productsRes, summaryRes, consumptionSummaryRes] = await Promise.all([
+        apiGet('/api/inventory/products'),
+        apiGet('/api/inventory/summary'),
+        apiGet('/api/inventory/consumption-summary'),
+      ])
+      const products = await productsRes.json()
+      const summary = await summaryRes.json()
+      const consumption = await consumptionSummaryRes.json()
+      setInventoryProducts(Array.isArray(products) ? products : [])
+      setInventorySummary(summary || null)
+      setConsumptionSummary(consumption.items || [])
+    } catch (error) {
+      console.error('Error fetching inventory dashboard:', error)
+      setInventoryProducts([])
+      setInventorySummary(null)
+      setConsumptionSummary([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchConsumption = async () => {
+    try {
+      setLoading(true)
+      const response = await apiGet('/api/inventory/consumption')
+      const data = await response.json()
+      setConsumptionLogs(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error('Error fetching consumption logs:', error)
+      setConsumptionLogs([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSaveConsumption = async () => {
+    try {
+      if (!consumptionFormData.product_id) {
+        showError('Select a product')
+        return
+      }
+      const quantity = Number.parseFloat(consumptionFormData.quantity)
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        showError('Enter a valid quantity')
+        return
+      }
+
+      const payload = {
+        ...consumptionFormData,
+        quantity,
+        consumption_type: 'service',
+      }
+      const response = editingConsumption
+        ? await apiPut(`/api/inventory/consumption/${editingConsumption.id}`, payload)
+        : await apiPost('/api/inventory/consumption', payload)
+      const data = await response.json()
+      if (!response.ok) {
+        showError(data.error || 'Failed to record consumption')
+        return
+      }
+
+      showSuccess(data.message || (editingConsumption ? 'Consumption updated' : 'Consumption recorded'))
+      setConsumptionFormData(getEmptyConsumptionForm())
+      setEditingConsumption(null)
+      await fetchInventoryDashboard()
+      await fetchConsumption()
+    } catch (error) {
+      console.error('Error saving consumption:', error)
+      showError(`Error saving consumption: ${error.message}`)
+    }
+  }
+
+  const handleEditConsumption = (log) => {
+    setEditingConsumption(log)
+    setConsumptionFormData({
+      product_id: log.product_id || '',
+      quantity: log.quantity || '',
+      service_name: log.service_name || '',
+      period_label: log.period_label || '',
+      reason: log.reason || '',
+      consumption_date: log.consumption_date || new Date().toISOString().split('T')[0],
+    })
+  }
+
+  const handleCancelConsumptionEdit = () => {
+    setEditingConsumption(null)
+    setConsumptionFormData(getEmptyConsumptionForm())
   }
 
   const handleDeleteSupplier = async (supplierId) => {
@@ -111,21 +244,46 @@ const Inventory = () => {
         ? `/api/inventory/suppliers/${editingSupplier.id}`
         : `/api/inventory/suppliers`
 
-      const response = await apiPost(url, supplierFormData, editingSupplier ? 'PUT' : 'POST')
+      const response = editingSupplier
+        ? await apiPut(url, supplierFormData)
+        : await apiPost(url, supplierFormData)
 
       if (response.ok) {
         fetchSuppliers()
+        showSuccess(editingSupplier ? 'Supplier updated' : 'Supplier added')
         setShowSupplierModal(false)
         setEditingSupplier(null)
       } else {
         const error = await response.json()
-        alert(error.error || 'Failed to save supplier')
+        showError(error.error || 'Failed to save supplier')
       }
     } catch (error) {
       console.error('Error saving supplier:', error)
-      alert('Error saving supplier')
+      showError('Error saving supplier')
     }
   }
+
+  const filteredProducts = inventoryProducts.filter(product => (
+    product.name || ''
+  ).toLowerCase().includes(searchQuery.toLowerCase()))
+
+  const selectedConsumptionProduct = inventoryProducts.find(
+    product => product.id === consumptionFormData.product_id
+  )
+  const enteredConsumptionQuantity = Number.parseFloat(consumptionFormData.quantity)
+  const editingOriginalQuantity = (
+    editingConsumption &&
+    editingConsumption.product_id === consumptionFormData.product_id
+  )
+    ? Number(editingConsumption.quantity || 0)
+    : 0
+  const remainingAfterConsumption = (
+    selectedConsumptionProduct &&
+    Number.isFinite(enteredConsumptionQuantity) &&
+    enteredConsumptionQuantity > 0
+  )
+    ? Number(selectedConsumptionProduct.stock_quantity || 0) + editingOriginalQuantity - enteredConsumptionQuantity
+    : null
 
   return (
     <div className="inventory-page">
@@ -152,6 +310,12 @@ const Inventory = () => {
             >
               Inventory Dashboard
             </button>
+            <button
+              className={`tab ${activeTab === 'consumption' ? 'active' : ''}`}
+              onClick={() => setActiveTab('consumption')}
+            >
+              Consumption
+            </button>
           </div>
 
           {/* Search and Action Bar */}
@@ -165,7 +329,9 @@ const Inventory = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <button className="add-supplier-btn" onClick={handleAddSupplier}>Add Supplier</button>
+            {activeTab === 'supplier' && (
+              <button className="add-supplier-btn" onClick={handleAddSupplier}>Add Supplier</button>
+            )}
           </div>
 
           {/* Supplier Table */}
@@ -239,7 +405,209 @@ const Inventory = () => {
           {/* Inventory Dashboard Tab Content */}
           {activeTab === 'dashboard' && (
             <div className="tab-content">
-              <p className="empty-message">Inventory Dashboard content coming soon...</p>
+              <div className="inventory-summary-grid">
+                <div className="inventory-summary-card">
+                  <span>Total Products</span>
+                  <strong>{inventorySummary?.total_products || 0}</strong>
+                </div>
+                <div className="inventory-summary-card">
+                  <span>Stock Value</span>
+                  <strong>₹{(inventorySummary?.total_stock_value || 0).toLocaleString('en-IN')}</strong>
+                </div>
+                <div className="inventory-summary-card warning">
+                  <span>Low Stock</span>
+                  <strong>{inventorySummary?.low_stock_items || 0}</strong>
+                </div>
+                <div className="inventory-summary-card danger">
+                  <span>Out of Stock</span>
+                  <strong>{inventorySummary?.out_of_stock_items || 0}</strong>
+                </div>
+              </div>
+
+              <div className="table-wrapper">
+                <table className="supplier-table">
+                  <thead>
+                    <tr>
+                      <th>Product</th>
+                      <th>Category</th>
+                      <th>Stock</th>
+                      <th>Min Stock</th>
+                      <th>Cost</th>
+                      <th>Stock Value</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr><td colSpan="7" className="empty-row">Loading...</td></tr>
+                    ) : filteredProducts.length === 0 ? (
+                      <tr><td colSpan="7" className="empty-row">No products found</td></tr>
+                    ) : (
+                      filteredProducts.map(product => (
+                        <tr key={product.id}>
+                          <td>{product.name}</td>
+                          <td>{product.category_name || '-'}</td>
+                          <td>{formatQuantity(product.stock_quantity, product.stock_unit)}</td>
+                          <td>{formatQuantity(product.min_stock_level, product.stock_unit)}</td>
+                          <td>₹{(product.cost || 0).toLocaleString('en-IN')}</td>
+                          <td>₹{(product.stock_value || 0).toLocaleString('en-IN')}</td>
+                          <td>
+                            <span className={`status-badge ${product.low_stock ? 'inactive' : 'active'}`}>
+                              {product.low_stock ? 'Low Stock' : 'In Stock'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'consumption' && (
+            <div className="tab-content">
+              <div className="consumption-panel">
+                <div className="consumption-form">
+                  <div className="form-group">
+                    <label>Product</label>
+                    <CompactSelect
+                      value={consumptionFormData.product_id}
+                      onChange={(v) => setConsumptionFormData({ ...consumptionFormData, product_id: v })}
+                      options={inventoryProducts.map(product => ({
+                        value: product.id,
+                        label: `${product.name} (${formatQuantity(product.stock_quantity, product.stock_unit)} left)`
+                      }))}
+                      placeholder="Select product"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Quantity Used</label>
+                    <input
+                      type="number"
+                      min="0.001"
+                      step="0.001"
+                      value={consumptionFormData.quantity}
+                      onChange={(e) => setConsumptionFormData({ ...consumptionFormData, quantity: e.target.value })}
+                      placeholder={selectedConsumptionProduct ? `Example: 300 ${selectedConsumptionProduct.stock_unit || 'units'}` : 'Example: 300'}
+                    />
+                    {selectedConsumptionProduct && (
+                      <span className={`consumption-stock-hint ${remainingAfterConsumption !== null && remainingAfterConsumption < 0 ? 'danger' : ''}`}>
+                        Current stock: {formatQuantity(selectedConsumptionProduct.stock_quantity, selectedConsumptionProduct.stock_unit)}
+                        {remainingAfterConsumption !== null && (
+                          <> | After save: {formatQuantity(remainingAfterConsumption, selectedConsumptionProduct.stock_unit)}</>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                  <div className="form-group">
+                    <label>Service / Usage</label>
+                    <input
+                      type="text"
+                      value={consumptionFormData.service_name}
+                      onChange={(e) => setConsumptionFormData({ ...consumptionFormData, service_name: e.target.value })}
+                      placeholder="Hair spa, facial, cleaning..."
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Period</label>
+                    <input
+                      type="text"
+                      value={consumptionFormData.period_label}
+                      onChange={(e) => setConsumptionFormData({ ...consumptionFormData, period_label: e.target.value })}
+                      placeholder="Daily, weekly, monthly"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Date</label>
+                    <input
+                      type="date"
+                      value={consumptionFormData.consumption_date}
+                      onChange={(e) => setConsumptionFormData({ ...consumptionFormData, consumption_date: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group full-width">
+                    <label>Reason / Notes</label>
+                    <input
+                      type="text"
+                      value={consumptionFormData.reason}
+                      onChange={(e) => setConsumptionFormData({ ...consumptionFormData, reason: e.target.value })}
+                      placeholder="Optional note"
+                    />
+                  </div>
+                  <div className="consumption-actions">
+                    <button className="add-supplier-btn" onClick={handleSaveConsumption}>
+                      {editingConsumption ? 'Update Consumption' : 'Record Consumption'}
+                    </button>
+                    {editingConsumption && (
+                      <button className="secondary-action-btn" onClick={handleCancelConsumptionEdit}>
+                        Cancel Edit
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="consumption-summary-list">
+                  <h3>Top Consumed Products</h3>
+                  {consumptionSummary.length === 0 ? (
+                    <p className="empty-message">No consumption data yet.</p>
+                  ) : (
+                    consumptionSummary.map(item => (
+                      <div className="consumption-summary-row" key={item.product_id}>
+                        <span>{item.product_name}</span>
+                        <strong>{formatQuantity(item.total_quantity, item.unit)}</strong>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="table-wrapper">
+                <table className="supplier-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Product</th>
+                      <th>Qty Used</th>
+                      <th>Service</th>
+                      <th>Period</th>
+                      <th>Reason</th>
+                      <th>Type</th>
+                      <th>By</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr><td colSpan="9" className="empty-row">Loading...</td></tr>
+                    ) : consumptionLogs.length === 0 ? (
+                      <tr><td colSpan="9" className="empty-row">No consumption records found</td></tr>
+                    ) : (
+                      consumptionLogs.map(log => (
+                        <tr key={log.id}>
+                          <td>{log.consumption_date || '-'}</td>
+                          <td>{log.product_name}</td>
+                          <td>{formatQuantity(log.quantity, log.unit)}</td>
+                          <td>{log.service_name || '-'}</td>
+                          <td>{log.period_label || '-'}</td>
+                          <td>{log.reason || '-'}</td>
+                          <td>{log.consumption_type}</td>
+                          <td>{log.created_by_name || '-'}</td>
+                          <td>
+                            <button
+                              className="icon-btn edit-btn"
+                              title="Edit consumption"
+                              onClick={() => handleEditConsumption(log)}
+                            >
+                              <FaEdit />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

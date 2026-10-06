@@ -6,6 +6,7 @@ import { apiGet, apiPost, apiPut } from '../utils/api'
 import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
 import { useAuth } from '../contexts/AuthContext'
 import CompactSelect from './shared/CompactSelect'
+import { GOOGLE_REVIEW_URL } from '../config'
 
 const Feedback = () => {
   const { currentBranch } = useAuth()
@@ -28,9 +29,7 @@ const Feedback = () => {
     comment: ''
   })
   
-  // PLACEHOLDER: Google Business Profile Review Link
-  // TODO: Replace with actual Google Business Profile review link when provided
-  const GOOGLE_REVIEW_LINK = '#PLACEHOLDER_GOOGLE_REVIEW_LINK'
+  const GOOGLE_REVIEW_LINK = GOOGLE_REVIEW_URL
 
   useEffect(() => {
     fetchFeedbacks()
@@ -452,10 +451,8 @@ const Feedback = () => {
                     }
                   }
                   
-                  // PLACEHOLDER: Open Google review link
-                  // TODO: Replace GOOGLE_REVIEW_LINK with actual link when provided
-                  if (GOOGLE_REVIEW_LINK !== '#PLACEHOLDER_GOOGLE_REVIEW_LINK') {
-                    window.open(GOOGLE_REVIEW_LINK, '_blank');
+                  if (GOOGLE_REVIEW_LINK) {
+                    window.open(GOOGLE_REVIEW_LINK, '_blank', 'noopener,noreferrer');
                   } else {
                     showError('Google Review Link not configured yet. Please contact administrator.');
                   }
@@ -465,9 +462,11 @@ const Feedback = () => {
                 Post to Google
               </button>
             </div>
-            <p className="placeholder-note" style={{ fontSize: '12px', color: '#666', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <FaExclamationTriangle size={14} /> Google Review integration is in placeholder mode. Link will be activated when provided.
-            </p>
+            {!GOOGLE_REVIEW_LINK && (
+              <p className="placeholder-note" style={{ fontSize: '12px', color: '#666', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <FaExclamationTriangle size={14} /> Google Review link not configured yet. Set VITE_GOOGLE_REVIEW_URL in .env.
+              </p>
+            )}
           </div>
         </div>,
         document.body

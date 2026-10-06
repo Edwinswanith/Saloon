@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from models import Product, ProductCategory
+from models import Product, ProductCategory, ProductPriceHistory
 from datetime import datetime
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
@@ -8,6 +8,33 @@ from utils.branch_filter import apply_branch_scope, get_selected_branch
 from utils.redis_cache import cache_response
 
 product_bp = Blueprint('product', __name__)
+
+
+def _current_user_name(current_user):
+    if not current_user:
+        return None
+    if isinstance(current_user, dict):
+        return current_user.get('name') or current_user.get('email') or current_user.get('mobile')
+    return getattr(current_user, 'name', None) or getattr(current_user, 'email', None) or getattr(current_user, 'mobile', None)
+
+
+def _parse_effective_date(value):
+    if not value:
+        return datetime.utcnow().date()
+    if hasattr(value, 'date'):
+        return value.date()
+    return datetime.strptime(str(value), '%Y-%m-%d').date()
+
+
+def _parse_stock_number(value, default=0):
+    if value in (None, ''):
+        return default
+    return float(value)
+
+
+def _normalize_stock_unit(value):
+    unit = str(value or 'units').strip()
+    return unit[:20] if unit else 'units'
 
 def verify_branch_access(item, branch, item_type='item'):
     """Verify that an item belongs to the specified branch"""
@@ -236,6 +263,7 @@ def get_products(current_user=None):
                 'cost': p.cost,
                 'stock_quantity': p.stock_quantity,
                 'min_stock_level': p.min_stock_level,
+                'stock_unit': p.stock_unit or 'units',
                 'sku': p.sku,
                 'description': p.description,
                 'status': p.status,
@@ -270,6 +298,7 @@ def get_product(id):
             'cost': product.cost,
             'stock_quantity': product.stock_quantity,
             'min_stock_level': product.min_stock_level,
+            'stock_unit': product.stock_unit or 'units',
             'sku': product.sku,
             'description': product.description,
             'status': product.status,
@@ -308,8 +337,9 @@ def create_product(current_user=None):
             category=category,
             price=data['price'],
             cost=data.get('cost', 0),
-            stock_quantity=data.get('stock_quantity', 0),
-            min_stock_level=data.get('min_stock_level', 0),
+            stock_quantity=_parse_stock_number(data.get('stock_quantity'), 0),
+            min_stock_level=_parse_stock_number(data.get('min_stock_level'), 0),
+            stock_unit=_normalize_stock_unit(data.get('stock_unit')),
             sku=data.get('sku'),
             description=data.get('description'),
             branch=branch,
@@ -364,15 +394,32 @@ def update_product(id, current_user=None):
             else:
                 product.category = None
         
-        product.price = data.get('price', product.price)
+        old_price = float(product.price or 0)
+        new_price = float(data.get('price', product.price))
+        product.price = new_price
         product.cost = data.get('cost', product.cost)
-        product.stock_quantity = data.get('stock_quantity', product.stock_quantity)
-        product.min_stock_level = data.get('min_stock_level', product.min_stock_level)
+        product.stock_quantity = _parse_stock_number(data.get('stock_quantity'), product.stock_quantity or 0)
+        product.min_stock_level = _parse_stock_number(data.get('min_stock_level'), product.min_stock_level or 0)
+        product.stock_unit = _normalize_stock_unit(data.get('stock_unit', product.stock_unit))
         product.sku = data.get('sku', product.sku)
         product.description = data.get('description', product.description)
         product.status = data.get('status', product.status)
         product.updated_at = datetime.utcnow()
         product.save()
+
+        if old_price != new_price:
+            try:
+                ProductPriceHistory(
+                    product=product,
+                    branch=product.branch,
+                    old_price=old_price,
+                    new_price=new_price,
+                    effective_date=_parse_effective_date(data.get('price_effective_date')),
+                    reason=data.get('price_change_reason') or data.get('reason') or '',
+                    changed_by_name=_current_user_name(current_user)
+                ).save()
+            except Exception as history_err:
+                print(f"[PRODUCT] Failed to save price history for {product.id}: {history_err}")
 
         return jsonify({
             'id': str(product.id),
@@ -407,6 +454,46 @@ def delete_product(id, current_user=None):
         product.save()
 
         return jsonify({'message': 'Product deleted successfully'})
+    except DoesNotExist:
+        return jsonify({'error': 'Product not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@product_bp.route('/<id>/price-history', methods=['GET'])
+@require_auth
+def get_product_price_history(id, current_user=None):
+    """Get product price history for audit/review."""
+    try:
+        if not ObjectId.is_valid(id):
+            return jsonify({'error': 'Invalid product ID format'}), 400
+
+        product = Product.objects.get(id=id)
+        branch = get_selected_branch(request, current_user)
+        is_valid, error_msg = verify_branch_access(product, branch, 'Product') if branch else (True, None)
+        if not is_valid:
+            return jsonify({'error': error_msg}), 403
+
+        history_query = ProductPriceHistory.objects(product=product)
+        history_query = apply_branch_scope(history_query, branch, current_user)
+        rows = list(history_query.order_by('-effective_date', '-changed_at').limit(50))
+
+        return jsonify({
+            'product': {
+                'id': str(product.id),
+                'name': product.name,
+                'current_price': product.price,
+            },
+            'history': [{
+                'id': str(row.id),
+                'old_price': row.old_price,
+                'new_price': row.new_price,
+                'effective_date': row.effective_date.isoformat() if row.effective_date else None,
+                'reason': row.reason,
+                'changed_by_name': row.changed_by_name,
+                'changed_at': row.changed_at.isoformat() if row.changed_at else None,
+            } for row in rows]
+        })
     except DoesNotExist:
         return jsonify({'error': 'Product not found'}), 404
     except Exception as e:

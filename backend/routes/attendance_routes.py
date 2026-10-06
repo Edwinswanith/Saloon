@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
-from models import StaffAttendance, Staff
-from datetime import datetime, date, time
+from models import StaffAttendance, Staff, StaffLeave
+from datetime import datetime, date, time, timedelta
 from mongoengine.errors import DoesNotExist, ValidationError
 from bson import ObjectId
 from mongoengine import Q
@@ -8,6 +8,15 @@ from utils.branch_filter import apply_branch_scope, get_selected_branch
 from utils.auth import require_auth, require_role
 
 attendance_bp = Blueprint('attendance', __name__)
+
+
+def _get_current_staff(current_user):
+    if not current_user or current_user.get('user_type') != 'staff':
+        return None
+    user_id = current_user.get('user_id') or current_user.get('id')
+    if not user_id or not ObjectId.is_valid(user_id):
+        return None
+    return Staff.objects(id=user_id).first()
 
 @attendance_bp.route('/', methods=['GET'])
 @require_auth
@@ -26,8 +35,14 @@ def get_attendance(current_user=None):
         query = StaffAttendance.objects
         query = apply_branch_scope(query, branch, current_user)
 
-        # Apply filters
-        if staff_id:
+        staff_user = _get_current_staff(current_user)
+        if current_user and current_user.get('user_type') == 'staff':
+            if not staff_user:
+                return jsonify({'error': 'This endpoint is available for staff login only'}), 403
+            if staff_id and str(staff_id) != str(staff_user.id):
+                return jsonify({'error': 'Staff can only view their own attendance'}), 403
+            query = query.filter(staff=staff_user)
+        elif staff_id:
             if ObjectId.is_valid(staff_id):
                 query = query.filter(staff=ObjectId(staff_id))
         
@@ -64,14 +79,225 @@ def get_attendance(current_user=None):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+@attendance_bp.route('/me', methods=['GET'])
+@require_auth
+def get_my_attendance(current_user=None):
+    """Staff-side attendance history for the logged-in staff user."""
+    try:
+        staff = _get_current_staff(current_user)
+        if not staff:
+            return jsonify({'error': 'This endpoint is available for staff login only'}), 403
+
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        if not start_date:
+            start = date.today() - timedelta(days=30)
+        else:
+            start = datetime.strptime(start_date, '%Y-%m-%d').date()
+        if not end_date:
+            end = date.today()
+        else:
+            end = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+        branch = get_selected_branch(request, current_user)
+        query = StaffAttendance.objects(
+            staff=staff,
+            attendance_date__gte=start,
+            attendance_date__lte=end
+        )
+        query = apply_branch_scope(query, branch, current_user)
+        records = list(query.order_by('-attendance_date'))
+
+        today_record = StaffAttendance.objects(staff=staff, attendance_date=date.today()).first()
+
+        return jsonify({
+            'staff': {
+                'id': str(staff.id),
+                'name': f"{staff.first_name} {staff.last_name}".strip(),
+            },
+            'today': {
+                'id': str(today_record.id) if today_record else None,
+                'attendance_date': today_record.attendance_date.isoformat() if today_record and today_record.attendance_date else date.today().isoformat(),
+                'check_in_time': today_record.check_in_time if today_record else None,
+                'check_out_time': today_record.check_out_time if today_record else None,
+                'status': today_record.status if today_record else 'not_marked',
+                'notes': today_record.notes if today_record else None,
+            },
+            'records': [{
+                'id': str(a.id),
+                'attendance_date': a.attendance_date.isoformat() if a.attendance_date else None,
+                'check_in_time': a.check_in_time,
+                'check_out_time': a.check_out_time,
+                'status': a.status,
+                'notes': a.notes,
+            } for a in records]
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@attendance_bp.route('/me/leave', methods=['POST'])
+@require_auth
+def my_leave(current_user=None):
+    """Staff-side leave entry with a short reason for owner/manager visibility."""
+    try:
+        staff = _get_current_staff(current_user)
+        if not staff:
+            return jsonify({'error': 'This endpoint is available for staff login only'}), 403
+
+        data = request.get_json() or {}
+        reason = (data.get('reason') or '').strip()
+        if not reason:
+            return jsonify({'error': 'Leave reason is required'}), 400
+
+        leave_date_raw = data.get('date') or data.get('attendance_date') or date.today().isoformat()
+        leave_date = datetime.strptime(leave_date_raw, '%Y-%m-%d').date()
+        leave_type = (data.get('leave_type') or 'casual').strip() or 'casual'
+
+        branch = get_selected_branch(request, current_user) or staff.branch
+        if not branch:
+            return jsonify({'error': 'Branch is required'}), 400
+
+        existing = StaffAttendance.objects(staff=staff, attendance_date=leave_date).first()
+        if existing and (existing.check_in_time or existing.check_out_time):
+            return jsonify({'error': 'Attendance already has check-in/check-out for this date'}), 400
+
+        note = f"{leave_type.title()} leave: {reason}"
+        if existing:
+            existing.branch = branch
+            existing.status = 'leave'
+            existing.check_in_time = None
+            existing.check_out_time = None
+            existing.notes = note
+            existing.updated_at = datetime.utcnow()
+            existing.save()
+            attendance = existing
+        else:
+            attendance = StaffAttendance(
+                staff=staff,
+                branch=branch,
+                attendance_date=leave_date,
+                status='leave',
+                notes=note
+            )
+            attendance.save()
+
+        leave = StaffLeave.objects(
+            staff=staff,
+            start_date__lte=leave_date,
+            end_date__gte=leave_date,
+            status__in=['pending', 'approved']
+        ).first()
+        if leave:
+            leave.branch = branch
+            leave.leave_type = leave_type
+            leave.reason = reason
+            leave.updated_at = datetime.utcnow()
+            leave.save()
+        else:
+            StaffLeave(
+                staff=staff,
+                branch=branch,
+                start_date=leave_date,
+                end_date=leave_date,
+                leave_type=leave_type,
+                reason=reason,
+                status='pending',
+                coverage_required=True
+            ).save()
+
+        return jsonify({
+            'id': str(attendance.id),
+            'message': 'Leave recorded successfully',
+            'attendance_date': leave_date.isoformat(),
+            'status': attendance.status,
+            'notes': attendance.notes
+        }), 201
+    except ValueError:
+        return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@attendance_bp.route('/me/check-in', methods=['POST'])
+@require_auth
+def my_check_in(current_user=None):
+    """Staff-side self check-in."""
+    try:
+        staff = _get_current_staff(current_user)
+        if not staff:
+            return jsonify({'error': 'This endpoint is available for staff login only'}), 403
+
+        today = date.today()
+        existing = StaffAttendance.objects(staff=staff, attendance_date=today).first()
+        current_time = datetime.now().strftime('%H:%M:%S')
+        branch = get_selected_branch(request, current_user) or staff.branch
+        if not branch:
+            return jsonify({'error': 'Branch is required'}), 400
+
+        if existing:
+            if existing.check_in_time:
+                return jsonify({'error': 'Already checked in today'}), 400
+            existing.check_in_time = current_time
+            existing.status = 'present'
+            existing.updated_at = datetime.utcnow()
+            existing.save()
+            return jsonify({'message': 'Checked in successfully', 'check_in_time': current_time})
+
+        attendance = StaffAttendance(
+            staff=staff,
+            branch=branch,
+            attendance_date=today,
+            check_in_time=current_time,
+            status='present'
+        )
+        attendance.save()
+
+        return jsonify({'id': str(attendance.id), 'message': 'Checked in successfully', 'check_in_time': current_time}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@attendance_bp.route('/me/check-out', methods=['POST'])
+@require_auth
+def my_check_out(current_user=None):
+    """Staff-side self check-out."""
+    try:
+        staff = _get_current_staff(current_user)
+        if not staff:
+            return jsonify({'error': 'This endpoint is available for staff login only'}), 403
+
+        today = date.today()
+        attendance = StaffAttendance.objects(staff=staff, attendance_date=today).first()
+        if not attendance:
+            return jsonify({'error': 'No check-in record found for today'}), 404
+        if attendance.check_out_time:
+            return jsonify({'error': 'Already checked out today'}), 400
+
+        current_time = datetime.now().strftime('%H:%M:%S')
+        attendance.check_out_time = current_time
+        attendance.updated_at = datetime.utcnow()
+        attendance.save()
+
+        return jsonify({'message': 'Checked out successfully', 'check_out_time': current_time})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @attendance_bp.route('/<id>', methods=['GET'])
-def get_attendance_record(id):
+@require_auth
+def get_attendance_record(id, current_user=None):
     """Get a single attendance record by ID"""
     try:
         if not ObjectId.is_valid(id):
             return jsonify({'error': 'Invalid attendance ID format'}), 400
         
         attendance = StaffAttendance.objects.get(id=id)
+        staff_user = _get_current_staff(current_user)
+        if current_user and current_user.get('user_type') == 'staff':
+            if not staff_user or not attendance.staff or str(attendance.staff.id) != str(staff_user.id):
+                return jsonify({'error': 'Staff can only view their own attendance'}), 403
+
         return jsonify({
             'id': str(attendance.id),
             'staff_id': str(attendance.staff.id) if attendance.staff else None,
@@ -99,6 +325,11 @@ def check_in(current_user=None):
         staff_id = data.get('staff_id')
         if not staff_id or not ObjectId.is_valid(staff_id):
             return jsonify({'error': 'Invalid staff ID format'}), 400
+
+        staff_user = _get_current_staff(current_user)
+        if current_user and current_user.get('user_type') == 'staff':
+            if not staff_user or str(staff_user.id) != str(staff_id):
+                return jsonify({'error': 'Staff can only check in themselves'}), 403
         
         try:
             staff = Staff.objects.get(id=staff_id)
@@ -157,6 +388,11 @@ def check_out(current_user=None):
         staff_id = data.get('staff_id')
         if not staff_id or not ObjectId.is_valid(staff_id):
             return jsonify({'error': 'Invalid staff ID format'}), 400
+
+        staff_user = _get_current_staff(current_user)
+        if current_user and current_user.get('user_type') == 'staff':
+            if not staff_user or str(staff_user.id) != str(staff_id):
+                return jsonify({'error': 'Staff can only check out themselves'}), 403
         
         try:
             staff = Staff.objects.get(id=staff_id)
@@ -423,6 +659,11 @@ def get_staff_attendance(staff_id, current_user=None):
     try:
         if not ObjectId.is_valid(staff_id):
             return jsonify({'error': 'Invalid staff ID format'}), 400
+
+        staff_user = _get_current_staff(current_user)
+        if current_user and current_user.get('user_type') == 'staff':
+            if not staff_user or str(staff_user.id) != str(staff_id):
+                return jsonify({'error': 'Staff can only view their own attendance'}), 403
         
         try:
             staff = Staff.objects.get(id=staff_id)
@@ -461,7 +702,7 @@ def get_staff_attendance(staff_id, current_user=None):
         return jsonify({'error': str(e)}), 500
 
 @attendance_bp.route('/summary', methods=['GET'])
-@require_auth
+@require_role('manager', 'owner')
 def get_attendance_summary(current_user=None):
     """Get attendance summary for all staff"""
     try:

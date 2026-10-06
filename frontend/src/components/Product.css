@@ -925,6 +925,36 @@
   }
 }
 
+.price-history-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+}
+
+.price-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.price-history-table th,
+.price-history-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--gray-200);
+  text-align: left;
+}
+
+.price-history-table th {
+  background: var(--gray-50);
+  color: var(--gray-700);
+  font-weight: 600;
+}
+
 /* ========== ANIMATIONS ========== */
 @keyframes scaleIn {
   from {

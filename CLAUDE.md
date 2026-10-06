@@ -63,8 +63,11 @@ The repo deploys as a single Vercel project: SPA + Flask served same-origin. `ap
 - `auth.py` - JWT handling, decorators: `@require_auth`, `@require_role('manager', 'owner')`, `@optional_auth`
 - `branch_filter.py` - Multi-branch filtering: `get_selected_branch()`, `filter_by_branch()`
 - `redis_cache.py` - Caching layer (optional, falls back to in-memory)
+- `staff_revenue.py`, `whatsapp_service.py` - staff sales aggregation and WhatsApp share-link helpers, respectively
 
 **Services** (`backend/services/`): `invoice_pdf_service.py` (ReportLab PDF generation) and `pdf_storage_service.py`, used by the public invoice routes and `bill_routes.py`
+
+**Invoice signatures**: customer e-signature capture on invoices (`frontend/src/components/SignaturePad.jsx` / `SignatureSection.jsx`, backed by the `signature_pad` npm package) is stored on the `Bill` model and rendered into the PDF via `invoice_pdf_service.py`. `backend/migrations/backfill_invoice_signature_status.py` is the one-off backfill for bills created before this field existed.
 
 ### Frontend Structure
 
@@ -86,6 +89,7 @@ The repo deploys as a single Vercel project: SPA + Flask served same-origin. `ap
 - `X-Branch-Id` header determines data scope; absence of the header (owner-only) means "no scope" → aggregate across branches
 - Owners can switch branches; staff/managers locked to their branch
 - Use `get_selected_branch(request, user)` in routes to get current branch (returns `None` for owner aggregate mode — code paths must handle that)
+- Dashboard endpoints (`dashboard_routes.py`) are `@require_role('manager', 'owner')`-only; staff don't get a dashboard — the frontend shows them a "Your Sales This Week" widget instead (`StaffWeekSalesView` in `Dashboard.jsx`, backed by `staff_revenue.py`)
 
 ### Adding a New API Endpoint
 
@@ -112,6 +116,7 @@ The repo deploys as a single Vercel project: SPA + Flask served same-origin. `ap
 - Frontend: run independent fetches via `Promise.all` / `Promise.allSettled`, not sequentially
 - Production builds strip `console.log` via terser ([vite.config.js](frontend/vite.config.js))
 - `flask-compress` (gzip) is enabled in [app.py](backend/app.py) for JSON, JS, CSS, and PDFs ≥ 500 bytes — keep responses JSON-serializable rather than streaming where possible
+- Static assets referenced by absolute path (e.g. `/logo/...`) must live under `frontend/public/`, not just `frontend/` — otherwise Vite won't copy them into `dist` and they'll 404 in production even though they work in dev
 
 ### Static / Public Route Precedence
 

@@ -4,7 +4,7 @@ import './CustomerList.css'
 import { API_BASE_URL } from '../config'
 import { useAuth } from '../contexts/AuthContext'
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
-import { showSuccess, showError, showWarning, showInfo } from '../utils/toast.jsx'
+import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import { PageTransition } from './shared/PageTransition'
@@ -31,6 +31,16 @@ const DOB_RANGE_OPTIONS = [
   { value: 'Mid', label: 'Mid' },
   { value: 'Old', label: 'Old' },
 ]
+const VISIT_RANGE_OPTIONS = [
+  { value: 'last_week', label: 'Last Week' },
+  { value: 'last_month', label: 'Last Month' },
+  { value: 'last_year', label: 'Last Year' },
+]
+const CUSTOMER_SEGMENT_OPTIONS = [
+  { value: 'top_revenue', label: 'Top 10 Customers' },
+  { value: 'top_visits', label: 'Top Visit Customers' },
+  { value: 'inactive_60', label: 'Inactive 60+ Days' },
+]
 
 const CustomerList = () => {
   const { currentBranch, user } = useAuth()
@@ -45,6 +55,8 @@ const CustomerList = () => {
   const [showImportModal, setShowImportModal] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState(null)
   const [viewingCustomer, setViewingCustomer] = useState(null)
+  const [customerDetails, setCustomerDetails] = useState(null)
+  const [showCustomerDetailsModal, setShowCustomerDetailsModal] = useState(false)
   const [mergeMode, setMergeMode] = useState(false)
   const [selectedForMerge, setSelectedForMerge] = useState([])
   const [mergePreview, setMergePreview] = useState(null)
@@ -54,6 +66,8 @@ const CustomerList = () => {
     source: '',
     gender: '',
     dobRange: '',
+    visitRange: '',
+    segment: '',
   })
   const [customerFormData, setCustomerFormData] = useState({
     mobile: '',
@@ -100,6 +114,12 @@ const CustomerList = () => {
       if (filters.dobRange) {
         params.append('dob_range', filters.dobRange)
       }
+      if (filters.visitRange) {
+        params.append('visit_range', filters.visitRange)
+      }
+      if (filters.segment) {
+        params.append('segment', filters.segment)
+      }
       const response = await apiGet(`/api/customers?${params}`)
       const data = await response.json()
       // Map customer data to match expected format
@@ -113,7 +133,10 @@ const CustomerList = () => {
         gender: customer.gender || '',
         dob: customer.dob || '',
         dobRange: customer.dobRange || customer.dob_range || '',
-        referralCode: customer.referralCode || customer.referral_code || ''
+        referralCode: customer.referralCode || customer.referral_code || '',
+        totalVisits: customer.totalVisits || customer.total_visits || 0,
+        totalRevenue: customer.totalRevenue || customer.total_revenue || 0,
+        lastVisit: customer.lastVisit || customer.last_visit || ''
       }))
       setCustomers(mappedCustomers)
       setTotalPages(data.pages || 1)
@@ -170,6 +193,8 @@ const CustomerList = () => {
     if (filters.source) count++
     if (filters.gender) count++
     if (filters.dobRange) count++
+    if (filters.visitRange) count++
+    if (filters.segment) count++
     return count
   }
 
@@ -183,6 +208,8 @@ const CustomerList = () => {
       source: '',
       gender: '',
       dobRange: '',
+      visitRange: '',
+      segment: '',
     })
     setCurrentPage(1) // Reset to first page when filters are cleared
     setShowSourcesModal(false)
@@ -222,10 +249,22 @@ const CustomerList = () => {
     setShowCustomerModal(true)
   }
 
-  const handleViewCustomer = (customer) => {
-    setViewingCustomer(customer)
-    // Show customer details in a toast
-    showInfo(`${customer.firstName} ${customer.lastName} | Mobile: +91 ${customer.mobile}`)
+  const handleViewCustomer = async (customer) => {
+    try {
+      setViewingCustomer(customer)
+      setCustomerDetails(null)
+      setShowCustomerDetailsModal(true)
+      const response = await apiGet(`/api/customers/${customer.id}/history`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      setCustomerDetails(data)
+    } catch (error) {
+      console.error('Error fetching customer history:', error)
+      showError(`Error fetching customer history: ${error.message}`)
+      setShowCustomerDetailsModal(false)
+    }
   }
 
   const handleSaveCustomer = async () => {
@@ -544,21 +583,24 @@ const CustomerList = () => {
                   <th>Last Name</th>
                   <th>Source</th>
                   <th>Gender</th>
-                  <th>DOB Range</th>
-                  <th>Referral Code</th>
-                  <th>Action</th>
+                <th>DOB Range</th>
+                <th>Visits</th>
+                <th>Total Spent</th>
+                <th>Last Visit</th>
+                <th>Referral Code</th>
+                <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={mergeMode ? 10 : 9} style={{ padding: 0, border: 'none' }}>
-                      <TableSkeleton rows={10} columns={mergeMode ? 10 : 9} />
+                    <td colSpan={mergeMode ? 13 : 12} style={{ padding: 0, border: 'none' }}>
+                      <TableSkeleton rows={10} columns={mergeMode ? 13 : 12} />
                     </td>
                   </tr>
                 ) : customers.length === 0 ? (
                   <tr>
-                    <td colSpan={mergeMode ? 10 : 9} style={{ padding: 0, border: 'none' }}>
+                    <td colSpan={mergeMode ? 13 : 12} style={{ padding: 0, border: 'none' }}>
                       {searchQuery ? (
                         <EmptySearch searchQuery={searchQuery} message="Try adjusting your search query." />
                       ) : (
@@ -588,6 +630,9 @@ const CustomerList = () => {
                       </td>
                       <td>{customer.gender || '-'}</td>
                       <td>{customer.dobRange || '-'}</td>
+                      <td>{customer.totalVisits || 0}</td>
+                      <td>₹{parseFloat(customer.totalRevenue || 0).toLocaleString('en-IN')}</td>
+                      <td>{customer.lastVisit ? new Date(customer.lastVisit).toLocaleDateString('en-IN') : '-'}</td>
                       <td>
                         <div className="referral-code-cell">
                           <span>{customer.referralCode || '-'}</span>
@@ -817,6 +862,26 @@ const CustomerList = () => {
                   placeholder="All Ranges"
                 />
               </div>
+              <div className="form-group">
+                <label>Visit Timeframe</label>
+                <CompactSelect
+                  className="form-select"
+                  value={filters.visitRange}
+                  onChange={(v) => setFilters({ ...filters, visitRange: v })}
+                  options={[{ value: '', label: 'All Timeframes' }, ...VISIT_RANGE_OPTIONS]}
+                  placeholder="All Timeframes"
+                />
+              </div>
+              <div className="form-group">
+                <label>Customer Segment</label>
+                <CompactSelect
+                  className="form-select"
+                  value={filters.segment}
+                  onChange={(v) => setFilters({ ...filters, segment: v })}
+                  options={[{ value: '', label: 'All Customers' }, ...CUSTOMER_SEGMENT_OPTIONS]}
+                  placeholder="All Customers"
+                />
+              </div>
             </div>
             <div className="modal-actions">
               <button className="btn-cancel" onClick={handleClearFilters}>Clear Filters</button>
@@ -863,6 +928,137 @@ const CustomerList = () => {
             </div>
             <div className="modal-actions">
               <button className="btn-cancel" onClick={() => setShowImportModal(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Details Modal */}
+      {showCustomerDetailsModal && viewingCustomer && (
+        <div className="modal-overlay" onClick={() => setShowCustomerDetailsModal(false)}>
+          <div className="modal-content customer-history-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="std-modal-header">
+              <h2>Customer History</h2>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowCustomerDetailsModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
+            {!customerDetails ? (
+              <div className="empty-message">Loading history...</div>
+            ) : (
+              <>
+                <div className="customer-history-summary">
+                  <div>
+                    <span>Customer</span>
+                    <strong>{customerDetails.customer?.name || `${viewingCustomer.firstName} ${viewingCustomer.lastName}`}</strong>
+                  </div>
+                  <div>
+                    <span>Visits</span>
+                    <strong>{customerDetails.summary?.visit_count || 0}</strong>
+                  </div>
+                  <div>
+                    <span>Total Spent</span>
+                    <strong>₹{parseFloat(customerDetails.summary?.total_revenue || 0).toLocaleString('en-IN')}</strong>
+                  </div>
+                  <div>
+                    <span>Services Used</span>
+                    <strong>{customerDetails.summary?.service_count || 0}</strong>
+                  </div>
+                </div>
+
+                <div className="customer-history-section">
+                  <h3>Service Preferences & Recommendations</h3>
+                  <div className="customer-preference-cards">
+                    <div>
+                      <span>Preferred Service</span>
+                      <strong>{customerDetails.preferences?.preferred_service?.name || '-'}</strong>
+                    </div>
+                    <div>
+                      <span>Preferred Category</span>
+                      <strong>{customerDetails.preferences?.preferred_category?.name || '-'}</strong>
+                    </div>
+                    <div>
+                      <span>Visit Pattern</span>
+                      <strong>
+                        {customerDetails.preferences?.average_visit_gap_days
+                          ? `${customerDetails.preferences.average_visit_gap_days} days avg`
+                          : `${customerDetails.summary?.visit_count || 0} visits`}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div className="customer-recommendation-list">
+                    {(customerDetails.recommendations || []).map((recommendation, index) => (
+                      <div className={`customer-recommendation-row priority-${recommendation.priority || 'medium'}`} key={`${recommendation.title}-${index}`}>
+                        <div>
+                          <span>{recommendation.category || recommendation.type || 'Preference'}</span>
+                          <strong>{recommendation.title}</strong>
+                          <p>{recommendation.reason}</p>
+                        </div>
+                        <em>{recommendation.confidence || 0}% match</em>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="customer-history-section">
+                  <h3>Services Used</h3>
+                  {(customerDetails.services || []).length === 0 ? (
+                    <p className="empty-message">No service history yet.</p>
+                  ) : (
+                    <div className="service-history-list">
+                      {customerDetails.services.map(service => (
+                        <div className="service-history-row" key={service.name}>
+                          <span>{service.name}</span>
+                          <strong>{service.count} visits - ₹{parseFloat(service.revenue || 0).toLocaleString('en-IN')}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="customer-history-section">
+                  <h3>Visit History</h3>
+                  <div className="table-wrapper">
+                    <table className="customer-table">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Bill</th>
+                          <th>Items</th>
+                          <th>Payment</th>
+                          <th>Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(customerDetails.visits || []).length === 0 ? (
+                          <tr>
+                            <td colSpan="5" className="empty-message">No visits recorded.</td>
+                          </tr>
+                        ) : (
+                          customerDetails.visits.map(visit => (
+                            <tr key={visit.bill_id}>
+                              <td>{visit.bill_date ? new Date(visit.bill_date).toLocaleDateString('en-IN') : '-'}</td>
+                              <td>{visit.bill_number}</td>
+                              <td>{(visit.items || []).map(item => item.name).join(', ') || '-'}</td>
+                              <td>{visit.payment_mode || '-'}</td>
+                              <td>₹{parseFloat(visit.final_amount || 0).toLocaleString('en-IN')}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setShowCustomerDetailsModal(false)}>Close</button>
             </div>
           </div>
         </div>

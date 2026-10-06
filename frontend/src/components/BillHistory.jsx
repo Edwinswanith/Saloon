@@ -271,7 +271,7 @@ const BillHistory = () => {
       message += `Thanks\n${businessName}\n${signoffPhone}`
 
       const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
-      window.open(whatsappUrl, '_blank')
+      window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
       toast.success('WhatsApp opened')
     } catch {
       toast.error('Failed to generate WhatsApp link')
@@ -546,6 +546,17 @@ const BillHistory = () => {
                         <span>Tax</span>
                         <span>{formatCurrency((billDetails || selectedBill).tax_amount)}</span>
                       </div>
+                      {Number((billDetails || selectedBill).card_fee_amount || 0) > 0 && (
+                        <div className="bh-amount-row">
+                          <span>
+                            Card Payment Fee
+                            {Number((billDetails || selectedBill).card_fee_percent || 0) > 0
+                              ? ` (${(billDetails || selectedBill).card_fee_percent}%)`
+                              : ''}
+                          </span>
+                          <span>{formatCurrency((billDetails || selectedBill).card_fee_amount)}</span>
+                        </div>
+                      )}
                       <div className="bh-amount-row bh-amount-total">
                         <span>Total</span>
                         <span>{formatCurrency((billDetails || selectedBill).final_amount)}</span>

@@ -1,8 +1,9 @@
 from flask import Blueprint, request, jsonify
 from models import Customer, Bill, Membership, ReferralProgramSettings, Referral
-from datetime import datetime
+from datetime import datetime, timedelta
 from mongoengine import Q
 from mongoengine.errors import NotUniqueError
+from bson import ObjectId
 from utils.auth import require_auth, require_role
 from utils.branch_filter import (
     apply_branch_scope,
@@ -31,6 +32,202 @@ def generate_referral_code(first_name):
     random_part = ''.join(random.choices(string.digits, k=3))
     return f"{name_part}{random_part}"
 
+
+def _visit_range_start(value):
+    today = datetime.utcnow()
+    ranges = {
+        'last_week': today - timedelta(days=7),
+        'last_month': today - timedelta(days=30),
+        'last_year': today - timedelta(days=365),
+    }
+    return ranges.get(value)
+
+
+def _safe_item_service_info(item, fallback_name='Service'):
+    service = getattr(item, 'service', None)
+    service_id = None
+    group_name = 'General'
+    service_name = fallback_name
+
+    try:
+        if service:
+            service_id = str(service.id)
+            service_name = getattr(service, 'name', None) or fallback_name
+            if getattr(service, 'group', None):
+                group_name = service.group.name or 'General'
+    except Exception:
+        pass
+
+    return service_id, service_name, group_name
+
+
+def _days_since(value):
+    if not value:
+        return None
+    try:
+        compare_date = value.date() if hasattr(value, 'date') else value
+        return max((datetime.utcnow().date() - compare_date).days, 0)
+    except Exception:
+        return None
+
+
+def _average_visit_gap_days(visits):
+    visit_dates = []
+    for visit in visits:
+        raw_date = visit.get('bill_date')
+        if not raw_date:
+            continue
+        try:
+            visit_dates.append(datetime.fromisoformat(raw_date).date())
+        except Exception:
+            continue
+
+    unique_dates = sorted(set(visit_dates))
+    if len(unique_dates) < 2:
+        return None
+
+    gaps = [
+        (unique_dates[index] - unique_dates[index - 1]).days
+        for index in range(1, len(unique_dates))
+        if (unique_dates[index] - unique_dates[index - 1]).days >= 0
+    ]
+    if not gaps:
+        return None
+    return round(sum(gaps) / len(gaps), 1)
+
+
+def _build_history_insights(services, group_map, visits):
+    visit_count = len(visits)
+    service_count = sum(service.get('count', 0) for service in services)
+    avg_gap = _average_visit_gap_days(visits)
+    last_visit_days = _days_since(datetime.fromisoformat(visits[0]['bill_date']) if visits and visits[0].get('bill_date') else None)
+
+    preferred_groups = sorted(
+        group_map.values(),
+        key=lambda row: (row.get('count', 0), row.get('revenue', 0)),
+        reverse=True
+    )
+    for group in preferred_groups:
+        group['revenue'] = round(group.get('revenue', 0), 2)
+        group['services'] = sorted(group.get('services', []))[:5]
+
+    recommendations = []
+    top_services = services[:3]
+    for index, service in enumerate(top_services):
+        confidence = min(95, 45 + (service.get('count', 0) * 12))
+        recommendations.append({
+            'type': 'repeat_service',
+            'priority': 'high' if index == 0 and service.get('count', 0) >= 2 else 'medium',
+            'service_id': service.get('service_id'),
+            'service_name': service.get('name'),
+            'category': service.get('group_name') or 'General',
+            'title': f"Suggest {service.get('name')}",
+            'reason': f"Taken {service.get('count', 0)} time(s), total spend ₹{service.get('revenue', 0):,.0f}.",
+            'confidence': confidence,
+        })
+
+    if preferred_groups:
+        top_group = preferred_groups[0]
+        recommendations.append({
+            'type': 'category_preference',
+            'priority': 'high' if top_group.get('count', 0) >= 3 else 'medium',
+            'service_id': None,
+            'service_name': None,
+            'category': top_group.get('name'),
+            'title': f"Customer prefers {top_group.get('name')}",
+            'reason': f"{top_group.get('count', 0)} service(s) from this category. Good area to start consultation.",
+            'confidence': min(90, 40 + (top_group.get('count', 0) * 10)),
+        })
+
+    if last_visit_days is not None and last_visit_days >= 45:
+        recommendations.append({
+            'type': 'returning_after_gap',
+            'priority': 'medium',
+            'service_id': top_services[0].get('service_id') if top_services else None,
+            'service_name': top_services[0].get('name') if top_services else None,
+            'category': top_services[0].get('group_name') if top_services else None,
+            'title': 'Re-engage gently',
+            'reason': f"Last visit was {last_visit_days} days ago. Start with their known preference and ask about current needs.",
+            'confidence': 70,
+        })
+
+    if not recommendations:
+        recommendations.append({
+            'type': 'new_customer',
+            'priority': 'low',
+            'service_id': None,
+            'service_name': None,
+            'category': None,
+            'title': 'Build preference profile',
+            'reason': 'No completed service history yet. Ask about concerns, goals, and preferred staff/service type.',
+            'confidence': 40,
+        })
+
+    return {
+        'preferred_service': top_services[0] if top_services else None,
+        'preferred_category': preferred_groups[0] if preferred_groups else None,
+        'preferred_categories': preferred_groups[:5],
+        'average_visit_gap_days': avg_gap,
+        'last_visit_days_ago': last_visit_days,
+        'service_count': service_count,
+        'visit_count': visit_count,
+        'recommendations': recommendations[:5],
+    }
+
+
+def _customer_stats_map(customer_ids, branch, current_user):
+    if not customer_ids:
+        return {}
+
+    match_stage = {
+        "customer": {"$in": [ObjectId(str(cid)) for cid in customer_ids]},
+        "is_deleted": False,
+    }
+    apply_branch_scope_to_match(match_stage, branch, current_user)
+
+    pipeline = [
+        {"$match": match_stage},
+        {"$group": {
+            "_id": "$customer",
+            "total_revenue": {"$sum": {"$ifNull": ["$final_amount", 0]}},
+            "total_visits": {"$sum": 1},
+            "last_visit": {"$max": "$bill_date"}
+        }}
+    ]
+    stats = {}
+    for row in Bill.objects.aggregate(pipeline):
+        stats[str(row['_id'])] = {
+            'total_revenue': row.get('total_revenue', 0) or 0,
+            'total_visits': row.get('total_visits', 0) or 0,
+            'last_visit': row.get('last_visit')
+        }
+    return stats
+
+
+def _bill_customer_ids(branch, current_user, since=None, sort_by=None, limit=None):
+    match_stage = {"is_deleted": False, "customer": {"$ne": None}}
+    if since:
+        match_stage["bill_date"] = {"$gte": since}
+    apply_branch_scope_to_match(match_stage, branch, current_user)
+
+    group = {
+        "_id": "$customer",
+        "total_revenue": {"$sum": {"$ifNull": ["$final_amount", 0]}},
+        "total_visits": {"$sum": 1},
+        "last_visit": {"$max": "$bill_date"},
+    }
+    pipeline = [{"$match": match_stage}, {"$group": group}]
+    if sort_by == 'revenue':
+        pipeline.append({"$sort": {"total_revenue": -1}})
+    elif sort_by == 'visits':
+        pipeline.append({"$sort": {"total_visits": -1}})
+    elif sort_by == 'last_visit':
+        pipeline.append({"$sort": {"last_visit": -1}})
+    if limit:
+        pipeline.append({"$limit": int(limit)})
+
+    return [row['_id'] for row in Bill.objects.aggregate(pipeline) if row.get('_id')]
+
 @customer_bp.route('/', methods=['GET'])
 @require_auth
 def get_customers(current_user=None):
@@ -43,6 +240,8 @@ def get_customers(current_user=None):
     source_filter = request.args.get('source', '')
     gender_filter = request.args.get('gender', '')
     dob_range_filter = request.args.get('dob_range', '')
+    visit_range_filter = request.args.get('visit_range', '')
+    segment_filter = request.args.get('segment', '')
     
     # Get branch for filtering
     # If branch is selected (via X-Branch-Id header), filter by that branch
@@ -63,6 +262,21 @@ def get_customers(current_user=None):
     # Apply DOB range filter
     if dob_range_filter:
         query = query.filter(dob_range=dob_range_filter)
+
+    if visit_range_filter:
+        since = _visit_range_start(visit_range_filter)
+        if since:
+            query = query.filter(id__in=_bill_customer_ids(branch, current_user, since=since))
+
+    if segment_filter == 'top_revenue':
+        query = query.filter(id__in=_bill_customer_ids(branch, current_user, sort_by='revenue', limit=10))
+    elif segment_filter == 'top_visits':
+        query = query.filter(id__in=_bill_customer_ids(branch, current_user, sort_by='visits', limit=10))
+    elif segment_filter == 'inactive_60':
+        cutoff = datetime.utcnow() - timedelta(days=60)
+        recent_ids = set(str(cid) for cid in _bill_customer_ids(branch, current_user, since=cutoff))
+        if recent_ids:
+            query = query.filter(id__nin=[ObjectId(cid) for cid in recent_ids])
     
     if search:
         query = query.filter(
@@ -77,6 +291,7 @@ def get_customers(current_user=None):
     total = query.count()
     # Force evaluation by converting to list
     customers = list(query.skip((page - 1) * per_page).limit(per_page))
+    stats_map = _customer_stats_map([c.id for c in customers], branch, current_user)
     
     return jsonify({
         'customers': [{
@@ -84,10 +299,14 @@ def get_customers(current_user=None):
             'mobile': c.mobile,
             'firstName': c.first_name,
             'lastName': c.last_name,
+            'email': c.email,
             'source': c.source,
             'gender': c.gender,
             'dobRange': c.dob_range,
-            'referralCode': c.referral_code
+            'referralCode': c.referral_code,
+            'totalVisits': stats_map.get(str(c.id), {}).get('total_visits', 0),
+            'totalRevenue': round(stats_map.get(str(c.id), {}).get('total_revenue', 0), 2),
+            'lastVisit': stats_map.get(str(c.id), {}).get('last_visit').isoformat() if stats_map.get(str(c.id), {}).get('last_visit') else None
         } for c in customers],
         'total': total,
         'page': page,
@@ -201,6 +420,126 @@ def get_customer(customer_id, current_user=None):
         response = jsonify({'error': str(e)})
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 500
+
+
+@customer_bp.route('/<customer_id>/history', methods=['GET'])
+@require_auth
+def get_customer_history(customer_id, current_user=None):
+    """Get visit and service history for one customer."""
+    try:
+        if not ObjectId.is_valid(customer_id):
+            return jsonify({'error': 'Invalid customer ID format'}), 400
+
+        branch = get_selected_branch(request, current_user)
+        customer_query = Customer.objects(id=customer_id, merged_into=None)
+        customer_query = apply_branch_scope(customer_query, branch, current_user)
+        customer = customer_query.first()
+        if not customer:
+            return jsonify({'error': 'Customer not found'}), 404
+
+        match_stage = {
+            "customer": ObjectId(customer_id),
+            "is_deleted": False,
+        }
+        apply_branch_scope_to_match(match_stage, branch, current_user)
+        bills = list(Bill.objects(__raw__=match_stage).order_by('-bill_date').limit(100))
+
+        service_map = {}
+        group_map = {}
+        visits = []
+        for bill in bills:
+            items = []
+            for item in bill.items or []:
+                item_name = item.name or 'Item'
+                item_type = item.item_type or 'item'
+                quantity = int(item.quantity or 1)
+                amount = float(item.total or 0)
+                service_id = None
+                group_name = None
+
+                if item_type in ('service', 'package'):
+                    service_id, resolved_name, group_name = _safe_item_service_info(item, item_name)
+                    if resolved_name:
+                        item_name = resolved_name
+
+                items.append({
+                    'type': item_type,
+                    'name': item_name,
+                    'quantity': quantity,
+                    'amount': round(amount, 2),
+                    'service_id': service_id,
+                    'group_name': group_name,
+                    'staff_name': f"{item.staff.first_name} {item.staff.last_name}".strip() if item.staff else None
+                })
+
+                if item_type in ('service', 'package'):
+                    service_key = service_id or item_name
+                    if service_key not in service_map:
+                        service_map[service_key] = {
+                            'service_id': service_id,
+                            'name': item_name,
+                            'group_name': group_name or 'General',
+                            'count': 0,
+                            'revenue': 0.0,
+                            'last_visit': None,
+                        }
+                    service_map[service_key]['count'] += quantity
+                    service_map[service_key]['revenue'] += amount
+                    if bill.bill_date and (
+                        not service_map[service_key]['last_visit'] or
+                        bill.bill_date.isoformat() > service_map[service_key]['last_visit']
+                    ):
+                        service_map[service_key]['last_visit'] = bill.bill_date.isoformat()
+
+                    group_key = group_name or 'General'
+                    if group_key not in group_map:
+                        group_map[group_key] = {
+                            'name': group_key,
+                            'count': 0,
+                            'revenue': 0.0,
+                            'services': set(),
+                        }
+                    group_map[group_key]['count'] += quantity
+                    group_map[group_key]['revenue'] += amount
+                    group_map[group_key]['services'].add(item_name)
+
+            visits.append({
+                'bill_id': str(bill.id),
+                'bill_number': bill.bill_number,
+                'bill_date': bill.bill_date.isoformat() if bill.bill_date else None,
+                'final_amount': round(float(bill.final_amount or 0), 2),
+                'payment_mode': bill.payment_mode,
+                'items': items,
+            })
+
+        total_revenue = sum(v['final_amount'] for v in visits)
+        services = sorted(service_map.values(), key=lambda row: row['count'], reverse=True)
+        for service in services:
+            service['revenue'] = round(service['revenue'], 2)
+            service['visit_share'] = round((service['count'] / max(sum(row['count'] for row in services), 1)) * 100, 1)
+
+        insights = _build_history_insights(services, group_map, visits)
+
+        return jsonify({
+            'customer': {
+                'id': str(customer.id),
+                'name': f"{customer.first_name or ''} {customer.last_name or ''}".strip(),
+                'mobile': customer.mobile,
+                'email': customer.email,
+            },
+            'summary': {
+                'visit_count': len(visits),
+                'total_revenue': round(total_revenue, 2),
+                'last_visit': visits[0]['bill_date'] if visits else None,
+                'service_count': sum(service['count'] for service in services),
+            },
+            'services': services,
+            'preferences': insights,
+            'recommendations': insights.get('recommendations', []),
+            'visits': visits,
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @customer_bp.route('/', methods=['POST'])
 @require_auth

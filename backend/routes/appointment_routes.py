@@ -53,7 +53,9 @@ def get_appointments(current_user=None):
 
         # Get pagination parameters
         page = request.args.get('page', 1, type=int)
-        per_page = min(request.args.get('per_page', 20, type=int), 100)
+        # Calendar views request a bounded date range and need enough rows to
+        # render day/week/month without silently dropping later appointments.
+        per_page = min(request.args.get('per_page', 20, type=int), 500)
         sort_by = request.args.get('sort_by', 'appointment_date')
         sort_order = request.args.get('sort_order', 'desc')
         
