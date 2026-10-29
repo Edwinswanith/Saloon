@@ -88,6 +88,7 @@ const ManagerOwnerDashboard = () => {
   })
   const [financialOverview, setFinancialOverview] = useState(null)
   const [ownerFinancialDashboard, setOwnerFinancialDashboard] = useState(null)
+  const [financeError, setFinanceError] = useState('')
   const [staffPerformance, setStaffPerformance] = useState([])
   const [topPerformer, setTopPerformer] = useState(null)
   const [staffLeaderboard, setStaffLeaderboard] = useState([])
@@ -251,31 +252,28 @@ const ManagerOwnerDashboard = () => {
 
       const statsData = await statsRes.json()
       let financialData = null
-      try {
-        const financialRes = await apiGet(`/api/reports/financial-overview?${params}`)
-        if (financialRes.ok) {
-          financialData = await financialRes.json()
-          setFinancialOverview(financialData)
-        } else {
-          setFinancialOverview(null)
-        }
-      } catch (financialError) {
-        console.warn('Financial overview failed:', financialError)
+      let ownerFinancialData = null
+      const [financialResult, ownerFinancialResult] = await Promise.allSettled([
+        apiGet(`/api/reports/financial-overview?${params}`),
+        apiGet(`/api/reports/owner-financial-dashboard?${params}`),
+      ])
+
+      if (financialResult.status === 'fulfilled' && financialResult.value.ok) {
+        financialData = await financialResult.value.json()
+        setFinancialOverview(financialData)
+      } else {
+        console.warn('Financial overview failed:', financialResult)
         setFinancialOverview(null)
       }
 
-      let ownerFinancialData = null
-      try {
-        const ownerFinancialRes = await apiGet(`/api/reports/owner-financial-dashboard?${params}`)
-        if (ownerFinancialRes.ok) {
-          ownerFinancialData = await ownerFinancialRes.json()
-          setOwnerFinancialDashboard(ownerFinancialData)
-        } else {
-          setOwnerFinancialDashboard(null)
-        }
-      } catch (ownerFinancialError) {
-        console.warn('Owner financial dashboard failed:', ownerFinancialError)
+      if (ownerFinancialResult.status === 'fulfilled' && ownerFinancialResult.value.ok) {
+        ownerFinancialData = await ownerFinancialResult.value.json()
+        setOwnerFinancialDashboard(ownerFinancialData)
+        setFinanceError('')
+      } else {
+        console.warn('Owner financial dashboard failed:', ownerFinancialResult)
         setOwnerFinancialDashboard(null)
+        setFinanceError('Unable to load Profit & Loss data. Please refresh and try again.')
       }
 
       const statsResult = {
@@ -569,6 +567,7 @@ const ManagerOwnerDashboard = () => {
 
     const loadFinanceData = async () => {
       setLoading(true)
+      setFinanceError('')
       const dateRange = getDateRange()
       const params = new URLSearchParams(dateRange)
       params.append('_t', Date.now())
@@ -587,6 +586,7 @@ const ManagerOwnerDashboard = () => {
         console.error('Error loading finance data:', error)
         setFinancialOverview(null)
         setOwnerFinancialDashboard(null)
+        setFinanceError('Unable to load Profit & Loss data. Please refresh and try again.')
       } finally {
         setLoading(false)
       }
@@ -887,8 +887,8 @@ const ManagerOwnerDashboard = () => {
       {loading && !ownerFinancialDashboard ? (
         <ChartSkeleton height={260} />
       ) : !ownerFinancialDashboard ? (
-        <div className="owner-finance-empty finance-board-empty">
-          No profit and loss data available for this period.
+        <div className="owner-finance-empty finance-board-empty" role="alert">
+          {financeError || 'Unable to load Profit & Loss data. Please refresh and try again.'}
         </div>
       ) : (
         <>

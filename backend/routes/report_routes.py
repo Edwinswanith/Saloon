@@ -731,7 +731,16 @@ def financial_overview(current_user=None):
 
         bills_query = Bill.objects(is_deleted=False, bill_date__gte=start, bill_date__lte=end)
         bills_query = apply_branch_scope(bills_query, branch, current_user)
-        bills = list(bills_query)
+        bills = list(bills_query.no_dereference().only(
+            'final_amount',
+            'subtotal',
+            'discount_amount',
+            'referral_discount',
+            'tax_amount',
+            'card_fee_amount',
+            'items',
+        ))
+        product_costs = _load_product_costs(bills)
 
         total_revenue = sum(float(b.final_amount or 0) for b in bills)
         subtotal = sum(float(b.subtotal or 0) for b in bills)
@@ -751,7 +760,7 @@ def financial_overview(current_user=None):
                 qty = int(item.quantity or 1)
                 if item.item_type == 'product':
                     product_revenue += item_total
-                    product_cost += _safe_product_cost(item) * qty
+                    product_cost += _safe_product_cost(item, product_costs) * qty
                 elif item.item_type == 'service':
                     service_revenue += item_total
                 elif item.item_type == 'package':
@@ -761,12 +770,15 @@ def financial_overview(current_user=None):
 
         expenses_query = Expense.objects(expense_date__gte=start_day, expense_date__lte=end_day)
         expenses_query = apply_branch_scope(expenses_query, branch, current_user)
-        expenses = list(expenses_query)
+        expenses = list(expenses_query.no_dereference().only('amount'))
         expense_total = sum(float(e.amount or 0) for e in expenses)
 
         staff_query = Staff.objects(status='active')
         staff_query = apply_branch_scope(staff_query, branch, current_user)
-        monthly_salary_total = sum(float(s.salary or 0) for s in staff_query)
+        monthly_salary_total = sum(
+            float(s.salary or 0)
+            for s in staff_query.no_dereference().only('salary')
+        )
         salary_cost = monthly_salary_total * (period_days / 30.0)
 
         income_total = total_revenue
@@ -840,18 +852,70 @@ def _branch_info(branch):
     }
 
 
-def _safe_branch_from_doc(doc):
-    try:
-        return doc.branch if getattr(doc, 'branch', None) else None
-    except Exception:
+def _raw_reference_id(document, field_name):
+    """Return a reference id without triggering a MongoEngine dereference."""
+    raw_value = document._data.get(field_name) if hasattr(document, '_data') else None
+    if raw_value is None:
         return None
+    if hasattr(raw_value, 'id'):
+        return raw_value.id
+    if hasattr(raw_value, 'pk'):
+        return raw_value.pk
+    if isinstance(raw_value, ObjectId):
+        return raw_value
+    return ObjectId(str(raw_value)) if ObjectId.is_valid(str(raw_value)) else None
 
 
-def _safe_product_cost(item):
+def _load_product_costs(bills):
+    """Batch-load costs only for legacy bill items without a cost snapshot."""
+    product_ids = set()
+    for bill in bills:
+        for item in bill.items or []:
+            if item.item_type != 'product' or getattr(item, 'cost_price', None) is not None:
+                continue
+            product_id = _raw_reference_id(item, 'product')
+            if product_id:
+                product_ids.add(product_id)
+
+    if not product_ids:
+        return {}
+
+    return {
+        str(product.id): float(product.cost or 0)
+        for product in Product.objects(id__in=list(product_ids)).no_dereference().only('cost')
+    }
+
+
+def _load_service_names(bills):
+    """Batch-load names only for legacy service items without a name snapshot."""
+    service_ids = set()
+    for bill in bills:
+        for item in bill.items or []:
+            if item.item_type != 'service' or (item.name or '').strip():
+                continue
+            service_id = _raw_reference_id(item, 'service')
+            if service_id:
+                service_ids.add(service_id)
+
+    if not service_ids:
+        return {}
+
+    return {
+        str(service.id): service.name
+        for service in Service.objects(id__in=list(service_ids)).no_dereference().only('name')
+    }
+
+
+def _safe_product_cost(item, product_costs=None):
     try:
         snapshot_cost = getattr(item, 'cost_price', None)
         if snapshot_cost is not None:
             return float(snapshot_cost or 0)
+
+        if product_costs is not None:
+            product_id = _raw_reference_id(item, 'product')
+            return float(product_costs.get(str(product_id), 0)) if product_id else 0.0
+
         return float(item.product.cost or 0) if item.product else 0.0
     except Exception:
         return 0.0
@@ -894,13 +958,13 @@ def owner_financial_dashboard(current_user=None):
                 branch_query = branch_query.filter(id__ne=demo_branch.id)
             branch_docs = list(branch_query.order_by('name'))
 
-        branch_summaries = {}
-        for branch in branch_docs:
-            info = _branch_info(branch)
-            branch_summaries[info['id']] = {
-                'branch_id': info['id'],
-                'branch_name': info['name'],
-                'branch_city': info['city'],
+        branch_lookup = {str(branch.id): branch for branch in branch_docs}
+
+        def new_branch_summary(branch_id, branch_name, branch_city):
+            return {
+                'branch_id': branch_id,
+                'branch_name': branch_name,
+                'branch_city': branch_city,
                 'revenue': 0.0,
                 'subtotal': 0.0,
                 'discounts': 0.0,
@@ -917,33 +981,50 @@ def owner_financial_dashboard(current_user=None):
                 'status': 'break_even',
             }
 
+        branch_summaries = {}
+        for branch in branch_docs:
+            info = _branch_info(branch)
+            branch_summaries[info['id']] = new_branch_summary(
+                info['id'], info['name'], info['city']
+            )
+
         def ensure_branch(branch):
             info = _branch_info(branch)
             if info['id'] not in branch_summaries:
-                branch_summaries[info['id']] = {
-                    'branch_id': info['id'],
-                    'branch_name': info['name'],
-                    'branch_city': info['city'],
-                    'revenue': 0.0,
-                    'subtotal': 0.0,
-                    'discounts': 0.0,
-                    'tax': 0.0,
-                    'card_fee': 0.0,
-                    'expenses': 0.0,
-                    'product_cost': 0.0,
-                    'staff_salary_cost': 0.0,
-                    'total_cost': 0.0,
-                    'net_profit': 0.0,
-                    'profit_margin': 0.0,
-                    'bills': 0,
-                    'average_bill': 0.0,
-                    'status': 'break_even',
-                }
+                branch_summaries[info['id']] = new_branch_summary(
+                    info['id'], info['name'], info['city']
+                )
             return branch_summaries[info['id']]
+
+        def ensure_branch_id(branch_id):
+            if not branch_id:
+                return ensure_branch(None)
+            branch_key = str(branch_id)
+            branch_doc = branch_lookup.get(branch_key)
+            if branch_doc:
+                return ensure_branch(branch_doc)
+            if branch_key not in branch_summaries:
+                branch_summaries[branch_key] = new_branch_summary(
+                    branch_key, 'Unknown Branch', None
+                )
+            return branch_summaries[branch_key]
 
         bills_query = Bill.objects(is_deleted=False, bill_date__gte=start, bill_date__lte=end)
         bills_query = apply_branch_scope(bills_query, selected_branch, current_user)
-        bills = list(bills_query)
+        bills = list(bills_query.no_dereference().only(
+            'branch',
+            'final_amount',
+            'subtotal',
+            'discount_amount',
+            'referral_discount',
+            'tax_amount',
+            'card_fee_amount',
+            'payment_mode',
+            'applied_offer',
+            'items',
+        ))
+        product_costs = _load_product_costs(bills)
+        service_names = _load_service_names(bills)
 
         income_types = {
             'service': {'label': 'Services', 'amount': 0.0, 'count': 0},
@@ -957,7 +1038,7 @@ def owner_financial_dashboard(current_user=None):
         offer_stats = {}
 
         for bill in bills:
-            branch_summary = ensure_branch(_safe_branch_from_doc(bill))
+            branch_summary = ensure_branch_id(_raw_reference_id(bill, 'branch'))
             bill_revenue = float(bill.final_amount or 0)
             bill_subtotal = float(bill.subtotal or 0)
             bill_discount = float(bill.discount_amount or 0) + float(getattr(bill, 'referral_discount', 0) or 0)
@@ -1014,15 +1095,13 @@ def owner_financial_dashboard(current_user=None):
                     income_types[item_type]['count'] += item_qty
 
                 if item_type == 'product':
-                    branch_summary['product_cost'] += _safe_product_cost(item) * item_qty
+                    branch_summary['product_cost'] += _safe_product_cost(item, product_costs) * item_qty
 
                 if item_type == 'service':
-                    service_name = item.name or 'Unknown Service'
-                    try:
-                        if item.service and item.service.name:
-                            service_name = item.service.name
-                    except Exception:
-                        pass
+                    service_name = (item.name or '').strip()
+                    if not service_name:
+                        service_id = _raw_reference_id(item, 'service')
+                        service_name = service_names.get(str(service_id), 'Unknown Service')
                     service_stats.setdefault(service_name, {
                         'service_name': service_name,
                         'branch_name': branch_summary['branch_name'],
@@ -1039,14 +1118,14 @@ def owner_financial_dashboard(current_user=None):
 
         expenses_query = Expense.objects(expense_date__gte=start_day, expense_date__lte=end_day)
         expenses_query = apply_branch_scope(expenses_query, selected_branch, current_user)
-        for expense in expenses_query:
-            branch_summary = ensure_branch(_safe_branch_from_doc(expense))
+        for expense in expenses_query.no_dereference().only('branch', 'amount'):
+            branch_summary = ensure_branch_id(_raw_reference_id(expense, 'branch'))
             branch_summary['expenses'] += float(expense.amount or 0)
 
         staff_query = Staff.objects(status='active')
         staff_query = apply_branch_scope(staff_query, selected_branch, current_user)
-        for staff in staff_query:
-            branch_summary = ensure_branch(_safe_branch_from_doc(staff))
+        for staff in staff_query.no_dereference().only('branch', 'salary'):
+            branch_summary = ensure_branch_id(_raw_reference_id(staff, 'branch'))
             branch_summary['staff_salary_cost'] += float(staff.salary or 0) * (period_days / 30.0)
 
         for summary in branch_summaries.values():
