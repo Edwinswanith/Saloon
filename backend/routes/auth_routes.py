@@ -27,6 +27,17 @@ auth_bp = Blueprint('auth', __name__)
 # Password authentication is required for all user types (staff, manager, owner)
 
 
+def _staff_login_credentials(staff, selected_branch):
+    """Choose a branch override without changing the staff's own password."""
+    branch_password_hash = (
+        getattr(selected_branch, 'staff_login_password_hash', None)
+        if selected_branch else None
+    )
+    if branch_password_hash:
+        return branch_password_hash, 'branch_password'
+    return staff.password_hash, 'password'
+
+
 @auth_bp.before_request
 def handle_preflight():
     """Handle CORS preflight requests"""
@@ -130,6 +141,27 @@ def login():
                 response.headers.add('Access-Control-Allow-Origin', '*')
                 return response, 403
 
+            # Resolve the login branch before password validation. A branch may
+            # define a shared Staff-login password without modifying any staff
+            # member's existing password hash.
+            selected_branch = None
+            demo_branch = get_demo_branch_for_user(staff)
+            if demo_branch:
+                selected_branch = demo_branch
+            elif branch_id:
+                if not ObjectId.is_valid(branch_id):
+                    response = jsonify({'error': 'Invalid branch ID format'})
+                    response.headers.add('Access-Control-Allow-Origin', '*')
+                    return response, 400
+
+                selected_branch = Branch.objects(id=branch_id).first()
+                if not selected_branch:
+                    response = jsonify({'error': 'Branch not found'})
+                    response.headers.add('Access-Control-Allow-Origin', '*')
+                    return response, 404
+            else:
+                selected_branch = staff.branch
+
             # Password validation for staff - required for all staff
             if not password:
                 try:
@@ -149,12 +181,16 @@ def login():
                 response.headers.add('Access-Control-Allow-Origin', '*')
                 return response, 400
 
-            if not staff.password_hash:
+            password_hash, login_method = _staff_login_credentials(
+                staff, selected_branch
+            )
+
+            if not password_hash:
                 response = jsonify({'error': 'Password not set for this account. Please contact administrator.'})
                 response.headers.add('Access-Control-Allow-Origin', '*')
                 return response, 400
 
-            if not verify_password(password, staff.password_hash):
+            if not verify_password(password, password_hash):
                 try:
                     LoginHistory(
                         user_id=str(staff.id),
@@ -183,34 +219,8 @@ def login():
                 name=full_name
             )
 
-            # Validate and set selected branch
-            selected_branch = None
-            demo_branch = get_demo_branch_for_user(staff)
-            if demo_branch:
-                selected_branch = demo_branch
-            elif branch_id:
-                # Validate branch_id format
-                if not ObjectId.is_valid(branch_id):
-                    response = jsonify({'error': 'Invalid branch ID format'})
-                    response.headers.add('Access-Control-Allow-Origin', '*')
-                    return response, 400
-                
-                # Get branch
-                branch = Branch.objects(id=branch_id).first()
-                if not branch:
-                    response = jsonify({'error': 'Branch not found'})
-                    response.headers.add('Access-Control-Allow-Origin', '*')
-                    return response, 404
-
-                # Staff can operate at any branch (no branch lock).
-                selected_branch = branch
-            else:
-                # Default to staff's home branch if no branch_id provided
-                selected_branch = staff.branch
-
             # Log login history
             try:
-                login_method = 'password' if staff.password_hash else 'role_selection'
                 LoginHistory(
                     user_id=str(staff.id),
                     user_type='staff',

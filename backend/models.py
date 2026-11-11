@@ -35,6 +35,9 @@ class Branch(Document):
     phone = StringField(max_length=15)
     email = StringField(max_length=100)
     gstin = StringField(max_length=20)  # GST Identification Number for invoices
+    # Optional shared Staff-login password for this branch. The stored value is
+    # a bcrypt hash and is never returned by branch APIs.
+    staff_login_password_hash = StringField(max_length=255)
     is_active = BooleanField(default=True)
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
