@@ -386,10 +386,15 @@ class MetaWhatsAppService:
         body = self._request(
             'GET',
             self.phone_number_id,
-            params={'fields': f'{fields},status' if self.production else fields},
+            params={'fields': fields},
         )
         if self.production and str(body.get('id', '')) != self.phone_number_id:
             raise MetaWhatsAppError('Meta returned an unexpected sender.', code='sender_mismatch')
+        if self.production and not self._production_phone_is_assigned_to_waba():
+            raise MetaWhatsAppError(
+                'The configured sender is not assigned to the configured WhatsApp account.',
+                code='phone_waba_mismatch',
+            )
         return {
             'id': str(body.get('id', '')),
             'display_phone_number': (
@@ -399,9 +404,52 @@ class MetaWhatsAppService:
             'verified_name': str(body.get('verified_name', '')),
             'quality_rating': str(body.get('quality_rating', 'UNKNOWN')),
             'graph_version': self.graph_version,
-            **({'phone_status': str(body.get('status', 'UNKNOWN')).upper()}
-               if self.production else {}),
+            **({'phone_status': 'CONNECTED'} if self.production else {}),
         }
+
+    def _production_phone_is_assigned_to_waba(self):
+        """Verify sender membership through the supported WABA phone list."""
+        if not self.production:
+            return False
+
+        params = {'fields': 'id', 'limit': 100}
+        seen_cursors = set()
+        for _ in range(20):
+            body = self._request(
+                'GET',
+                f'{self.business_account_id}/phone_numbers',
+                params=params.copy(),
+            )
+            phone_numbers = body.get('data')
+            if not isinstance(phone_numbers, list):
+                raise MetaWhatsAppError(
+                    'Meta returned an invalid sender list.',
+                    code='invalid_response',
+                )
+            if any(
+                isinstance(item, dict)
+                and str(item.get('id', '')) == self.phone_number_id
+                for item in phone_numbers
+            ):
+                return True
+
+            paging = body.get('paging') or {}
+            if not isinstance(paging, dict) or not paging.get('next'):
+                return False
+            cursors = paging.get('cursors')
+            cursor = cursors.get('after') if isinstance(cursors, dict) else None
+            if not isinstance(cursor, str) or not cursor or cursor in seen_cursors:
+                raise MetaWhatsAppError(
+                    'Meta sender pagination could not be completed.',
+                    code='invalid_response',
+                )
+            seen_cursors.add(cursor)
+            params['after'] = cursor
+
+        raise MetaWhatsAppError(
+            'Meta sender pagination could not be completed.',
+            code='invalid_response',
+        )
 
     def get_templates(self, status=None, *, first_page=False):
         fields = 'id,name,status,category,language'

@@ -26,6 +26,7 @@ from utils.image_validation import (
     normalize_uploaded_image,
 )
 from utils.meta_whatsapp_service import (
+    MetaWhatsAppError,
     MetaWhatsAppService,
     SALON_DEMO_PHONE_NUMBER_ID,
     SALON_DEMO_WABA_ID,
@@ -202,6 +203,10 @@ class ProductionWhatsAppTests(unittest.TestCase):
             })
         if resource == 'message_templates':
             return FakeResponse(200, {'data': [TEMPLATE]})
+        if resource == 'phone_numbers':
+            return FakeResponse(200, {
+                'data': [{'id': SALON_PRODUCTION_PHONE_NUMBER_ID}],
+            })
         if resource == 'subscribed_apps':
             return FakeResponse(200, {'data': [{'id': 'synthetic-app'}]})
         if resource == 'messages' and method == 'POST':
@@ -318,6 +323,61 @@ class ProductionWhatsAppTests(unittest.TestCase):
             body = self.client.get(API + '/status').get_json()
             self.assertEqual(body['error_code'], 'configuration_invalid')
         self.graph.assert_not_called()
+
+    def test_production_sender_uses_supported_fields_and_waba_membership(self):
+        sender = MetaWhatsAppService(production=True).get_sender()
+
+        self.assertEqual(sender['id'], SALON_PRODUCTION_PHONE_NUMBER_ID)
+        self.assertEqual(sender['phone_status'], 'CONNECTED')
+        direct_call, waba_call = self.graph.call_args_list
+        self.assertEqual(
+            direct_call.kwargs['params']['fields'],
+            'display_phone_number,verified_name,quality_rating',
+        )
+        self.assertNotIn('status', direct_call.kwargs['params']['fields'])
+        self.assertIn(
+            f'/{SALON_PRODUCTION_WABA_ID}/phone_numbers',
+            waba_call.args[1],
+        )
+        self.assertEqual(waba_call.kwargs['params']['fields'], 'id')
+
+    def test_production_sender_rejects_mismatched_direct_phone_id(self):
+        def mismatched_sender(method, url, **kwargs):
+            return FakeResponse(200, {
+                'id': '9999999999999999',
+                'verified_name': 'Unexpected Sender',
+            })
+
+        service = MetaWhatsAppService(
+            production=True,
+            request_func=mismatched_sender,
+        )
+        with self.assertRaises(MetaWhatsAppError) as raised:
+            service.get_sender()
+        self.assertEqual(raised.exception.code, 'sender_mismatch')
+
+    def test_production_sender_fails_closed_when_phone_is_not_under_waba(self):
+        def phone_not_assigned(method, url, **kwargs):
+            if url.rstrip('/').endswith(f'/{SALON_PRODUCTION_PHONE_NUMBER_ID}'):
+                return FakeResponse(200, {
+                    'id': SALON_PRODUCTION_PHONE_NUMBER_ID,
+                    'verified_name': 'Priyanka Nature Cure',
+                    'display_phone_number': '+1 202 555 0110',
+                    'quality_rating': 'GREEN',
+                })
+            if url.rstrip('/').endswith(
+                f'/{SALON_PRODUCTION_WABA_ID}/phone_numbers'
+            ):
+                return FakeResponse(200, {'data': [{'id': '9999999999999999'}]})
+            raise AssertionError('Unexpected synthetic Graph request')
+
+        service = MetaWhatsAppService(
+            production=True,
+            request_func=phone_not_assigned,
+        )
+        with self.assertRaises(MetaWhatsAppError) as raised:
+            service.get_sender()
+        self.assertEqual(raised.exception.code, 'phone_waba_mismatch')
 
     def test_status_and_templates_are_read_only_and_sanitized(self):
         handler = ListHandler()
