@@ -89,10 +89,14 @@ export const apiRequest = async (endpoint, options = {}) => {
   
   try {
     // Build headers
-    const headers = {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    };
+    const headers = { ...options.headers };
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+    const hasContentType = Object.keys(headers).some(
+      key => key.toLowerCase() === 'content-type'
+    );
+    if (!isFormData && !hasContentType) {
+      headers['Content-Type'] = 'application/json';
+    }
     
     // Add auth token if available
     if (token) {
@@ -145,6 +149,17 @@ export const apiPost = async (endpoint, data, options = {}) => {
     ...options,
     method: 'POST',
     body: JSON.stringify(data),
+  });
+};
+
+/**
+ * Multipart POST helper. The browser supplies the multipart boundary.
+ */
+export const apiPostForm = async (endpoint, formData, options = {}) => {
+  return apiRequest(endpoint, {
+    ...options,
+    method: 'POST',
+    body: formData,
   });
 };
 

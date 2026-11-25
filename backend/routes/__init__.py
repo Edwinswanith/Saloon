@@ -33,6 +33,7 @@ from .campaign_routes import campaign_bp
 from .notification_routes import notification_bp
 from .settings_routes import settings_bp
 from .offer_routes import offer_bp
+from .whatsapp_integration_routes import whatsapp_integration_bp
 
 def register_routes(app):
     # Register blueprints with /api prefix
@@ -70,4 +71,8 @@ def register_routes(app):
     app.register_blueprint(notification_bp, url_prefix='/api/notifications')
     app.register_blueprint(settings_bp, url_prefix='/api/settings')
     app.register_blueprint(offer_bp, url_prefix='/api/offers')
+    app.register_blueprint(
+        whatsapp_integration_bp,
+        url_prefix='/api/integrations/whatsapp',
+    )
 

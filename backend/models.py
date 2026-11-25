@@ -838,6 +838,121 @@ class WhatsAppMessage(Document):
     sent_at = DateTimeField(default=datetime.utcnow)
     delivery_timestamp = DateTimeField()
 
+
+class WhatsAppMediaAsset(Document):
+    """Private R2 image metadata scoped to the production WhatsApp account."""
+    meta = {
+        'collection': 'whatsapp_media_assets',
+        'indexes': [
+            {'fields': ['object_key'], 'unique': True},
+            {'fields': ['tenant_id', 'branch', '-created_at']},
+            {'fields': ['tenant_id', 'uploaded_by_owner_id', '-created_at']},
+            {'fields': ['tenant_id', 'sha256']},
+        ],
+    }
+
+    tenant_id = StringField(required=True, max_length=100)
+    branch = ReferenceField('Branch')
+    uploaded_by_owner_id = StringField(required=True, max_length=64)
+    object_key = StringField(required=True, max_length=500)
+    display_filename = StringField(required=True, max_length=160)
+    content_type = StringField(
+        required=True,
+        max_length=50,
+        choices=['image/jpeg', 'image/png'],
+    )
+    byte_size = IntField(required=True, min_value=1)
+    width = IntField(required=True, min_value=1)
+    height = IntField(required=True, min_value=1)
+    sha256 = StringField(required=True, min_length=64, max_length=64)
+    storage_etag = StringField(max_length=200)
+    status = StringField(
+        required=True,
+        max_length=20,
+        choices=['ready', 'archived'],
+        default='ready',
+    )
+    created_at = DateTimeField(default=datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.utcnow)
+
+
+class WhatsAppTestMessage(Document):
+    """Audit record for controlled Cloud API sends."""
+    meta = {
+        'collection': 'whatsapp_test_messages',
+        'indexes': [
+            {'fields': ['client_request_id'], 'unique': True},
+            {'fields': ['meta_message_id'], 'unique': True, 'sparse': True},
+            {'fields': ['-created_at']},
+            {'fields': ['created_at'], 'expireAfterSeconds': 60 * 60 * 24 * 90},
+        ],
+    }
+
+    client_request_id = StringField(required=True, max_length=64)
+    recipient_id = StringField(required=True, max_length=64)
+    recipient_label = StringField(max_length=100)
+    recipient_last4 = StringField(max_length=4)
+    template_name = StringField(required=True, max_length=100)
+    language_code = StringField(required=True, max_length=20)
+    waba_id = StringField(max_length=32)
+    phone_number_id = StringField(max_length=32)
+    media_asset_id = StringField(max_length=24)
+    send_kind = StringField(choices=['controlled_test', 'customer'])
+    meta_message_id = StringField(max_length=200)
+    status = StringField(
+        required=True,
+        max_length=20,
+        choices=['pending', 'accepted', 'sent', 'delivered', 'read', 'failed', 'unknown'],
+        default='pending',
+    )
+    error_code = StringField(max_length=100)
+    error_subcode = StringField(max_length=100)
+    error_message = StringField(max_length=500)
+    error_details = StringField(max_length=500)
+    meta_http_status = IntField(min_value=100, max_value=599)
+    fbtrace_id = StringField(max_length=200)
+    sent_by_owner_id = StringField(required=True, max_length=64)
+    created_at = DateTimeField(default=datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.utcnow)
+    status_updated_at = DateTimeField(default=datetime.utcnow)
+
+
+class WhatsAppWebhookEvent(Document):
+    """Idempotency record for signed Meta webhook events."""
+    meta = {
+        'collection': 'whatsapp_webhook_events',
+        'indexes': [
+            {'fields': ['event_key'], 'unique': True},
+            {'fields': ['meta_message_id']},
+            {'fields': ['created_at'], 'expireAfterSeconds': 60 * 60 * 24 * 30},
+        ],
+    }
+
+    event_key = StringField(required=True, max_length=128)
+    event_type = StringField(required=True, max_length=40)
+    payload_hash = StringField(required=True, max_length=64)
+    meta_message_id = StringField(max_length=200)
+    status = StringField(max_length=40)
+    waba_id = StringField(max_length=32)
+    phone_number_id = StringField(max_length=32)
+    created_at = DateTimeField(default=datetime.utcnow)
+
+
+class WhatsAppRateLimit(Document):
+    """Mongo-backed fixed-window counter shared by serverless instances."""
+    meta = {
+        'collection': 'whatsapp_rate_limits',
+        'indexes': [
+            {'fields': ['bucket_key'], 'unique': True},
+            {'fields': ['expires_at'], 'expireAfterSeconds': 0},
+        ],
+    }
+
+    bucket_key = StringField(required=True, max_length=180)
+    count = IntField(default=0)
+    expires_at = DateTimeField(required=True)
+    created_at = DateTimeField(default=datetime.utcnow)
+
 # Discount Approval Request Model (Phase 5)
 class DiscountApprovalRequest(Document):
     meta = {'collection': 'discount_approval_requests'}

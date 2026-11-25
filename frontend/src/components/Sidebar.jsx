@@ -20,6 +20,7 @@ import {
   FaBullhorn,
   FaHistory,
   FaTags,
+  FaWhatsapp,
 } from 'react-icons/fa'
 import { useAuth } from '../contexts/AuthContext'
 import { useBusiness } from '../contexts/BusinessContext'
@@ -43,7 +44,7 @@ const Sidebar = ({
   isMobileOpen = false,
   onMobileClose
 }) => {
-  const { hasAnyRole } = useAuth()
+  const { hasAnyRole, user } = useAuth()
   const { businessName } = useBusiness()
   const [expandedItems, setExpandedItems] = useState({
     'salon-settings': false,
@@ -146,6 +147,18 @@ const Sidebar = ({
         }
       ],
     },
+    integrationSection: {
+      section: 'INTEGRATIONS',
+      items: [
+        {
+          id: 'whatsapp-integration',
+          label: 'WhatsApp API',
+          icon: <FaWhatsapp />,
+          requiresRole: ['owner'],
+          productionOnly: true,
+        },
+      ],
+    },
     masterSection: {
       section: 'MASTER',
       items: [
@@ -191,7 +204,15 @@ const Sidebar = ({
     },
   }
 
-  const { logo, quickSaleItem, dashboardItem, billingSection, analyticsSection, masterSection } = menuConfig
+  const {
+    logo,
+    quickSaleItem,
+    dashboardItem,
+    billingSection,
+    analyticsSection,
+    integrationSection,
+    masterSection,
+  } = menuConfig
 
   // Update expanded state for menu items
   if (billingSection.items) {
@@ -214,7 +235,8 @@ const Sidebar = ({
     const isActive = activePage === item.id
     const hasSubItems = item.subItems && item.subItems.length > 0
     const isExpanded = item.expanded || expandedItems[item.id]
-    const shouldShow = !item.requiresRole || hasAnyRole(...item.requiresRole)
+    const hasRequiredRole = !item.requiresRole || hasAnyRole(...item.requiresRole)
+    const shouldShow = hasRequiredRole && (!item.productionOnly || !user?.is_demo)
 
     if (!shouldShow) return null
 
@@ -354,6 +376,9 @@ const Sidebar = ({
 
         {/* ANALYTICS Section */}
         {renderSection(analyticsSection, 'analytics')}
+
+        {/* INTEGRATIONS Section */}
+        {renderSection(integrationSection, 'integrations')}
 
         {/* MASTER Section */}
         {renderSection(masterSection, 'master')}

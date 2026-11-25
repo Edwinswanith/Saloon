@@ -44,6 +44,7 @@ const Staffs = lazyWithRetry(() => import('./components/Staffs'))
 const StaffAttendance = lazyWithRetry(() => import('./components/StaffAttendance'))
 const AssetManagement = lazyWithRetry(() => import('./components/AssetManagement'))
 const Expense = lazyWithRetry(() => import('./components/Expense'))
+const WhatsAppIntegration = lazyWithRetry(() => import('./components/WhatsAppIntegration'))
 const ServiceSalesAnalysis = lazyWithRetry(() => import('./components/ServiceSalesAnalysis'))
 const BillHistory = lazyWithRetry(() => import('./components/BillHistory'))
 const ListOfBills = lazyWithRetry(() => import('./components/ListOfBills'))
@@ -351,6 +352,11 @@ function AppContent() {
             {activePage === 'expense' && (
               <RequireRole roles={['manager', 'owner']}>
                 <Expense key="expense" />
+              </RequireRole>
+            )}
+            {activePage === 'whatsapp-integration' && (
+              <RequireRole roles={['owner']}>
+                <WhatsAppIntegration key="whatsapp-integration" />
               </RequireRole>
             )}
           </AnimatePresence>
