@@ -25,6 +25,7 @@ from services.r2_media_service import (
     R2MediaService,
     missing_r2_configuration,
 )
+from utils.env_config import RuntimeConfigurationError, get_app_runtime
 from utils.whatsapp_auth import require_whatsapp_owner
 from utils.branch_filter import get_demo_branch
 from utils.image_validation import (
@@ -53,7 +54,15 @@ MAX_MEDIA_LIST_ITEMS = 50
 
 
 def _production_request():
-    return True
+    return get_app_runtime() == 'production'
+
+
+@whatsapp_integration_bp.errorhandler(RuntimeConfigurationError)
+def handle_runtime_configuration_error(_error):
+    return jsonify({
+        'error': 'Application runtime is not configured.',
+        'error_code': 'runtime_invalid',
+    }), 503
 
 
 def _enabled(name):
@@ -68,36 +77,52 @@ def _production_state(service, *, inspect_subscription=False):
     except MetaWhatsAppError:
         templates = None
     billing_required = not _enabled('WHATSAPP_PRODUCTION_BILLING_VERIFIED')
-    webhook_ready = _enabled('WHATSAPP_PRODUCTION_WEBHOOK_VERIFIED')
+    webhook_verified = _enabled('WHATSAPP_PRODUCTION_WEBHOOK_VERIFIED')
     subscription_present = None
-    if inspect_subscription or webhook_ready:
+    if inspect_subscription or webhook_verified:
         try:
             subscription_present = service.has_webhook_subscriptions()
         except MetaWhatsAppError:
             pass
-        webhook_ready = webhook_ready and subscription_present is not False
-    reason = None
+    webhook_ready = webhook_verified and subscription_present is True
+
+    base_reason = None
     if billing_required:
-        reason = 'Add and verify a valid payment method in Meta WhatsApp Manager.'
+        base_reason = 'Add and verify a valid payment method in Meta WhatsApp Manager.'
     elif sender['phone_status'] != 'CONNECTED':
-        reason = 'Verify that the production phone is connected in WhatsApp Manager.'
+        base_reason = 'Verify that the production phone is connected in WhatsApp Manager.'
     elif templates is None:
-        reason = 'Verify template access in Meta WhatsApp Manager.'
+        base_reason = 'Verify template access in Meta WhatsApp Manager.'
     has_approved_template = any(
         item['name'] and item['name'] != ALLOWED_TEMPLATE for item in (templates or [])
     )
-    if not reason and not webhook_ready:
-        reason = 'Validate production delivery, read and inbound webhooks.'
-    if not reason and not has_approved_template:
-        reason = 'Verify an approved Priyanka template.'
-    prerequisites_ready = reason is None
-    test_enabled = prerequisites_ready and _enabled('WHATSAPP_PRODUCTION_TEST_ENABLED')
-    customer_sending_enabled = (
-        prerequisites_ready and _enabled('WHATSAPP_PRODUCTION_SEND_ENABLED')
-    )
-    send_disabled_reason = reason
-    if not send_disabled_reason and not customer_sending_enabled:
+    if not base_reason and not has_approved_template:
+        base_reason = 'Verify an approved Priyanka template.'
+
+    recipient_ready = False
+    recipient_error = None
+    try:
+        recipient_ready = bool(load_test_recipients(production=True))
+    except RuntimeError:
+        recipient_error = 'The controlled test recipient allowlist is invalid.'
+
+    controlled_test_reason = base_reason
+    if not controlled_test_reason and not recipient_ready:
+        controlled_test_reason = (
+            recipient_error or 'Add an explicitly opted-in controlled test recipient.'
+        )
+    if not controlled_test_reason and not _enabled('WHATSAPP_PRODUCTION_TEST_ENABLED'):
+        controlled_test_reason = 'Controlled production testing is disabled.'
+    controlled_test_enabled = controlled_test_reason is None
+
+    send_disabled_reason = base_reason
+    if not send_disabled_reason and not webhook_ready:
+        send_disabled_reason = 'Validate production delivery, read and inbound webhooks.'
+    if not send_disabled_reason and not _enabled('WHATSAPP_PRODUCTION_SEND_ENABLED'):
         send_disabled_reason = 'Production customer sends are awaiting final approval.'
+    customer_sending_enabled = (
+        send_disabled_reason is None
+    )
     return {
         'connected': True,
         'sender': sender,
@@ -112,7 +137,9 @@ def _production_state(service, *, inspect_subscription=False):
         'waba_has_webhook_subscriptions': subscription_present,
         'send_enabled': customer_sending_enabled,
         'sending_enabled': customer_sending_enabled,
-        'controlled_test_enabled': test_enabled,
+        'controlled_test_enabled': controlled_test_enabled,
+        'controlled_test_recipient_ready': recipient_ready,
+        'controlled_test_disabled_reason': controlled_test_reason,
         'send_disabled_reason': send_disabled_reason,
     }
 
@@ -374,7 +401,12 @@ def get_status(current_user):
         'runtime': 'demo',
         'connected': False,
         'send_enabled': not missing,
+        'sending_enabled': not missing,
+        'controlled_test_enabled': not missing,
+        'bulk_campaigns_enabled': False,
         'webhook_configured': not webhook_missing,
+        'webhook_ready': not webhook_missing,
+        'media_configured': not missing_r2_configuration(),
         'missing_configuration': missing + webhook_missing,
         'allowed_template': ALLOWED_TEMPLATE,
     }
@@ -804,8 +836,9 @@ def send_message(current_user, controlled_test=False):
 
 @whatsapp_integration_bp.get('/webhook')
 def verify_webhook():
+    production = _production_request()
     try:
-        MetaWhatsAppService(production=True).assert_configured()
+        MetaWhatsAppService(production=production).assert_configured()
     except MetaWhatsAppError:
         return jsonify({'error': 'Webhook is not configured'}), 503
     expected = os.environ.get('META_WA_WEBHOOK_VERIFY_TOKEN', '')
@@ -821,14 +854,14 @@ def verify_webhook():
 
 @whatsapp_integration_bp.post('/webhook')
 def receive_webhook():
-    production = True
+    production = _production_request()
     account = {}
+    service = MetaWhatsAppService(production=production)
+    try:
+        service.assert_configured()
+    except MetaWhatsAppError:
+        return jsonify({'error': 'Webhook is not configured'}), 503
     if production:
-        service = MetaWhatsAppService(production=True)
-        try:
-            service.assert_configured()
-        except MetaWhatsAppError:
-            return jsonify({'error': 'Webhook is not configured'}), 503
         account = {'waba_id': service.business_account_id, 'phone_number_id': service.phone_number_id}
     if request.content_length and request.content_length > MAX_WEBHOOK_BYTES:
         return jsonify({'error': 'Payload too large'}), 413
@@ -837,7 +870,7 @@ def receive_webhook():
     if len(raw_body) > MAX_WEBHOOK_BYTES:
         return jsonify({'error': 'Payload too large'}), 413
     app_secret = os.environ.get('META_WA_APP_SECRET', '')
-    phone_number_id = account.get('phone_number_id') or os.environ.get('META_WA_PHONE_NUMBER_ID', '')
+    phone_number_id = service.phone_number_id
     if not app_secret or not phone_number_id:
         return jsonify({'error': 'Webhook is not configured'}), 503
     signature_header = request.headers.get('X-Hub-Signature-256', '')

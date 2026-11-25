@@ -44,7 +44,7 @@ const Sidebar = ({
   isMobileOpen = false,
   onMobileClose
 }) => {
-  const { hasAnyRole, user } = useAuth()
+  const { hasAnyRole } = useAuth()
   const { businessName } = useBusiness()
   const [expandedItems, setExpandedItems] = useState({
     'salon-settings': false,
@@ -155,7 +155,6 @@ const Sidebar = ({
           label: 'WhatsApp API',
           icon: <FaWhatsapp />,
           requiresRole: ['owner'],
-          productionOnly: true,
         },
       ],
     },
@@ -235,8 +234,7 @@ const Sidebar = ({
     const isActive = activePage === item.id
     const hasSubItems = item.subItems && item.subItems.length > 0
     const isExpanded = item.expanded || expandedItems[item.id]
-    const hasRequiredRole = !item.requiresRole || hasAnyRole(...item.requiresRole)
-    const shouldShow = hasRequiredRole && (!item.productionOnly || !user?.is_demo)
+    const shouldShow = !item.requiresRole || hasAnyRole(...item.requiresRole)
 
     if (!shouldShow) return null
 

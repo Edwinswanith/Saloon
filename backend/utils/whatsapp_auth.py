@@ -1,4 +1,4 @@
-"""Authorization boundary for the production WhatsApp integration."""
+"""Runtime-scoped authorization boundary for the WhatsApp integration."""
 from functools import wraps
 
 from bson import ObjectId
@@ -7,10 +7,11 @@ from flask import jsonify
 from models import Owner
 from utils.auth import get_current_user
 from utils.branch_filter import is_demo_user
+from utils.env_config import get_app_runtime
 
 
 def require_whatsapp_owner(view):
-    """Allow only an active, non-demo Owner account."""
+    """Allow only an active Owner belonging to the configured runtime."""
     @wraps(view)
     def wrapped(*args, **kwargs):
         user = get_current_user()
@@ -30,7 +31,13 @@ def require_whatsapp_owner(view):
             is_active=True,
             status='active',
         ).first()
-        if not owner or is_demo_user(owner):
+        runtime = get_app_runtime()
+        owner_is_demo = bool(owner and is_demo_user(owner))
+        if (
+            not owner
+            or (runtime == 'production' and owner_is_demo)
+            or (runtime == 'demo' and not owner_is_demo)
+        ):
             return jsonify({'error': 'Owner access required'}), 403
 
         kwargs['current_user'] = user

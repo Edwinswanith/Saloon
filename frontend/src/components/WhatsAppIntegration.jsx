@@ -60,10 +60,14 @@ const WhatsAppIntegration = () => {
   const mediaInputRef = useRef(null)
   const mediaObjectUrlsRef = useRef([])
 
-  const approvedTemplates = useMemo(
-    () => templates.filter(item => item.status === 'APPROVED' && item.name !== 'hello_world'),
-    [templates]
-  )
+  const isDemoRuntime = status?.runtime === 'demo'
+  const approvedTemplates = useMemo(() => templates.filter(item => (
+    item.status === 'APPROVED' && (
+      isDemoRuntime
+        ? item.name === (status?.allowed_template || 'hello_world')
+        : item.name !== 'hello_world'
+    )
+  )), [isDemoRuntime, status?.allowed_template, templates])
   const selectedTemplate = approvedTemplates.find(item => `${item.name}:${item.language}` === templateKey)
   const imageRequired = selectedTemplate?.components?.some(
     component => component?.type === 'HEADER' && component.format === 'IMAGE'
@@ -238,7 +242,10 @@ const WhatsAppIntegration = () => {
     setSending(true)
     if (!requestIdRef.current) requestIdRef.current = makeRequestId()
     try {
-      const response = await apiPost('/api/integrations/whatsapp/test-messages', {
+      const endpoint = isDemoRuntime
+        ? '/api/integrations/whatsapp/messages'
+        : '/api/integrations/whatsapp/test-messages'
+      const response = await apiPost(endpoint, {
         request_id: requestIdRef.current,
         recipient_id: recipientId,
         template_name: templateName,
@@ -433,7 +440,7 @@ const WhatsAppIntegration = () => {
             <section className="wa-section">
               <div className="wa-section-heading">
                 <div>
-                  <h3>Controlled production test</h3>
+                  <h3>{isDemoRuntime ? 'Controlled demo test' : 'Controlled production test'}</h3>
                   <p>Sends a real WhatsApp message to an opted-in test recipient only when testing is enabled.</p>
                 </div>
               </div>

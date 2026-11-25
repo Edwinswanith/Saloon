@@ -8,6 +8,8 @@ from dataclasses import dataclass
 
 import requests
 
+from utils.env_config import RuntimeConfigurationError, get_app_runtime
+
 
 PHONE_RE = re.compile(r'^\d{8,15}$')
 VERSION_RE = re.compile(r'^v\d+\.\d+$')
@@ -17,6 +19,7 @@ PHONE_OR_ID_RE = re.compile(r'(?<!\w)\+?\d(?:[\s().-]*\d){7,19}(?!\w)')
 TRACE_ID_RE = re.compile(r'^[A-Za-z0-9_-]{1,200}$')
 
 SALON_DEMO_WABA_ID = '1051521404559842'
+SALON_DEMO_PHONE_NUMBER_ID = '1319744557899033'
 SALON_PRODUCTION_WABA_ID = '4800759546811980'
 SALON_PRODUCTION_PHONE_NUMBER_ID = '1521113507744203'
 MEDISCRIPT_WABA_ID = '1839181954189408'
@@ -237,7 +240,22 @@ class MetaWhatsAppService:
     WEBHOOK_ENV = ('META_WA_APP_SECRET', 'META_WA_WEBHOOK_VERIFY_TOKEN')
 
     def __init__(self, *, request_func=None, production=False):
+        try:
+            runtime = get_app_runtime()
+        except RuntimeConfigurationError as exc:
+            raise MetaWhatsAppError(
+                'WhatsApp runtime is not configured.',
+                http_status=503,
+                code='runtime_invalid',
+            ) from exc
+        if production != (runtime == 'production'):
+            raise MetaWhatsAppError(
+                'WhatsApp runtime does not match the requested configuration.',
+                http_status=503,
+                code='runtime_mismatch',
+            )
         self.production = production
+        self.runtime = runtime
         self.access_token = os.environ.get('META_WA_ACCESS_TOKEN', '').strip()
         self.phone_number_id = os.environ.get('META_WA_PHONE_NUMBER_ID', '').strip()
         self.business_account_id = os.environ.get('META_WA_BUSINESS_ACCOUNT_ID', '').strip()
@@ -262,17 +280,15 @@ class MetaWhatsAppService:
                 http_status=503,
                 code='configuration_invalid',
             )
+        expected_identity = (
+            (SALON_PRODUCTION_WABA_ID, SALON_PRODUCTION_PHONE_NUMBER_ID)
+            if self.production
+            else (SALON_DEMO_WABA_ID, SALON_DEMO_PHONE_NUMBER_ID)
+        )
         if (
-            self.production and (
-                self.business_account_id != SALON_PRODUCTION_WABA_ID
-                or self.phone_number_id != SALON_PRODUCTION_PHONE_NUMBER_ID
-            )
-        ) or (
-            not self.production and (
-                self.business_account_id == SALON_PRODUCTION_WABA_ID
-                or self.phone_number_id == SALON_PRODUCTION_PHONE_NUMBER_ID
-            )
-        ):
+            self.business_account_id,
+            self.phone_number_id,
+        ) != expected_identity:
             raise MetaWhatsAppError(
                 'WhatsApp account does not match this runtime.',
                 http_status=503,

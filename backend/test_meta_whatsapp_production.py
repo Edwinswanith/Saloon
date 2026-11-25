@@ -2,6 +2,7 @@
 import hashlib
 import hmac
 import json
+import logging
 import os
 import unittest
 from io import BytesIO
@@ -11,6 +12,9 @@ from unittest.mock import MagicMock, patch
 from flask import Flask
 from PIL import Image, PngImagePlugin
 from werkzeug.datastructures import FileStorage
+
+os.environ.setdefault('APP_RUNTIME', 'production')
+os.environ.setdefault('JWT_SECRET', 'synthetic-production-test-jwt-secret')
 
 from routes import whatsapp_integration_routes as routes
 from services.r2_media_service import R2MediaConfigurationError, R2MediaService
@@ -23,6 +27,7 @@ from utils.image_validation import (
 )
 from utils.meta_whatsapp_service import (
     MetaWhatsAppService,
+    SALON_DEMO_PHONE_NUMBER_ID,
     SALON_DEMO_WABA_ID,
     SALON_PRODUCTION_PHONE_NUMBER_ID,
     SALON_PRODUCTION_WABA_ID,
@@ -33,6 +38,7 @@ OWNER_ID = '000000000000000000000001'
 API = '/api/integrations/whatsapp'
 SYNTHETIC_SECRET = 'synthetic-production-app-secret'
 ENV = {
+    'APP_RUNTIME': 'production',
     'META_GRAPH_API_VERSION': 'v26.0',
     'META_WA_ACCESS_TOKEN': 'synthetic-access-token-never-log',
     'META_WA_PHONE_NUMBER_ID': SALON_PRODUCTION_PHONE_NUMBER_ID,
@@ -75,6 +81,15 @@ class FakeResponse:
 
     def json(self):
         return self._body
+
+
+class ListHandler(logging.Handler):
+    def __init__(self):
+        super().__init__()
+        self.messages = []
+
+    def emit(self, record):
+        self.messages.append(self.format(record))
 
 
 def image_upload(raw, filename='promotion.jpg'):
@@ -168,10 +183,14 @@ class ProductionWhatsAppTests(unittest.TestCase):
 
     def graph_response(self, method, url, **kwargs):
         resource = url.rstrip('/').split('/')[-1]
-        if resource == SALON_PRODUCTION_PHONE_NUMBER_ID:
+        if resource in {SALON_PRODUCTION_PHONE_NUMBER_ID, SALON_DEMO_PHONE_NUMBER_ID}:
             return FakeResponse(200, {
                 'id': resource,
-                'verified_name': 'Priyanka Nature Cure',
+                'verified_name': (
+                    'Priyanka Nature Cure'
+                    if resource == SALON_PRODUCTION_PHONE_NUMBER_ID
+                    else 'AiraLexo Demo'
+                ),
                 'display_phone_number': '+1 202 555 0110',
                 'quality_rating': 'GREEN',
                 'status': 'CONNECTED',
@@ -185,7 +204,55 @@ class ProductionWhatsAppTests(unittest.TestCase):
             return FakeResponse(200, {'data': [TEMPLATE]})
         if resource == 'subscribed_apps':
             return FakeResponse(200, {'data': [{'id': 'synthetic-app'}]})
+        if resource == 'messages' and method == 'POST':
+            return FakeResponse(200, {'messages': [{'id': 'wamid.synthetic.accepted'}]})
         raise AssertionError(f'Unexpected mocked Meta resource: {resource}')
+
+    @staticmethod
+    def controlled_payload(recipient_id='owner-test'):
+        return {
+            'request_id': '00000000-0000-4000-8000-000000000001',
+            'recipient_id': recipient_id,
+            'template_name': TEMPLATE['name'],
+            'language': TEMPLATE['language'],
+        }
+
+    @staticmethod
+    def pending_message():
+        message = SimpleNamespace(
+            client_request_id='00000000-0000-4000-8000-000000000001',
+            recipient_id='owner-test',
+            recipient_label='Owner test',
+            recipient_last4='0110',
+            template_name=TEMPLATE['name'],
+            language_code=TEMPLATE['language'],
+            waba_id=SALON_PRODUCTION_WABA_ID,
+            phone_number_id=SALON_PRODUCTION_PHONE_NUMBER_ID,
+            media_asset_id='',
+            send_kind='controlled_test',
+            meta_message_id=None,
+            status='pending',
+            error_code=None,
+            error_subcode=None,
+            error_message=None,
+            error_details=None,
+            meta_http_status=None,
+            fbtrace_id=None,
+            sent_by_owner_id=OWNER_ID,
+            created_at=None,
+            updated_at=None,
+        )
+
+        def update(**operations):
+            for operation, value in operations.items():
+                if operation.startswith('set__'):
+                    setattr(message, operation[5:], value)
+                elif operation.startswith('unset__'):
+                    setattr(message, operation[7:], None)
+
+        message.update = update
+        message.reload = lambda: None
+        return message
 
     def test_owner_authentication_is_required(self):
         self.current_user.return_value = None
@@ -193,6 +260,13 @@ class ProductionWhatsAppTests(unittest.TestCase):
 
         self.current_user.return_value = {'role': 'manager', 'user_id': OWNER_ID}
         self.assertEqual(self.client.get(API + '/status').status_code, 403)
+        self.graph.assert_not_called()
+
+    def test_invalid_runtime_fails_closed_without_meta_access(self):
+        with patch.dict(os.environ, {'APP_RUNTIME': 'staging'}):
+            response = self.client.get(API + '/status')
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.get_json()['error_code'], 'runtime_invalid')
         self.graph.assert_not_called()
 
     def test_active_production_owner_is_required(self):
@@ -203,6 +277,29 @@ class ProductionWhatsAppTests(unittest.TestCase):
         self.owner_query.return_value.first.return_value = None
         self.assertEqual(self.client.get(API + '/status').status_code, 403)
         self.graph.assert_not_called()
+
+    def test_demo_runtime_accepts_only_demo_owner_and_demo_sender(self):
+        demo_environment = {
+            'APP_RUNTIME': 'demo',
+            'META_WA_PHONE_NUMBER_ID': SALON_DEMO_PHONE_NUMBER_ID,
+            'META_WA_BUSINESS_ACCOUNT_ID': SALON_DEMO_WABA_ID,
+        }
+        self.is_demo.return_value = True
+        with patch.dict(os.environ, demo_environment):
+            response = self.client.get(API + '/status')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()['runtime'], 'demo')
+        self.assertTrue(response.get_json()['connected'])
+
+        self.is_demo.return_value = False
+        with patch.dict(os.environ, demo_environment):
+            self.assertEqual(self.client.get(API + '/status').status_code, 403)
+
+        self.is_demo.return_value = True
+        with patch.dict(os.environ, {'APP_RUNTIME': 'demo'}):
+            mismatched = self.client.get(API + '/status').get_json()
+        self.assertFalse(mismatched['connected'])
+        self.assertEqual(mismatched['error_code'], 'configuration_invalid')
 
     def test_missing_configuration_fails_closed(self):
         for variable in (*MetaWhatsAppService.REQUIRED_ENV, *MetaWhatsAppService.WEBHOOK_ENV):
@@ -223,6 +320,8 @@ class ProductionWhatsAppTests(unittest.TestCase):
         self.graph.assert_not_called()
 
     def test_status_and_templates_are_read_only_and_sanitized(self):
+        handler = ListHandler()
+        self.client.application.logger.addHandler(handler)
         response = self.client.get(API + '/status')
         body = response.get_json()
         self.assertTrue(body['connected'])
@@ -238,32 +337,88 @@ class ProductionWhatsAppTests(unittest.TestCase):
         self.assertEqual(templates.status_code, 200)
         self.assertEqual(templates.get_json()['templates'], [TEMPLATE])
 
-        combined = response.get_data(as_text=True) + templates.get_data(as_text=True)
-        for name in ('META_WA_ACCESS_TOKEN', 'META_WA_APP_SECRET', 'META_WA_WEBHOOK_VERIFY_TOKEN'):
+        self.client.application.logger.removeHandler(handler)
+        combined = (
+            response.get_data(as_text=True)
+            + templates.get_data(as_text=True)
+            + '\n'.join(handler.messages)
+        )
+        for name in (
+            'META_WA_ACCESS_TOKEN',
+            'META_WA_APP_SECRET',
+            'META_WA_WEBHOOK_VERIFY_TOKEN',
+        ):
             self.assertNotIn(os.environ[name], combined)
 
     def test_controlled_send_is_disabled_before_meta_call(self):
-        payload = {
-            'request_id': '00000000-0000-4000-8000-000000000001',
-            'recipient_id': 'owner-test',
-            'template_name': TEMPLATE['name'],
-            'language': TEMPLATE['language'],
-        }
-        response = self.client.post(API + '/test-messages', json=payload)
+        response = self.client.post(API + '/test-messages', json=self.controlled_payload())
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.get_json()['error_code'], 'send_disabled')
         self.graph.assert_not_called()
 
-    def test_controlled_test_stays_blocked_until_webhook_is_verified(self):
+    def test_controlled_test_is_blocked_until_billing_is_verified(self):
+        with patch.dict(os.environ, {
+            'WHATSAPP_PRODUCTION_TEST_ENABLED': 'true',
+            'WHATSAPP_PRODUCTION_WEBHOOK_VERIFIED': 'false',
+        }):
+            response = self.client.post(
+                API + '/test-messages', json=self.controlled_payload()
+            )
+        self.assertEqual(response.status_code, 403)
+        self.assertIn('payment method', response.get_json()['error'].lower())
+
+    def test_controlled_test_rejects_non_allowlisted_and_non_opted_in_recipients(self):
+        enabled = {
+            'WHATSAPP_PRODUCTION_BILLING_VERIFIED': 'true',
+            'WHATSAPP_PRODUCTION_TEST_ENABLED': 'true',
+            'WHATSAPP_PRODUCTION_WEBHOOK_VERIFIED': 'false',
+        }
+        with patch.dict(os.environ, enabled):
+            unknown = self.client.post(
+                API + '/test-messages', json=self.controlled_payload('not-allowlisted')
+            )
+        self.assertEqual(unknown.status_code, 403)
+
+        without_opt_in = json.dumps([{
+            'id': 'owner-test',
+            'label': 'Owner test',
+            'phone': '+12025550110',
+            'opted_in': False,
+        }])
+        with patch.dict(os.environ, {
+            **enabled,
+            'META_WA_TEST_RECIPIENTS_JSON': without_opt_in,
+        }):
+            not_opted_in = self.client.post(
+                API + '/test-messages', json=self.controlled_payload()
+            )
+        self.assertEqual(not_opted_in.status_code, 503)
+        self.assertNotIn('+12025550110', not_opted_in.get_data(as_text=True))
+
+    def test_controlled_test_can_send_before_webhook_verification(self):
+        message = self.pending_message()
+        event_query = MagicMock()
+        event_query.order_by.return_value = []
         with patch.dict(os.environ, {
             'WHATSAPP_PRODUCTION_BILLING_VERIFIED': 'true',
             'WHATSAPP_PRODUCTION_TEST_ENABLED': 'true',
             'WHATSAPP_PRODUCTION_WEBHOOK_VERIFIED': 'false',
-        }):
-            body = self.client.get(API + '/status').get_json()
-        self.assertFalse(body['controlled_test_enabled'])
-        self.assertFalse(body['sending_enabled'])
-        self.assertIn('webhook', body['send_disabled_reason'].lower())
+            'WHATSAPP_PRODUCTION_SEND_ENABLED': 'false',
+        }), patch.object(
+            routes, '_reserve_message', return_value=(message, True),
+        ), patch.object(
+            routes, '_enforce_send_rate_limits',
+        ) as rate_limit, patch.object(
+            routes.WhatsAppWebhookEvent, 'objects', return_value=event_query,
+        ):
+            response = self.client.post(
+                API + '/test-messages', json=self.controlled_payload()
+            )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.get_json()['message']['status'], 'accepted')
+        rate_limit.assert_called_once_with(OWNER_ID, production=True)
+        self.assertFalse(response.get_json()['duplicate'])
 
     def test_controlled_test_does_not_enable_customer_sending(self):
         with patch.dict(os.environ, {
@@ -275,6 +430,16 @@ class ProductionWhatsAppTests(unittest.TestCase):
             body = self.client.get(API + '/status').get_json()
         self.assertTrue(body['controlled_test_enabled'])
         self.assertFalse(body['sending_enabled'])
+        self.assertFalse(body['bulk_campaigns_enabled'])
+
+        customer_response = self.client.post(API + '/messages', json={
+            'request_id': '00000000-0000-4000-8000-000000000002',
+            'customer_id': '000000000000000000000099',
+            'template_name': TEMPLATE['name'],
+            'language': TEMPLATE['language'],
+        })
+        self.assertEqual(customer_response.status_code, 403)
+        self.assertEqual(customer_response.get_json()['error_code'], 'send_disabled')
 
     def test_webhook_verification_contract(self):
         wrong = self.client.get(API + '/webhook', query_string={

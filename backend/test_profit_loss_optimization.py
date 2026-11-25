@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from bson import DBRef, ObjectId
 
+os.environ.setdefault('APP_RUNTIME', 'production')
 os.environ.setdefault('JWT_SECRET', 'profit-loss-test-secret')
 
 from routes import report_routes

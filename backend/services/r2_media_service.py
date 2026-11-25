@@ -6,6 +6,8 @@ from urllib.parse import urlparse
 import boto3
 from botocore.config import Config
 
+from utils.env_config import RuntimeConfigurationError, get_app_runtime
+
 
 REQUIRED_R2_ENV = (
     'R2_ACCESS_KEY_ID',
@@ -42,7 +44,12 @@ def missing_r2_configuration(environ=None):
 class R2MediaService:
     def __init__(self, *, client=None, environ=None, production=False):
         source = environ if environ is not None else os.environ
-        runtime = str(source.get('APP_RUNTIME', 'production')).strip().lower()
+        try:
+            runtime = get_app_runtime(source)
+        except RuntimeConfigurationError as exc:
+            raise R2MediaConfigurationError(
+                'Private media storage runtime is not configured.'
+            ) from exc
         if not production and runtime != 'demo':
             raise R2MediaConfigurationError('Private demo media storage is unavailable.')
         if production and runtime != 'production':

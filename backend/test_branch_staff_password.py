@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 from bson import ObjectId
 from flask import Flask
 
+os.environ.setdefault('APP_RUNTIME', 'production')
 os.environ.setdefault('JWT_SECRET', 'branch-staff-password-test-secret')
 
 from routes import auth_routes
