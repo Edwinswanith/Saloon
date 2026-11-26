@@ -1,6 +1,7 @@
 """Meta WhatsApp Cloud API endpoints for demo and Priyanka."""
 import hashlib
 import hmac
+import json
 import os
 import re
 import uuid
@@ -49,6 +50,7 @@ whatsapp_integration_bp = Blueprint('whatsapp_integration', __name__)
 ALLOWED_TEMPLATE = 'hello_world'
 MAX_WEBHOOK_BYTES = 1024 * 1024
 STATUS_ORDER = ['pending', 'accepted', 'sent', 'delivered', 'read']
+WEBHOOK_SIGNATURE_RE = re.compile(r'^sha256=[0-9a-fA-F]{64}$')
 MAX_MEDIA_MULTIPART_BYTES = MAX_IMAGE_BYTES + (512 * 1024)
 MAX_MEDIA_LIST_ITEMS = 50
 
@@ -67,6 +69,35 @@ def handle_runtime_configuration_error(_error):
 
 def _enabled(name):
     return os.environ.get(name, '').strip().lower() == 'true'
+
+
+def _bounded_log_header(value):
+    return ''.join(
+        character if character.isascii() and character.isprintable() else '?'
+        for character in str(value or '')
+    )[:160]
+
+
+def _log_webhook_signature_rejected(raw_body, signature_header, app_secret):
+    record = {
+        'event': 'whatsapp_webhook_signature_rejected',
+        'signature_header_present': bool(signature_header),
+        'signature_header_format_valid': bool(
+            WEBHOOK_SIGNATURE_RE.fullmatch(signature_header or '')
+        ),
+        'raw_body_byte_length': len(raw_body),
+        'Content-Type': _bounded_log_header(request.headers.get('Content-Type')),
+        'app_secret_configured': bool(app_secret),
+        'APP_RUNTIME': _bounded_log_header(os.environ.get('APP_RUNTIME')),
+        'VERCEL_ENV': _bounded_log_header(os.environ.get('VERCEL_ENV')),
+    }
+    content_encoding = request.headers.get('Content-Encoding')
+    if content_encoding:
+        record['Content-Encoding'] = _bounded_log_header(content_encoding)
+    current_app.logger.warning(
+        '%s',
+        json.dumps(record, ensure_ascii=True, separators=(',', ':'), sort_keys=True),
+    )
 
 
 def _production_state(service, *, inspect_subscription=False):
@@ -866,7 +897,7 @@ def receive_webhook():
     if request.content_length and request.content_length > MAX_WEBHOOK_BYTES:
         return jsonify({'error': 'Payload too large'}), 413
 
-    raw_body = request.get_data(cache=True)
+    raw_body = request.get_data(cache=True, as_text=False)
     if len(raw_body) > MAX_WEBHOOK_BYTES:
         return jsonify({'error': 'Payload too large'}), 413
     app_secret = os.environ.get('META_WA_APP_SECRET', '')
@@ -880,6 +911,7 @@ def receive_webhook():
         app_secret,
     )
     if not signature_valid:
+        _log_webhook_signature_rejected(raw_body, signature_header, app_secret)
         return jsonify({'error': 'Invalid webhook signature'}), 401
 
     payload = request.get_json(silent=True)

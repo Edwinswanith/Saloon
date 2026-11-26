@@ -543,6 +543,8 @@ class ProductionWhatsAppTests(unittest.TestCase):
             raw,
             hashlib.sha256,
         ).hexdigest()
+        handler = ListHandler()
+        self.client.application.logger.addHandler(handler)
 
         with patch.object(routes, 'WhatsAppWebhookEvent') as event_model, patch.object(
             routes,
@@ -560,7 +562,10 @@ class ProductionWhatsAppTests(unittest.TestCase):
                 API + '/webhook',
                 data=raw,
                 content_type='application/json',
-                headers={'X-Hub-Signature-256': 'sha256= not-a-signature'},
+                headers={
+                    'X-Hub-Signature-256': 'sha256= not-a-signature',
+                    'Content-Encoding': 'identity',
+                },
             )
             self.assertEqual(malformed.status_code, 401)
             event_model.assert_not_called()
@@ -574,6 +579,15 @@ class ProductionWhatsAppTests(unittest.TestCase):
             self.assertEqual(invalid.status_code, 401)
             event_model.assert_not_called()
 
+            altered = self.client.post(
+                API + '/webhook',
+                data=raw + b'\n',
+                content_type='application/json',
+                headers={'X-Hub-Signature-256': signature},
+            )
+            self.assertEqual(altered.status_code, 401)
+            event_model.assert_not_called()
+
             valid = self.client.post(
                 API + '/webhook',
                 data=raw,
@@ -584,6 +598,41 @@ class ProductionWhatsAppTests(unittest.TestCase):
             self.assertEqual(valid.get_json()['processed'], 1)
             event_model.return_value.save.assert_called_once_with(force_insert=True)
             update_status.assert_called_once()
+
+        self.client.application.logger.removeHandler(handler)
+        records = [json.loads(message) for message in handler.messages]
+        self.assertEqual(len(records), 4)
+        expected_keys = {
+            'event',
+            'signature_header_present',
+            'signature_header_format_valid',
+            'raw_body_byte_length',
+            'Content-Type',
+            'app_secret_configured',
+            'APP_RUNTIME',
+            'VERCEL_ENV',
+        }
+        self.assertEqual(set(records[0]), expected_keys)
+        self.assertFalse(records[0]['signature_header_present'])
+        self.assertFalse(records[0]['signature_header_format_valid'])
+        self.assertTrue(records[1]['signature_header_present'])
+        self.assertFalse(records[1]['signature_header_format_valid'])
+        self.assertEqual(records[1]['Content-Encoding'], 'identity')
+        self.assertTrue(records[2]['signature_header_present'])
+        self.assertTrue(records[2]['signature_header_format_valid'])
+        self.assertEqual(records[2]['raw_body_byte_length'], len(raw))
+        self.assertTrue(records[3]['signature_header_format_valid'])
+        self.assertEqual(records[3]['raw_body_byte_length'], len(raw) + 1)
+        diagnostics = '\n'.join(handler.messages)
+        for forbidden in (
+            SYNTHETIC_SECRET,
+            signature,
+            'sha256=',
+            SALON_PRODUCTION_WABA_ID,
+            SALON_PRODUCTION_PHONE_NUMBER_ID,
+            'wamid.synthetic',
+        ):
+            self.assertNotIn(forbidden, diagnostics)
 
 
 if __name__ == '__main__':
