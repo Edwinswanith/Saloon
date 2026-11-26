@@ -607,6 +607,11 @@ class ProductionWhatsAppTests(unittest.TestCase):
             'signature_header_present',
             'signature_header_format_valid',
             'raw_body_byte_length',
+            'app_secret_length',
+            'app_secret_sha256_prefix',
+            'raw_body_sha256_prefix',
+            'supplied_signature_prefix',
+            'calculated_signature_prefix',
             'Content-Type',
             'app_secret_configured',
             'APP_RUNTIME',
@@ -623,10 +628,44 @@ class ProductionWhatsAppTests(unittest.TestCase):
         self.assertEqual(records[2]['raw_body_byte_length'], len(raw))
         self.assertTrue(records[3]['signature_header_format_valid'])
         self.assertEqual(records[3]['raw_body_byte_length'], len(raw) + 1)
+        secret_sha256 = hashlib.sha256(SYNTHETIC_SECRET.encode()).hexdigest()
+        calculated_signature = hmac.new(
+            SYNTHETIC_SECRET.encode(), raw, hashlib.sha256
+        ).hexdigest()
+        altered_signature = hmac.new(
+            SYNTHETIC_SECRET.encode(), raw + b'\n', hashlib.sha256
+        ).hexdigest()
+        for record in records:
+            self.assertEqual(record['app_secret_length'], len(SYNTHETIC_SECRET))
+            self.assertEqual(record['app_secret_sha256_prefix'], secret_sha256[:12])
+            for field in (
+                'app_secret_sha256_prefix',
+                'raw_body_sha256_prefix',
+                'calculated_signature_prefix',
+            ):
+                self.assertRegex(record[field], r'^[0-9a-f]{12}$')
+        self.assertIsNone(records[0]['supplied_signature_prefix'])
+        self.assertIsNone(records[1]['supplied_signature_prefix'])
+        self.assertEqual(records[2]['supplied_signature_prefix'], '0' * 12)
+        self.assertEqual(records[3]['supplied_signature_prefix'], signature[7:19])
+        self.assertEqual(
+            [record['raw_body_sha256_prefix'] for record in records[:3]],
+            [hashlib.sha256(raw).hexdigest()[:12]] * 3,
+        )
+        self.assertEqual(
+            records[3]['raw_body_sha256_prefix'],
+            hashlib.sha256(raw + b'\n').hexdigest()[:12],
+        )
+        self.assertEqual(records[2]['calculated_signature_prefix'], calculated_signature[:12])
+        self.assertEqual(records[3]['calculated_signature_prefix'], altered_signature[:12])
         diagnostics = '\n'.join(handler.messages)
         for forbidden in (
             SYNTHETIC_SECRET,
             signature,
+            raw.decode('utf-8'),
+            secret_sha256,
+            calculated_signature,
+            altered_signature,
             'sha256=',
             SALON_PRODUCTION_WABA_ID,
             SALON_PRODUCTION_PHONE_NUMBER_ID,

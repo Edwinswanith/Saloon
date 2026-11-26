@@ -79,13 +79,27 @@ def _bounded_log_header(value):
 
 
 def _log_webhook_signature_rejected(raw_body, signature_header, app_secret):
+    signature_match = WEBHOOK_SIGNATURE_RE.fullmatch(signature_header or '')
+    app_secret_bytes = app_secret.encode('utf-8')
     record = {
         'event': 'whatsapp_webhook_signature_rejected',
         'signature_header_present': bool(signature_header),
-        'signature_header_format_valid': bool(
-            WEBHOOK_SIGNATURE_RE.fullmatch(signature_header or '')
-        ),
+        'signature_header_format_valid': bool(signature_match),
         'raw_body_byte_length': len(raw_body),
+        'app_secret_length': len(app_secret),
+        'app_secret_sha256_prefix': hashlib.sha256(
+            app_secret_bytes
+        ).hexdigest()[:12],
+        'raw_body_sha256_prefix': hashlib.sha256(raw_body).hexdigest()[:12],
+        'supplied_signature_prefix': (
+            signature_header.split('=', 1)[1][:12].lower()
+            if signature_match else None
+        ),
+        'calculated_signature_prefix': hmac.new(
+            app_secret_bytes,
+            raw_body,
+            hashlib.sha256,
+        ).hexdigest()[:12],
         'Content-Type': _bounded_log_header(request.headers.get('Content-Type')),
         'app_secret_configured': bool(app_secret),
         'APP_RUNTIME': _bounded_log_header(os.environ.get('APP_RUNTIME')),
