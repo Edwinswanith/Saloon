@@ -1,9 +1,9 @@
 from flask import Blueprint, request, jsonify, make_response
-from models import Bill, Customer, Product, BillItemEmbedded, DiscountApprovalRequest, ApprovalCode, Staff, Membership, Branch, CashTransaction, Service, Package, MembershipPlan, ReferralProgramSettings, Referral, Invoice, Notification, Offer, InvoiceLifecycleEvent, ProductConsumptionLog
+from models import Bill, Customer, Product, BillItemEmbedded, DiscountApprovalRequest, ApprovalCode, Staff, Membership, Branch, CashTransaction, Service, Package, MembershipPlan, ReferralProgramSettings, Referral, Invoice, Notification, Offer, InvoiceLifecycleEvent, ProductConsumptionLog, WhatsAppInvoiceNotification
 from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 from mongoengine import Q
-from utils.auth import get_current_user, require_auth, JWT_SECRET
+from utils.auth import get_current_user, require_auth, require_role, JWT_SECRET
 from utils.branch_filter import apply_branch_scope, get_selected_branch
 from utils.date_utils import get_ist_date_range
 import uuid
@@ -11,8 +11,15 @@ import re
 import base64
 import hashlib
 import json
+import os
 from io import BytesIO
 from utils.approval_codes import hash_approval_code, is_code_expired, can_use_code
+from utils.invoice_whatsapp import (
+    INVOICE_NOTIFICATION_TYPE,
+    ensure_invoice_share_code,
+    mark_invoice_shared,
+    try_send_paid_invoice_whatsapp,
+)
 
 # Customer Signature feature — acknowledgment statement shown above the pad.
 # Bump the version string (and add the old text to ACK_STATEMENT_TEXT below)
@@ -2564,7 +2571,7 @@ def submit_bill_signature(id, current_user=None):
             print(f"[SIGNATURE] Audit write failed for invoice {invoice.id}: {audit_err}")
             return jsonify({'error': 'Finalization saved but confirmation is still processing — please retry.'}), 500
 
-        return jsonify(_finalize_result(invoice))
+        return jsonify(_finalize_result_with_whatsapp(invoice, bill))
     except Bill.DoesNotExist:
         return jsonify({'error': 'Bill not found'}), 404
     except Exception as e:
@@ -2586,6 +2593,18 @@ def _finalize_result(invoice):
         'finalized_at': _to_utc_iso(invoice.finalized_at),
         'bill_locked': invoice.invoice_status == 'finalized',
     }
+
+
+def _finalize_result_with_whatsapp(invoice, bill):
+    """Attach a sanitized send result without allowing messaging to fail billing."""
+    result = _finalize_result(invoice)
+    try:
+        whatsapp_result = try_send_paid_invoice_whatsapp(invoice, bill)
+    except Exception:
+        whatsapp_result = {'status': 'failed', 'error_code': 'internal_error'}
+    if whatsapp_result is not None:
+        result['whatsapp_invoice'] = whatsapp_result
+    return result
 
 
 @bill_bp.route('/bills/<id>', methods=['PUT'])
@@ -2844,8 +2863,6 @@ def download_invoice_pdf(bill_id, current_user=None):
 def generate_share_link(bill_id, current_user=None):
     """Generate a short shareable link for an invoice"""
     try:
-        import secrets
-
         bill = Bill.objects.get(id=bill_id)
 
         # Find invoice for this bill
@@ -2860,29 +2877,8 @@ def generate_share_link(bill_id, current_user=None):
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 409
 
-        # Reuse existing share_code if already generated (idempotent)
-        if invoice.share_code:
-            response = jsonify({'share_code': invoice.share_code})
-            response.headers.add('Access-Control-Allow-Origin', '*')
-            return response
-
-        # Generate a unique 8-char URL-safe code
-        for _ in range(5):
-            code = secrets.token_urlsafe(6)  # 8 chars
-            if not Invoice.objects(share_code=code).first():
-                break
-        else:
-            response = jsonify({'error': 'Failed to generate unique share code'})
-            response.headers.add('Access-Control-Allow-Origin', '*')
-            return response, 500
-
-        invoice.share_code = code
-        if invoice.status == 'generated':
-            invoice.status = 'shared'
-        invoice.shared_at = datetime.utcnow()
-        invoice.save()
-        print(f"[SHARE LINK] Generated share_code={code} for invoice {invoice.invoice_number}")
-
+        code = ensure_invoice_share_code(invoice)
+        mark_invoice_shared(invoice)
         response = jsonify({'share_code': code})
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
@@ -2894,6 +2890,52 @@ def generate_share_link(bill_id, current_user=None):
         response = jsonify({'error': str(e)})
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 500
+
+
+@bill_bp.route('/bills/<bill_id>/whatsapp-invoice/resend', methods=['POST'])
+@require_role('manager', 'owner')
+def resend_invoice_whatsapp(bill_id, current_user=None):
+    """Disabled-by-default foundation for an explicit audited resend attempt."""
+    if os.environ.get('WHATSAPP_INVOICE_RESEND_ENABLED', '').strip().lower() != 'true':
+        return jsonify({'error': 'invoice_whatsapp_resend_disabled'}), 403
+
+    data = request.get_json(silent=True) or {}
+    idempotency_key = str(
+        request.headers.get('Idempotency-Key') or data.get('idempotency_key') or ''
+    ).strip()
+    if not re.fullmatch(r'[A-Za-z0-9._:-]{8,96}', idempotency_key):
+        return jsonify({'error': 'A valid idempotency key is required.'}), 400
+    try:
+        bill = Bill.objects.get(id=bill_id)
+        invoice = Invoice.objects(bill=bill).first()
+        if not invoice:
+            return jsonify({'error': 'Invoice not found for this bill'}), 404
+        if invoice.invoice_status != 'finalized':
+            return jsonify({'error': 'invoice_not_finalized'}), 409
+        if WhatsAppInvoiceNotification.objects(
+            invoice=invoice,
+            notification_type=INVOICE_NOTIFICATION_TYPE,
+            status__in=['delivered', 'read'],
+        ).first():
+            return jsonify({'error': 'invoice_whatsapp_already_delivered'}), 409
+
+        result = try_send_paid_invoice_whatsapp(
+            invoice,
+            bill,
+            attempt_kind='resend',
+            idempotency_key=f'resend:{idempotency_key}',
+        )
+        if result is None:
+            return jsonify({'error': 'invoice_whatsapp_notifications_disabled'}), 403
+        if result['status'] == 'skipped':
+            return jsonify({'whatsapp_invoice': result}), 422
+        if result['status'] == 'failed':
+            return jsonify({'whatsapp_invoice': result}), 502
+        return jsonify({'whatsapp_invoice': result}), (200 if result.get('duplicate') else 201)
+    except Bill.DoesNotExist:
+        return jsonify({'error': 'Bill not found'}), 404
+    except Exception:
+        return jsonify({'error': 'invoice_whatsapp_resend_failed'}), 500
 
 
 # Public invoice routes - registered directly on app (not via blueprint) to avoid /api prefix

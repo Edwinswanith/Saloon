@@ -450,15 +450,22 @@ class Invoice(Document):
 class InvoiceLifecycleEvent(Document):
     meta = {
         'collection': 'invoice_lifecycle_events',
-        'indexes': ['invoice', 'bill', 'created_at']
+        'indexes': [
+            'invoice', 'bill', 'created_at',
+            {'fields': ['event_key'], 'unique': True, 'sparse': True},
+        ]
     }
     event_type = StringField(required=True, choices=[
         'invoice_generated', 'invoice_finalized_signed', 'invoice_finalized_skipped',
         'pdf_generated', 'pdf_generation_failed',
         'invoice_downloaded', 'whatsapp_share_initiated',
+        'invoice_whatsapp_accepted', 'invoice_whatsapp_failed',
+        'invoice_whatsapp_delivered', 'invoice_whatsapp_read',
     ])
+    event_key = StringField(max_length=160)
     bill = ReferenceField('Bill')
     invoice = ReferenceField('Invoice')
+    notification = ReferenceField('WhatsAppInvoiceNotification')
     invoice_version = IntField()
     snapshot_hash = StringField()
     signature_hash = StringField()
@@ -915,6 +922,58 @@ class WhatsAppTestMessage(Document):
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
     status_updated_at = DateTimeField(default=datetime.utcnow)
+
+
+class WhatsAppInvoiceNotification(Document):
+    """Durable, idempotent audit state for paid-invoice template sends."""
+    meta = {
+        'collection': 'whatsapp_invoice_notifications',
+        'indexes': [
+            {
+                'fields': ['invoice', 'notification_type', 'idempotency_key'],
+                'unique': True,
+            },
+            {'fields': ['meta_message_id'], 'unique': True, 'sparse': True},
+            {'fields': ['bill', '-created_at']},
+            {'fields': ['customer', '-created_at']},
+            {'fields': ['status', '-updated_at']},
+        ],
+    }
+
+    invoice = ReferenceField('Invoice', required=True)
+    bill = ReferenceField('Bill', required=True)
+    customer = ReferenceField('Customer', required=True)
+    branch = ReferenceField('Branch')
+    notification_type = StringField(
+        required=True,
+        choices=['invoice_paid'],
+        default='invoice_paid',
+    )
+    attempt_kind = StringField(
+        required=True,
+        choices=['automatic', 'resend'],
+        default='automatic',
+    )
+    idempotency_key = StringField(required=True, max_length=128)
+    template_name = StringField(required=True, max_length=100)
+    language = StringField(required=True, max_length=20)
+    waba_id = StringField(max_length=32)
+    phone_number_id = StringField(max_length=32)
+    status = StringField(
+        required=True,
+        max_length=20,
+        choices=['pending', 'accepted', 'sent', 'delivered', 'read', 'failed'],
+        default='pending',
+    )
+    meta_message_id = StringField(max_length=200)
+    attempt_count = IntField(default=1, min_value=1)
+    last_error_code = StringField(max_length=100)
+    created_at = DateTimeField(default=datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.utcnow)
+    accepted_at = DateTimeField()
+    sent_at = DateTimeField()
+    delivered_at = DateTimeField()
+    read_at = DateTimeField()
 
 
 class WhatsAppWebhookEvent(Document):

@@ -35,6 +35,7 @@ from utils.image_validation import (
     build_media_object_key,
     normalize_uploaded_image,
 )
+from utils.invoice_whatsapp import update_invoice_notification_status
 from utils.campaign_whatsapp import update_campaign_recipient_status
 from utils.meta_whatsapp_service import (
     MetaWhatsAppError,
@@ -988,6 +989,18 @@ def receive_webhook():
                 except Exception as exc:
                     current_app.logger.error(
                         'WhatsApp campaign status update failed: %s',
+                        type(exc).__name__,
+                    )
+                try:
+                    update_invoice_notification_status(
+                        event['meta_message_id'],
+                        event['status'],
+                        error_code,
+                        account=account,
+                    )
+                except Exception as exc:
+                    current_app.logger.error(
+                        'WhatsApp invoice status update failed: %s',
                         type(exc).__name__,
                     )
     return jsonify({'received': True, 'processed': processed})

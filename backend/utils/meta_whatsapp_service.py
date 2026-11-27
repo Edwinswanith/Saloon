@@ -517,7 +517,59 @@ class MetaWhatsAppService:
             raise MetaWhatsAppError('Meta returned no valid media id.', code='missing_media_id')
         return media_id
 
-    def send_template(self, recipient_phone, template_name, language_code, *, media_id=None):
+    def send_template(
+        self,
+        recipient_phone,
+        template_name,
+        language_code,
+        *,
+        media_id=None,
+        body_parameters=None,
+        url_button_parameter=None,
+    ):
+        components = []
+        if media_id:
+            components.append({
+                'type': 'header',
+                'parameters': [{'type': 'image', 'image': {'id': media_id}}],
+            })
+        if body_parameters is not None:
+            if (
+                not isinstance(body_parameters, (list, tuple))
+                or not body_parameters
+                or any(
+                    not isinstance(value, str) or not value or len(value) > 1024
+                    for value in body_parameters
+                )
+            ):
+                raise MetaWhatsAppError(
+                    'Template body parameters are invalid.',
+                    http_status=400,
+                    code='template_parameters_invalid',
+                )
+            components.append({
+                'type': 'body',
+                'parameters': [
+                    {'type': 'text', 'text': value}
+                    for value in body_parameters
+                ],
+            })
+        if url_button_parameter is not None:
+            if (
+                not isinstance(url_button_parameter, str)
+                or not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', url_button_parameter)
+            ):
+                raise MetaWhatsAppError(
+                    'Template URL parameter is invalid.',
+                    http_status=400,
+                    code='template_parameters_invalid',
+                )
+            components.append({
+                'type': 'button',
+                'sub_type': 'url',
+                'index': '0',
+                'parameters': [{'type': 'text', 'text': url_button_parameter}],
+            })
         body = self._request(
             'POST',
             f'{self.phone_number_id}/messages',
@@ -528,10 +580,7 @@ class MetaWhatsAppService:
                 'template': {
                     'name': template_name,
                     'language': {'code': language_code},
-                    **({'components': [{
-                        'type': 'header',
-                        'parameters': [{'type': 'image', 'image': {'id': media_id}}],
-                    }]} if media_id else {}),
+                    **({'components': components} if components else {}),
                 },
             },
         )

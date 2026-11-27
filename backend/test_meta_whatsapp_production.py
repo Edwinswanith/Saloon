@@ -552,7 +552,10 @@ class ProductionWhatsAppTests(unittest.TestCase):
         ) as update_status, patch.object(
             routes,
             'update_campaign_recipient_status',
-        ) as update_campaign_status:
+        ) as update_campaign_status, patch.object(
+            routes,
+            'update_invoice_notification_status',
+        ) as update_invoice_status:
             missing = self.client.post(
                 API + '/webhook',
                 data=raw,
@@ -602,6 +605,15 @@ class ProductionWhatsAppTests(unittest.TestCase):
             event_model.return_value.save.assert_called_once_with(force_insert=True)
             update_status.assert_called_once()
             update_campaign_status.assert_called_once_with(
+                'wamid.synthetic',
+                'delivered',
+                '',
+                account={
+                    'waba_id': SALON_PRODUCTION_WABA_ID,
+                    'phone_number_id': SALON_PRODUCTION_PHONE_NUMBER_ID,
+                },
+            )
+            update_invoice_status.assert_called_once_with(
                 'wamid.synthetic',
                 'delivered',
                 '',
