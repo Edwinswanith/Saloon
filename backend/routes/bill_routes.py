@@ -2799,7 +2799,12 @@ def get_invoice_html(bill_id, current_user=None):
         from services.invoice_pdf_service import render_invoice_html
         bill = Bill.objects.get(id=bill_id)
         invoice_data = _build_invoice_data(bill)
-        html_content = render_invoice_html(invoice_data, show_actions=True)
+        html_content = render_invoice_html(
+            invoice_data,
+            show_actions=True,
+            show_whatsapp_action=False,
+            show_download_action=False,
+        )
         return html_content, 200, {'Content-Type': 'text/html; charset=utf-8'}
     except Bill.DoesNotExist:
         return '<h1>Bill not found</h1>', 404, {'Content-Type': 'text/html'}

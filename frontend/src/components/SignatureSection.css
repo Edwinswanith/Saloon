@@ -97,22 +97,6 @@
   margin: 8px 0 0 0;
 }
 
-.signature-actions-row {
-  display: flex;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.signature-actions-disabled .invoice-action-btn {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.signature-disabled-note {
-  text-align: center;
-  margin-top: 6px;
-}
-
 .signature-caption {
   font-size: 11px;
   color: var(--text-primary, #0f172a);

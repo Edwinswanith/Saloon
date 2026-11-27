@@ -960,6 +960,9 @@ class WhatsAppInvoiceNotification(Document):
     idempotency_key = StringField(required=True, max_length=128)
     template_name = StringField(required=True, max_length=100)
     language = StringField(required=True, max_length=20)
+    # Exact dynamic URL suffix supplied to Meta for this notification.
+    # Keeping the short code (not the public URL) makes delivery audits possible.
+    share_code = StringField(max_length=10)
     waba_id = StringField(max_length=32)
     phone_number_id = StringField(max_length=32)
     status = StringField(

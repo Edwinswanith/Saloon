@@ -328,6 +328,7 @@ class InvoiceWhatsAppTests(unittest.TestCase):
                 customer,
                 'priyanka_invoice_paid',
                 'en_US',
+                'Share123',
                 attempt_kind='automatic',
                 idempotency_key='automatic',
             )

@@ -47,7 +47,13 @@ def register_template_filters(app):
     app.jinja_env.filters['format_mobile'] = format_mobile
 
 
-def render_invoice_html(invoice_data, show_actions=False, download_url=None):
+def render_invoice_html(
+    invoice_data,
+    show_actions=False,
+    download_url=None,
+    show_whatsapp_action=True,
+    show_download_action=True,
+):
     """
     Render invoice HTML from template
 
@@ -55,6 +61,8 @@ def render_invoice_html(invoice_data, show_actions=False, download_url=None):
         invoice_data: Dictionary containing invoice information
         show_actions: Whether to show action buttons (True for viewing, False for PDF)
         download_url: Optional URL for downloading PDF (for public invoice views)
+        show_whatsapp_action: Whether to show the legacy WhatsApp action
+        show_download_action: Whether to show the PDF action
 
     Returns:
         str: Rendered HTML string
@@ -72,7 +80,9 @@ def render_invoice_html(invoice_data, show_actions=False, download_url=None):
         payment=invoice_data.get('payment', {}),
         signature=invoice_data.get('signature'),
         show_actions=show_actions,
-        download_url=download_url
+        download_url=download_url,
+        show_whatsapp_action=show_whatsapp_action,
+        show_download_action=show_download_action,
     )
 
 

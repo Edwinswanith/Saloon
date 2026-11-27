@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { FaWhatsapp } from 'react-icons/fa'
-import { apiGet, apiPost } from '../utils/api'
-import { PUBLIC_BASE_URL } from '../config'
+import { apiGet } from '../utils/api'
 import { useBusiness } from '../contexts/BusinessContext'
 import SignatureSection from './SignatureSection'
 import './InvoicePreview.css'
@@ -57,7 +55,7 @@ export const BRANCH_INFO = {
   }
 }
 
-const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
+const InvoicePreview = ({ invoiceData, billId, onReview }) => {
   const { businessName: configuredBusinessName } = useBusiness()
   const [htmlContent, setHtmlContent] = useState('')
   const [loading, setLoading] = useState(false)
@@ -116,20 +114,12 @@ const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
     if (useServerHtml && htmlContent) {
       window.invoiceActions = {
         review: onReview || (() => {}),
-        download: onDownload || (() => {}),
-        whatsapp: () => {
-          if (invoiceData?.customer?.mobile) {
-            const phoneNumber = invoiceData.customer.mobile.replace(/[^0-9]/g, '')
-            const whatsappUrl = `https://wa.me/${phoneNumber.startsWith('91') ? phoneNumber : '91' + phoneNumber}`
-            window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
-          }
-        }
       }
       return () => {
         delete window.invoiceActions
       }
     }
-  }, [useServerHtml, htmlContent, onReview, onDownload, invoiceData])
+  }, [useServerHtml, htmlContent, onReview])
 
   // If we have server-rendered HTML, use it
   if (useServerHtml && htmlContent) {
@@ -217,84 +207,6 @@ const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
     } catch (e) {
       return `${dateStr}, ${timeStr}`
     }
-  }
-
-  const handleSendWhatsApp = async () => {
-    if (!invoiceData?.customer?.mobile) return
-
-    let phoneNumber = invoiceData.customer.mobile.replace(/[^0-9]/g, '')
-    if (phoneNumber.startsWith('91') && phoneNumber.length > 10) {
-      phoneNumber = phoneNumber
-    } else if (phoneNumber.length === 10) {
-      phoneNumber = '91' + phoneNumber
-    }
-
-    // Extract customer name
-    const customer = invoiceData.customer
-    const customerName = customer?.name || 
-      (customer?.first_name ? 
-        `${customer.first_name}${customer.last_name ? ' ' + customer.last_name : ''}`.trim() : 
-        'Customer')
-
-    // Get branch phone number dynamically
-    let signoffPhone = '+91 xyx' // Default fallback
-    if (invoiceData?.branch?.name) {
-      const branchName = invoiceData.branch.name.trim()
-      const branchKey = Object.keys(BRANCH_INFO).find(
-        key => key.toLowerCase() === branchName.toLowerCase()
-      )
-      if (branchKey && BRANCH_INFO[branchKey]?.phone) {
-        // Get first phone number if multiple are listed (comma-separated)
-        const branchPhone = BRANCH_INFO[branchKey].phone.split(',')[0].trim()
-        // Format phone number - add +91 if it's a 10-digit number
-        if (branchPhone.match(/^\d{10}$/)) {
-          signoffPhone = `+91 ${branchPhone}`
-        } else if (branchPhone.match(/^\+91/)) {
-          signoffPhone = branchPhone
-        } else {
-          signoffPhone = branchPhone
-        }
-      }
-    }
-
-    // Communication settings (business name from BusinessContext)
-    const businessName = configuredBusinessName || 'Priyanka Nature Cure'
-    const supportPhone = '8095851126'
-    const feedbackLink = `${PUBLIC_BASE_URL}/feedback`
-    const signoffName = businessName
-
-    // Generate shareable invoice link (single URL for viewing and downloading)
-    let invoiceLink = ''
-    if (billId) {
-      try {
-        const res = await apiPost(`/api/bills/${billId}/share-link`)
-        if (res.ok) {
-          const data = await res.json()
-          invoiceLink = `${PUBLIC_BASE_URL}/i/${data.share_code}/pdf`
-        }
-      } catch (e) {
-        // Fallback to text-only if link generation fails
-      }
-    }
-
-    // Build message in exact format as requested
-    let message = `Dear ${customerName},\n\n`
-    message += `Thank you for visiting *${businessName}*!\n\n`
-    message += `View your *invoice* here:\n\n`
-    
-    if (invoiceLink) {
-      message += `${invoiceLink}\n\n`
-    }
-    
-    message += `Need help or want to book your next visit? Call or WhatsApp us at *${supportPhone}*\n\n`
-    message += `We'd love to hear from you! Share your *feedback* here:\n\n`
-    message += `${feedbackLink}\n\n`
-    message += `Thanks\n`
-    message += `${signoffName}\n`
-    message += `${signoffPhone}`
-
-    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
-    window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
   }
 
   return (
@@ -478,8 +390,7 @@ const InvoicePreview = ({ invoiceData, billId, onDownload, onReview }) => {
         </div>
       )}
 
-      {/* Customer Signature section — owns Confirm & Finalize plus the
-          Download/WhatsApp actions, gated on the signature being finalized. */}
+      {/* Customer signature and finalization controls. */}
       {billId && (
         <SignatureSection
           billId={billId}

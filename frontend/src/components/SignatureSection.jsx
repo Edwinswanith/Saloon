@@ -1,9 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { apiPost } from '../utils/api'
-import { API_BASE_URL, PUBLIC_BASE_URL } from '../config'
-import { useBusiness } from '../contexts/BusinessContext'
 import SignaturePad from './SignaturePad'
-import { BRANCH_INFO } from './InvoicePreview'
 import './SignatureSection.css'
 
 const SKIP_REASONS = [
@@ -19,12 +16,11 @@ function genIdempotencyKey() {
 
 /**
  * Customer Signature panel — sits between the bill details and the
- * Download/WhatsApp actions inside InvoicePreview. Deterministically
+ * customer confirmation area inside InvoicePreview. Deterministically
  * dismisses any open software keyboard before enabling the pad, and keeps
  * the pad read-only once the bill is finalized (locally, or on reopen).
  */
 export default function SignatureSection({ billId, invoiceData, onFinalized }) {
-  const { businessName: configuredBusinessName } = useBusiness()
   const sectionRef = useRef(null)
   const padRef = useRef(null)
   const idempotencyKeyRef = useRef(genIdempotencyKey())
@@ -38,12 +34,9 @@ export default function SignatureSection({ billId, invoiceData, onFinalized }) {
   const [skipNote, setSkipNote] = useState('')
   const [noteFocused, setNoteFocused] = useState(false)
   const [signingEnabled, setSigningEnabled] = useState(false)
-  const [downloading, setDownloading] = useState(false)
-  const [sendingWhatsApp, setSendingWhatsApp] = useState(false)
 
   const isFinalized = invoiceData?.invoice_status === 'finalized'
   const signature = invoiceData?.signature
-  const pdfReady = invoiceData?.pdf_status === 'ready' || isFinalized // best-effort — see note below
 
   // --- Keyboard dismissal on entering signing mode ---------------------------
   // Blur whatever text field might be focused elsewhere in the app (e.g. a
@@ -182,85 +175,6 @@ export default function SignatureSection({ billId, invoiceData, onFinalized }) {
     }, 200)
   }
 
-  const handleDownload = async () => {
-    if (downloading) return
-    setDownloading(true)
-    try {
-      const sessionAuth = sessionStorage.getItem('auth_token')
-      const response = await fetch(`${API_BASE_URL}/api/bills/${billId}/invoice/pdf`, {
-        headers: sessionAuth ? { Authorization: `Bearer ${sessionAuth}` } : {},
-      })
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}))
-        setError(body.error === 'invoice_not_finalized'
-          ? 'This invoice is not finalized yet.'
-          : (body.error || 'Failed to prepare the PDF. Please retry.'))
-        return
-      }
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `invoice_${invoiceData?.bill_number || billId}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      window.URL.revokeObjectURL(url)
-    } catch (e) {
-      setError('Failed to download the PDF. Please retry.')
-    } finally {
-      setDownloading(false)
-    }
-  }
-
-  const handleSendWhatsApp = async () => {
-    if (sendingWhatsApp) return
-    const customer = invoiceData?.customer
-    if (!customer?.mobile) return
-    setSendingWhatsApp(true)
-    try {
-      let phoneNumber = customer.mobile.replace(/[^0-9]/g, '')
-      if (phoneNumber.length === 10) phoneNumber = '91' + phoneNumber
-
-      const customerName = customer?.name || 'Customer'
-      const businessName = configuredBusinessName || 'Priyanka Nature Cure'
-      const feedbackLink = `${PUBLIC_BASE_URL}/feedback`
-
-      let signoffPhone = ''
-      const branchName = invoiceData?.branch?.name?.trim()
-      const branchKey = branchName && Object.keys(BRANCH_INFO).find(k => k.toLowerCase() === branchName.toLowerCase())
-      if (branchKey && BRANCH_INFO[branchKey]?.phone) {
-        signoffPhone = BRANCH_INFO[branchKey].phone.split(',')[0].trim()
-      }
-
-      let invoiceLink = ''
-      try {
-        const res = await apiPost(`/api/bills/${billId}/share-link`)
-        if (res.ok) {
-          const data = await res.json()
-          invoiceLink = `${PUBLIC_BASE_URL}/i/${data.share_code}/pdf`
-        } else {
-          const body = await res.json().catch(() => ({}))
-          if (body.error === 'invoice_not_finalized') {
-            setError('This invoice is not finalized yet.')
-            return
-          }
-        }
-      } catch (e) {
-        // Fall through to text-only message if link generation fails
-      }
-
-      let message = `Dear ${customerName},\n\nThank you for visiting *${businessName}*!\n\n`
-      if (invoiceLink) message += `View your *invoice* here:\n\n${invoiceLink}\n\n`
-      message += `We'd love to hear from you! Share your *feedback* here:\n\n${feedbackLink}\n\nThanks\n${businessName}`
-      if (signoffPhone) message += `\n${signoffPhone}`
-
-      window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')
-    } finally {
-      setSendingWhatsApp(false)
-    }
-  }
-
   // --- Read-only: already finalized (fresh confirm, or reopening later) -----
   if (isFinalized) {
     return (
@@ -291,22 +205,6 @@ export default function SignatureSection({ billId, invoiceData, onFinalized }) {
           </div>
         )}
 
-        <div className="signature-actions-row">
-          <button
-            className="invoice-action-btn download-btn"
-            onClick={handleDownload}
-            disabled={downloading || !pdfReady}
-          >
-            {downloading ? 'Preparing…' : 'Download Bill'}
-          </button>
-          <button
-            className="invoice-action-btn whatsapp-btn"
-            onClick={handleSendWhatsApp}
-            disabled={sendingWhatsApp || !pdfReady || !invoiceData?.customer?.mobile}
-          >
-            {sendingWhatsApp ? 'Opening…' : 'Send via WhatsApp'}
-          </button>
-        </div>
         {error && <p className="signature-error">{error}</p>}
       </div>
     )
@@ -365,14 +263,6 @@ export default function SignatureSection({ billId, invoiceData, onFinalized }) {
           </button>
         </div>
       )}
-
-      <div className="signature-actions-row signature-actions-disabled">
-        <button className="invoice-action-btn download-btn" disabled>Download Bill</button>
-        <button className="invoice-action-btn whatsapp-btn" disabled>Send via WhatsApp</button>
-      </div>
-      <p className="signature-caption-muted signature-disabled-note">
-        Disabled until the customer signature is finalized
-      </p>
 
       {skipModalOpen && (
         <div className="signature-skip-overlay" onClick={closeSkipModal}>

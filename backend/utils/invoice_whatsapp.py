@@ -191,6 +191,7 @@ def _reserve_notification(
     customer,
     template_name,
     language,
+    share_code,
     *,
     attempt_kind,
     idempotency_key,
@@ -205,6 +206,7 @@ def _reserve_notification(
         idempotency_key=idempotency_key,
         template_name=template_name,
         language=language,
+        share_code=share_code,
         status='pending',
         attempt_count=1,
     )
@@ -281,6 +283,7 @@ def try_send_paid_invoice_whatsapp(
             eligible['customer'],
             template_name,
             language,
+            share_code,
             attempt_kind=attempt_kind,
             idempotency_key=idempotency_key,
         )

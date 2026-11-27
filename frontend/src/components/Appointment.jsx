@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { FaTimes, FaEdit, FaShare, FaDownload, FaArrowLeft } from 'react-icons/fa'
 import './Appointment.css'
-import { API_BASE_URL } from '../config'
 import { useAuth } from '../contexts/AuthContext'
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 import { showSuccess, showError, showWarning } from '../utils/toast.jsx'
@@ -324,67 +323,6 @@ const Appointment = ({ setActivePage }) => {
       showError('Error loading invoice data')
     } finally {
       setLoadingInvoice(false)
-    }
-  }
-
-  const handleDownloadInvoice = async () => {
-    if (!billId) {
-      showError('No bill found for this appointment')
-      return
-    }
-
-    try {
-      // Use the correct token key (auth_token) and branch ID
-      const token = sessionStorage.getItem('auth_token') || sessionStorage.getItem('token')
-      let branchId = currentBranch?.id
-      if (!branchId) {
-        const storedBranch = sessionStorage.getItem('current_branch')
-        if (storedBranch) {
-          try {
-            const branch = JSON.parse(storedBranch)
-            branchId = branch?.id
-          } catch (e) {
-            console.error('Error parsing stored branch:', e)
-          }
-        }
-      }
-      
-      if (!token) {
-        showError('Authentication token not found. Please log in again.')
-        return
-      }
-      
-      const response = await fetch(`${API_BASE_URL}/api/bills/${billId}/invoice/pdf`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'X-Branch-Id': branchId || ''
-        }
-      })
-
-      if (response.ok) {
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `invoice_${invoiceData?.bill_number || invoiceData?.invoice_number || billId}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
-        showSuccess('Invoice downloaded successfully')
-      } else {
-        const errorText = await response.text().catch(() => 'Failed to download invoice')
-        console.error('Failed to download invoice:', response.status, errorText)
-        if (response.status === 401) {
-          showError('Unauthorized. Please log in again.')
-        } else {
-          showError(`Failed to download invoice: ${errorText}`)
-        }
-      }
-    } catch (error) {
-      console.error('Error downloading invoice:', error)
-      showError('Error downloading invoice')
     }
   }
 
@@ -744,7 +682,6 @@ const Appointment = ({ setActivePage }) => {
                     <InvoicePreview
                       invoiceData={invoiceData}
                       billId={billId}
-                      onDownload={handleDownloadInvoice}
                       onReview={handleReviewUs}
                     />
                   </div>
