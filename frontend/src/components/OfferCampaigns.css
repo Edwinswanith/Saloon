@@ -189,6 +189,7 @@
 
 .customers-summary {
   display: flex;
+  flex-wrap: wrap;
   gap: 24px;
   margin-bottom: 20px;
   padding: 16px;
@@ -292,6 +293,28 @@
   font-size: 11px;
 }
 
+.invalid-phone-badge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  background: var(--error-100);
+  color: var(--error-700);
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.campaign-help-text,
+.customer-dob {
+  color: var(--gray-600);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.campaign-heading-icon {
+  margin-right: 8px;
+  vertical-align: -2px;
+}
+
 .send-section {
   background: var(--primary-50);
   border: 2px solid var(--primary-200);
@@ -337,6 +360,72 @@
   overflow-x: auto;
 }
 
+.campaign-confirmation-grid,
+.campaign-progress-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+.campaign-confirmation-grid span,
+.campaign-progress-metric {
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: var(--gray-600);
+  font-size: 12px;
+}
+
+.campaign-confirmation-grid strong,
+.campaign-progress-metric strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--gray-900);
+  font-size: 18px;
+}
+
+.campaign-progress-panel {
+  border-left: 4px solid var(--primary-600);
+}
+
+.campaign-progress-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 18px;
+}
+
+.campaign-progress-header h2 {
+  margin-bottom: 6px;
+}
+
+.campaign-progress-header p {
+  margin: 0;
+  color: var(--gray-600);
+  font-size: 13px;
+}
+
+.campaign-progress-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.campaign-progress-status .btn-primary {
+  padding: 7px 12px;
+}
+
+.campaign-pause-reason {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--warning-200);
+  border-radius: 6px;
+  background: var(--warning-100);
+  color: var(--warning-700);
+  font-size: 13px;
+}
+
 .campaigns-table table {
   width: 100%;
   border-collapse: collapse;
@@ -380,7 +469,26 @@
   color: var(--warning-700);
 }
 
-.status-badge.failed {
+.status-badge.queued,
+.status-badge.processing,
+.status-badge.in_progress {
+  background: var(--primary-100);
+  color: var(--primary-700);
+}
+
+.status-badge.paused {
+  background: var(--warning-100);
+  color: var(--warning-700);
+}
+
+.status-badge.delivered,
+.status-badge.read {
+  background: var(--success-100);
+  color: var(--success-700);
+}
+
+.status-badge.failed,
+.status-badge.attention_required {
   background: var(--error-100);
   color: var(--error-700);
 }
@@ -575,6 +683,10 @@
 
   .customers-summary {
     gap: 16px;
+  }
+
+  .campaign-progress-header {
+    flex-direction: column;
   }
 
   .filter-select {

@@ -976,7 +976,14 @@ class DiscountApprovalRequest(Document):
 
 # Offer Campaign Model
 class OfferCampaign(Document):
-    meta = {'collection': 'offer_campaigns'}
+    meta = {
+        'collection': 'offer_campaigns',
+        'indexes': [
+            {'fields': ['client_request_id'], 'unique': True, 'sparse': True},
+            {'fields': ['branch', '-created_at']},
+            {'fields': ['status', 'worker_lease_expires_at', 'created_at']},
+        ],
+    }
     
     name = StringField(max_length=100)
     message_text = StringField(required=True)
@@ -985,11 +992,81 @@ class OfferCampaign(Document):
     filter_type = StringField()  # 'all', 'top10_revenue', 'top10_visits', 'gender_female', 'gender_male', 'inactive'
     campaign_type = StringField(max_length=20, choices=['general', 'birthday'], default='general')
     branch = ReferenceField('Branch')
+    client_request_id = StringField(max_length=36)
+    request_hash = StringField(max_length=64)
+    template_name = StringField(max_length=100)
+    language_code = StringField(max_length=20)
+    media_asset = ReferenceField('WhatsAppMediaAsset')
+    requested_count = IntField(default=0)
+    eligible_count = IntField(default=0)
+    excluded_count = IntField(default=0)
+    excluded_no_consent = IntField(default=0)
+    excluded_invalid_phone = IntField(default=0)
+    excluded_not_found = IntField(default=0)
+    queued_count = IntField(default=0)
+    processing_count = IntField(default=0)
+    accepted_count = IntField(default=0)
     sent_count = IntField(default=0)
+    delivered_count = IntField(default=0)
+    read_count = IntField(default=0)
     failed_count = IntField(default=0)
-    status = StringField(default='pending')  # pending, completed, failed
+    unknown_count = IntField(default=0)
+    duplicate_count = IntField(default=0)
+    meta_media_id = StringField(max_length=40)
+    media_uploaded_at = DateTimeField()
+    pause_code = StringField(max_length=100)
+    pause_reason = StringField(max_length=500)
+    paused_at = DateTimeField()
+    worker_lease_id = StringField(max_length=36)
+    worker_lease_expires_at = DateTimeField()
+    status = StringField(default='pending')  # pending, queued, processing, paused, in_progress, delivered, read, failed
+    created_by_id = StringField(max_length=64)
     created_by_name = StringField()
     created_at = DateTimeField(default=datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.utcnow)
+
+
+class CampaignWhatsAppRecipient(Document):
+    """Per-customer delivery state and durable campaign-send reservation."""
+    meta = {
+        'collection': 'campaign_whatsapp_recipients',
+        'indexes': [
+            {
+                'fields': ['campaign', 'customer', 'template_name'],
+                'unique': True,
+            },
+            {'fields': ['meta_message_id'], 'unique': True, 'sparse': True},
+            {'fields': ['campaign', 'status']},
+            {'fields': ['status', 'lease_expires_at']},
+            {'fields': ['customer', '-created_at']},
+        ],
+    }
+
+    campaign = ReferenceField('OfferCampaign', required=True)
+    customer = ReferenceField('Customer', required=True)
+    branch = ReferenceField('Branch')
+    waba_id = StringField(required=True, max_length=32)
+    phone_number_id = StringField(required=True, max_length=32)
+    template_name = StringField(required=True, max_length=100)
+    language_code = StringField(required=True, max_length=20)
+    media_asset = ReferenceField('WhatsAppMediaAsset', required=True)
+    normalized_recipient = StringField(required=True, max_length=15)
+    status = StringField(
+        required=True,
+        max_length=20,
+        choices=['queued', 'processing', 'accepted', 'sent', 'delivered', 'read', 'failed', 'unknown'],
+        default='queued',
+    )
+    meta_message_id = StringField(max_length=200)
+    error_code = StringField(max_length=100)
+    error_message = StringField(max_length=500)
+    attempt_count = IntField(default=0)
+    worker_lease_id = StringField(max_length=36)
+    lease_expires_at = DateTimeField()
+    claimed_at = DateTimeField()
+    created_at = DateTimeField(default=datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.utcnow)
+    status_updated_at = DateTimeField(default=datetime.utcnow)
 
 # Approval Code Model (Phase 5)
 class ApprovalCode(Document):

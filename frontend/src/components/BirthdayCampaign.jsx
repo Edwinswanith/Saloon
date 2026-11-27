@@ -1,308 +1,182 @@
-import React, { useState, useEffect } from 'react';
-import { FaImage, FaTimes, FaCheck, FaUsers, FaPaperPlane, FaBirthdayCake } from 'react-icons/fa';
-import { apiGet, apiPost } from '../utils/api';
-import { showSuccess, showError } from '../utils/toast.jsx';
+import React, { useEffect, useState } from 'react';
+import { FaBirthdayCake, FaCheck, FaImage, FaPaperPlane, FaTimes, FaUsers } from 'react-icons/fa';
+import { apiGet } from '../utils/api';
+import {
+  MAX_CAMPAIGN_IMAGE_BYTES,
+  analyzeCampaignSelection,
+  createQueuedCampaign,
+  normalizeCampaignPhone,
+  uploadCampaignImage,
+} from '../utils/campaignQueue';
+import { showError, showSuccess } from '../utils/toast.jsx';
 import { useAuth } from '../contexts/AuthContext';
-import { useBusiness } from '../contexts/BusinessContext';
 import CompactSelect from './shared/CompactSelect';
 
-const buildBirthdayTemplate = (businessName) => `Happy Birthday, {customer_name}! 🎂
-
-Wishing you a wonderful day filled with joy and beautiful moments!
-
-As a special birthday gift from us, enjoy an EXCLUSIVE BIRTHDAY OFFER on any service this month. You deserve to be pampered!
-
-Book your birthday treat:
-📞 Call us or walk in anytime
-
-We look forward to making your day even more special.
-
-With warm wishes,
-${businessName || 'Our'} Team 💆‍♀️`;
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
 
 const BirthdayCampaign = ({ onCampaignSent }) => {
   const { currentBranch } = useAuth();
-  const { businessName } = useBusiness();
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1); // 1-12
-  const [messageText, setMessageText] = useState(() => buildBirthdayTemplate(businessName));
-
-  // If the business name resolves after first render (sessionStorage hydrate timing),
-  // re-seed the template — but only if the user hasn't edited it yet (i.e. the
-  // legacy `[Salon Name]` placeholder is still present).
-  useEffect(() => {
-    if (!businessName) return;
-    setMessageText(prev =>
-      prev.includes('[Salon Name]') ? buildBirthdayTemplate(businessName) : prev
-    );
-  }, [businessName]);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [messageText, setMessageText] = useState('Birthday promotional offer campaign');
   const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [imageData, setImageData] = useState(null);
-  const [imageMimeType, setImageMimeType] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
   const [customers, setCustomers] = useState([]);
   const [selectedCustomers, setSelectedCustomers] = useState(new Set());
   const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [sending, setSending] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [sendQueue, setSendQueue] = useState([]);
-  const [queueIndex, setQueueIndex] = useState(0);
-  const [showQueueModal, setShowQueueModal] = useState(false);
+
+  const monthName = MONTHS[selectedMonth - 1];
 
   useEffect(() => {
-    if (selectedMonth && currentBranch) {
-      fetchBirthdayCustomers();
-    }
+    if (!selectedMonth || !currentBranch) return;
+
+    const fetchBirthdayCustomers = async () => {
+      try {
+        setLoadingCustomers(true);
+        const response = await apiGet(`/api/campaigns/birthday-customers?month=${selectedMonth}`);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || 'Failed to fetch birthday customers');
+        const nextCustomers = data.customers || [];
+        setCustomers(nextCustomers);
+        setSelectedCustomers(new Set(
+          nextCustomers.filter(customer => customer.whatsapp_consent === true).map(customer => customer.id)
+        ));
+      } catch (error) {
+        console.error('Error fetching birthday customers:', error);
+        showError(error.message || 'Failed to load birthday customers');
+      } finally {
+        setLoadingCustomers(false);
+      }
+    };
+
+    fetchBirthdayCustomers();
   }, [selectedMonth, currentBranch]);
 
-  const fetchBirthdayCustomers = async () => {
-    try {
-      setLoadingCustomers(true);
-      const response = await apiGet(`/api/campaigns/birthday-customers?month=${selectedMonth}`);
-      if (!response.ok) throw new Error('Failed to fetch birthday customers');
-      const data = await response.json();
-      setCustomers(data.customers || []);
-      // Auto-select all customers (consent not required for direct WhatsApp send)
-      setSelectedCustomers(new Set((data.customers || []).map(c => c.id)));
-    } catch (error) {
-      console.error('Error fetching birthday customers:', error);
-      showError('Failed to load birthday customers');
-    } finally {
-      setLoadingCustomers(false);
-    }
-  };
-
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
+  const handleImageUpload = (event) => {
+    const file = event.target.files?.[0];
     if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      showError('Please select an image file');
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      showError('Select a JPEG or PNG image.');
+      event.target.value = '';
       return;
     }
-
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
-      showError('Image size should be less than 5MB');
+    if (file.size > MAX_CAMPAIGN_IMAGE_BYTES) {
+      showError('Image must be 3 MiB or smaller.');
+      event.target.value = '';
       return;
     }
-
     setImageFile(file);
-    setImageMimeType(file.type);
-
     const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result.split(',')[1];
-      setImageData(base64String);
-      setImagePreview(reader.result);
-    };
+    reader.onload = () => setImagePreview(String(reader.result || ''));
     reader.readAsDataURL(file);
   };
 
   const removeImage = () => {
     setImageFile(null);
-    setImagePreview(null);
-    setImageData(null);
-    setImageMimeType(null);
+    setImagePreview('');
   };
 
   const toggleCustomer = (customerId) => {
-    const newSelected = new Set(selectedCustomers);
-    if (newSelected.has(customerId)) {
-      newSelected.delete(customerId);
-    } else {
-      newSelected.add(customerId);
-    }
-    setSelectedCustomers(newSelected);
+    setSelectedCustomers(current => {
+      const next = new Set(current);
+      if (next.has(customerId)) next.delete(customerId);
+      else next.add(customerId);
+      return next;
+    });
   };
+
+  const consentedCustomerIds = customers
+    .filter(customer => customer.whatsapp_consent === true)
+    .map(customer => customer.id);
+  const allConsentedSelected = consentedCustomerIds.length > 0
+    && consentedCustomerIds.every(customerId => selectedCustomers.has(customerId));
+  const selection = analyzeCampaignSelection(customers, selectedCustomers);
 
   const toggleSelectAll = () => {
-    if (selectedCustomers.size === customers.length) {
-      setSelectedCustomers(new Set());
-    } else {
-      setSelectedCustomers(new Set(customers.map(c => c.id)));
-    }
+    setSelectedCustomers(allConsentedSelected ? new Set() : new Set(consentedCustomerIds));
   };
 
-  const handleSend = async () => {
+  const handleSend = () => {
     if (!messageText.trim()) {
-      showError('Please enter a message');
+      showError('Enter campaign notes.');
       return;
     }
-
-    if (selectedCustomers.size === 0) {
-      showError('Please select at least one customer');
+    if (!imageFile) {
+      showError('Upload the promotional image required by the approved template.');
       return;
     }
-
+    if (!selection.selected) {
+      showError('Select at least one customer.');
+      return;
+    }
+    if (!selection.eligible) {
+      showError('None of the selected customers are eligible for WhatsApp delivery.');
+      return;
+    }
     setShowConfirmModal(true);
   };
 
-  const formatPhoneNumber = (mobile) => {
-    if (!mobile) return '';
-    let phone = String(mobile).replace(/[^0-9]/g, '');
-    if (phone.length === 10) phone = '91' + phone;
-    return phone;
-  };
-
-  const buildPersonalizedMessage = (customerName) => {
-    const name = (customerName || 'Valued Customer').trim() || 'Valued Customer';
-    const salon = (businessName || '').trim() || 'Our Team';
-    return messageText
-      .replace(/\{customer_name\}/g, name)
-      .replace(/\{salon_name\}/g, salon);
-  };
-
-  const startSendQueue = () => {
-    setShowConfirmModal(false);
-    const queue = customers
-      .filter(c => selectedCustomers.has(c.id))
-      .map(c => ({
-        id: c.id,
-        name: c.name,
-        mobile: c.mobile,
-        status: 'pending'
-      }));
-    if (queue.length === 0) {
-      showError('No customers selected');
-      return;
-    }
-    setSendQueue(queue);
-    setQueueIndex(0);
-    setShowQueueModal(true);
-  };
-
-  const sendCurrentToWhatsApp = () => {
-    const current = sendQueue[queueIndex];
-    if (!current) return;
-    const phone = formatPhoneNumber(current.mobile);
-    if (!phone) {
-      showError(`Invalid mobile number for ${current.name}`);
-      markCurrentAsSkipped();
-      return;
-    }
-    const personalized = buildPersonalizedMessage(current.name);
-    const url = `https://wa.me/${phone}?text=${encodeURIComponent(personalized)}`;
-    const popup = window.open(url, '_blank', 'noopener,noreferrer');
-    if (!popup) {
-      showError('Popup blocked. Please allow popups for this site and try again.');
-      return;
-    }
-    updateQueueStatus(queueIndex, 'sent');
-    advanceQueue();
-  };
-
-  const markCurrentAsSkipped = () => {
-    updateQueueStatus(queueIndex, 'skipped');
-    advanceQueue();
-  };
-
-  const updateQueueStatus = (index, status) => {
-    setSendQueue(prev => prev.map((item, i) => i === index ? { ...item, status } : item));
-  };
-
-  const advanceQueue = () => {
-    setQueueIndex(prev => prev + 1);
-  };
-
-  const finishQueue = async () => {
+  const submitQueuedCampaign = async () => {
     try {
       setSending(true);
-      const sentIds = sendQueue.filter(q => q.status === 'sent').map(q => q.id);
-      const skippedIds = sendQueue.filter(q => q.status === 'skipped').map(q => q.id);
-
-      const response = await apiPost('/api/campaigns/send', {
-        name: `Birthday Campaign - ${getMonthName(selectedMonth)}`,
-        message_text: messageText,
-        image_data: imageData,
-        image_mime_type: imageMimeType,
-        filter_type: 'birthday',
-        customer_ids: Array.from(selectedCustomers),
-        campaign_type: 'birthday',
-        delivery_method: 'direct_whatsapp',
-        sent_customer_ids: sentIds,
-        skipped_customer_ids: skippedIds
+      const mediaAssetId = await uploadCampaignImage(imageFile);
+      const data = await createQueuedCampaign({
+        name: `Birthday Campaign - ${monthName}`,
+        messageText: messageText.trim(),
+        filterType: 'birthday',
+        customerIds: Array.from(selectedCustomers),
+        campaignType: 'birthday',
+        mediaAssetId,
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        showSuccess(`Birthday campaign logged: ${data.sent_count} sent, ${data.failed_count} skipped`);
-
-        removeImage();
-        setSelectedCustomers(new Set());
-        setSendQueue([]);
-        setQueueIndex(0);
-        setShowQueueModal(false);
-
-        if (onCampaignSent) onCampaignSent();
-      } else {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        showError(errorData.error || 'Failed to log birthday campaign');
-      }
+      setShowConfirmModal(false);
+      showSuccess(
+        `Birthday campaign queued for ${data.eligible_count || 0} customers; ${data.excluded_count || 0} excluded.`
+      );
+      removeImage();
+      setSelectedCustomers(new Set());
+      if (onCampaignSent) onCampaignSent(data);
     } catch (error) {
-      console.error('Error logging birthday campaign:', error);
-      showError('Error logging birthday campaign');
+      console.error('Error queueing birthday campaign:', error);
+      showError(error.message || 'Birthday campaign could not be queued.');
     } finally {
       setSending(false);
     }
   };
 
-  const cancelQueue = () => {
-    setShowQueueModal(false);
-    setSendQueue([]);
-    setQueueIndex(0);
-  };
-
-  const getMonthName = (month) => {
-    const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    return months[month - 1];
-  };
-
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
-
-  const consentCustomers = customers.filter(c => c.whatsapp_consent);
-  const selectedCount = selectedCustomers.size;
 
   return (
     <div className="campaign-container">
-      {/* Month Selector Section */}
       <div className="campaign-section">
-        <h2>
-          <FaBirthdayCake style={{ marginRight: '8px' }} />
-          Birthday Month Selection
-        </h2>
-        
+        <h2><FaBirthdayCake className="campaign-heading-icon" />Birthday Month Selection</h2>
         <div className="form-group">
           <label>Select Month</label>
           <CompactSelect
             value={selectedMonth}
-            onChange={(v) => setSelectedMonth(parseInt(v))}
+            onChange={value => setSelectedMonth(Number(value))}
             className="filter-select"
-            options={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(month => ({
-              value: month,
-              label: getMonthName(month)
-            }))}
+            options={MONTHS.map((label, index) => ({ value: index + 1, label }))}
             placeholder="Select Month"
           />
         </div>
       </div>
 
-      {/* Compose Section */}
       <div className="campaign-section">
         <h2>Create Birthday Campaign</h2>
-        
         <div className="campaign-form">
           <div className="form-group">
-            <label>Birthday Image (Optional)</label>
+            <label>Promotional Image *</label>
             <div className="image-upload-area">
               {imagePreview ? (
                 <div className="image-preview-container">
-                  <img src={imagePreview} alt="Preview" className="image-preview" />
+                  <img src={imagePreview} alt="Birthday campaign preview" className="image-preview" />
                   <button type="button" onClick={removeImage} className="remove-image-btn">
                     <FaTimes /> Remove
                   </button>
@@ -310,10 +184,10 @@ const BirthdayCampaign = ({ onCampaignSent }) => {
               ) : (
                 <label className="image-upload-label">
                   <FaImage size={24} />
-                  <span>Click to upload image</span>
+                  <span>Upload JPEG or PNG, up to 3 MiB</span>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png"
                     onChange={handleImageUpload}
                     style={{ display: 'none' }}
                   />
@@ -323,125 +197,118 @@ const BirthdayCampaign = ({ onCampaignSent }) => {
           </div>
 
           <div className="form-group">
-            <label>Birthday Message *</label>
+            <label>Campaign Notes *</label>
             <textarea
               value={messageText}
-              onChange={(e) => setMessageText(e.target.value)}
-              placeholder="Birthday message template (use {customer_name} placeholder)"
-              rows={10}
+              onChange={event => setMessageText(event.target.value)}
+              rows={5}
               required
             />
-            <small style={{ color: 'var(--gray-600)', marginTop: '4px', display: 'block' }}>
-              Tip: The {`{customer_name}`} placeholder will be replaced with each customer's name automatically.
+            <small className="campaign-help-text">
+              WhatsApp sends the approved priyanka_promotional_offer template in en_US.
             </small>
           </div>
         </div>
       </div>
 
-      {/* Birthday Customers Section */}
       <div className="campaign-section">
-        <h2>Birthday Customers - {getMonthName(selectedMonth)}</h2>
-        
+        <h2>Birthday Customers - {monthName}</h2>
         <div className="customers-summary">
-          <div className="summary-item">
-            <FaUsers />
-            <span>Total: {customers.length} customers</span>
-          </div>
-          <div className="summary-item">
-            <FaCheck />
-            <span>With WhatsApp Consent: {consentCustomers.length}</span>
-          </div>
-          <div className="summary-item selected">
-            <FaPaperPlane />
-            <span>Selected: {selectedCount}</span>
-          </div>
+          <div className="summary-item"><FaUsers /><span>Available: {customers.length}</span></div>
+          <div className="summary-item"><FaCheck /><span>Selected: {selection.selected}</span></div>
+          <div className="summary-item"><FaCheck /><span>Consented: {selection.consented}</span></div>
+          <div className="summary-item selected"><FaPaperPlane /><span>Eligible: {selection.eligible}</span></div>
+          <div className="summary-item"><span>No consent: {selection.excludedNoConsent}</span></div>
+          <div className="summary-item"><span>Invalid phone: {selection.excludedInvalidPhone}</span></div>
         </div>
 
         {loadingCustomers ? (
           <div className="loading-state">Loading birthday customers...</div>
         ) : customers.length === 0 ? (
-          <div className="empty-state">No customers have birthdays in {getMonthName(selectedMonth)}</div>
+          <div className="empty-state">No customer birthdays in {monthName}</div>
         ) : (
           <div className="customers-list-container">
             <div className="customers-list-header">
-              <button
-                type="button"
-                onClick={toggleSelectAll}
-                className="select-all-btn"
-              >
-                {selectedCustomers.size === customers.length ? 'Deselect All' : 'Select All'}
+              <button type="button" onClick={toggleSelectAll} className="select-all-btn">
+                {allConsentedSelected ? 'Deselect All' : 'Select All Consented'}
               </button>
             </div>
             <div className="customers-list">
-              {customers.map(customer => (
-                <div
-                  key={customer.id}
-                  className={`customer-item ${selectedCustomers.has(customer.id) ? 'selected' : ''}`}
-                  onClick={() => toggleCustomer(customer.id)}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedCustomers.has(customer.id)}
-                    onChange={() => toggleCustomer(customer.id)}
-                  />
-                  <div className="customer-info">
-                    <div className="customer-name">{customer.name}</div>
-                    <div className="customer-mobile">{customer.mobile}</div>
-                    {customer.dob && (
-                      <div className="customer-dob" style={{ fontSize: '12px', color: 'var(--gray-600)', marginTop: '2px' }}>
-                        Birthday: {formatDate(customer.dob)}
-                      </div>
-                    )}
-                    {!customer.whatsapp_consent && (
-                      <span className="no-consent-badge">No WhatsApp Consent</span>
-                    )}
+              {customers.map(customer => {
+                const phoneValid = Boolean(normalizeCampaignPhone(customer.mobile));
+                return (
+                  <div
+                    key={customer.id}
+                    className={`customer-item ${selectedCustomers.has(customer.id) ? 'selected' : ''}`}
+                    onClick={() => toggleCustomer(customer.id)}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedCustomers.has(customer.id)}
+                      onClick={event => event.stopPropagation()}
+                      onChange={() => toggleCustomer(customer.id)}
+                    />
+                    <div className="customer-info">
+                      <div className="customer-name">{customer.name}</div>
+                      <div className="customer-mobile">{customer.mobile}</div>
+                      {customer.dob && <div className="customer-dob">Birthday: {formatDate(customer.dob)}</div>}
+                      {!customer.whatsapp_consent && (
+                        <span className="no-consent-badge">Excluded: No WhatsApp Consent</span>
+                      )}
+                      {customer.whatsapp_consent && !phoneValid && (
+                        <span className="invalid-phone-badge">Excluded: Invalid Phone</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
       </div>
 
-      {/* Send Section */}
       <div className="campaign-section send-section">
         <div className="send-summary">
-          <h3>Ready to Send</h3>
-          <p>{selectedCount} customers will receive this birthday campaign</p>
+          <h3>Ready to Queue</h3>
+          <p>
+            {selection.eligible} eligible of {selection.selected} selected. {selection.excluded} will be excluded.
+          </p>
         </div>
         <button
+          type="button"
           onClick={handleSend}
-          disabled={sending || selectedCount === 0 || !messageText.trim()}
+          disabled={sending || !selection.eligible || !messageText.trim() || !imageFile}
           className="send-campaign-btn"
         >
-          {sending ? 'Sending...' : 'Send Birthday Campaign'}
+          {sending ? 'Queueing...' : 'Send Birthday Campaign'}
         </button>
       </div>
 
-      {/* Confirmation Modal */}
       {showConfirmModal && (
-        <div className="modal-overlay" onClick={() => setShowConfirmModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay" onClick={() => !sending && setShowConfirmModal(false)}>
+          <div className="modal-content" onClick={event => event.stopPropagation()}>
             <div className="modal-header">
-              <h3>Confirm Send Birthday Campaign</h3>
+              <h3>Confirm Birthday Campaign Queue</h3>
               <button
                 type="button"
                 className="modal-close-btn"
                 onClick={() => setShowConfirmModal(false)}
+                disabled={sending}
               >
                 <FaTimes />
               </button>
             </div>
             <div className="modal-body">
-              <p>Are you sure you want to send this birthday campaign to <strong>{selectedCount} customers</strong>?</p>
-              {imagePreview && (
-                <div className="modal-preview">
-                  <img src={imagePreview} alt="Campaign preview" />
-                </div>
-              )}
-              <div className="modal-message-preview">
-                <strong>Message:</strong>
-                <p>{messageText}</p>
+              <p>This creates one queued campaign. Delivery continues in controlled server batches.</p>
+              <div className="campaign-confirmation-grid">
+                <span>Selected<strong>{selection.selected}</strong></span>
+                <span>Consented<strong>{selection.consented}</strong></span>
+                <span>Eligible<strong>{selection.eligible}</strong></span>
+                <span>No consent<strong>{selection.excludedNoConsent}</strong></span>
+                <span>Invalid phone<strong>{selection.excludedInvalidPhone}</strong></span>
+              </div>
+              <div className="modal-preview">
+                <img src={imagePreview} alt="Birthday campaign preview" />
               </div>
             </div>
             <div className="modal-actions">
@@ -449,88 +316,13 @@ const BirthdayCampaign = ({ onCampaignSent }) => {
                 type="button"
                 className="btn-cancel"
                 onClick={() => setShowConfirmModal(false)}
+                disabled={sending}
               >
                 Cancel
               </button>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={startSendQueue}
-              >
-                Start Sending
+              <button type="button" className="btn-primary" onClick={submitQueuedCampaign} disabled={sending}>
+                {sending ? 'Queueing...' : `Queue for ${selection.eligible} Customers`}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Send Queue Modal */}
-      {showQueueModal && (
-        <div className="modal-overlay" onClick={() => {}}>
-          <div className="modal-content send-queue-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Send via WhatsApp ({queueIndex}/{sendQueue.length})</h3>
-              <button type="button" className="modal-close-btn" onClick={cancelQueue}>
-                <FaTimes />
-              </button>
-            </div>
-            <div className="modal-body">
-              {imagePreview && (
-                <div className="queue-image-notice">
-                  <img src={imagePreview} alt="Offer" className="queue-image-thumb" />
-                  <small>After WhatsApp opens, attach this image manually before sending.</small>
-                </div>
-              )}
-
-              {queueIndex < sendQueue.length ? (
-                <>
-                  <div className="queue-current">
-                    <div className="queue-current-label">Next customer:</div>
-                    <div className="queue-current-name">{sendQueue[queueIndex].name}</div>
-                    <div className="queue-current-mobile">{sendQueue[queueIndex].mobile}</div>
-                  </div>
-                  <div className="queue-message-preview">
-                    <strong>Message:</strong>
-                    <p>{buildPersonalizedMessage(sendQueue[queueIndex].name)}</p>
-                  </div>
-                  <div className="queue-progress-list">
-                    {sendQueue.map((q, i) => (
-                      <div key={q.id} className={`queue-progress-item status-${q.status}${i === queueIndex ? ' current' : ''}`}>
-                        <span className="queue-progress-name">{q.name}</span>
-                        <span className="queue-progress-status">
-                          {q.status === 'sent' ? 'Sent' : q.status === 'skipped' ? 'Skipped' : i === queueIndex ? 'Now' : 'Pending'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="queue-done">
-                  <FaCheck size={32} />
-                  <p>Done. {sendQueue.filter(q => q.status === 'sent').length} opened in WhatsApp, {sendQueue.filter(q => q.status === 'skipped').length} skipped.</p>
-                </div>
-              )}
-            </div>
-            <div className="modal-actions">
-              {queueIndex < sendQueue.length ? (
-                <>
-                  <button type="button" className="btn-cancel" onClick={markCurrentAsSkipped}>
-                    Skip
-                  </button>
-                  <button type="button" className="btn-primary" onClick={sendCurrentToWhatsApp}>
-                    Open WhatsApp
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button type="button" className="btn-cancel" onClick={cancelQueue} disabled={sending}>
-                    Close
-                  </button>
-                  <button type="button" className="btn-primary" onClick={finishQueue} disabled={sending}>
-                    {sending ? 'Logging...' : 'Save Campaign'}
-                  </button>
-                </>
-              )}
             </div>
           </div>
         </div>
@@ -540,4 +332,3 @@ const BirthdayCampaign = ({ onCampaignSent }) => {
 };
 
 export default BirthdayCampaign;
-

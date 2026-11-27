@@ -35,6 +35,7 @@ from utils.image_validation import (
     build_media_object_key,
     normalize_uploaded_image,
 )
+from utils.campaign_whatsapp import update_campaign_recipient_status
 from utils.meta_whatsapp_service import (
     MetaWhatsAppError,
     MetaWhatsAppService,
@@ -498,9 +499,8 @@ def get_templates(current_user):
         return jsonify({'error': str(exc), 'error_code': exc.code, 'templates': []}), exc.http_status
 
 
-@whatsapp_integration_bp.post('/media')
-@require_whatsapp_owner
-def upload_media(current_user):
+def _store_whatsapp_media_upload(current_user):
+    """Store one validated private image for an already-authorized caller."""
     if request.content_length and request.content_length > MAX_MEDIA_MULTIPART_BYTES:
         return jsonify({'error': 'Image must be 3 MiB or smaller.'}), 413
 
@@ -546,6 +546,12 @@ def upload_media(current_user):
         return jsonify({'error': 'Image metadata could not be saved.'}), 503
 
     return jsonify({'media': _media_asset_dict(asset)}), 201
+
+@whatsapp_integration_bp.post('/media')
+@require_whatsapp_owner
+def upload_media(current_user):
+    return _store_whatsapp_media_upload(current_user)
+
 
 
 @whatsapp_integration_bp.get('/media')
@@ -958,11 +964,30 @@ def receive_webhook():
             error_code = event['error_code']
             if production and not (error_code.isascii() and error_code.isdigit()):
                 error_code = ''
-            _update_message_status(
-                event['meta_message_id'],
-                event['status'],
-                error_code,
-                '' if production else event['error_message'],
-                **({'account': account} if production else {}),
-            )
+            try:
+                _update_message_status(
+                    event['meta_message_id'],
+                    event['status'],
+                    error_code,
+                    '' if production else event['error_message'],
+                    **({'account': account} if production else {}),
+                )
+            except Exception as exc:
+                current_app.logger.error(
+                    'WhatsApp controlled-message status update failed: %s',
+                    type(exc).__name__,
+                )
+            if production:
+                try:
+                    update_campaign_recipient_status(
+                        event['meta_message_id'],
+                        event['status'],
+                        error_code,
+                        account=account,
+                    )
+                except Exception as exc:
+                    current_app.logger.error(
+                        'WhatsApp campaign status update failed: %s',
+                        type(exc).__name__,
+                    )
     return jsonify({'received': True, 'processed': processed})
