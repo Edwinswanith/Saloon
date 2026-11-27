@@ -144,7 +144,7 @@ const GeneralCampaign = ({ onCampaignSent }) => {
       });
       setShowConfirmModal(false);
       showSuccess(
-        `Campaign queued for ${data.eligible_count || 0} customers; ${data.excluded_count || 0} excluded.`
+        `Campaign started for ${data.eligible_count || 0} customers; ${data.excluded_count || 0} excluded.`
       );
       setCampaignName('');
       setMessageText(buildGeneralNotes());
@@ -152,8 +152,8 @@ const GeneralCampaign = ({ onCampaignSent }) => {
       setSelectedCustomers(new Set());
       if (onCampaignSent) onCampaignSent(data);
     } catch (error) {
-      console.error('Error queueing campaign:', error);
-      showError(error.message || 'Campaign could not be queued.');
+      console.error('Error starting campaign:', error);
+      showError(error.message || 'Campaign could not be started.');
     } finally {
       setSending(false);
     }

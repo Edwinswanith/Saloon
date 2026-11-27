@@ -1,4 +1,5 @@
 """Durable production WhatsApp campaign tests with no external I/O."""
+import json
 import os
 import unittest
 from pathlib import Path
@@ -173,7 +174,7 @@ class CampaignCreationTests(unittest.TestCase):
             'excluded_invalid_phone': 1,
         })
 
-    def test_150_selected_queues_137_without_sending(self):
+    def test_150_selected_queues_137_and_starts_first_batch(self):
         customers = [customer(index + 1) for index in range(150)]
         for item in customers[:8]:
             item.whatsapp_consent = False
@@ -193,6 +194,23 @@ class CampaignCreationTests(unittest.TestCase):
             record.status = 'queued'
             return record
 
+        def process_first_batch(campaign_id):
+            self.assertEqual(campaign_id, str(campaign.id))
+            campaign.queued_count = 117
+            campaign.accepted_count = 20
+            campaign.status = 'queued'
+            return {
+                'processed': True,
+                'campaign': routes._campaign_summary(campaign),
+                'batch_size': 20,
+                'claimed_count': 20,
+                'accepted_in_batch': 20,
+                'failed_in_batch': 0,
+                'unknown_in_batch': 0,
+                'paused': False,
+                'deferred': False,
+            }
+
         with patch.object(routes, 'MetaWhatsAppService', return_value=service), patch.object(
             routes, '_media_scope', return_value=('production:4800759546811980', None, OWNER['user_id'])
         ), patch.object(
@@ -205,21 +223,26 @@ class CampaignCreationTests(unittest.TestCase):
             }
         ) as reserve, patch.object(
             routes, 'refresh_campaign_aggregates', side_effect=refresh
-        ), patch.object(routes, '_read_stored_image') as read_image:
+        ), patch.object(
+            routes, '_process_campaign_batch', side_effect=process_first_batch
+        ) as process_batch, patch.object(routes, '_read_stored_image') as read_image:
             body, status = self.call(payload(ids), customers)
 
         self.assertEqual(status, 202)
         self.assertEqual(
             (body['requested_count'], body['eligible_count'], body['excluded_count'], body['queued_count']),
-            (150, 137, 13, 137),
+            (150, 137, 13, 117),
         )
+        self.assertEqual(body['accepted_count'], 20)
+        self.assertEqual(body['first_batch']['claimed_count'], 20)
         reserve.assert_called_once()
+        process_batch.assert_called_once_with(str(campaign.id))
         service.upload_image.assert_not_called()
         service.send_template.assert_not_called()
         read_image.assert_not_called()
         self.assertFalse(hasattr(routes, 'send_whatsapp_message'))
 
-    def test_1200_recipient_campaign_creation_succeeds_without_sending(self):
+    def test_1200_recipient_campaign_creation_has_no_recipient_ceiling(self):
         customers = [customer(index + 1) for index in range(1200)]
         ids = [str(item.id) for item in customers]
         campaign = FakeCampaign(1200)
@@ -231,6 +254,21 @@ class CampaignCreationTests(unittest.TestCase):
             record.status = 'queued'
             return record
 
+        first_batch = {
+            'processed': True,
+            'campaign': {
+                **routes._campaign_summary(campaign),
+                'queued_count': 1180,
+                'accepted_count': 20,
+                'status': 'queued',
+            },
+            'batch_size': 20,
+            'claimed_count': 20,
+            'accepted_in_batch': 20,
+            'paused': False,
+            'deferred': False,
+        }
+
         with patch.object(routes, 'MetaWhatsAppService', return_value=service), patch.object(
             routes, '_media_scope', return_value=('production:4800759546811980', None, OWNER['user_id'])
         ), patch.object(routes, '_find_scoped_media_asset', return_value=media), patch.object(
@@ -241,13 +279,16 @@ class CampaignCreationTests(unittest.TestCase):
             }
         ) as reserve, patch.object(
             routes, 'refresh_campaign_aggregates', side_effect=refresh
+        ), patch.object(
+            routes, '_process_campaign_batch', return_value=first_batch
         ):
             body, status = self.call(payload(ids), customers)
 
         self.assertEqual(status, 202)
         self.assertEqual(body['requested_count'], 1200)
         self.assertEqual(body['eligible_count'], 1200)
-        self.assertEqual(body['queued_count'], 1200)
+        self.assertEqual(body['queued_count'], 1180)
+        self.assertEqual(body['first_batch']['claimed_count'], 20)
         reserve.assert_called_once()
         service.send_template.assert_not_called()
 
@@ -289,11 +330,12 @@ class CampaignCreationTests(unittest.TestCase):
             }
         ) as reserve, patch.object(
             routes, 'refresh_campaign_aggregates', return_value=campaign
-        ):
+        ), patch.object(routes, '_process_campaign_batch') as process_batch:
             body, status = self.call(payload([str(item.id)]), [item])
         self.assertEqual(status, 200)
         self.assertTrue(body['duplicate'])
         reserve.assert_called_once()
+        process_batch.assert_not_called()
         service.send_template.assert_not_called()
 
     def test_meta_error_text_cannot_leak_access_token(self):
@@ -392,8 +434,85 @@ class CampaignWorkerTests(unittest.TestCase):
             )
         self.assertEqual(missing.status_code, 401)
         self.assertEqual(incorrect.status_code, 401)
-        self.assertEqual(missing.get_json(), {'error': 'Unauthorized'})
-        self.assertEqual(incorrect.get_json(), {'error': 'Unauthorized'})
+        self.assertEqual(missing.get_json(), {'error': 'Authentication required'})
+        self.assertEqual(incorrect.get_json(), {'error': 'Authentication required'})
+
+    def test_authenticated_crm_user_can_process_only_an_accessible_campaign(self):
+        app = Flask(__name__)
+        app.register_blueprint(routes.campaign_bp, url_prefix='/api/campaigns')
+        client = app.test_client()
+        no_work = {
+            'processed': False,
+            'batch_size': 20,
+            'claimed_count': 0,
+        }
+        with patch.dict(os.environ, BASE_ENV, clear=True), patch.object(
+            routes, 'get_current_user', return_value=OWNER
+        ), patch.object(
+            routes, '_crm_user_can_process_campaign', return_value=True
+        ) as can_process, patch.object(
+            routes, '_process_campaign_batch', return_value=no_work
+        ) as process_batch:
+            response = client.post(
+                '/api/campaigns/process-queue',
+                json={'campaign_id': '000000000000000000000050'},
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), no_work)
+        can_process.assert_called_once_with('000000000000000000000050', OWNER)
+        process_batch.assert_called_once_with('000000000000000000000050')
+
+    def test_crm_worker_rejects_staff_missing_id_and_inaccessible_campaign(self):
+        app = Flask(__name__)
+        app.register_blueprint(routes.campaign_bp, url_prefix='/api/campaigns')
+        client = app.test_client()
+        with patch.dict(os.environ, BASE_ENV, clear=True), patch.object(
+            routes, 'get_current_user', return_value={'role': 'staff', 'user_id': '1'}
+        ):
+            staff = client.post(
+                '/api/campaigns/process-queue',
+                json={'campaign_id': '000000000000000000000050'},
+            )
+        with patch.dict(os.environ, BASE_ENV, clear=True), patch.object(
+            routes, 'get_current_user', return_value=OWNER
+        ):
+            missing_id = client.post('/api/campaigns/process-queue', json={})
+        with patch.dict(os.environ, BASE_ENV, clear=True), patch.object(
+            routes, 'get_current_user', return_value=OWNER
+        ), patch.object(
+            routes, '_crm_user_can_process_campaign', return_value=False
+        ), patch.object(routes, '_process_campaign_batch') as process_batch:
+            inaccessible = client.post(
+                '/api/campaigns/process-queue',
+                json={'campaign_id': '000000000000000000000050'},
+            )
+        self.assertEqual(staff.status_code, 403)
+        self.assertEqual(missing_id.status_code, 400)
+        self.assertEqual(inaccessible.status_code, 404)
+        process_batch.assert_not_called()
+
+    def test_authenticated_worker_respects_runtime_and_send_flags(self):
+        app = Flask(__name__)
+        app.register_blueprint(routes.campaign_bp, url_prefix='/api/campaigns')
+        client = app.test_client()
+        cases = [
+            ({**BASE_ENV, 'APP_RUNTIME': 'demo'}, 403, 'production_runtime_required'),
+            ({**BASE_ENV, 'WHATSAPP_PRODUCTION_SEND_ENABLED': 'false'}, 403, 'send_disabled'),
+            ({**BASE_ENV, 'WHATSAPP_CAMPAIGN_SEND_ENABLED': 'false'}, 403, 'campaign_disabled'),
+        ]
+        for env, status, error_code in cases:
+            with self.subTest(error_code=error_code), patch.dict(
+                os.environ, env, clear=True
+            ), patch.object(
+                routes, 'get_current_user', return_value=OWNER
+            ), patch.object(routes, '_process_campaign_batch') as process_batch:
+                response = client.post(
+                    '/api/campaigns/process-queue',
+                    json={'campaign_id': '000000000000000000000050'},
+                )
+            self.assertEqual(response.status_code, status)
+            self.assertEqual(response.get_json()['error_code'], error_code)
+            process_batch.assert_not_called()
 
     def test_worker_processes_only_configured_batch_and_reuses_media(self):
         campaign = FakeCampaign(137)
@@ -431,11 +550,14 @@ class CampaignWorkerTests(unittest.TestCase):
         self.assertEqual(campaign.meta_media_id, '1234567890')
         release.assert_called_once_with(campaign)
 
-    def test_repeated_worker_calls_drain_45_recipients_in_20_20_5_batches(self):
-        campaign = FakeCampaign(45)
-        recipients = [FakeRecipient(index, campaign) for index in range(45)]
+    def test_one_start_and_authenticated_batches_drain_150_without_duplicates(self):
+        campaign = FakeCampaign(150)
+        recipients = [FakeRecipient(index, campaign) for index in range(150)]
         service = self.configured_service()
         media = SimpleNamespace(id=MEDIA_ID, content_type='image/jpeg')
+        app = Flask(__name__)
+        app.register_blueprint(routes.campaign_bp, url_prefix='/api/campaigns')
+        client = app.test_client()
 
         def claim_campaign(_worker_id, _campaign_id=None):
             return campaign if any(item.status == 'queued' for item in recipients) else None
@@ -462,16 +584,34 @@ class CampaignWorkerTests(unittest.TestCase):
             routes, 'WhatsAppWebhookEvent'
         ) as webhook, patch.object(
             routes, 'refresh_campaign_aggregates', side_effect=refresh
-        ), patch.object(routes, 'release_campaign_lease'):
+        ), patch.object(routes, 'release_campaign_lease'), patch.object(
+            routes, 'get_current_user', return_value=OWNER
+        ), patch.object(
+            routes, '_crm_user_can_process_campaign', return_value=True
+        ):
             webhook.objects.return_value.order_by.return_value = []
-            results = [routes._process_campaign_batch() for _index in range(4)]
+            first_batch = routes._process_campaign_batch(str(campaign.id))
+            responses = [
+                client.post(
+                    '/api/campaigns/process-queue',
+                    json={'campaign_id': str(campaign.id)},
+                )
+                for _index in range(7)
+            ]
+            results = [first_batch, *(response.get_json() for response in responses)]
 
-        self.assertEqual([result['claimed_count'] for result in results], [20, 20, 5, 0])
-        self.assertEqual([result['accepted_in_batch'] for result in results[:3]], [20, 20, 5])
-        self.assertFalse(results[3]['processed'])
+        self.assertTrue(all(response.status_code == 200 for response in responses))
+        self.assertEqual(
+            [result['claimed_count'] for result in results],
+            [20, 20, 20, 20, 20, 20, 20, 10],
+        )
+        self.assertEqual(
+            [result['accepted_in_batch'] for result in results],
+            [20, 20, 20, 20, 20, 20, 20, 10],
+        )
         self.assertTrue(all(item.status == 'accepted' for item in recipients))
-        self.assertEqual(service.send_template.call_count, 45)
-        self.assertEqual(len({item.meta_message_id for item in recipients}), 45)
+        self.assertEqual(service.send_template.call_count, 150)
+        self.assertEqual(len({item.meta_message_id for item in recipients}), 150)
         service.upload_image.assert_called_once()
 
     def test_local_rate_limit_requeues_and_defers_without_manual_pause(self):
@@ -665,7 +805,7 @@ class CampaignProgressTests(unittest.TestCase):
 
 
 class CampaignFrontendContractTests(unittest.TestCase):
-    def test_offer_campaign_frontend_uses_queue_api_without_whatsapp_urls(self):
+    def test_offer_campaign_frontend_continues_queue_without_server_secret(self):
         root = Path(__file__).resolve().parents[1]
         component_paths = [
             root / 'frontend' / 'src' / 'components' / 'GeneralCampaign.jsx',
@@ -675,13 +815,21 @@ class CampaignFrontendContractTests(unittest.TestCase):
             encoding='utf-8'
         )
         components = '\n'.join(path.read_text(encoding='utf-8') for path in component_paths)
+        offer_campaigns = (
+            root / 'frontend' / 'src' / 'components' / 'OfferCampaigns.jsx'
+        ).read_text(encoding='utf-8')
+        frontend_source = '\n'.join((components, utility, offer_campaigns))
 
-        for forbidden in ('wa.me', 'window.open', 'direct_whatsapp'):
-            self.assertNotIn(forbidden, components)
-            self.assertNotIn(forbidden, utility)
+        for forbidden in (
+            'wa.me', 'window.open', 'direct_whatsapp',
+            'WHATSAPP_CAMPAIGN_WORKER_SECRET', 'CRON_SECRET', 'process-queue-cron',
+        ):
+            self.assertNotIn(forbidden, frontend_source)
         for required in (
             '/api/campaigns/media',
             '/api/campaigns/send',
+            '/api/campaigns/process-queue',
+            '/api/campaigns/${campaignId}',
             "delivery_method: 'api'",
             "template_name: CAMPAIGN_TEMPLATE_NAME",
             "language: CAMPAIGN_TEMPLATE_LANGUAGE",
@@ -689,8 +837,19 @@ class CampaignFrontendContractTests(unittest.TestCase):
             "'Idempotency-Key': requestId",
         ):
             self.assertIn(required, utility)
-        self.assertIn('Campaign queued for', components)
+        self.assertIn('processQueuedCampaignBatch', offer_campaigns)
+        self.assertIn('while (!controller.signal.aborted)', offer_campaigns)
+        self.assertIn('queued > 0', offer_campaigns)
+        self.assertIn('Campaign started for', components)
         self.assertNotIn('Campaign sent to', components)
+
+    def test_vercel_and_environment_have_no_cron_dependency(self):
+        root = Path(__file__).resolve().parents[1]
+        vercel_config = json.loads((root / 'vercel.json').read_text(encoding='utf-8'))
+        env_example = (root / '.env.example').read_text(encoding='utf-8')
+        self.assertNotIn('crons', vercel_config)
+        self.assertNotIn('CRON_SECRET', env_example)
+        self.assertNotIn('process-queue-cron', json.dumps(vercel_config))
 
 
 class CampaignWebhookStatusTests(unittest.TestCase):

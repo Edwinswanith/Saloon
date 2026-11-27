@@ -4,6 +4,10 @@ import GeneralCampaign from './GeneralCampaign';
 import BirthdayCampaign from './BirthdayCampaign';
 import './OfferCampaigns.css';
 import { apiGet, apiPost } from '../utils/api';
+import {
+  getCampaignProgress,
+  processQueuedCampaignBatch,
+} from '../utils/campaignQueue';
 import { showError, showSuccess } from '../utils/toast.jsx';
 import { useAuth } from '../contexts/AuthContext';
 import CompactSelect from './shared/CompactSelect';
@@ -15,6 +19,19 @@ const CAMPAIGN_TYPE_FILTER_OPTIONS = [
 ];
 
 const ACTIVE_CAMPAIGN_STATUSES = ['queued', 'processing', 'in_progress'];
+const STOP_CAMPAIGN_STATUSES = ['paused', 'completed', 'failed', 'attention_required', 'delivered', 'read'];
+
+const waitFor = (milliseconds, signal) => new Promise(resolve => {
+  if (signal.aborted) {
+    resolve();
+    return;
+  }
+  const timer = window.setTimeout(resolve, milliseconds);
+  signal.addEventListener('abort', () => {
+    window.clearTimeout(timer);
+    resolve();
+  }, { once: true });
+});
 
 const PROGRESS_FIELDS = [
   ['queued_count', 'Queued'],
@@ -35,6 +52,7 @@ const OfferCampaigns = () => {
   const [loadingCampaigns, setLoadingCampaigns] = useState(true);
   const [campaignTypeFilter, setCampaignTypeFilter] = useState('all'); // 'all', 'general', 'birthday'
   const [activeCampaign, setActiveCampaign] = useState(null);
+  const [processingRun, setProcessingRun] = useState(0);
 
   const fetchCampaigns = useCallback(async () => {
     try {
@@ -60,35 +78,72 @@ const OfferCampaigns = () => {
 
   useEffect(() => {
     if (!activeCampaign?.campaign_id) return undefined;
-    let cancelled = false;
+    const campaignId = activeCampaign.campaign_id;
+    const controller = new AbortController();
 
-    const fetchProgress = async () => {
+    const continueCampaign = async () => {
       try {
-        const response = await apiGet(`/api/campaigns/${activeCampaign.campaign_id}`);
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || 'Campaign progress is unavailable.');
-        if (!cancelled) {
-          setActiveCampaign(data);
-          if (!ACTIVE_CAMPAIGN_STATUSES.includes(data.status)) fetchCampaigns();
+        let progress = await getCampaignProgress(campaignId, {
+          signal: controller.signal,
+        });
+
+        while (!controller.signal.aborted) {
+          setActiveCampaign(progress);
+          const status = progress.status;
+          const queued = Number(progress.queued_count || 0);
+
+          if (STOP_CAMPAIGN_STATUSES.includes(status)) {
+            fetchCampaigns();
+            return;
+          }
+          if (queued > 0) {
+            if (!ACTIVE_CAMPAIGN_STATUSES.includes(status)) {
+              fetchCampaigns();
+              return;
+            }
+            const batch = await processQueuedCampaignBatch(campaignId, {
+              signal: controller.signal,
+            });
+            progress = batch.campaign || await getCampaignProgress(campaignId, {
+              signal: controller.signal,
+            });
+            setActiveCampaign(progress);
+            if (batch.paused || STOP_CAMPAIGN_STATUSES.includes(progress.status)) {
+              fetchCampaigns();
+              return;
+            }
+            await waitFor(batch.deferred ? 60000 : 500, controller.signal);
+            progress = await getCampaignProgress(campaignId, {
+              signal: controller.signal,
+            });
+            continue;
+          }
+
+          if (!ACTIVE_CAMPAIGN_STATUSES.includes(status) || !progress.eligible_count) {
+            fetchCampaigns();
+            return;
+          }
+          await waitFor(5000, controller.signal);
+          progress = await getCampaignProgress(campaignId, {
+            signal: controller.signal,
+          });
         }
       } catch (error) {
-        if (!cancelled) showError(error.message || 'Failed to load campaign progress');
+        if (!controller.signal.aborted && error.name !== 'AbortError') {
+          showError(error.message || 'Campaign processing stopped unexpectedly.');
+        }
       }
     };
 
-    fetchProgress();
-    if (!ACTIVE_CAMPAIGN_STATUSES.includes(activeCampaign.status)) {
-      return () => { cancelled = true; };
-    }
-    const timer = window.setInterval(fetchProgress, 5000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, [activeCampaign?.campaign_id, activeCampaign?.status, fetchCampaigns]);
+    continueCampaign();
+    return () => controller.abort();
+  }, [activeCampaign?.campaign_id, fetchCampaigns, processingRun]);
 
   const handleCampaignSent = (campaign) => {
-    if (campaign?.campaign_id) setActiveCampaign(campaign);
+    if (campaign?.campaign_id) {
+      setActiveCampaign(campaign);
+      setProcessingRun(value => value + 1);
+    }
     fetchCampaigns();
   };
 
@@ -99,6 +154,7 @@ const OfferCampaigns = () => {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || 'Campaign could not be resumed.');
       setActiveCampaign(data);
+      setProcessingRun(value => value + 1);
       showSuccess('Campaign resumed and returned to the queue.');
     } catch (error) {
       showError(error.message || 'Campaign could not be resumed.');
@@ -139,7 +195,7 @@ const OfferCampaigns = () => {
               <div>
                 <h2>{activeCampaign.name || 'Campaign Progress'}</h2>
                 <p>
-                  Campaign started and queued. Counts update as the server processes each batch.
+                  Campaign started. This page continues secure server batches and updates the counts live.
                 </p>
               </div>
               <div className="campaign-progress-status">

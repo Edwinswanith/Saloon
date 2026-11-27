@@ -9,7 +9,7 @@ from models import (
 from datetime import datetime, timedelta
 from bson import ObjectId
 from mongoengine.errors import NotUniqueError
-from utils.auth import require_auth, require_role
+from utils.auth import get_current_user, require_auth, require_role
 from utils.branch_filter import apply_branch_scope, apply_branch_scope_to_match, get_selected_branch
 from utils.campaign_whatsapp import (
     CAMPAIGN_TEMPLATE_LANGUAGE,
@@ -691,21 +691,52 @@ def _send_meta_campaign(data, current_user, branch, filter_type, customers, requ
     campaign.update(set__duplicate_count=duplicate_count)
     campaign.duplicate_count = duplicate_count
     refresh_campaign_aggregates(campaign)
-    return jsonify(_campaign_summary(campaign, duplicate=not created)), 202 if created else 200
+    if not created:
+        return jsonify(_campaign_summary(campaign, duplicate=True)), 200
+
+    try:
+        first_batch = _process_campaign_batch(str(campaign.id))
+    except Exception:
+        first_batch = {
+            'processed': False,
+            'batch_size': campaign_batch_size(),
+            'claimed_count': 0,
+            'error_code': 'campaign_batch_start_failed',
+        }
+        refresh_campaign_aggregates(campaign)
+
+    summary = first_batch.get('campaign') or _campaign_summary(campaign)
+    summary['duplicate'] = False
+    summary['first_batch'] = {
+        key: first_batch[key]
+        for key in (
+            'processed', 'batch_size', 'claimed_count', 'accepted_in_batch',
+            'failed_in_batch', 'unknown_in_batch', 'paused', 'deferred', 'error_code',
+        )
+        if key in first_batch
+    }
+    return jsonify(summary), 202
 
 
 def _campaign_worker_authorized():
     expected = os.environ.get('WHATSAPP_CAMPAIGN_WORKER_SECRET', '')
     authorization = request.headers.get('Authorization', '')
-    if (
-        not expected
-        or expected != expected.strip()
-        or len(expected) < 32
-        or not authorization.startswith('Bearer ')
-    ):
+    if not expected or expected != expected.strip() or len(expected) < 32:
         return False
-    supplied = authorization[7:]
-    return hmac.compare_digest(supplied.encode('utf-8'), expected.encode('utf-8'))
+    return hmac.compare_digest(
+        authorization.encode('utf-8'),
+        f'Bearer {expected}'.encode('utf-8'),
+    )
+
+
+def _crm_user_can_process_campaign(campaign_id, current_user):
+    branch = get_selected_branch(request, current_user)
+    if is_demo_branch(branch):
+        return False
+    campaign = apply_branch_scope(
+        OfferCampaign.objects(id=campaign_id), branch, current_user
+    ).first()
+    return campaign is not None
 
 
 def _campaign_worker_runtime_error():
@@ -926,18 +957,30 @@ def _process_campaign_batch(campaign_id=None):
 
 @campaign_bp.route('/process-queue', methods=['POST'])
 def process_campaign_queue():
-    """Process one durable campaign batch; intended for a trusted scheduler."""
-    if not _campaign_worker_authorized():
-        return jsonify({'error': 'Unauthorized'}), 401
-    runtime_error = _campaign_worker_runtime_error()
-    if runtime_error:
-        return runtime_error
+    """Process one durable batch for a trusted worker or authenticated CRM user."""
+    trusted_worker = _campaign_worker_authorized()
+    current_user = None if trusted_worker else get_current_user()
+    if not trusted_worker and not current_user:
+        return jsonify({'error': 'Authentication required'}), 401
+    if not trusted_worker and current_user.get('role') not in ('manager', 'owner'):
+        return jsonify({'error': 'Insufficient permissions'}), 403
+
     data = request.get_json(silent=True) or {}
     campaign_id = data.get('campaign_id')
     if campaign_id is not None and (
         not isinstance(campaign_id, str) or not ObjectId.is_valid(campaign_id)
     ):
         return jsonify({'error': 'campaign_id is invalid.'}), 400
+    if not trusted_worker and campaign_id is None:
+        return jsonify({'error': 'campaign_id is required.'}), 400
+
+    runtime_error = _campaign_worker_runtime_error()
+    if runtime_error:
+        return runtime_error
+    if not trusted_worker and not _crm_user_can_process_campaign(
+        campaign_id, current_user
+    ):
+        return jsonify({'error': 'Campaign not found.'}), 404
     return jsonify(_process_campaign_batch(campaign_id)), 200
 
 

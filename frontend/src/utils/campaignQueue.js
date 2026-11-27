@@ -1,4 +1,4 @@
-import { apiPost, apiPostForm } from './api';
+import { apiGet, apiPost, apiPostForm } from './api';
 
 export const CAMPAIGN_TEMPLATE_NAME = 'priyanka_promotional_offer';
 export const CAMPAIGN_TEMPLATE_LANGUAGE = 'en_US';
@@ -87,4 +87,16 @@ export const createQueuedCampaign = async ({
     throw new Error('The campaign was not accepted into the queue.');
   }
   return data;
+};
+
+export const getCampaignProgress = async (campaignId, options = {}) => {
+  const response = await apiGet(`/api/campaigns/${campaignId}`, options);
+  return readJson(response);
+};
+
+export const processQueuedCampaignBatch = async (campaignId, options = {}) => {
+  const response = await apiPost('/api/campaigns/process-queue', {
+    campaign_id: campaignId,
+  }, options);
+  return readJson(response);
 };

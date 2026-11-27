@@ -134,14 +134,14 @@ const BirthdayCampaign = ({ onCampaignSent }) => {
       });
       setShowConfirmModal(false);
       showSuccess(
-        `Birthday campaign queued for ${data.eligible_count || 0} customers; ${data.excluded_count || 0} excluded.`
+        `Birthday campaign started for ${data.eligible_count || 0} customers; ${data.excluded_count || 0} excluded.`
       );
       removeImage();
       setSelectedCustomers(new Set());
       if (onCampaignSent) onCampaignSent(data);
     } catch (error) {
-      console.error('Error queueing birthday campaign:', error);
-      showError(error.message || 'Birthday campaign could not be queued.');
+      console.error('Error starting birthday campaign:', error);
+      showError(error.message || 'Birthday campaign could not be started.');
     } finally {
       setSending(false);
     }
