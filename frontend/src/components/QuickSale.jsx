@@ -254,7 +254,8 @@ const QuickSale = () => {
     source: 'Walk-in',
     dobRange: '',
     dob: '',
-    referralCode: ''
+    referralCode: '',
+    whatsappConsent: false
   })
   const [referralInfo, setReferralInfo] = useState(null) // { enabled, rewardType, referrerReward, refereeReward }
   const [referralValidation, setReferralValidation] = useState(null) // { valid, referrerName } or null
@@ -1773,7 +1774,8 @@ const QuickSale = () => {
         gender: newCustomerData.gender,
         source: newCustomerData.source,
         dobRange: newCustomerData.dobRange || '',
-        dob: newCustomerData.dob || ''
+        dob: newCustomerData.dob || '',
+        whatsappConsent: newCustomerData.whatsappConsent === true
       }
       // Include referral code if provided and validated
       if (newCustomerData.referralCode && referralValidation?.valid) {
@@ -1794,7 +1796,8 @@ const QuickSale = () => {
         mobile: cleanMobile,
         firstName: data.reason === 'existing_same_branch' && data.customerName ? data.customerName.split(' ')[0] : firstName,
         lastName: data.reason === 'existing_same_branch' && data.customerName ? data.customerName.split(' ').slice(1).join(' ') : lastName,
-        email: ''
+        email: '',
+        whatsappConsent: data.whatsappConsent === true
       }
 
       // Add to customers list and select
@@ -1803,7 +1806,7 @@ const QuickSale = () => {
 
       // Reset form
       setShowNewCustomerForm(false)
-      setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '', dob: '', referralCode: '' }); setReferralValidation(null)
+      setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '', dob: '', referralCode: '', whatsappConsent: false }); setReferralValidation(null)
 
       // Show appropriate message based on backend response
       if (data.created) {
@@ -2714,7 +2717,10 @@ const QuickSale = () => {
                               name: '', 
                               gender: '',
                               source: 'Walk-in',
-                              dobRange: ''
+                              dobRange: '',
+                              dob: '',
+                              referralCode: '',
+                              whatsappConsent: false
                             })
                           }}
                           style={{
@@ -3708,7 +3714,7 @@ const QuickSale = () => {
       {showNewCustomerForm && createPortal(
         <div className="new-customer-modal-overlay" onClick={() => {
           setShowNewCustomerForm(false)
-          setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '', dob: '', referralCode: '' }); setReferralValidation(null)
+          setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '', dob: '', referralCode: '', whatsappConsent: false }); setReferralValidation(null)
         }}>
           <div className="new-customer-modal" onClick={(e) => e.stopPropagation()}>
             <div className="new-customer-modal-header">
@@ -3717,7 +3723,7 @@ const QuickSale = () => {
                 className="modal-close-btn"
                 onClick={() => {
                   setShowNewCustomerForm(false)
-                  setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '', dob: '', referralCode: '' }); setReferralValidation(null)
+                  setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '', dob: '', referralCode: '', whatsappConsent: false }); setReferralValidation(null)
                 }}
                 disabled={creatingCustomer}
               >
@@ -3848,6 +3854,21 @@ const QuickSale = () => {
                     )}
                   </div>
                 )}
+                <div className="form-field-modal quick-sale-consent-field">
+                  <label className="quick-sale-consent-control">
+                    <input
+                      type="checkbox"
+                      checked={newCustomerData.whatsappConsent === true}
+                      onChange={(e) => setNewCustomerData({
+                        ...newCustomerData,
+                        whatsappConsent: e.target.checked,
+                      })}
+                      disabled={creatingCustomer}
+                    />
+                    <span>Customer agrees to receive WhatsApp messages from Priyanka Nature Cure</span>
+                  </label>
+                  <p>Only select this after the customer has explicitly agreed.</p>
+                </div>
               </div>
             </div>
             <div className="new-customer-modal-footer">
@@ -3855,7 +3876,7 @@ const QuickSale = () => {
                 className="modal-btn-cancel"
                 onClick={() => {
                   setShowNewCustomerForm(false)
-                  setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '', dob: '', referralCode: '' }); setReferralValidation(null)
+                  setNewCustomerData({ mobile: '', name: '', gender: '', source: 'Walk-in', dobRange: '', dob: '', referralCode: '', whatsappConsent: false }); setReferralValidation(null)
                 }}
                 disabled={creatingCustomer}
               >

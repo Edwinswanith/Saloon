@@ -64,6 +64,9 @@ class Customer(Document):
     referred_by = ReferenceField('self', default=None)  # Customer who referred this customer
     referral_reward_used = BooleanField(default=False)  # Whether referee discount was applied on first bill
     whatsapp_consent = BooleanField(default=False)  # Phase 4: WhatsApp consent
+    whatsapp_consent_at = DateTimeField()
+    whatsapp_consent_source = StringField(max_length=50)
+    whatsapp_consent_revoked_at = DateTimeField()
     last_visit_date = DateField()  # Phase 4: Computed from bills
     total_visits = IntField(default=0)  # Phase 4: Computed
     total_spent = FloatField(default=0.0)  # Phase 4: Computed

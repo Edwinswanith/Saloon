@@ -33,6 +33,31 @@ def generate_referral_code(first_name):
     return f"{name_part}{random_part}"
 
 
+def _parse_whatsapp_consent(data):
+    """Return an explicit consent choice, or None when the field is omitted."""
+    if 'whatsappConsent' not in data:
+        return None
+    value = data['whatsappConsent']
+    if type(value) is not bool:
+        raise ValueError('whatsappConsent must be true or false')
+    return value
+
+
+def _customer_consent_response(customer):
+    return {
+        'whatsappConsent': customer.whatsapp_consent is True,
+        'whatsappConsentAt': (
+            customer.whatsapp_consent_at.isoformat()
+            if customer.whatsapp_consent_at else None
+        ),
+        'whatsappConsentSource': customer.whatsapp_consent_source,
+        'whatsappConsentRevokedAt': (
+            customer.whatsapp_consent_revoked_at.isoformat()
+            if customer.whatsapp_consent_revoked_at else None
+        ),
+    }
+
+
 def _visit_range_start(value):
     today = datetime.utcnow()
     ranges = {
@@ -304,6 +329,7 @@ def get_customers(current_user=None):
             'gender': c.gender,
             'dobRange': c.dob_range,
             'referralCode': c.referral_code,
+            **_customer_consent_response(c),
             'totalVisits': stats_map.get(str(c.id), {}).get('total_visits', 0),
             'totalRevenue': round(stats_map.get(str(c.id), {}).get('total_revenue', 0), 2),
             'lastVisit': stats_map.get(str(c.id), {}).get('last_visit').isoformat() if stats_map.get(str(c.id), {}).get('last_visit') else None
@@ -402,6 +428,7 @@ def get_customer(customer_id, current_user=None):
             'referralCode': customer.referral_code,
             'referredBy': str(customer._data.get('referred_by')) if customer._data.get('referred_by') else None,
             'referralRewardUsed': getattr(customer, 'referral_reward_used', False),
+            **_customer_consent_response(customer),
             'membership': membership_data,
             'last_visit': last_visit.isoformat() if last_visit else None,
             'total_visits': total_visits,
@@ -526,6 +553,7 @@ def get_customer_history(customer_id, current_user=None):
                 'name': f"{customer.first_name or ''} {customer.last_name or ''}".strip(),
                 'mobile': customer.mobile,
                 'email': customer.email,
+                **_customer_consent_response(customer),
             },
             'summary': {
                 'visit_count': len(visits),
@@ -562,6 +590,13 @@ def create_customer(current_user=None):
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 400
 
+        try:
+            whatsapp_consent = _parse_whatsapp_consent(data)
+        except ValueError as exc:
+            response = jsonify({'error': str(exc)})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
+
         branch = get_selected_branch(request, current_user)
         if not branch:
             response = jsonify({'error': 'Branch is required. Please ensure you have selected a branch or your user has a branch assigned.'})
@@ -579,7 +614,8 @@ def create_customer(current_user=None):
                 'created': False,
                 'reason': 'existing_same_branch',
                 'message': f'Customer with mobile {mobile} already exists in this branch',
-                'customerName': customer_name
+                'customerName': customer_name,
+                **_customer_consent_response(existing_same_branch),
             })
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 200
@@ -604,6 +640,7 @@ def create_customer(current_user=None):
             if settings.enabled:
                 referrer = Customer.objects(referral_code=applied_referral_code).first()
 
+        consent_granted_at = datetime.utcnow() if whatsapp_consent is True else None
         customer = Customer(
             mobile=mobile,
             first_name=data.get('firstName', ''),
@@ -615,6 +652,9 @@ def create_customer(current_user=None):
             dob_range=data.get('dobRange', ''),
             referral_code=generate_referral_code(data.get('firstName', '')),
             referred_by=referrer,
+            whatsapp_consent=whatsapp_consent is True,
+            whatsapp_consent_at=consent_granted_at,
+            whatsapp_consent_source='customer_create' if whatsapp_consent is True else None,
             branch=branch
         )
         customer.save()
@@ -638,7 +678,8 @@ def create_customer(current_user=None):
             'created': True,
             'reason': 'created_new',
             'message': 'Customer created successfully',
-            'referralApplied': referral_created
+            'referralApplied': referral_created,
+            **_customer_consent_response(customer),
         })
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 201
@@ -654,7 +695,8 @@ def create_customer(current_user=None):
                 'created': False,
                 'reason': 'existing_same_branch',
                 'message': f'Customer with mobile {data.get("mobile")} already exists in this branch',
-                'customerName': customer_name
+                'customerName': customer_name,
+                **_customer_consent_response(existing),
             })
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 200
@@ -667,7 +709,8 @@ def create_customer(current_user=None):
                     'id': str(customer.id),
                     'created': True,
                     'reason': 'created_new',
-                    'message': 'Customer created successfully'
+                    'message': 'Customer created successfully',
+                    **_customer_consent_response(customer),
                 })
                 response.headers.add('Access-Control-Allow-Origin', '*')
                 return response, 201
@@ -812,6 +855,14 @@ def update_customer(customer_id, current_user=None):
             response = jsonify({'error': 'No data provided'})
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 400
+
+
+        try:
+            whatsapp_consent = _parse_whatsapp_consent(data)
+        except ValueError as exc:
+            response = jsonify({'error': str(exc)})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
         
         if 'firstName' in data:
             customer.first_name = data['firstName']
@@ -825,6 +876,15 @@ def update_customer(customer_id, current_user=None):
             customer.gender = data['gender']
         if 'dobRange' in data:
             customer.dob_range = data['dobRange']
+
+        if whatsapp_consent is True and customer.whatsapp_consent is not True:
+            customer.whatsapp_consent = True
+            customer.whatsapp_consent_at = datetime.utcnow()
+            customer.whatsapp_consent_source = 'customer_edit'
+            customer.whatsapp_consent_revoked_at = None
+        elif whatsapp_consent is False and customer.whatsapp_consent is True:
+            customer.whatsapp_consent = False
+            customer.whatsapp_consent_revoked_at = datetime.utcnow()
         customer.updated_at = datetime.utcnow()
         
         if data.get('dob'):
@@ -836,7 +896,10 @@ def update_customer(customer_id, current_user=None):
                 return response, 400
         
         customer.save()
-        response = jsonify({'message': 'Customer updated successfully'})
+        response = jsonify({
+            'message': 'Customer updated successfully',
+            **_customer_consent_response(customer),
+        })
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
     except Customer.DoesNotExist:
@@ -981,6 +1044,7 @@ def search_customers(current_user=None):
             'id': str(c.id),
             'mobile': c.mobile,
             'firstName': c.first_name,
-            'lastName': c.last_name
+            'lastName': c.last_name,
+            **_customer_consent_response(c),
         } for c in customers]
     })

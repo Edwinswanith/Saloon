@@ -78,6 +78,7 @@ const CustomerList = () => {
     gender: '',
     dob: '',
     dobRange: '',
+    whatsappConsent: false,
   })
 
   useEffect(() => {
@@ -134,6 +135,10 @@ const CustomerList = () => {
         dob: customer.dob || '',
         dobRange: customer.dobRange || customer.dob_range || '',
         referralCode: customer.referralCode || customer.referral_code || '',
+        whatsappConsent: customer.whatsappConsent === true || customer.whatsapp_consent === true,
+        whatsappConsentAt: customer.whatsappConsentAt || customer.whatsapp_consent_at || null,
+        whatsappConsentSource: customer.whatsappConsentSource || customer.whatsapp_consent_source || null,
+        whatsappConsentRevokedAt: customer.whatsappConsentRevokedAt || customer.whatsapp_consent_revoked_at || null,
         totalVisits: customer.totalVisits || customer.total_visits || 0,
         totalRevenue: customer.totalRevenue || customer.total_revenue || 0,
         lastVisit: customer.lastVisit || customer.last_visit || ''
@@ -230,6 +235,7 @@ const CustomerList = () => {
       gender: '',
       dob: '',
       dobRange: '',
+      whatsappConsent: false,
     })
     setShowCustomerModal(true)
   }
@@ -245,6 +251,7 @@ const CustomerList = () => {
       gender: customer.gender || '',
       dob: customer.dob || '',
       dobRange: customer.dobRange || customer.dob_range || '',
+      whatsappConsent: customer.whatsappConsent === true || customer.whatsapp_consent === true,
     })
     setShowCustomerModal(true)
   }
@@ -301,6 +308,7 @@ const CustomerList = () => {
         source: customerFormData.source || 'Walk-in',
         gender: customerFormData.gender || '',
         dobRange: customerFormData.dobRange || '',
+        whatsappConsent: customerFormData.whatsappConsent === true,
       }
 
       // Only include dob if it's provided and not empty
@@ -344,6 +352,7 @@ const CustomerList = () => {
           gender: '',
           dob: '',
           dobRange: '',
+          whatsappConsent: false,
         })
         if (!isEdit && data.created === false) {
           showWarning(`Customer already exists — ${data.customerName || data.message}`)
@@ -588,19 +597,20 @@ const CustomerList = () => {
                 <th>Total Spent</th>
                 <th>Last Visit</th>
                 <th>Referral Code</th>
+                <th>WhatsApp</th>
                 <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={mergeMode ? 13 : 12} style={{ padding: 0, border: 'none' }}>
-                      <TableSkeleton rows={10} columns={mergeMode ? 13 : 12} />
+                    <td colSpan={mergeMode ? 14 : 13} style={{ padding: 0, border: 'none' }}>
+                      <TableSkeleton rows={10} columns={mergeMode ? 14 : 13} />
                     </td>
                   </tr>
                 ) : customers.length === 0 ? (
                   <tr>
-                    <td colSpan={mergeMode ? 13 : 12} style={{ padding: 0, border: 'none' }}>
+                    <td colSpan={mergeMode ? 14 : 13} style={{ padding: 0, border: 'none' }}>
                       {searchQuery ? (
                         <EmptySearch searchQuery={searchQuery} message="Try adjusting your search query." />
                       ) : (
@@ -645,6 +655,11 @@ const CustomerList = () => {
                             </button>
                           )}
                         </div>
+                      </td>
+                      <td>
+                        <span className={`consent-status ${customer.whatsappConsent ? 'consented' : 'not-consented'}`}>
+                          {customer.whatsappConsent ? 'Opted in' : 'Not opted in'}
+                        </span>
                       </td>
                       <td>
                         <div className="action-icons">
@@ -808,6 +823,20 @@ const CustomerList = () => {
                 maxDate={new Date()}
               />
             </div>
+            <div className="form-group customer-consent-field">
+              <label className="customer-consent-control">
+                <input
+                  type="checkbox"
+                  checked={customerFormData.whatsappConsent === true}
+                  onChange={(e) => setCustomerFormData({
+                    ...customerFormData,
+                    whatsappConsent: e.target.checked,
+                  })}
+                />
+                <span>Customer agrees to receive WhatsApp messages from Priyanka Nature Cure</span>
+              </label>
+              <p>Only select this after the customer has explicitly agreed.</p>
+            </div>
             <div className="modal-actions">
               <button className="btn-cancel" onClick={() => setShowCustomerModal(false)}>Cancel</button>
               <button className="btn-save" onClick={handleSaveCustomer}>Save</button>
@@ -968,6 +997,18 @@ const CustomerList = () => {
                   <div>
                     <span>Services Used</span>
                     <strong>{customerDetails.summary?.service_count || 0}</strong>
+                  </div>
+                  <div>
+                    <span>WhatsApp Consent</span>
+                    <strong className={
+                      (customerDetails.customer?.whatsappConsent ?? viewingCustomer.whatsappConsent)
+                        ? 'consent-text-enabled'
+                        : 'consent-text-disabled'
+                    }>
+                      {(customerDetails.customer?.whatsappConsent ?? viewingCustomer.whatsappConsent)
+                        ? 'Opted in'
+                        : 'Not opted in'}
+                    </strong>
                   </div>
                 </div>
 

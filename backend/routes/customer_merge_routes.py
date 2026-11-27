@@ -179,6 +179,9 @@ def merge_execute(current_user=None):
             primary.dob_range = secondary.dob_range
         if not primary.whatsapp_consent and secondary.whatsapp_consent:
             primary.whatsapp_consent = True
+            primary.whatsapp_consent_at = secondary.whatsapp_consent_at
+            primary.whatsapp_consent_source = secondary.whatsapp_consent_source
+            primary.whatsapp_consent_revoked_at = None
 
         # Step 5: Recalculate primary's stats from actual Bill data
         try:

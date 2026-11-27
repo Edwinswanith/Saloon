@@ -1913,6 +1913,40 @@
   flex-direction: column;
 }
 
+.quick-sale-consent-field {
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+  grid-column: 1 / -1;
+  padding: 14px;
+}
+
+.quick-sale-consent-control {
+  align-items: flex-start;
+  color: var(--gray-800);
+  cursor: pointer;
+  display: flex;
+  font-size: 14px;
+  font-weight: 600;
+  gap: 10px;
+  line-height: 1.4;
+}
+
+.quick-sale-consent-control input {
+  accent-color: var(--primary-700);
+  flex: 0 0 auto;
+  height: 18px;
+  margin: 1px 0 0;
+  width: 18px;
+}
+
+.quick-sale-consent-field p {
+  color: var(--gray-500);
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 7px 0 0 28px;
+}
+
 .modal-label {
   font-size: 14px;
   font-weight: 600;
